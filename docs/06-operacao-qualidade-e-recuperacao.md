@@ -43,7 +43,7 @@ Cada benchmark deve informar dataset sintético, volume, concorrência, distribu
 | REL-02 | RPO transacional ≤ 5 min; RTO para operação manual essencial ≤ 60 min. | exercício de restore/incident drill com relógio e dados sintéticos. | PROPOSED/TBD |
 | REL-03 | Timeouts, cancelamento, retry, backpressure e poison messages têm limites bounded; uma mesma idempotency key não duplica efeito. | fault injection, fila cheia, cancelamento e property tests. | PROPOSED/TBD |
 | REL-04 | Escala é medida por workload, concorrência, tokens, tools, providers e p50/p95/p99; média isolada não aprova release. | benchmark W-A…W-H com dataset e ambiente fixados. | PROPOSED/TBD |
-| OFF-01 | Operação offline não amplia policy e nenhum efeito externo ocorre sem receipt/confirmado. | revogação + cache expirado + desconexão. | PROPOSED/TBD |
+| OFF-01 | V1 offline é somente leitura D0–D2 com lease finito; não amplia policy nem produz escrita/efeito externo. Queda breve preserva o buffer volátil enquanto o contexto é válido; somente D0–D2 classificados/autorizados ficam visíveis, e D3–D5/desconhecido ficam ocultos em quarentena; `COMPOSER_CONTEXT_LOST` (fechamento, recarregamento, saída, expiração/revogação ou falha de revalidação) purga-o. Revogação é aplicada no primeiro boundary online, antes de ler/sincronizar. | texto clínico D3 e desconhecido → desconexão → ocultação sem persistência → reconexão/revalidação; D0–D2 autorizado, ausência/expiração de lease, revogação e fechamento/recarregamento. | PROPOSED/TBD |
 | SEC-01 | 100% dos casos negativos da matriz de autorização são negados sem vazamento de existência. | suíte actor/resource/action/condition em API, DB, vector, object e export. | PROPOSED/TBD |
 | CLIN-01 | 100% dos atos clínicos de alto impacto exigem role/estado/approval; zero publicação de draft. | known-good/known-bad de tool e UI. | PROPOSED/TBD |
 | BUD-01 | Reserva atômica e hard stop cobrem tokens, mídia, transcrição, MCP, retry e nested calls; nenhum dispatch ocorre após o limite. | provider stub, modalidades mistas, nested/retry, crash e late usage. | PROPOSED/TBD |
@@ -81,7 +81,7 @@ Auditoria de negócio é durável e obrigatória. Telemetria do DeepSeek pode se
 | `ONLINE` | operação autorizada e AI conforme policy | nada além da policy normal | status normal |
 | `DEGRADED_AI` | operação manual, leituras transacionais, rascunho local explicitamente marcado | novos efeitos de AI sem provider/policy | banner + incident id |
 | `DEGRADED_INTEGRATION` | registro local e fila de integração | confirmação externa sem receipt | estado `PENDING_EXTERNAL` |
-| `OFFLINE_READ_ONLY` | leitura de cache já autorizado, rascunho local não publicado | novo privilégio, assinatura, dispensação, cobrança, envio | offline age, policy age e aviso visível |
+| `OFFLINE_READ_ONLY` | leitura de cache D0–D2 autorizada por lease finito; buffer pré-existente só em memória: D0–D2 classificados/autorizados visíveis, demais conteúdos ocultos em quarentena conforme o [contrato de buffer em 05](05-seguranca-privacidade.md#buffer-de-composição-durante-desconexão) | edição/rascunho offline aceito ou persistido, exibição/cópia de D3–D5 ou conteúdo desconhecido/não autorizado, novo privilégio, assinatura, dispensação, cobrança, envio e sincronização de escrita | composer bloqueado, offline age, `expiresAt`, policy age, estado de revalidação, aviso visível e descarte em `COMPOSER_CONTEXT_LOST` |
 | `RECOVERY` | replay, reconciliação, quarentena, operação manual priorizada | retry cego de efeito desconhecido | runbook + owner + janela |
 | `LOCKDOWN` | consulta de incidentes e ações de contenção autorizadas | qualquer efeito de alto impacto | razão, autoridade e kill switch |
 
@@ -91,11 +91,11 @@ Readiness deve falhar se DB, policy store, secret provider, persistence necessá
 
 ### Retry e idempotência
 
-Retry é permitido somente quando a operação é read-only, idempotente ou tem receipt/query de reconciliação. Usar limite de tentativas, backoff com jitter, deadline, circuit breaker, fila bounded e quarentena de poison messages. Não repetir automaticamente medicação, pagamento, mensagem, alteração clínica, exportação ou tool externa de resultado desconhecido.
+Retry é permitido somente quando a operação é read-only, idempotente ou tem receipt/query de reconciliação. Uma reivindicação `ADMISSION_PENDING` expirada é resolvida pelo reconciliador: sem intent vira falha pré-dispatch persistida; com possibilidade de efeito vira `OUTCOME_UNKNOWN` e consulta externa. Usar limite de tentativas, backoff com jitter, deadline, circuit breaker, fila bounded e quarentena de poison messages. Não repetir automaticamente medicação, pagamento, mensagem, alteração clínica, exportação ou tool externa de resultado desconhecido.
 
 ### Backup e restore
 
-Backups de DB, object store, vetor, auditoria e sessão devem ser criptografados, tenant-isolated e associados a versão/schema. Restore é executado em ambiente isolado com dados sintéticos; validar contagem, hashes, vínculos, ACL, estados, outbox, ledger, auditoria e replay de sessão. O RPO/RTO acima só se torna requisito depois de evidência de exercício.
+Backups de DB, object store, vetor, auditoria e sessão devem ser criptografados, tenant-isolated e associados a versão/schema e a um `journalWatermark` de checkpoint reconciliado. Restore é executado em ambiente isolado com dados sintéticos; validar contagem, hashes, vínculos, ACL, estados, continuidade do journal corrente, eventos pós-watermark e decisões anteriores ainda não `COMPLETED`, além do replay idempotente de exclusões, restrições e revogações, outbox/inbox, ledger, auditoria e sessão. Também deve recuperar `ExportAuthorization`, `ExportOperation` e `ExportDeliveryAttempt` sem disparar novo envio, e testar a perda da tabela/store local de `LifecycleDecision` enquanto o evento ainda aponta para o registro independente. O cenário obrigatório é `backup → exclusão/restrição/revogação → restore`: nenhuma decisão posterior pode desaparecer ou ressuscitar dado/privilégio. A fault injection deve interromper antes do receipt durável, depois dele e antes/depois da transação local; em enforcement, o resultado é recuperado pelo journal de eventos e, em exportação, pelos contratos de autorização/tentativa, sempre permanecendo bloqueado ou reconciliável e nunca confirmado falsamente. O RPO/RTO acima só se torna requisito depois de evidência de exercício.
 
 ## 6. Estratégia de testes
 
@@ -145,4 +145,9 @@ Cada runbook terá owner, pré-condições, comandos não destrutivos, métrica 
 
 ## 10. Evidência atual
 
-O corpus fornece documentação de capacidades e limitações do harness e sínteses de apresentações corporativas. Não há implementação CVG, workload real, baseline, benchmark, teste de restore, teste de autorização, red-team ou deploy. Portanto os targets, SLOs, RTO/RPO e verdict operacional permanecem `PROPOSED`/`NOT_RUN`.
+O corpus fornece documentação de capacidades e limitações do harness e sínteses de apresentações corporativas. O artifact local já tem health/readiness, métricas redigidas, testes de autorização do recorte, persistência sintética, leituras normalizadas, RLS forçado no catálogo de domínio, FKs compostas de proveniência organizacional, outbox/worker bounded, usage ledger idempotente, inbox atômico com assinatura HMAC injetada, efeitos externos com receipt/reconciliação, crash drill sintético após marcador de dispatch, bundle de restore AES-256-GCM com rejeição de adulteração, quarentena e E2E; ainda não há workload real, baseline, benchmark, backup operacional gerenciado, fault/crash drill de produção, red-team completo ou deploy. Portanto os targets, SLOs, RTO/RPO e veredito operacional permanecem `PROPOSED`/`NOT_RUN`, com a evidência corrente consolidada em [12](12-estado-da-implementacao.md).
+
+
+## Transição entre ambientes e liberação por escopo
+
+O [documento 11](11-transicao-para-producao.md) define a passagem da demonstração à homologação, ao piloto e à produção ampliada. Os critérios de prova deste documento continuam aplicáveis à fatia liberada. Antes do primeiro dado real, inclusive no piloto, exigir recuperação operacional demonstrada, metas acordadas, suporte, contingência e autoridade de release; o teste de bloqueio de restore de M1 não satisfaz essa exigência. Ambientes, implantação e passagens permanecem `NOT_RUN`.

@@ -1,0 +1,13 @@
+{
+  "name": "@cvg/integrations",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@cvg/contracts": "*",
+    "@cvg/domain": "*",
+    "@cvg/persistence": "*"
+  }
+}

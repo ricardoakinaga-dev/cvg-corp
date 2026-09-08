@@ -135,11 +135,55 @@ Uma camada inferior pode remover provider, modelo, tool, destino, dado ou ação
 | T3 alto impacto | assinar, prescrever, dispensar, registrar administração, alterar saldo, estornar, enviar informação sensível | role de alçada + estado válido + approval forte; em alguns casos segunda pessoa |
 | T4 irreversível/privilegiado | exclusão, exportação ampla, break-glass, troca global de policy/credencial | ação fora do Agent clínico; autoridade explícita, janela, motivo, auditoria e revalidação |
 
-O approval do motor retorna somente `allowed-once`, `rejected`, `cancelled` ou `unavailable`; somente o primeiro autoriza. O adapter CVG acrescenta um `ApprovalBinding` com hash dos argumentos normalizados, recurso, versão esperada, policy revision, actor approver, expiração, finalidade e alçada. Se qualquer item mudar entre approval e execução, o comando é rejeitado e precisa de nova decisão.
+O approval do motor retorna somente `allowed-once`, `rejected`, `cancelled` ou `unavailable`; `allowed-once` autoriza uma nova execução no caminho `NEW_EXECUTION`, não uma consulta ao resultado de uma execução já registrada no caminho `REPLAY_LOOKUP`. O adapter CVG acrescenta um `ApprovalBinding` com hash dos argumentos normalizados, recurso, versão esperada, policy revision, actor approver, expiração, finalidade, alçada e vínculo à execução/idempotency record. Se qualquer item mudar entre approval e uma nova execução, o comando é rejeitado e precisa de nova decisão.
 
 O hash usa canonicalização determinística `UTF-8 + JSON sem whitespace`, chaves ordenadas recursivamente, números em representação única, listas preservando ordem, campos opcionais explicitamente ausentes/nulos conforme schema e rejeição de campos desconhecidos. O digest inclui `action`, `resource`, `expectedVersion`, `scope`, `egressIntent`, `policyRevision/hash`, `credentialRef/version`, `budgetReservationId`, `artifactBinding` e `expiresAt`; não é calculado a partir do texto exibido na UI.
 
-Estados propostos do binding: `ISSUED → DECIDED → CONSUMING → CONSUMED`, ou `REJECTED`, `EXPIRED`, `REVOKED`, `CONFLICT`. `CONSUMING` é reservado atomicamente por `approvalId + digest`; uma segunda tentativa recebe `APPROVAL_REPLAY`. Para comando interno, o consumo do binding e a mutação do domínio ocorrem na mesma transação. Para efeito externo, o consumo e o `DispatchIntent` idempotente são persistidos antes do envio; crash entre intent e envio é reconciliado pelo provider, nunca repetido cegamente. Approval do engine sem `ApprovalBinding` CVG válido é `DENIED`.
+Estados propostos do binding: `ISSUED → DECIDED → CONSUMING → CONSUMED`, ou `REJECTED`, `EXPIRED`, `REVOKED`, `CONFLICT`. `CONSUMING` é reservado atomicamente para a primeira execução por `approvalId + digest`; uma nova execução com outra chave recebe `APPROVAL_REPLAY`. Isso não transforma uma repetição idempotente em nova execução: a chave estável é consultada e reivindicada antes do consumo do binding.
+
+```text
+IdempotencyLookupKey {
+  organizationId: VALUE,
+  unitId: VALUE|ABSENT, workspaceId: VALUE|ABSENT,
+  actorId: VALUE, commandType: VALUE,
+  resourceType: VALUE, resourceId: VALUE|ABSENT,
+  idempotencyKey: VALUE,
+  lookupKeyCanonical, lookupKeyHash: NOT_NULL_UNIQUE
+}
+
+IdempotencyRecord {
+  lookupKey, lookupKeyCanonical, lookupKeyHash, idempotencyKey,
+  originalActionId, originalCommandId, actorId,
+  organizationId, unitId?, workspaceId?, commandType, scopeDigest,
+  normalizedArgsDigest, resourceRef, expectedVersion?,
+  approvalBindingId?, budgetReservationId?, dispatchIntentId?,
+  status: ADMISSION_PENDING|IN_FLIGHT|SUCCEEDED|FAILED|OUTCOME_UNKNOWN,
+  dispatchState: NOT_STARTED|INTENT_DURABLE|SEND_STARTED|RECEIPTED|UNKNOWN,
+  failurePhase?, failureCode?, claimEpoch, claimExpiresAt,
+  resultRef?, receiptRef?, resourceVersion?, createdAt, updatedAt
+}
+```
+
+`IdempotencyLookupKey` é derivada no servidor a partir da identidade autenticada, do escopo efetivo, do tipo de comando e da chave fornecida pelo cliente. Cada posição é codificada no `lookupKeyCanonical` como um valor tipado: `VALUE("x")` ou o marcador estrutural `ABSENT`; ausência nunca é SQL `NULL`, string vazia ou coluna omitida, e `VALUE("ABSENT")` não se confunde com o marcador. `lookupKeyHash` é o hash dos bytes canônicos e é uma coluna `NOT NULL UNIQUE`; a comparação do canonical completo resolve qualquer colisão de hash. Se a implementação também mantiver colunas decompostas anuláveis, deve usar `UNIQUE NULLS NOT DISTINCT` ou equivalente, além da chave canônica não anulável. Os campos `unitId?`, `workspaceId?` e demais opcionais mantidos no registro são projeção/consulta, não participam sozinhos da unicidade. Assim, o índice server-scoped representa igualdade de ausência para `(organizationId, unitId, workspaceId, actorId, commandType, resourceType, resourceId, idempotencyKey)` sem depender da semântica padrão de `NULL` do PostgreSQL, que trata nulos como distintos por padrão em uma constraint `UNIQUE` e permite alterar isso com `NULLS NOT DISTINCT` conforme a [documentação oficial de constraints do PostgreSQL](https://www.postgresql.org/docs/current/ddl-constraints.html).
+
+`actionId` não participa da busca: ele identifica a execução originalmente reivindicada e é persistido em `originalActionId`; uma nova requisição pode receber outro `actionId` de transporte, mas recupera os identificadores originais e o mesmo receipt. O registro também conserva `scopeDigest`, recurso, versão e argumentos normalizados para detectar conflito. A chave do cliente não é global nem substitui autenticação ou autorização.
+
+A criação/reivindicação `ADMISSION_PENDING` é uma transação preparatória protegida por `lookupKeyHash` e `claimEpoch`. Depois que a admissão passa, comando interno promove o registro, consome o binding e muta o domínio na mesma transação; efeito externo persiste `DispatchIntent`/`dispatchState` antes do envio. Crash entre intent e envio é reconciliado pelo provider, nunca repetido cegamente. Approval do engine sem `ApprovalBinding` CVG válido é `DENIED`.
+
+Há dois caminhos de admissão, com um preâmbulo comum de decode/schema, canonicalização, resolução da identidade autenticada, escopo efetivo, revogação e finalidade:
+
+1. `REPLAY_LOOKUP` — revalidar a autorização atual para ler o receipt/resultado e o recurso referenciado; então buscar a `IdempotencyRecord` pela `IdempotencyLookupKey` estável e comparar `scopeDigest`, argumentos, recurso e `expectedVersion`. Se houver registro compatível, devolver `receiptRef`/`resultRef`, `originalActionId`, `originalCommandId` e o mesmo status `IN_FLIGHT`/`OUTCOME_UNKNOWN`/final. Para `ADMISSION_PENDING` ainda dentro do lease, devolver `ADMISSION_IN_PROGRESS` com `claimExpiresAt`; se o lease expirou, acionar o reconciliador antes de decidir o resultado. Este caminho não reserva budget, não consulta registry para executar, não consome approval, não resolve credencial e não despacha novamente. Se a autorização de leitura atual falhar, retorna `DENIED` sem revelar o registro; se a chave existir com digest incompatível, retorna `IDEMPOTENCY_CONFLICT` sem consumir approval.
+2. `NEW_EXECUTION` — quando o lookup não encontra registro, autorizar a ação sobre o recurso/estado e reivindicar atomicamente a `IdempotencyLookupKey` com os digests, os identificadores originais, `status=ADMISSION_PENDING`, `dispatchState=NOT_STARTED`, `claimEpoch` e lease curto. Somente o claimant com esse `claimEpoch` continua com registry/revision/digests, budget reservation, binding de approval, credencial, egress e chamada da porta de domínio. Uma corrida que perca a reivindicação volta ao `REPLAY_LOOKUP`. Ausência de registry, budget, approval, credencial ou policy é finalizada como `FAILED` pré-dispatch e não há envio.
+
+Assim, recuperar o resultado existente exige apenas as condições atuais para leitura protegida do resultado; credencial, egress e as condições para produzir um novo efeito pertencem exclusivamente à admissão completa. `APPROVAL_REPLAY` fica reservado para uma nova execução, não para recuperar o resultado da mesma execução.
+
+### 7.2 Reivindicação abandonada antes do dispatch
+
+Uma negação depois da reivindicação, mas antes de qualquer dispatch, faz um compare-and-set de `ADMISSION_PENDING + claimEpoch` para `FAILED`, com `failurePhase=PRE_DISPATCH`, `dispatchState=NOT_STARTED` e código determinístico (`REGISTRY_DENIED`, `BUDGET_DENIED`, `APPROVAL_DENIED`, `CREDENTIAL_DENIED` ou equivalente). A reserva de budget não consumida é liberada/expirada; approval não consumida não é consumida, e approval já consumida não é reutilizada. O registro falho permanece para que a mesma chave devolva a mesma negação; uma nova execução exige nova `idempotencyKey` e nova admissão.
+
+Um reconciliador de claims varre registros com `ADMISSION_PENDING` e `claimExpiresAt` vencido. Ele primeiro invalida o `claimEpoch` antigo. Se `dispatchIntentId` estiver ausente e `dispatchState=NOT_STARTED`, finaliza a reivindicação como `FAILED` com `failurePhase=PRE_DISPATCH` e `failureCode=CLAIM_ABANDONED`, sem executar a tool. Se houver intent ou qualquer sinal de envio, não faz rollback: marca `OUTCOME_UNKNOWN`/`dispatchState=UNKNOWN` e consulta o provider. Somente uma confirmação externa de que não houve envio permite finalizar como `FAILED` `PRE_DISPATCH_NOT_SENT`; sem essa evidência, o efeito é incerto e permanece em reconciliação. Um worker antigo, com `claimEpoch` inválido, não pode promover, despachar ou alterar o registro.
+
+O teste obrigatório injeta crash imediatamente após a reivindicação e cobre: retry durante o lease (`ADMISSION_IN_PROGRESS`), expiração sem intent (`FAILED/CLAIM_ABANDONED`), negação de registry/budget/approval/credencial (`FAILED/PRE_DISPATCH`), intent com provider desconhecido (`OUTCOME_UNKNOWN`) e concorrência com todos os campos opcionais ausentes. O teste deve provar que não há segunda reivindicação nem dispatch automático a partir de `ADMISSION_PENDING`.
 
 ### 7.1 Admission comum para toda tool
 
@@ -147,7 +191,7 @@ Para evitar bypass por superfície, toda chamada originada por tool nativa, tool
 
 ```text
 ActionEnvelope {
-  actionId, actionClass, actorId, actorKind,
+  actionId, commandType, actionClass, actorId, actorKind,
   securityContextDigest, organizationId, unitId?, workspaceId?,
   resourceType, resourceId, expectedVersion?, purpose,
   normalizedArgsDigest, policyRevision, policyHash,
@@ -157,7 +201,7 @@ ActionEnvelope {
 }
 ```
 
-O envelope é montado e validado no servidor; o modelo não pode declarar `actorId`, escopo, role, approval, credencial, registry ou digest de artefato como autoridade. A admissão executa, nesta ordem, decode/schema, classificação de conteúdo não confiável, resolução do contexto, revogação, policy monotônica, authz do recurso/estado, lookup do registry e comparação de `registryRevision`/digests, budget reservation, binding de approval, egress/credencial, idempotência e chamada da porta de domínio. Registry indisponível, artefato suspenso, digest divergente ou qualquer outra ausência retorna `DENIED` antes do efeito.
+O envelope é montado e validado no servidor; o modelo não pode declarar `actorId`, escopo, role, `commandType`, approval, credencial, registry ou digest de artefato como autoridade. A classificação de conteúdo não confiável ocorre antes de qualquer decisão. O preâmbulo comum resolve identidade, escopo, revogação e finalidade e então bifurca explicitamente para `REPLAY_LOOKUP` ou `NEW_EXECUTION`, conforme o protocolo acima. O `actionId` é correlação da tentativa; a identidade estável da repetição é a `IdempotencyLookupKey`, e os IDs originais são recuperados do registro. Nenhum fluxo alternativo por tool, MCP, skill, Code Mode, subagente ou integração remota pode pular essa bifurcação.
 
 | Origem | Tratamento obrigatório | Limite adicional |
 |---|---|---|
@@ -198,7 +242,7 @@ dimensions = {
 1. Antes de qualquer provider, mídia, transcrição, MCP, retry, Code Mode ou efeito externo, o gateway calcula um `upperBound` ou rejeita por não conseguir estimar com segurança.
 2. A reserva raiz é atômica por `organizationId/workspaceId/actorId` e cada nested call só pode consumir uma sub-reserva da raiz. A mesma `idempotencyKey` devolve a reserva existente; parâmetros incompatíveis geram `IDEMPOTENCY_CONFLICT`.
 3. O admission repete o hard check imediatamente antes do dispatch. Ao atingir o limite, novos dispatches são negados; não há crédito implícito por atraso de batch, retry ou saldo de interface.
-4. O settlement registra usage observado, custo estimado/final, provider request id, receipt, retry e discrepância; libera sobra somente depois de confirmar o estado permitido.
+4. O settlement atualiza a tentativa e registra usage observado, custo estimado/final, provider request id, receipt, retry e discrepância; libera sobra somente depois de confirmar o estado permitido. Uma tentativa pode gerar vários lançamentos, um por modalidade ou correção.
 5. Uso tardio, duplicado ou acima da reserva entra em `BUDGET_RECONCILIATION_HOLD`, congela novos efeitos caros do escopo afetado e exige reconciliação. Nunca produzir saldo negativo silencioso nem contar o mesmo provider event duas vezes.
 
 ### Ledger de uso e settlement
@@ -206,17 +250,32 @@ dimensions = {
 O ledger é append-only lógico e separado do saldo apresentado na UI:
 
 ```text
-UsageLedgerEntry {
-  usageEntryId, reservationId, parentReservationId?, actionId, attempt,
+UsageAttempt {
+  attemptId, reservationId, parentReservationId?, actionId, attemptNumber,
   organizationId, workspaceId, actorId, sessionId,
-  providerRequestId?, providerUsageEventId?, modality, quantity,
-  estimatedCost?, finalCost?, currency?, occurredAt, receivedAt,
+  providerRequestId?, idempotencyKey,
   state: RESERVED|DISPATCHED|SETTLED|UNKNOWN|RECONCILIATION_HOLD,
-  idempotencyKey, causationId, auditId
+  occurredAt, receivedAt?, causationId, auditId
+}
+
+UsageLedgerEntry {
+  usageEntryId, attemptId, reservationId, actionId,
+  entryType: RESERVATION|OBSERVED|RELEASE|COMPENSATION,
+  modality, unit, quantity,
+  estimatedCost?, finalCost?, currency?, occurredAt, receivedAt,
+  providerUsageEventId?, causationId, auditId
+}
+
+ProviderUsageEvent {
+  providerUsageEventId, providerRequestId?, providerEventKey,
+  attemptId?, modality, quantity, occurredAt, receivedAt,
+  payloadDigest, rawReference?
 }
 ```
 
-As chaves `(reservationId, actionId, attempt)`, `(providerRequestId, providerUsageEventId)` quando presentes e `idempotencyKey` são únicas; um evento repetido retorna o mesmo settlement. `DISPATCHED` sem usage confirmado vira `UNKNOWN`; usage tardio ou fora de ordem não reescreve o passado, gera uma entrada compensatória e transita para `RECONCILIATION_HOLD`. A reconciliação compara reserva, receipt/request do provider, `UsageLedgerEntry` e cobrança; divergência mantém o escopo em hold e exige owner, motivo, decisão e `AuditRecord`. Crash entre reserva, dispatch e settlement deve ser recuperado por replay idempotente, não por dedução temporal.
+`UsageAttempt` representa a identidade de uma tentativa; `UsageLedgerEntry` representa seus lançamentos append-only. Portanto, `(reservationId, actionId, attemptNumber)` é único somente em `UsageAttempt`, enquanto um mesmo attempt pode possuir vários lançamentos para tokens, áudio, imagem, chamadas ou compensações. `providerEventKey` é único no escopo do provider quando presente; `providerRequestId`/`providerUsageEventId` também são deduplicados quando fornecidos. A `idempotencyKey` é única na operação/registro de idempotência com seu escopo explícito, não em cada posting do ledger.
+
+Reentregar o mesmo provider event retorna o evento e o settlement já associado sem criar novo lançamento. Um novo evento ou modalidade legítima cria outro `UsageLedgerEntry` ligado ao mesmo `attemptId`; correção, liberação e compensação também são lançamentos novos e nunca alteram os anteriores. `DISPATCHED` sem usage confirmado vira `UNKNOWN`; usage tardio ou fora de ordem não reescreve o passado, gera lançamento compensatório se necessário e transita para `RECONCILIATION_HOLD`. A reconciliação compara reserva, attempt, provider events, lançamentos e cobrança; divergência mantém o escopo em hold e exige owner, motivo, decisão e `AuditRecord`. Crash entre reserva, dispatch e settlement deve ser recuperado por replay idempotente, não por dedução temporal.
 
 Os preços, moeda e limites numéricos são `UNKNOWN`; a atomicidade, cobertura das dimensões e comportamento de hard stop são requisitos `PROPOSED` que precisam de ledger executável e teste de crash/late/out-of-order antes do gate.
 
@@ -236,7 +295,11 @@ Jobs e workflows devem possuir `automationId`, versão, owner, janela, budget, i
 
 Subagentes recebem contexto mínimo e nenhum privilégio superior ao parent. O parent não pode atribuir a um child uma tool que sua própria policy não permite. A coordenação experimental `agent-team` fica fora do caminho P0.
 
-Offline pode abrir dados/cache já autorizados conforme a decisão U14, mas não pode ampliar policy, criar credencial, confirmar efeito externo, assinar, dispensar, estornar ou publicar alteração clínica. Uma escrita local pendente precisa de estado `PENDING_SYNC`, chave idempotente, conflito explícito e reconciliação humana quando o estado mudou.
+Offline só pode abrir dados D0–D2 previamente autorizados por uma `OfflinePolicy` com lease finito (`maxOfflineAge`), em modo somente leitura e sem sincronização de escrita. Na V1 não há rascunho local persistido, edição offline aceita ou `PENDING_SYNC`: a caixa de entrada fica bloqueada, e o buffer de composição em memória não constitui rascunho offline. Uma queda de rede, sozinha, não é gatilho de descarte; enquanto a sessão/lease e o contexto de composição continuarem válidos, a interface conserva o texto não enviado apenas no buffer volátil, sem gravá-lo no session log, na auditoria ou em sync.
+
+Preservação não autoriza exibição: somente D0–D2 classificados e autorizados podem permanecer visíveis; D3–D5, conteúdo não classificado ou sem autorização offline ficam ocultos em quarentena, conforme o [contrato de buffer em 05](05-seguranca-privacidade.md#buffer-de-composição-durante-desconexão). O contexto clínico impõe classificação mínima D3. Reexibir na reconexão exige revalidação do recurso/contexto, classificação e autorização, além da sessão e policy.
+
+`COMPOSER_CONTEXT_LOST` é o único gatilho canônico de descarte. Ele ocorre ao recarregar, fechar, sair, expirar ou ser revogada a sessão/lease, ou quando a reconexão falha na revalidação; o motor então ordena a purga do buffer e não pode enviá-lo automaticamente. Na reconexão, `sessionId`, `revocationEpoch` e policy devem ser revalidados antes de qualquer leitura ou reativação do composer; se forem válidos, o usuário pode revisar e enviar explicitamente o texto preservado. D3–D5, dados sensíveis/privilegiados, qualquer efeito externo, assinatura, dispensação, estorno, comunicação ou publicação clínica exigem conexão e nova admissão. Enquanto o dispositivo estiver desconectado, uma revogação server-side não pode ser observada; portanto a garantia verificável é: o lease de baixo risco termina em `expiresAt`, e a primeira reconexão deve revalidar `revocationEpoch`/policy antes de qualquer leitura ou sync; se não conseguir revalidar, nega, invalida o contexto e purga o cache/buffer. V1 não emite lease offline para D3–D5 nem aceita escrita pendente.
 
 ## 11. Segurança do runtime e upgrade
 
@@ -277,10 +340,10 @@ O harness está em pré-release e `SESSION_FORMAT_VERSION=0`. Antes de cada upgr
 
 ## 12. Estado de implementação e próximo gate
 
-`CURRENT`: capacidades acima estão documentadas no motor local; nenhuma foi adaptada ao CVG nesta fase.
+`CURRENT`: capacidades acima estão documentadas no motor local. No artifact CVG, `packages/harness` adapta uma parcela determinística — policy, budget, approval, provenance, quarentena e replay — como stub local; isso não é conexão nem equivalência com o runtime externo DeepSeek Harness.
 
 `PROPOSED`: plugins, bundles, presets, contracts, guards, bridges e workers `cvg-*` ainda não existem.
 
-`NOT_RUN`: nenhum runtime, build, profile dump, provider, tool, approval ou replay foi executado para o CVG.
+`NOT_RUN`: provider real, profile dump do motor externo, registry/evaluation/rollback/kill switch completos, egress e integração de produção continuam não executados para o CVG. O artifact também possui uma porta de outbox com claim/lease/fencing e ledger sintético de uso, mas ela ainda não representa dispatch ou settlement de provider real. Os testes locais do stub, da API e do worker estão registrados em `docs/12-estado-da-implementacao.md`.
 
 Próximo gate: transformar as decisões U1–U15 em contratos aprovados e testar uma fatia vertical `agenda → atendimento → rascunho de resumo → revisão → registro`, sem permitir que o agente escreva diretamente no prontuário.

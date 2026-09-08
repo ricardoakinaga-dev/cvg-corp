@@ -1,0 +1,59 @@
+{
+  "name": "cvg-corp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "CVG-Corp — sistema operacional veterinário local-first com governança de IA.",
+  "type": "module",
+  "engines": {
+    "node": ">=24.20.0",
+    "npm": ">=11.0.0"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "tsx scripts/dev.ts",
+    "start": "npm run dev:api",
+    "dev:api": "tsx apps/api/src/server.ts",
+    "dev:web": "vite --config apps/web/vite.config.ts --host 127.0.0.1",
+    "build": "tsc -p tsconfig.json --noEmit && vite build --config apps/web/vite.config.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --import tsx --test tests/unit/*.test.ts tests/integration/*.test.ts",
+    "test:unit": "node --import tsx --test tests/unit/*.test.ts",
+    "test:integration": "node --import tsx --test tests/integration/*.test.ts",
+    "test:e2e": "playwright test",
+    "test:restore": "node --import tsx --test tests/integration/restore.test.ts",
+    "verify:static": "tsx scripts/verify-static.ts",
+    "verify:m1": "npm run typecheck && npm test && npm run build && npm run verify:static",
+    "verify:all": "npm run verify:m1 && npm run test:e2e",
+    "verify:postgres": "tsx scripts/verify-postgres.ts",
+    "verify:postgres:restore": "tsx scripts/verify-postgres-restore.ts",
+    "db:migrate": "tsx scripts/db.ts migrate",
+    "db:check": "tsx scripts/db.ts check",
+    "bootstrap": "tsx scripts/bootstrap.ts",
+    "audit:tokens": "python3 -B /home/ricardo/.codex/skills/design-director/scripts/audit_design_tokens.py apps/web/src --strict",
+    "audit:contrast": "python3 -B /home/ricardo/.codex/skills/design-director/scripts/check_contrast.py --foreground '#385263' --background '#f5f8f6' && python3 -B /home/ricardo/.codex/skills/design-director/scripts/check_contrast.py --foreground '#59717c' --background '#f5f8f6' && python3 -B /home/ricardo/.codex/skills/design-director/scripts/check_contrast.py --foreground '#ffffff' --background '#08786f' && python3 -B /home/ricardo/.codex/skills/design-director/scripts/check_contrast.py --foreground '#a83f3c' --background '#fbe7e1' && python3 -B /home/ricardo/.codex/skills/design-director/scripts/check_contrast.py --foreground '#8d5d0e' --background '#fff2d4'"
+  },
+  "dependencies": {
+    "@fastify/cookie": "^11.0.2",
+    "@fastify/cors": "^11.0.1",
+    "fastify": "^5.5.0",
+    "pg": "^8.16.3",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "zod": "^4.1.5"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.0",
+    "@vitejs/plugin-react": "^5.0.2",
+    "@types/node": "^24.3.0",
+    "@types/pg": "^8.15.5",
+    "@types/react": "^19.1.12",
+    "@types/react-dom": "^19.1.9",
+    "playwright": "^1.55.0",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2",
+    "vite": "^7.1.5"
+  }
+}

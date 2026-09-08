@@ -1,0 +1,24 @@
+{
+  "schema_version": 2,
+  "items": [
+    {
+      "id": "CVG-FULL-IMPLEMENTATION",
+      "title": "Implementação integral local-first do CVG-Corp",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "IN_PROGRESS",
+      "origin": "docs/01-prd-cvg.md; docs/02-arquitetura-alvo.md; user request",
+      "dependencies": [],
+      "owner": "lead",
+      "acceptance_summary": "Artifact executável local com contratos, módulos de domínio, governança de IA, UI responsiva, testes e evidência atual; produção permanece bloqueada.",
+      "evidence_refs": [".agent/verification.jsonl#VER-CVG-025", ".agent/verification.jsonl#VER-CVG-026", ".agent/verification.jsonl#VER-CVG-027", ".agent/verification.jsonl#VER-CVG-028", ".agent/gates/production-readiness-review-002.json"],
+      "next_action": {
+        "id": "CVG-FULL-IMPLEMENTATION:PRODUCTION-READINESS-GAPS",
+        "kind": "IMPLEMENT",
+        "summary": "Fechar provider/secret-provider/PDP de negócio e recovery operacional aprovado que ainda impedem o gate integral",
+        "target": "packages/integrations/; packages/persistence/; db/migrations/; scripts/; docs/10-preparacao-m1.md; docs/11-transicao-para-producao.md",
+        "completion_signal": "provider/consulta externa reais, PDP de negócio, backup gerenciado, replay pós-watermark, fault tests, RTO/RPO/SLO e aceite humano têm evidência; até lá manter PASS WITH LIMITATIONS e sem dados reais"
+      }
+    }
+  ]
+}

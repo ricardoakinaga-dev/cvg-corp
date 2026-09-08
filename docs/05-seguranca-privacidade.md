@@ -118,7 +118,7 @@ PolicyBinding {
 
 O snapshot é derivado da identidade autenticada e não pode ser preenchido pelo modelo, pelo cliente ou por texto recuperado. O BFF valida-o na abertura; o domínio revalida antes de leitura sensível e commit; o admission revalida antes de cada tool, resolução de credencial e dispatch externo. `sessionId`, `ToolExecutionToken`, nome de workspace ou `allowed-once` são referências de correlação, não autoridade.
 
-Revogar usuário, role, workspace, policy ou credencial incrementa `revocationEpoch`, invalida caches e faz qualquer binding antigo retornar `DENIED` no próximo boundary. Um processo em andamento não adquire direito de concluir apenas porque começou antes da revogação; se não for possível observar a versão atual, fica `OUTCOME_UNKNOWN`/bloqueado. Offline só pode usar leitura pré-autorizada até `expiresAt` **quando** uma `OfflinePolicy` aprovada declarar `offlineAllowed`, `maxOfflineAge`, classes e finalidade; sem essa aprovação, nenhum `expiresAt` offline é emitido. Offline não pode criar binding novo nem ampliar escopo. Credenciais são referências com escopo e `credentialVersion`, resolvidas somente após o binding atual passar.
+Revogar usuário, role, workspace, policy ou credencial incrementa `revocationEpoch`, invalida caches e faz qualquer binding antigo retornar `DENIED` no próximo boundary. Um processo em andamento não adquire direito de concluir apenas porque começou antes da revogação; se não for possível observar a versão atual, fica `OUTCOME_UNKNOWN`/bloqueado. Offline só pode usar leitura D0–D2 pré-autorizada até `expiresAt` quando uma `OfflinePolicy` aprovada declarar `offlineAllowed`, `maxOfflineAge`, classes e finalidade; sem essa aprovação, nenhum `expiresAt` offline é emitido. Não há lease offline para D3–D5, privilégio ou efeito. Como uma revogação server-side não pode ser observada enquanto o dispositivo está desconectado, o contrato não promete invalidação instantânea offline: a garantia é o limite finito do lease e a revalidação obrigatória no primeiro boundary online, antes de ler ou sincronizar; falha de revalidação nega e purga o cache. Offline não pode criar binding novo nem ampliar escopo. Credenciais são referências com escopo e `credentialVersion`, resolvidas somente após o binding atual passar.
 
 ### Admin Master, suporte e break-glass
 
@@ -171,7 +171,7 @@ A UI e a API devem distinguir `DRAFT`, `SUGGESTION`, `APPROVED_ACTION`, `EXECUTE
 | THR-04 | Web fetch segue redirect para metadata/private host. | transporte hardened, egress policy, block de schemes/credentials/redirects e limites de resposta. | casos DNS, IPv4/IPv6, redirect e rebinding isolados. |
 | THR-05 | Approval legítimo é reutilizado com paciente/argumento diferente. | `ApprovalBinding` com digest, resource id, expectedVersion e expiração. | alterar um campo entre aprovação e execução deve negar. |
 | THR-06 | Provider/worker responde timeout depois de executar o efeito. | idempotency key, receipt/query de reconciliação e `OUTCOME_UNKNOWN`; retry só quando seguro. | fault injection com resposta perdida. |
-| THR-07 | Cache offline preserva privilégio revogado. | TTL/version/hash, revalidação antes de efeitos e offline read-only restrito. | revogar policy e executar offline deve negar. |
+| THR-07 | Cache offline preserva privilégio revogado. | Lease finito somente para D0–D2 read-only, sem efeito; revalidação de `revocationEpoch` antes de qualquer leitura/sync online e purge em caso de negação. | revogar policy, reconectar e executar leitura/sync deve negar; D3–D5 nunca recebem lease offline. |
 | THR-08 | Operador usa Admin Master para acessar prontuário sem necessidade. | break-glass, justificação, janela, aprovação, auditoria e revisão periódica. | matriz allow/deny e relatório de acesso excepcional. |
 | THR-09 | Tool que ignora cancelamento mantém conexão ou altera estado após timeout. | AbortSignal, deadline externo, processo separado para efeitos longos, bounded queue. | cancelamento/timeout e recurso após quiescence. |
 | THR-10 | Telemetria registra segredo ou dado clínico completo. | minimização pré-prompt, campos redigidos, sink separado, retenção e teste de known-bad. | inspeção de payload e logs de erro. |
@@ -223,11 +223,26 @@ OfflinePolicy {
 }
 ```
 
-`maxOfflineAge` é obrigatório quando `readOnly` estiver habilitado; não há valor padrão permissivo. `pendingSyncAllowed` não autoriza commit clínico/financeiro, e qualquer ação fora de `forbiddenActions` precisa de conexão e nova admissão.
+`maxOfflineAge` é obrigatório quando `readOnly` estiver habilitado; não há valor padrão permissivo. Na V1, `allowedDataClasses` de uma policy offline fica limitada a D0–D2, `readOnly=true` e `pendingSyncAllowed=false`. `pendingSyncAllowed` não autoriza commit clínico/financeiro, e qualquer ação fora de `forbiddenActions` precisa de conexão e nova admissão.
 
-Estados: `REGISTERED → ACTIVE → EXPIRED/REVOKED → WIPE_PENDING → WIPED`; perda ou adulteração entra em `LOST` e bloqueia o endpoint. D0–D2 minimizados são o padrão; D3 exige decisão U14, justificativa, criptografia, inventário e teste específico. Depois de expirar/revogar, o cliente não lê nem sincroniza, inclusive offline. Wipe remove chaves antes do conteúdo, invalida tokens e registra receipt; restore só ocorre em dispositivo revalidado e com nova policy. Se o wipe remoto não puder ser confirmado, o estado fica `RECOVERY_REQUIRED` e a operação crítica permanece bloqueada. Device-loss, revoke e restore ainda são `NOT_RUN`.
+Estados: `REGISTERED → ACTIVE → EXPIRED/REVOKED → WIPE_PENDING → WIPED`; perda ou adulteração entra em `LOST` e bloqueia o endpoint. D0–D2 minimizados são o padrão; D3–D5 não recebem lease offline na V1. Depois de expirar, o cliente não lê nem sincroniza offline. Uma revogação server-side é aplicada imediatamente quando observada em boundary conectado; se o dispositivo estiver desconectado, o lease D0–D2 só pode continuar até `expiresAt`, pois a revogação não é observável localmente. Na reconexão, `revocationEpoch`/policy deve ser validado antes de qualquer leitura ou sync; divergência, estado `REVOKED` ou impossibilidade de revalidar produzem purge + `DENIED`. Wipe remove chaves antes do conteúdo, invalida tokens e registra receipt; restore só ocorre em dispositivo revalidado e com nova policy. Se o wipe remoto não puder ser confirmado, o estado fica `RECOVERY_REQUIRED` e a operação crítica permanece bloqueada. Device-loss, revoke e restore ainda são `NOT_RUN`.
 
-Casos de aceite do endpoint: dispositivo novo sem registro → `DENIED`; keychain/secure storage ausente → `DENIED`; `policyHash`, `revocationEpoch`, versão ou `expiresAt` divergente → purge local + `DENIED`; device `LOST/REVOKED` → nenhum read/sync; update sem assinatura válida → não instala; wipe confirmado → somente metadados mínimos de receipt; restore → novo `deviceId`/binding e nova aprovação. A policy de offline não pode ser inferida da existência do app e não pode emitir privilégio após desconexão.
+Casos de aceite do endpoint: dispositivo novo sem registro → `DENIED`; keychain/secure storage ausente → `DENIED`; `policyHash`, `revocationEpoch`, versão ou `expiresAt` divergente → purge local + `DENIED`; lease expirado → nenhum read/sync; device `LOST/REVOKED` observado ou revalidado → nenhum read/sync; update sem assinatura válida → não instala; wipe confirmado → somente metadados mínimos de receipt; restore → novo `deviceId`/binding e nova aprovação. Se estiver desconectado, somente o subset D0–D2 já emitido pode ser lido até `expiresAt`; não se pode afirmar revogação imediata nesse intervalo. A policy de offline não pode ser inferida da existência do app e não pode emitir privilégio após desconexão.
+
+### Buffer de composição durante desconexão
+
+Este é o contrato canônico de preservação e exibição do texto não enviado na V1. Preservar bytes em memória não autoriza leitura offline nem altera a classificação. A classificação efetiva considera o conteúdo e a classificação mínima do contexto de origem: um composer clínico é no mínimo D3. Conteúdo misto usa a classificação mais restritiva; classificação ausente, desconhecida ou não validada nunca é presumida D0–D2. Texto do usuário/modelo não pode rebaixar essa classificação.
+
+| Buffer existente antes da queda | Preservação temporária | Exibição offline |
+|---|---|---|
+| D0–D2 com classificação validada e autorização offline vigente para classe/finalidade | somente em memória enquanto o contexto original for válido | somente leitura; edição e envio bloqueados |
+| D3–D5, classificação desconhecida ou leitura offline não autorizada | somente em memória, em quarentena, enquanto o contexto original for válido | conteúdo oculto; mostrar apenas aviso de indisponibilidade |
+
+A quarentena é uma exceção restrita de preservação do buffer já existente, não um lease de leitura D3–D5, cache clínico ou permissão para capturar conteúdo novo offline. O conteúdo oculto sai do DOM renderizado e da árvore de acessibilidade e não fica disponível por seleção, cópia, preview ou exportação da aplicação. Não persistir o buffer em storage local, session log, auditoria, telemetry ou fila de sincronização, nem enviá-lo ao provider. Esta regra de interface não substitui os controles de dispositivo e memória.
+
+`COMPOSER_CONTEXT_LOST` purga tanto o buffer visível quanto o buffer em quarentena. Valem os limites temporais do contexto/sessão original e do lease, quando houver; desconectar não renova prazo nem cria lease para D3–D5. Na reconexão, antes de exibir conteúdo oculto, revalidar identidade, sessão, recurso/contexto de origem, finalidade, classificação e policy atuais. Classificação desconhecida permanece oculta até classificação autorizada; falha de revalidação invalida o contexto e purga o buffer. Revalidação bem-sucedida permite revisão e envio explícito, nunca envio automático.
+
+Aceite obrigatório: texto clínico não enviado (D3) → desconexão → buffer preservado apenas em memória e oculto em todas as superfícies da aplicação → reconexão autorizada → revisão/envio explícito; repetir com conteúdo desconhecido, D0–D2 autorizado, ausência de lease, expiração e revogação. Expiração/falha de revalidação deve purgar; classificação desconhecida não pode liberar exibição por fallback. Os testes continuam `NOT_RUN`.
 
 ## 9. Auditoria
 
@@ -304,12 +319,13 @@ O mesmo boundary normativo atende usuário, tutor, Admin Master, suporte, worker
 ```text
 caller
   -> resolve authenticated identity + SecurityContextSnapshot
-  -> CvgAdmission (scope, revocation, policy, state, credential)
-  -> AuditIntent durável para leitura sensível/efeito
-  -> approval + budget + idempotency + egress quando aplicável
-  -> domain use case or explicitly scoped copy operation
-  -> receipt / outcome
-  -> AuditOutcome durável + redacted telemetry projection
+  -> ReplayLookupAdmission (decode, scope, revocation, current read authz)
+  -> stable idempotency lookup
+  -> [compatible record] -> AuditIntent/read -> receipt/result
+  -> [no record] -> NewExecutionAdmission (action/state authz, policy, registry)
+  -> budget + approval + credential + egress for a new execution
+  -> AuditIntent durável -> domain use case or scoped copy operation
+  -> receipt / outcome -> AuditOutcome durável + redacted telemetry
 ```
 
 `AuditIntent` e `AuditOutcome` são propostas de D5 e não dependem do collector de telemetry:
@@ -326,6 +342,24 @@ AuditWrite {
 }
 ```
 
-Para efeito interno, `AuditIntent + domain commit + AuditOutcome` usa a mesma transação ou um outbox durável com regra de não-liberação até os dois estados serem reconciliados. Para efeito externo, o `AuditIntent` precisa estar durável antes do dispatch; o adapter grava receipt/outcome ou `OUTCOME_UNKNOWN`, sempre com a mesma idempotency key. Falha ao escrever o audit ledger bloqueia T2–T4, export, restore e break-glass; não há fallback para apenas log ou telemetry. Leitura de auditoria gera sua própria trilha.
+O diagrama separa deliberadamente dois caminhos. `ReplayLookupAdmission` revalida a identidade, o escopo, a revogação e a autorização atual para ler o registro/resultado; busca pela chave estável e, se encontrar digest compatível, devolve o receipt/resultado original sem registry de execução, budget, approval, credencial, egress ou dispatch. Se o registro estiver em `ADMISSION_PENDING`, devolve `ADMISSION_IN_PROGRESS` até o lease expirar e o reconciliador finalizar ou recuperar o claim; não promove o registro por conta própria. Se não encontrar, transfere para `NewExecutionAdmission`, que faz a autorização da ação/estado e a admissão completa antes de reivindicar a operação e executar. Uma chave existente com digest divergente é conflito, não uma nova execução.
 
-Workers e plugins nunca recebem conexão direta a store clínico, ledger ou audit store. Eles podem solicitar uma porta, e a porta reexecuta a admissão com o `SecurityContextSnapshot` atual. Código in-process é confiável por processo, mas não é dispensado desta regra; código não confiável é `DENIED` até obter processo/boundary real e testes de bypass. Implementação, teste de crash e teste de sink indisponível permanecem `NOT_RUN`.
+Para efeito interno, `AuditIntent + domain commit + AuditOutcome` usa a mesma transação ou um outbox durável com regra de não-liberação até os dois estados serem reconciliados. Para efeito externo, o `AuditIntent` precisa estar durável antes do dispatch; o adapter grava receipt/outcome ou `OUTCOME_UNKNOWN`, sempre com a mesma idempotency key. Falha ao escrever o audit ledger bloqueia T2–T4, export, restore e break-glass; não há fallback para apenas log ou telemetry. Leitura de auditoria gera sua própria trilha; a leitura de um receipt também conserva a correlação com `originalActionId`/`originalCommandId`.
+
+Workers e plugins nunca recebem conexão direta a store clínico, ledger ou audit store. Eles podem solicitar uma porta, e a porta reexecuta a admissão com o `SecurityContextSnapshot` atual. O lookup de idempotência pela `IdempotencyLookupKey` estável ocorre antes de consumir approval; somente uma nova execução segue para budget, approval, credencial e egress. Código in-process é confiável por processo, mas não é dispensado desta regra; código não confiável é `DENIED` até obter processo/boundary real e testes de bypass. Implementação, teste de crash e teste de sink indisponível permanecem `NOT_RUN`.
+
+## 14. Proposta de autenticação para M1 sintético
+
+**Estado:** aprovada para M1 local em DEC-M1-04/05; autenticação implementada em B3, com evidências e limites no checkpoint de 07, limitada ao ambiente local e às contas sintéticas. Não define política de credenciais ou retenção de produção.
+
+- Login por identificador local e senha; sem autoinscrição, e-mail, recuperação remota ou provedor externo. Bootstrap recebe senhas por prompt oculto, sem argumentos CLI ou logs; contas de teste usam segredos efêmeros gerados pelo teste.
+- Hash de senha com `crypto.scrypt` assíncrono: salt aleatório de 16 bytes por senha, `N=131072`, `r=8`, `p=1`, saída de 64 bytes e `maxmem=256 MiB`; guardar algoritmo/parâmetros junto ao hash. Comparação de buffers de mesmo tamanho em tempo constante. Medir consumo no scaffold; no máximo duas derivações simultâneas e fila limitada. A API oficial documenta scrypt, aleatoriedade e comparação em [Node 24 crypto](https://nodejs.org/docs/latest-v24.x/api/crypto.html); os parâmetros são proposta deste projeto.
+- Sessão server-side PostgreSQL com identificador aleatório de 32 bytes, regenerado após login. Não guardar senha, papéis autoritativos ou token de sessão no armazenamento web. Store indexa hash do identificador, registra usuário, criação, último uso, expiração e revogação; segredo de assinatura fica fora do banco e do repositório.
+- Expiração proposta: 30 minutos sem atividade e máximo absoluto de 8 horas; renovação não ultrapassa o limite absoluto. Logout revoga no servidor e limpa o cookie. Toda requisição protegida valida sessão e vínculos atuais.
+- Cookie `HttpOnly`, `SameSite=Strict`, `Path=/`, sem `Domain`; `Secure` em HTTPS. A exceção HTTP é exclusiva de execução sintética em `127.0.0.1`, explicitamente configurada. Host/origem permitidos são exatos; aplicação recusa exposição fora do loopback nessa configuração.
+- Escritas exigem JSON, origem autorizada e token CSRF vinculado à sessão. Login também valida origem e tipo de conteúdo. Sem CORS amplo. Respostas autenticadas usam `Cache-Control: no-store`.
+- Login: resposta uniforme para usuário inexistente/senha incorreta, inclusive derivação equivalente com hash fictício; limite inicial de 5 tentativas por identificador em 15 minutos e 30 por IP, contador server-side, `429` e `Retry-After`; não confiar em IP encaminhado por cliente. Ajustar apenas com evidência no teste local.
+- Não habilitar promoção/revogação de administrador, recuperação de conta, impersonação ou break-glass. Administrador só concede/revoga `veterinario` e `recepcao` no próprio escopo, sem alterar o próprio vínculo. Operador técnico nasce apenas no bootstrap e não ganha acesso administrativo por esse papel.
+- Auditoria sintética permanece durante o ciclo de desenvolvimento, sem purge automático nem API de exclusão. Descarte completo do ambiente é operação explícita separada; backups não podem ficar em Git. Isso não decide retenção de dados reais.
+
+A matriz inicial foi confirmada em DEC-M1-05; sua implementação administrativa permanece em B4. Leitura de auditoria também é auditada; falha desse registro retorna indisponibilidade sem liberar dados. Uma negação continua negada se o sink falhar: retornar erro genérico de indisponibilidade, emitir sinal técnico redigido e nunca converter falha em permissão ou alegar auditoria durável.

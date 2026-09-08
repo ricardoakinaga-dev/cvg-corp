@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "bar_id": "CVG-BAR-2026-09-08-V2",
+  "goal": "Implementação local-first executável do CVG-Corp conforme docs preservados",
+  "frozen_at": "2026-09-08T14:05:00-03:00",
+  "scope_ref": "CVG-FULL-IMPLEMENTATION",
+  "criteria": [
+    {"id":"IMPL-01","dimension":"core","source":"docs/01-prd-cvg.md#7","target":"API e web iniciam por comandos documentados e expõem health sem segredo","evidence_method":"COMMAND+RUNTIME_OBSERVATION","required":true,"priority":"P0","baseline":"sem artifact","validity":"Node 24; loopback; evidence atual"},
+    {"id":"IMPL-02","dimension":"contracts","source":"docs/03-dominio-dados-contratos.md#15","target":"Envelope de sucesso/erro, IDs opacos, validação e versionamento são consistentes","evidence_method":"TYPECHECK+API","required":true,"priority":"P0","baseline":"sem contratos executáveis","validity":"API v1; known-bad rejeitado"},
+    {"id":"IMPL-03","dimension":"security","source":"docs/05-seguranca-privacidade.md#14","target":"Login, cookie HttpOnly, CSRF, sessão, logout e escopo server-side funcionam com default deny","evidence_method":"API+SECURITY TEST","required":true,"priority":"P0","baseline":"NOT_RUN","validity":"fixture sintética; sem segredo real"},
+    {"id":"IMPL-04","dimension":"integrity","source":"docs/01-prd-cvg.md#6","target":"Agenda, clinical docs, stock e finance rejeitam estados inválidos atomicamente e preservam histórico","evidence_method":"UNIT+INTEGRATION","required":true,"priority":"P0","baseline":"NOT_RUN","validity":"concurrency simulada e fixtures sintéticas"},
+    {"id":"IMPL-05","dimension":"audit","source":"docs/01-prd-cvg.md#7","target":"Mutações relevantes produzem auditoria redigida, correlation e receipts idempotentes","evidence_method":"API+PERSISTED_STATE","required":true,"priority":"P0","baseline":"NOT_RUN","validity":"retry igual/divergente e falha conhecida"},
+    {"id":"IMPL-06","dimension":"ai-governance","source":"docs/04-motor-deepseek-e-plugins.md#11","target":"Harness local aplica policy, budget, approval, tool allowlist, provenance e replay; provider real fica bloqueado","evidence_method":"UNIT+API","required":true,"priority":"P0","baseline":"NOT_RUN","validity":"stub determinístico; sem egress"},
+    {"id":"IMPL-07","dimension":"coverage","source":"docs/01-prd-cvg.md#7","target":"Contextos de paciente, agenda, encontro, diagnóstico, hospitalização, medicação, stock, finance, comunicação e conhecimento têm contratos/rotas mínimas","evidence_method":"CONTRACT+API","required":true,"priority":"P1","baseline":"NOT_RUN","validity":"rotas deny/allow e schemas"},
+    {"id":"IMPL-08","dimension":"recovery","source":"docs/03-dominio-dados-contratos.md#14","target":"Backup/restore de fixture entra em quarentena, invalida sessões e não inventa replay/dispatch","evidence_method":"INTEGRATION+ARTIFACT","required":true,"priority":"P0","baseline":"NOT_RUN","validity":"sem dados reais; journal ausente é bloqueio"},
+    {"id":"IMPL-09","dimension":"operations","source":"docs/06-operacao-qualidade-e-recuperacao.md#3","target":"Readiness, métricas redigidas, correlation e erros operacionais são observáveis","evidence_method":"RUNTIME_OBSERVATION","required":true,"priority":"P1","baseline":"NOT_RUN","validity":"memory e postgres modes declarados"},
+    {"id":"IMPL-10","dimension":"ux","source":"docs/01-prd-cvg.md#8","target":"Interface demonstra ação permitida/negada, loading/empty/error/offline, teclado/foco e vocabulário operacional","evidence_method":"E2E+SCREENSHOT+FRESH_CRITIQUE","required":true,"priority":"P0","baseline":"sem UI","validity":"375/768/1440; synthetic fixture"},
+    {"id":"IMPL-11","dimension":"responsive","source":"docs/06-operacao-qualidade-e-recuperacao.md#3","target":"Layouts permanecem utilizáveis em narrow/intermediate/wide sem overflow ou perda da ação primária","evidence_method":"PLAYWRIGHT+VISUAL","required":true,"priority":"P1","baseline":"sem UI","validity":"DPR registrado; native captures"},
+    {"id":"IMPL-12","dimension":"traceability","source":"docs/08-rastreabilidade-e-decisoes.md","target":"Plano, bar, código, testes e evidências apontam para o mesmo escopo sem afirmar produção","evidence_method":"STATIC_INSPECTION+LEDGER","required":true,"priority":"P1","baseline":"NOT_RUN","validity":"current working tree"}
+  ]
+}

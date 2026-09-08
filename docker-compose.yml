@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:18
+    container_name: cvg-corp-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: cvg_m1_synthetic
+      POSTGRES_USER: cvg
+      POSTGRES_PASSWORD: cvg_local_only
+    ports:
+      - "127.0.0.1:5440:5432"
+    volumes:
+      - cvg_corp_pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cvg -d cvg_m1_synthetic"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  cvg_corp_pgdata:

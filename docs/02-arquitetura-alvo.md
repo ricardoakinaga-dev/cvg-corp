@@ -16,6 +16,8 @@
 6. Eventos de domínio representam fatos do CVG; eventos e sessões do DeepSeek representam execução do agente. A ponte entre eles é explícita, correlacionada e idempotente.
 7. O caminho manual permanece disponível para operações críticas quando modelo, provider, rede, busca vetorial ou runtime estiverem indisponíveis.
 
+O recorte confirmado atende somente o CVG, preparado para várias unidades; `organizationId` continua sendo fronteira de autorização, sem cadastro de empresas externas. A primeira entrega é M1 local sintético, conforme [08](08-rastreabilidade-e-decisoes.md#fechamento-confirmado-em-2026-09-08); a topologia completa abaixo não precisa ser instanciada nessa entrega.
+
 ## 2. Mapa lógico
 
 ```mermaid
@@ -30,13 +32,15 @@ flowchart LR
     DOM --> PG[(PostgreSQL\nsource of truth PROPOSED)]
     DOM --> OBJ[(Object storage\nanexos e documentos)]
     DOM --> BUS[(Outbox / fila\nPROPOSED)]
-    BUS --> W[Workers de domínio e uso]
-    W --> PG
+    BUS --> W[Workers de domínio e uso; portas + CvgAdmission]
+    W --> DOM
     W --> X
     W --> OBS[Logs, métricas, traces\ntelemetria redigida]
     AI --> S[(Sessões DSH\nappend-only + persistence)]
     S --> OBS
 ```
+
+O worker não possui conexão direta com PostgreSQL, object store, vector store ou outro store clínico. A seta `W → DOM` representa a chamada de caso de uso/porta de domínio com `CvgAdmission`, contexto, autorização, idempotência e auditoria; a seta `W → X` só ocorre pelo adapter e `IntegrationContract` governados. Qualquer fila, lock ou store técnico próprio do worker precisa ser classificado separadamente e não pode virar fonte de verdade clínica.
 
 As tecnologias de persistência são propostas a partir dos vídeos, não uma decisão de compra ou implantação. A escolha final deve considerar operação, backup, residência, custo, suporte e evidência de carga.
 
@@ -177,7 +181,11 @@ O request id, session id, tool token, domain command id e approval id devem perm
 - Object storage compatível com S3/MinIO é `PROPOSED` para documentos, imagens, laudos, áudio e anexos; o banco guarda metadados, hash, classificação, origem e autorização.
 - Qdrant ou serviço vetorial equivalente é `PROPOSED` para conhecimento e memória derivada; toda consulta carrega filtros de tenant, unidade, workspace e política.
 - O DeepSeek Harness persiste sessões por backend próprio e conserva o log append-only necessário para replay. A ponte salva apenas referências e resultados de domínio necessários, sem duplicar o prontuário inteiro.
-- Outbox/inbox é `PROPOSED` para publicar eventos de domínio depois do commit e consumir efeitos externos com deduplicação.
+- Outbox/inbox é `PROPOSED` para garantir durabilidade e deduplicação: a mutação de domínio e o registro de outbox do produtor, ou o registro de inbox e o efeito local do consumidor, entram na mesma transação local; somente relay, publicação e `ack` acontecem depois do commit.
+
+### Atomicidade de outbox/inbox
+
+O produtor grava o fato de domínio e seu `OutboxRecord` na mesma transação ACID. O relay só publica registros já commitados e pode repetir a entrega. O consumidor grava a chave de inbox, aplica o efeito local e atualiza sua projeção na mesma transação; só confirma o recebimento ao broker depois desse commit. Uma queda antes do commit não deixa fato sem evento nem evento sem efeito; uma queda depois do commit deixa apenas uma entrega repetível. A deduplicação não substitui a transação local e nenhum adapter pode declarar sucesso antes do receipt ou da reconciliação prevista.
 
 ## 10. Limites de confiança
 
@@ -232,10 +240,30 @@ As instâncias de schema abaixo são contratos CVG propostos, não nomes ou vers
 | Pagamento | `PaymentIntent.v1 {chargeId, organizationId, amount, currency, idempotencyKey, returnRef}`; ledger CVG é fonte financeira | `PaymentReceipt.v1 {providerPaymentId, status, amount, providerVersion}`; `PaymentEvent.v1` assinado | `AUTH_INVALID`, `AMOUNT_MISMATCH`, `DUPLICATE`, `TIMEOUT`, `UNKNOWN`; divergência → `RECONCILIATION_REQUIRED` | consultar `providerPaymentId`, comparar ledger e gravar movimento compensatório; nunca duplicar débito |
 | Mensageria | `MessageDispatch.v1 {messageId, recipientRef, consentRef, templateVersion, approvedContentDigest, channel}`; CVG é fonte de autorização | `MessageReceipt.v1 {providerMessageId, acceptedAt}`; `DeliveryEvent.v1` assinado | `RECIPIENT_MISMATCH`, `CONSENT_MISSING`, `TEMPLATE_RETIRED`, `RATE_LIMIT`, `TIMEOUT` | consultar status por `providerMessageId`; sem receipt, status permanece não enviado/unknown |
 | Calendário | `AppointmentSync.v1 {appointmentId, resourceId, startsAt, endsAt, version, idempotencyKey}`; source of truth será decidido em U8 | `CalendarReceipt.v1 {externalEventId, version, status}`; `CalendarEvent.v1` assinado quando houver callback | `CONFLICT`, `VERSION_STALE`, `AUTH_INVALID`, `TIMEOUT`; conflito não altera presença | buscar por `appointmentId`, comparar versão e reconciliar manualmente se ambas as fontes mudaram |
-| Provider LLM/mídia | `ProviderTurn.v1 {actionId, modelVersion, artifactBinding, contextDigest, reservationId, payloadRef}`; CVG é fonte de policy/budget | `ProviderResponse.v1 {providerRequestId, contentRef, finishState}` + `ProviderUsage.v1` | `POLICY_DENIED`, `CREDENTIAL_INVALID`, `PAYLOAD_LIMIT`, `TIMEOUT`, `USAGE_UNKNOWN` | consultar request/usage quando possível; late usage entra no ledger hold e não vira efeito clínico |
+| Provider LLM/mídia | `ProviderTurn.v1 {actionId, commandId, idempotencyKey, modelVersion, artifactBinding, contextDigest, reservationId, payloadRef}`; CVG é fonte de policy/budget | `ProviderResponse.v1 {providerRequestId, contentRef, finishState}` + `ProviderUsage.v1` | `POLICY_DENIED`, `CREDENTIAL_INVALID`, `PAYLOAD_LIMIT`, `TIMEOUT`, `USAGE_UNKNOWN` | consultar request/usage pela chave estável e pelo provider request id quando possível; late usage entra no ledger hold e não vira efeito clínico |
 
 Cada schema será versionado no registry de contratos, com codec, campos obrigatórios, limite de tamanho, classificação e testes de unknown field. Até existir implementação e contrato real do fornecedor, estes nomes permanecem `PROPOSED/NOT_RUN`.
 
-Regras comuns para todos os adapters: aceitar somente schema/version permitidos; validar assinatura e origem antes de mutar; persistir inbox/outbox depois do commit; usar idempotência por efeito; limitar timeout/retry; mapear `UNKNOWN`, `QUARANTINED` e `RECONCILIATION_REQUIRED`; registrar `integrationId`, versão, credencial referenciada, request/receipt/audit IDs; e possuir kill switch sem apagar evidência. Nenhum webhook, texto do provider ou retorno de tool pode alterar policy, role ou aprovação.
+Regras comuns para todos os adapters: aceitar somente schema/version permitidos; validar assinatura e origem antes de mutar; persistir a mutação de domínio junto com o outbox do produtor ou o inbox/efeito local do consumidor na mesma transação; publicar e confirmar recebimento somente depois do commit; usar idempotência por efeito; limitar timeout/retry; mapear `UNKNOWN`, `QUARANTINED` e `RECONCILIATION_REQUIRED`; registrar `integrationId`, versão, credencial referenciada, request/receipt/audit IDs; e possuir kill switch sem apagar evidência. Nenhum webhook, texto do provider ou retorno de tool pode alterar policy, role ou aprovação.
 
 Os campos numéricos de timeout, retry, retenção e janela de compatibilidade permanecem `UNKNOWN` até U8/U12/U14 e contrato com cada fornecedor. A especificação executável e os testes de resposta perdida, duplicidade, assinatura falsa, ordem invertida e revogação são `NOT_RUN`.
+
+## 13. Stack recomendada para M1 local
+
+**Estado:** aprovada para M1 local em DEC-M1-04; scaffold e lockfile implementados em B1, com provas e limites em 07. Sem aceite de produção.
+
+| Parte | Escolha | Motivo e alternativa |
+|---|---|---|
+| Linguagem/runtime | TypeScript em Node 24, ESM; npm workspaces | Uma linguagem entre cliente, domínio e futura ponte Harness. Node `24.20.0` e npm `11.19.0` foram observados localmente. |
+| Interface | React com Vite, SPA | Fluxo autenticado local não exige SSR; manter apresentação separada do domínio. |
+| API | Fastify 5, schemas JSON de entrada/saída | API pequena e explícita; regras nos casos de uso, não em componentes React. |
+| Banco | PostgreSQL 18; driver `pg`, SQL parametrizado e migrations SQL versionadas | Manter as transações e restrições previstas; SQLite não substitui a prova de locks/concorrência do banco-alvo. |
+| Sessão | `@fastify/cookie` + `@fastify/session`, store PostgreSQL | Cookie com referência à sessão; autoridade sempre resolvida no servidor. Não usar o store em memória padrão. |
+| Testes | Runner nativo Node para domínio/API/integração; Playwright para navegador | Integração usa PostgreSQL real isolado e fixtures sintéticas; mock de banco não comprova concorrência. |
+| Topologia | `apps/web`, `apps/api`, `packages/domain`, `packages/contracts`, `db/migrations` | API serve o build web em uma origem; desenvolvimento usa proxy `/api`. Sem Redis, workers ou Harness em M1. |
+
+Node/npm acima são versões observadas, não prova de compatibilidade do conjunto. Fixar versões exatas de dependências, plugins, TypeScript, navegador e imagem PostgreSQL no primeiro scaffold, com `package-lock.json` e digest da imagem; verificar engines/peer dependencies e instalação limpa. Não executar instaladores com `latest` como baseline reproduzível. A seleção por linha principal está feita; resolução de patches e smoke test permanecem tarefas de scaffold.
+
+Ambiente observado: `docker` e `psql` não encontrados no PATH. Caminho recomendado é PostgreSQL isolado via Compose com porta somente em loopback; instalar/preparar o runtime de containers será uma tarefa de ambiente separada. Não foi executada instalação nem acessado banco externo.
+
+Referências oficiais consultadas em 2026-09-08: [Fastify LTS](https://fastify.dev/docs/latest/Reference/LTS/), [Vite](https://vite.dev/guide/), [sessões Fastify](https://github.com/fastify/session), [transações com pg](https://node-postgres.com/features/transactions), [política de versões PostgreSQL](https://www.postgresql.org/support/versioning/). São evidências das ferramentas; a adequação ao recorte é julgamento de projeto e ainda exige prova no artifact.

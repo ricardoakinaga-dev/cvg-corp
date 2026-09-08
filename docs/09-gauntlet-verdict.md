@@ -1,6 +1,6 @@
 # CVG-Corp — Registro de Gauntlet e veredito
 
-**Estado:** CONDITIONAL PASS documental; fechado para esta fase e bloqueado para BUILD até as decisões pendentes.
+**Estado:** `FAIL` na barra integral; a documentação original foi aprovada como registro de desenho, e o artifact local posterior permanece sintético, com limitações e produção bloqueada.
 
 **Data da execução:** 2026-09-07 (America/Sao_Paulo)
 
@@ -108,3 +108,92 @@ Além da ausência de implementação CVG, schema executável, endpoint, profile
 ## 7. Veredito final da fase
 
 `CONDITIONAL PASS` documental. A documentação atingiu a barra v1.1 nesta fase, mas não autoriza produção nem BUILD automático. Antes do próximo ciclo, direção clínica, produto, segurança, privacidade, operações, financeiro e integração precisam decidir U1–U15; em especial, fechar U8/U12/U14, transformar os contratos em schemas/adapters e executar os testes listados em 06/07.
+
+## 8. Remediação documental posterior — 2026-09-08
+
+Uma auditoria de consistência posterior identificou seis contradições de contrato: atomicidade inbox/outbox, identidade do ledger de usage, estados de medicação, revogação offline, replay de lifecycle no restore e ordem de integração mínima do Harness. As correções foram registradas em `08-rastreabilidade-e-decisoes.md` como `AUDIT-20260908-01` a `AUDIT-20260908-06` e aplicadas nos documentos 02–08. Este registro preserva o veredito histórico acima; ele não transforma a documentação em implementação nem altera o estado `NOT_RUN` dos testes. Uma nova rodada de verificação deve executar as fixtures correspondentes antes de qualquer `VERIFIED` ou `RELEASE_READY`.
+
+## 9. Remediação documental adicional — 2026-09-08
+
+Uma nova revisão identificou mais seis inconsistências: retry idempotente após approval one-shot, durabilidade do journal antes da confirmação, controles mínimos de Harness no M3, rascunho offline, acesso direto de worker ao banco e exceção de saldo negativo. Elas foram registradas como `AUDIT-20260908-07` a `AUDIT-20260908-12` em `08-rastreabilidade-e-decisoes.md` e corrigidas nos documentos 01–08. O estado continua documental: aprovação, restore, crash, budget, registry, offline, isolamento e estoque ainda exigem execução no artifact real.
+
+## 10. Remediação documental adicional — replay, lifecycle e export — 2026-09-08
+
+Uma rodada posterior tratou quatro inconsistências de contrato, registradas como `AUDIT-20260908-13` a `AUDIT-20260908-16` em `08-rastreabilidade-e-decisoes.md`. O corpus agora separa identidade da decisão e identidade dos eventos append-only, usa projeção explícita da fase atual, define um caminho durável de exportação fora do journal de enforcement, remove `actionId` da chave de busca de idempotência e documenta os caminhos `REPLAY_LOOKUP` e `NEW_EXECUTION`. Essas mudanças são documentais e preservam `NOT_RUN`: ainda faltam implementação, teste de transição legítima/reentrega, crash entre durabilidade e projeção, corrida de reivindicação da chave, recuperação de exportação e verificação no artifact real.
+
+## 11. Remediação documental adicional — decisão completa e claims abandonados — 2026-09-08
+
+Uma nova revisão tratou três lacunas: o receipt agora comprova a decisão completa e durável por `decisionRecordRef`; a chave idempotente usa representação canônica não anulável para campos ausentes; e claims pré-dispatch têm lease, fencing e reconciliação distinta de `OUTCOME_UNKNOWN`. As correções foram registradas como `AUDIT-20260908-17` a `AUDIT-20260908-19` em `08-rastreabilidade-e-decisoes.md`. O estado continua `NOT_RUN`: restore após perda do store de decisão, concorrência com escopos opcionais ausentes e crash imediatamente após o claim ainda precisam ser executados no artifact real.
+
+## 12. Remediação documental — exibição do buffer offline — 2026-09-08
+
+`AUDIT-20260908-20` separa preservação volátil e autorização de exibição: D0–D2 classificados/autorizados podem permanecer visíveis; D3–D5, desconhecido ou não autorizado ficam ocultos em quarentena. PRD, contrato do motor, segurança, operação, plano e rastreabilidade foram alinhados. O veredito histórico é preservado; os cenários de interface, desconexão, revalidação e purga continuam `NOT_RUN` até execução no artifact real.
+
+## 13. Crítica do artifact executável — round 2 — 2026-09-08
+
+A implementação local foi submetida a uma crítica read-only em contexto fresco, registrada em [`.gauntlet/critique-round-2.md`](../.gauntlet/critique-round-2.md), contra a barra congelada em `.gauntlet/bar-v2.json`. A execução confirmou 20/20 testes, build, verificação estática, 9/9 E2E em 375/768/1440, contraste, tokens, `npm audit --omit=dev` sem vulnerabilidades e `git diff --check`. PostgreSQL ficou bloqueado por `ECONNREFUSED 127.0.0.1:5440`.
+
+O resultado desta rodada é **`FAIL` para `CVG-FULL-IMPLEMENTATION`**: IMPL-02, IMPL-04, IMPL-05, IMPL-06, IMPL-08, IMPL-09, IMPL-10, IMPL-11 e IMPL-12 permanecem parciais. O gap dominante é a ausência de persistência transacional durável e journal independente; receipts/auditoria ainda vivem em memória e restore só prova contenção negativa. O recorte local continua demonstrável, mas não autoriza dados reais, provider externo, homologação, piloto ou produção.
+
+## 14. Fechamento da rodada 3 do artifact executável — 2026-09-08
+
+A crítica read-only fresca desta rodada excedeu os timeouts de espera e foi encerrada sem relatório final. Esse resultado não é tratado como aprovação, reprovação independente ou evidência de cobertura; o parecer abaixo é a auditoria objetiva reproduzida pelo agente principal contra a barra congelada em [`.gauntlet/bar-v2.json`](../.gauntlet/bar-v2.json).
+
+### Evidência executada
+
+- `npm run verify:all`: **PASS** — typecheck, 33/33 testes unitários/integração, build Vite, verificação estática e 12/12 E2E em 375/768/1440.
+- `npm run audit:contrast`: **PASS** — os cinco pares declarados passaram o limiar WCAG 4.5.
+- `npm run audit:tokens -- --strict`: **PASS** — zero achados high/critical; os 72 sinais medium são heurísticos e permanecem para revisão.
+- `npm audit --omit=dev` e `git diff --check`: **PASS** — zero vulnerabilidades de produção e diff sem erro de whitespace.
+- `db:migrate`: **PASS** no banco sintético separado, com migrations `001_initial`, `002_normalized_projection_support` e `003_organization_rls` aplicadas.
+- `npm run verify:postgres`: **PASS** em PostgreSQL 16.15 — restart/read, idempotência, CAS concorrente, journal/auditoria/receipts duráveis, projeções e RLS organizacional foram exercitados. A prova de RLS usa papel efêmero não-superusuário e o remove ao final; não há remoção de banco.
+
+### Veredito
+
+O veredito da barra integral continua **`FAIL`**. O artifact agora possui uma fatia PostgreSQL durável e RLS organizacional verificadas, mas ainda não é o programa corporativo pronto para dados reais: faltam PDP e leitura normalizada completos por unidade/workspace, outbox/worker com claim/lease/fencing, provider e usage ledger reais, backup/restore e crash drills, cache offline autorizado, browsers adicionais, SLO/alertas e aceite operacional. O recorte local permanece demonstrável e explicitamente sintético.
+
+## 15. Continuação após a auditoria objetiva — 2026-09-08
+
+Após o fechamento documentado da rodada 3, o builder implementou uma fatia adicional sem alterar a barra: leitura normalizada transacional de guardians/patients/appointments, migrations `004_outbox_usage_lease.sql`, `005_appointment_scope_rls.sql` e `006_scoped_projection_rls.sql`, outbox com claim/lease/fencing, `OutboxWorker` bounded, ledger idempotente sintético de uso e drill de restore PostgreSQL em destino temporário com quarentena.
+
+As execuções reproduzidas passaram: 35 testes locais, `verify:postgres` com `normalizedReads`, `outbox`, `usageLedger`, CAS e RLS organizacional + unidade/workspace, e `verify:postgres:restore` com 18 registros de outbox e 1 de usage recuperados por digest, `sourceUnchanged=true`, login/readiness bloqueados e limpeza do destino temporário. Isso reduz gaps concretos, mas não é um novo parecer independente: o critic fresco da rodada 3 continua sem relatório. A barra integral permanece **`FAIL`** por PDP/RLS completo em todo o domínio, provider/efeitos externos e inbox/reconciliação reais, settlement completo, backup criptografado, fault/crash drills de produção, cache offline autorizado, browsers adicionais, SLO/alertas e aceite operacional.
+
+## 16. Revalidação posterior da fatia durável — 2026-09-08
+
+Sem mudar a barra congelada ou transformar evidência sintética em aprovação, o builder fechou novos gaps concretos. As migrations `007`–`012` adicionaram inbox com deduplicação e HMAC/key reference verificável, ledger de efeitos externos com `ADMISSION_PENDING`/`DISPATCHED`/`OUTCOME_UNKNOWN`, recibo estruturado obrigatório, reconciliação com digest e fonte, escopo DML clínico, `FORCE RLS` no snapshot/journal canônico e quarentena de registros inbox legados sem assinatura. A migration 008 permaneceu com checksum original; o endurecimento DML foi separado em 010.
+
+O verificador PostgreSQL passou com 36/36 testes locais previamente revalidados, PostgreSQL 16.15 sintético, restart/read, CAS, leituras normalizadas, outbox, usage, receipt de provider sintético, inbox atômico, divergência, crash após marcador, takeover por fence, reconciliação manual sem reenvio e RLS negativo em canonical state e cadeia clínica. O restore passou com cinco conjuntos de recuperação por digest, quarentena, login/readiness bloqueados e origem inalterada. Última evidência registrada: sourceRevision 303, targetRevision 1, 65 outbox, 1 usage, 8 inbox e 23 efeitos externos.
+
+### Veredito preservado
+
+`FAIL` integral. Não há parecer independente fresco utilizável nesta rodada, e a prova não cobre provider/consulta externa reais, PDP/RLS de todas as tabelas, backup criptografado, RTO/RPO/SLO, stores object/vector/session, browsers adicionais, offline autorizado ou aceite humano independente. O recorte continua estritamente sintético e deny-by-default para efeitos reais.
+
+## Revalidação final do builder — não independente — 2026-09-08 17:58
+
+`npm run verify:all` passou com 36/36 testes, build, static (38 arquivos-fonte) e 12/12 E2E em 375/768/1440. Contraste, tokens strict (zero high/critical), dependências, diff e `db:check` também passaram. No banco sintético, `verify:postgres` passou todos os cenários com 302 snapshots/journals, 217 audits/ledgers, 65 outbox, 8 inbox e 23 efeitos externos; o restore serial passou com sourceRevision 303, targetRevision 1, cinco conjuntos por digest, quarentena, login/readiness bloqueados e `sourceUnchanged=true`.
+
+Uma execução inicial com senha de fixture incompatível recebeu 401 antes de mutar o banco e foi repetida com a credencial determinística correta. Isso é registrado como erro de invocação, não como aprovação ou falha de produto. Nada nesta seção é parecer independente; a barra integral continua **`FAIL`** pelos gaps de produção já listados.
+
+## Atualização posterior do builder — isolamento e restore autenticado — 2026-09-08 18:35
+
+As migrations `013_complete_domain_rls.sql` e `014_cross_organization_foreign_keys.sql` fecharam o catálogo restante: o gate confirmou 54/54 tabelas de domínio com `FORCE RLS` e 90 FKs com proveniência organizacional. O bundle de recuperação passou a usar AES-256-GCM com `keyRef` externo, digest autenticado e rejeição de ciphertext alterado. O restore serial aplicou a cópia descriptografada, recuperou outbox/usage/inbox/efeitos por digest, manteve `QUARANTINED`, bloqueou login/readiness e confirmou `sourceUnchanged=true`.
+
+O último `verify:all` passou 40/40 testes, build, static com 40 arquivos-fonte e 12/12 E2E; `verify:postgres` passou migrations `001`–`014`, 435 snapshots/journals, 289 audits/ledgers, 127 outbox, 25 inbox e 50 efeitos; restore passou com sourceRevision 436, targetRevision 1 e `tamperRejected=true`. Esta é evidência do builder, não parecer independente. O veredito integral permanece **`FAIL`**: provider/consulta externa e secret-provider reais, PDP de negócio, backup operacional gerenciado, replay pós-watermark, stores externos, fault points, workload, SLO/RTO/RPO e aceite humano continuam pendentes.
+
+## Atualização do builder antes da crítica independente final — 2026-09-08 19:46
+
+O artifact avançou com as migrations `015`–`018`, escopo persistido e reparável de paciente/tutor, RLS de relacionamento por agenda/encontro/comunicação e negação explícita sem unidade, matriz de capabilities server-side, bloqueio de demo fora do loopback, auditoria de métricas, seam de secret-provider, rejeição de lotes vencidos e administração UI com foco preso e auditoria visível. O checkpoint anterior não é sobrescrito; esta seção registra somente evidência nova.
+
+Checks reproduzidos: `npm test` **43/43**, typecheck/build **PASS**, static **9 artefatos/45 arquivos**, contraste **PASS**, Playwright **15/15** em 375/768/1440 e PostgreSQL **PASS** com migrations `001`–`018`, `54/54` tabelas sob `FORCE RLS`, `94` FKs organizacionais e negação sem unidade. Restore serial **PASS WITH LIMITATIONS** com AES-256-GCM, adulteração rejeitada, sourceRevision `507`, alvo `QUARANTINED`, login/readiness bloqueados e origem inalterada. O parecer ainda é do builder; a crítica fresca seguinte deve avaliar a barra congelada independentemente.
+
+O veredito congelado não muda: **`FAIL`** para produção/AAA integral. Provider, secret-provider e consulta externa reais, PDP de negócio completo, backup gerenciado, stores externos, replay pós-watermark, fault/workload, RTO/RPO/SLO, browsers adicionais e aceite humano continuam bloqueadores. Nenhum dado real ou release é permitido.
+
+## Crítica independente fresca — round 4 — 2026-09-08 20:00
+
+O critic `Galileo` (`01a0833c-36b2-7f70-92cc-bf05a0fa62d7`) avaliou a barra em contexto fresco e somente leitura; o relatório integral está em [`.gauntlet/critique-round-4.md`](../.gauntlet/critique-round-4.md). Ele classificou IMPL-01–IMPL-10 e IMPL-12 como `PARTIAL`, IMPL-11 como `NOT_RUN` naquela inspeção e a elegibilidade AAA como **`NÃO ELEGÍVEL — FAIL`**.
+
+O critic confirmou como bloqueadores atuais o PDP/ABAC de produção, persistência/recovery operacional e integrações externas reais. Também encontrou leitura de paciente/tutor sem unidade no RLS; o lead corrigiu isso aditivamente em `018_require_patient_context.sql`, alinhou o domínio em memória e reexecutou `verify:postgres`, que passou com zero linhas de pacientes/tutores sem contexto. A correção reduz o achado específico, mas não converte a crítica em aprovação.
+
+### Decisão da rodada
+
+`FAIL_WITH_LIMITATIONS`: o slice local continua evidenciado por `verify:all` 43/43 + 15/15 E2E, PostgreSQL sintético 54/54 `FORCE RLS`/94 FKs e restore AES-256-GCM em quarentena; AAA integral, dados reais, provider, homologação, piloto e produção permanecem bloqueados. O critic não executou testes nesta rodada, portanto os comandos reproduzidos pelo lead são evidência separada e não foram atribuídos a ele.

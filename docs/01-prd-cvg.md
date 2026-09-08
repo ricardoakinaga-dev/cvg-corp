@@ -10,6 +10,10 @@ O CVG-Corp deve ser o sistema operacional de trabalho do Centro Veterinário Gua
 
 O resultado esperado é reduzir retrabalho e perda de contexto sem permitir que automação substitua a responsabilidade profissional, que um tenant veja dados de outro escopo, ou que uma falha técnica produza uma decisão clínica ou financeira silenciosamente.
 
+### Primeira entrega confirmada em 2026-09-08
+
+Somente CVG, preparado para várias unidades. A primeira entrega será M1 local com dados sintéticos: autenticação, organização/unidade, permissões e auditoria. Papéis iniciais: administrador da organização, veterinário, recepção e operador técnico, com os limites confirmados nos [registros DEC-M1-01 a 03](08-rastreabilidade-e-decisoes.md#fechamento-confirmado-em-2026-09-08). As jornadas abaixo permanecem como alvo dos milestones posteriores.
+
 ## 2. Problema
 
 O programa precisa resolver a fragmentação entre agenda, cadastro do tutor, paciente animal, prontuário, documentos, exames, estoque, cobrança e comunicação. As fontes de harness corporativo acrescentam um segundo problema: oferecer IA útil com modelos, ferramentas, conhecimento, memória, orçamento e governança centralizados.
@@ -43,7 +47,7 @@ O material de referência descreve esse segundo problema, mas não fornece os pr
 
 ## 4. Atores e escopos
 
-Os papéis são `PROPOSED` até a matriz de autoridade do CVG ser aprovada.
+Os quatro papéis iniciais de M1 foram confirmados no recorte acima. A matriz granular, os demais papéis e as alçadas clínicas abaixo permanecem `PROPOSED` até validação aplicável.
 
 | Ator | Objetivo | Escopo padrão | Ações de alto impacto |
 |---|---|---|---|
@@ -165,7 +169,7 @@ Os papéis são `PROPOSED` até a matriz de autoridade do CVG ser aprovada.
 4. Uma tool de escrita, comunicação, prescrição, estoque, cobrança ou integração passa por guard e aprovação contextual.
 5. O resultado, a decisão e a aprovação ficam auditáveis; falha ou timeout não é convertida em sucesso.
 
-**Offline:** somente leitura de cache já autorizado e rascunhos locais explicitamente marcados; não se criam privilégios, não se confirma efeito externo e não se oculta divergência de sincronização.
+**Offline na V1:** `OFFLINE_READ_ONLY` permite somente leitura de cache D0–D2 já autorizada por lease finito. Não há rascunho local persistido, sincronizado ou aceito como edição offline; o buffer de composição em memória não constitui rascunho offline. Uma queda breve de rede, sozinha, não descarta o texto: a interface entra em `OFFLINE_READ_ONLY`, bloqueia o composer e conserva o texto não enviado somente em memória enquanto o contexto/sessão de composição continuar válido. Preservação não autoriza exibição: somente D0–D2 classificados e autorizados podem permanecer visíveis; D3–D5, conteúdo não classificado ou sem autorização offline ficam ocultos em quarentena, conforme o [contrato de buffer em 05](05-seguranca-privacidade.md#buffer-de-composição-durante-desconexão). O único gatilho canônico de descarte é `COMPOSER_CONTEXT_LOST`, que ocorre ao recarregar, fechar, sair, expirar ou ser revogada a sessão/lease, ou falhar a revalidação; nesse momento o buffer é apagado e nunca é persistido ou sincronizado. Na reconexão, a sessão e a policy devem ser revalidadas antes de reativar o composer; o usuário revisa e envia explicitamente, sem envio automático. Não se criam privilégios, não se confirma efeito externo e não se oculta divergência de sincronização.
 
 **Recuperação:** falha de policy, budget, credencial, provider, sessão ou tool encerra o turno com motivo e mantém o caminho manual. `OUTCOME_UNKNOWN` bloqueia repetição cega; o operador consulta o recurso, reconcilia ou registra a decisão. Se o log não puder ser persistido conforme a policy, não há novo contexto clínico model-visible.
 
@@ -178,13 +182,13 @@ Os papéis são `PROPOSED` até a matriz de autoridade do CVG ser aprovada.
 | BR-03 | Um registro clínico assinado não é sobrescrito; correção cria adendo ligado ao original. | Direção clínica define o fluxo de retificação. |
 | BR-04 | Rascunho gerado por IA não é fato clínico nem comunicação enviada. | Só a confirmação de papel autorizado promove o conteúdo. |
 | BR-05 | Prescrição, administração e dispensação são fatos distintos e devem manter autoria, horário e vínculo. | Protocolos do CVG podem adicionar campos obrigatórios. |
-| BR-06 | Nenhum movimento de estoque deixa saldo negativo ou perde lote/validade. | Ajuste de inventário exige motivo, alçada e auditoria. |
+| BR-06 | Nenhum movimento de estoque deixa saldo negativo ou perde lote/validade; uma operação que produziria saldo negativo é rejeitada atomicamente. | Ajuste autorizado corrige uma discrepância por movimento compensatório sem criar saldo negativo e exige motivo, alçada e auditoria. |
 | BR-07 | Cobrança é um ledger append-only lógico; estorno e correção são movimentos compensatórios. | Política fiscal/financeira do CVG permanece UNKNOWN. |
 | BR-08 | A policy mais específica restringe a mais ampla; falta ou corrupção de policy nega a operação governada. | Nunca ampliar por fallback silencioso. |
 | BR-09 | Budget é pré-verificado antes do turno e medido por tipo de consumo; atraso de consolidação não concede crédito ilimitado. | Unidade final de cobrança deve ser aprovada. |
-| BR-10 | `allowed-once` autoriza somente a ação pedida; rejeição, cancelamento ou indisponibilidade negam. | A role/resource policy deve passar antes. |
+| BR-10 | `allowed-once` autoriza somente a primeira nova execução pedida; rejeição, cancelamento ou indisponibilidade negam. Repetição da mesma `idempotencyKey`, localizada pela chave server-scoped de identidade + escopo + tipo de comando, com digest compatível, devolve o resultado já persistido sem nova approval ou dispatch. | Nova chave ou digest divergente exige decisão nova; a role/resource policy e a autorização de leitura do receipt devem passar antes. `actionId` de transporte não define a identidade da repetição. |
 | BR-11 | Conteúdo de usuário, documento, e-mail, web ou tool result é dado não confiável, não instrução de autoridade. | Parser e policy podem extrair fatos com proveniência. |
-| BR-12 | Toda escrita relevante possui idempotency key e resultado determinístico para repetição segura. | Operações não idempotentes exigem verificação externa antes de retry. |
+| BR-12 | Toda escrita relevante possui idempotency key e resultado determinístico para repetição segura; resposta perdida não transforma um efeito já persistido em segunda execução. | Operações não idempotentes exigem verificação externa antes de retry; `IN_FLIGHT`/`OUTCOME_UNKNOWN` retorna o mesmo estado e reconcilia. |
 
 ## 7. Requisitos funcionais
 
@@ -260,9 +264,11 @@ Todas são `PROPOSED` até obter baseline e dono.
 | AC-PRD-05 | Policy cache está ausente/corrompido | Agente pede nova tool ou novo privilégio | O dispatch falha fechado; recursos previamente autorizados não são ampliados. |
 | AC-PRD-06 | Worker de uso recebe o mesmo evento duas vezes | Consolida consumo | O ledger permanece idempotente e a reconciliação é auditável. |
 | AC-PRD-07 | Resultado de exame chega fora de ordem | Resultado não corresponde a pedido/amostra | O item vai para quarentena/erro e não entra como fato clínico válido. |
-| AC-PRD-08 | Processo fica offline durante o plantão | Usuário tenta gravar ou usar AI | O manual disponível continua claro; nova permissão/escrita crítica não é confirmada como concluída. |
+| AC-PRD-08 | O processo perde a rede brevemente e, em outro cenário, o contexto de composição é encerrado | Usuário tinha texto não enviado no composer | Na queda breve, o sistema entra em `OFFLINE_READ_ONLY`, bloqueia edição/envio, mantém o texto apenas no buffer volátil e não o persiste nem sincroniza. D0–D2 classificados/autorizados podem continuar visíveis; texto clínico D3–D5 ou não classificado fica oculto, inclusive para cópia e acessibilidade. Após reconexão com sessão, recurso, classificação e policy revalidados, permite revisão e envio explícito; conteúdo desconhecido permanece oculto até classificação autorizada. Em `COMPOSER_CONTEXT_LOST` — recarregar, fechar, sair, expirar/revogar a sessão/lease ou falhar a revalidação — apaga o buffer, sem autoenvio. |
 | AC-PRD-09 | Documento contém instrução maliciosa | Agente recupera o trecho | O trecho é tratado como conteúdo não confiável e não altera system policy, tools ou autorização. |
 | AC-PRD-10 | Operador precisa investigar incidente | Acessa uma sessão clínica | O acesso excepcional tem escopo, motivo, janela, aprovação e trilha; não vira acesso padrão. |
+| AC-PRD-11 | Resposta se perde depois de uma execução autorizada | Usuário repete a mesma chave com identidade, escopo, tipo de comando e digest compatíveis, mesmo que a tentativa tenha outro `actionId` | A API localiza o registro pela chave estável, devolve o receipt/resultado persistido, os IDs originais ou o mesmo estado `IN_FLIGHT`/`OUTCOME_UNKNOWN`, sem consumir approval, budget ou dispatch novamente; digest divergente retorna conflito. |
+| AC-PRD-12 | Processo cai ou uma dependência nega depois da reivindicação da idempotência | Há concorrência com `unitId`, `workspaceId` ou `resourceId` ausentes e crash imediatamente após o claim | A reivindicação é única; negação/abandono sem intent finaliza `FAILED/PRE_DISPATCH`, enquanto intent ou envio possível vira `OUTCOME_UNKNOWN` para reconciliação, sem dispatch automático duplicado. |
 
 ## 11. Gate do produto
 

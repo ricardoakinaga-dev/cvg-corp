@@ -1,0 +1,70 @@
+{
+  "record_id": "GATE-CVG-IMPLEMENTATION-READY-001",
+  "timestamp": "2026-09-08T14:24:00-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "local-synthetic-implementation",
+  "scope_ref": "CVG-FULL-IMPLEMENTATION",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "O artifact local-first possui walking skeleton integrado, contratos compartilhados, domínio, BFF, web e migration preparada.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": ["package.json", "packages/contracts/src/index.ts", "packages/domain/src/index.ts", "apps/api/src/server.ts", "apps/web/src/main.tsx", "db/migrations/001_initial.sql"],
+      "confidence": "HIGH",
+      "limitations": "A migration é preparação; o adapter PostgreSQL transacional ainda não está conectado."
+    },
+    {
+      "id": "IR-002",
+      "description": "As verificações locais do recorte sintético executam com resultados observáveis em testes, build, API, segurança, recuperação e E2E.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [".agent/verification.jsonl#VER-CVG-001", "tests/unit/domain.test.ts", "tests/integration/api.test.ts", "tests/integration/restore.test.ts", "tests/e2e/app.spec.ts"],
+      "confidence": "HIGH",
+      "limitations": "A evidência é local e sintética; não cobre concorrência/lock do banco real nem release."
+    },
+    {
+      "id": "IR-003",
+      "description": "As fronteiras de escopo, provider, dados reais, PostgreSQL indisponível e aceite de produção estão explicitamente bloqueadas e documentadas.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [".agent/verification.jsonl#VER-CVG-003", "docs/12-estado-da-implementacao.md", "docs/11-transicao-para-producao.md", ".gauntlet/bar-v2.json"],
+      "confidence": "HIGH",
+      "limitations": "O gate autoriza somente continuação da implementação/revisão local; não autoriza uso operacional."
+    }
+  ],
+  "evidence": [".agent/verification.jsonl#VER-CVG-001", ".agent/verification.jsonl#VER-CVG-002", ".agent/verification.jsonl#VER-CVG-003", "docs/12-estado-da-implementacao.md", ".gauntlet/bar-v2.json"],
+  "confidence": "HIGH",
+  "gaps": [],
+  "conditions": [
+    {
+      "id": "COND-CVG-LOCAL-ONLY-001",
+      "description": "O artifact deve permanecer limitado a loopback, memória sintética e provider local stub enquanto as aprovações de produção não existirem.",
+      "non_blocking": true,
+      "impact": "Impede que a evidência local seja confundida com durabilidade, autoridade clínica ou release.",
+      "owner": "lead + solicitante do projeto",
+      "due_or_trigger": "Antes de qualquer dado real, provider externo, homologação, piloto ou release.",
+      "due_at": "2026-09-30T18:00:00-03:00",
+      "verification_method": "Abrir novo gate com evidência de adapter transacional, segurança, autoridade e ambiente correspondente.",
+      "evidence_refs": ["docs/10-preparacao-m1.md", "docs/11-transicao-para-producao.md", "docs/12-estado-da-implementacao.md"],
+      "status": "OPEN",
+      "residual_risk": "MEDIUM",
+      "authority_state": "NOT_REQUIRED"
+    }
+  ],
+  "authority": {
+    "required": false,
+    "state": "NOT_REQUIRED",
+    "actor": "solicitante-do-projeto",
+    "scope": "local-synthetic-implementation",
+    "decision": "Recorte local sintético pode continuar em implementação e revisão; não há autorização de produção.",
+    "evidence_ref": "docs/10-preparacao-m1.md",
+    "expires_or_revalidates": "Revalidar antes de qualquer mudança para dados reais, provider externo ou release."
+  },
+  "residual_risk": "MEDIUM",
+  "decision": "PASS_WITH_CONDITIONS",
+  "next_action": "CVG-FULL-IMPLEMENTATION:INDEPENDENT-CRITIQUE — concluir crítica fresca e corrigir o maior gap.",
+  "revalidation_triggers": ["crítica independente concluída", "adapter PostgreSQL ou persistência transacional conectados", "qualquer solicitação de dados reais, provider externo ou produção"],
+  "supersedes": null
+}

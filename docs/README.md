@@ -6,12 +6,12 @@ Este diretório contém a documentação da arquitetura-alvo de um programa de g
 
 | Campo | Estado |
 |---|---|
-| Fase | Definição de produto, especificação técnica e plano de execução |
-| Escopo desta fase | Documentação somente; nenhuma implementação foi feita |
+| Fase | BUILD B1–B6 local sintético; slice PostgreSQL transacional com migrations 001–014, leituras normalizadas, outbox/usage, inbox/efeitos externos, RLS forçado no catálogo de domínio e FKs com proveniência organizacional, além de restore AES-256-GCM em quarentena, verificados em banco sintético |
+| Escopo desta fase | B1–B6 locais verificados, mais a fatia PostgreSQL sintética; aceite operacional independente e produção continuam pendentes, evidências em 07 e 12 |
 | Motor proposto | `deepseek-harness` como runtime plugável de agentes |
-| Qualidade | `CONDITIONAL PASS` documental no Quality Bar v1.1; runtime ainda `NOT_RUN` |
+| Qualidade | barra v2 integral `FAIL`; recorte local demonstrável, produção bloqueada |
 | Fonte de verdade clínica | O domínio transacional do CVG, não a conversa do agente |
-| Próximo gate | `TECHNICALLY_SPECIFIED`, condicionado às decisões abertas do documento 08 |
+| Próximo gate | PDP de negócio e autorização contextual completa, provider/consulta externa real, secret-provider e backup operacional gerenciado, cache offline autorizado, fault/crash drills, SLOs e aceite independente |
 
 ## Leitura recomendada
 
@@ -26,6 +26,12 @@ Este diretório contém a documentação da arquitetura-alvo de um programa de g
 9. [`07-plano-execucao.md`](07-plano-execucao.md) — fatias verticais, dependências e gates de implementação.
 10. [`08-rastreabilidade-e-decisoes.md`](08-rastreabilidade-e-decisoes.md) — matriz requisito→design→risco→verificação e decisões pendentes.
 11. [`09-gauntlet-verdict.md`](09-gauntlet-verdict.md) — veredito da crítica independente desta fase.
+
+12. [`10-preparacao-m1.md`](10-preparacao-m1.md) — decisões confirmadas, matriz proposta, aceite local e tarefas restantes antes de BUILD.
+
+13. [`11-transicao-para-producao.md`](11-transicao-para-producao.md) — demonstração, homologação, piloto e produção por escopo, com critérios de passagem.
+
+14. [`12-estado-da-implementacao.md`](12-estado-da-implementacao.md) — matriz corrente de evidências, limites do runtime local e reprodução dos gates.
 
 ## Princípio de leitura
 
@@ -45,4 +51,4 @@ O desenho adota três compromissos de qualidade:
 
 ## Limite desta fase
 
-Não há código, schema executável, endpoint implantado, benchmark, teste de carga, migração, credencial, deploy ou integração externa neste diretório. Os contratos e targets que aparecem como `PROPOSED` precisam ser confirmados antes do BUILD.
+A raiz do repositório contém o artifact B1–B6 e uma fatia durável PostgreSQL, com isolamento organizacional completo no catálogo, proveniência nas FKs, inbox/efeitos externos sintéticos e bundle de restore autenticado em quarentena verificados em banco sintético local, ainda não homologada para produção. Este diretório mantém o planejamento e as evidências; não há deploy, dados reais ou aceite de M1 completo. Propostas de milestones posteriores continuam sujeitas à confirmação aplicável.

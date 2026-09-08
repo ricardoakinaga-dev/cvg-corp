@@ -1,0 +1,17 @@
+node_modules/
+dist/
+coverage/
+.local/
+.env
+.env.*
+!.env.example
+playwright-report/
+test-results/
+artifacts/playwright-report/
+artifacts/runs/**
+!artifacts/runs/.gitkeep
+*.log
+.DS_Store
+
+# Local control-plane caches; durable project state remains reviewable.
+.gauntlet/cache/

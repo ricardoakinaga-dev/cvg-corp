@@ -1,0 +1,71 @@
+{
+  "record_id": "GATE-CVG-PRODUCTION-READINESS-002",
+  "timestamp": "2026-09-08T20:00:49-03:00",
+  "gate_id": "PRODUCTION_READINESS_REVIEW",
+  "scope": "local-synthetic-plus-postgres-synthetic",
+  "scope_ref": "CVG-FULL-IMPLEMENTATION",
+  "version": 2,
+  "criteria": [
+    {
+      "id": "PR-001",
+      "description": "Gates locais e UX reproduzível passam no artifact sintético.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [".agent/verification.jsonl#VER-CVG-025", "tests/e2e/app.spec.ts"],
+      "confidence": "HIGH",
+      "limitations": "Chromium, loopback e fixtures sintéticas; a crítica fresca não executou testes nem browsers adicionais."
+    },
+    {
+      "id": "PR-002",
+      "description": "A barreira PostgreSQL transacional, o RLS forçado do catálogo e a proveniência organizacional dos vínculos são executáveis.",
+      "required": true,
+      "status": "PASS_WITH_LIMITATIONS",
+      "evidence_refs": [".agent/verification.jsonl#VER-CVG-026", "db/migrations/015_patient_guardian_scope.sql", "db/migrations/016_repair_patient_guardian_scope.sql", "db/migrations/017_patient_relationship_scope_rls.sql", "db/migrations/018_require_patient_context.sql"],
+      "confidence": "HIGH",
+      "limitations": "PostgreSQL 16.15 sintético; 54/54 tabelas têm FORCE RLS e 94 FKs foram verificadas, mas PDP de negócio e aceites de produção não foram homologados."
+    },
+    {
+      "id": "PR-003",
+      "description": "Restore isolado mantém ledgers independentes por digest, entra em quarentena e não reativa autoridade.",
+      "required": true,
+      "status": "PASS_WITH_LIMITATIONS",
+      "evidence_refs": [".agent/verification.jsonl#VER-CVG-027", "scripts/verify-postgres-restore.ts", "packages/persistence/src/index.ts"],
+      "confidence": "HIGH",
+      "limitations": "AES-256-GCM e autenticidade foram provados em fixture sintética; ainda não é backup gerenciado, não cobre stores externos/replay pós-watermark/fault points completos e não tem RTO/RPO aprovado."
+    },
+    {
+      "id": "PR-004",
+      "description": "O programa está pronto para dados reais, provider externo, homologação, piloto ou produção.",
+      "required": true,
+      "status": "FAIL",
+      "evidence_refs": [".agent/verification.jsonl#VER-CVG-026", ".agent/verification.jsonl#VER-CVG-027", ".agent/verification.jsonl#VER-CVG-028", ".gauntlet/bar-v2.json", "docs/12-estado-da-implementacao.md"],
+      "confidence": "HIGH",
+      "limitations": "PDP/ABAC de negócio, providers/secret-provider/efeitos externos reais, backup gerenciado, replay pós-watermark, fault/workload, offline autorizado, browsers adicionais, acessibilidade profunda, SLO/alertas e aceite humano permanecem ausentes."
+    }
+  ],
+  "evidence": [".agent/verification.jsonl#VER-CVG-025", ".agent/verification.jsonl#VER-CVG-026", ".agent/verification.jsonl#VER-CVG-027", ".agent/verification.jsonl#VER-CVG-028", "docs/12-estado-da-implementacao.md"],
+  "confidence": "HIGH",
+  "gaps": [
+    "PDP/ABAC de negócio e repositories autorizados por unidade/workspace em ambiente de produção",
+    "provider/secret-provider/consulta externa real com settlement, inbox, idempotência e reconciliação",
+    "backup operacional gerenciado, replay pós-watermark, fault/crash drills, workload, RTO/RPO e SLO/alertas",
+    "cache offline autorizado, browsers além de Chromium, acessibilidade profunda e aceite operacional independente"
+  ],
+  "conditions": [
+    {
+      "id": "COND-CVG-NO-REAL-DATA-002",
+      "description": "Manter somente loopback, fixtures sintéticas e providers deny-by-default; não usar o artifact para dados reais ou release.",
+      "non_blocking": false,
+      "impact": "Bloqueia produção até revisão de prontidão aprovada por autoridade humana.",
+      "owner": "lead + solicitante do projeto",
+      "due_or_trigger": "Antes de dados reais, provider externo, homologação, piloto ou release.",
+      "status": "OPEN",
+      "residual_risk": "HIGH",
+      "authority_state": "REQUIRED"
+    }
+  ],
+  "residual_risk": "HIGH",
+  "decision": "FAIL_WITH_LIMITATIONS",
+  "next_action": "CVG-FULL-IMPLEMENTATION:PRODUCTION-READINESS-GAPS — fechar PDP de negócio, provider/secret-provider real e recovery operacional antes de novo gate",
+  "revalidation_triggers": ["provider/inbox/reconciliação implementados", "backup/fault/RTO/SLO demonstrados", "PDP de negócio homologado", "qualquer pedido de dados reais ou release"]
+}

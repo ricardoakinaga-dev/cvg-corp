@@ -1,0 +1,13 @@
+{
+  "name": "@cvg/persistence",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@cvg/contracts": "*",
+    "@cvg/domain": "*",
+    "pg": "^8.16.3"
+  }
+}

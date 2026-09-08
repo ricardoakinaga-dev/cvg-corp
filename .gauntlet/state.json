@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "bar_ref": ".gauntlet/bar-v2.json",
+  "goal": "Implementação local-first executável do CVG-Corp conforme docs preservados",
+  "scope_ref": "CVG-FULL-IMPLEMENTATION",
+  "round": 4,
+  "phase": "VERDICT",
+  "status": "IN_PROGRESS",
+  "largest_gap": "garantias de produção além da fatia sintética: PDP/ABAC de negócio, provider/secret-provider real e recovery operacional aprovado",
+  "next_action": "CVG-FULL-IMPLEMENTATION:PRODUCTION-READINESS-GAPS",
+  "limitations": ["o banco sintético local PostgreSQL 16.15 foi verificado por socket explícito; a URL padrão 127.0.0.1:5440 continua indisponível", "RLS forçado cobre as 54 tabelas do catálogo e 94 FKs de proveniência foram verificadas; patient/guardian sem unidade agora são negados, mas PDP/ABAC de negócio e aceite humano ainda não", "outbox/worker, usage ledger, inbox assinado, efeitos com receipt/reconciliação e bundle de restore AES-256-GCM existem em recorte sintético; provider/secret-provider/consulta externa reais, settlement, backup gerenciado, replay pós-watermark, stores externos, cache offline autorizado, browsers adicionais e SLOs permanecem fora do artifact", "a crítica fresca round 4 foi concluída em contexto separado e classificou AAA como não elegível; o restore deve ser executado serialmente contra uma origem estável"],
+  "critique_ref": ".gauntlet/critique-round-4.md",
+  "updated_at": "2026-09-08T20:00:49-03:00"
+}

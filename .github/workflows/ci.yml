@@ -1,0 +1,102 @@
+name: CVG CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cvg-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Typecheck, tests and release artifacts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.20.0
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit and integration tests
+        run: npm test
+
+      - name: Dependency audit
+        run: npm audit --omit=dev
+
+      - name: License policy
+        run: npm run audit:licenses
+
+      - name: Build web artifact
+        run: npm run build
+
+      - name: Static verification
+        run: npm run verify:static
+
+      - name: Verify release and Compose configuration
+        run: node --import tsx scripts/verify-production.ts
+
+      - name: Synthetic performance baseline
+        run: mkdir -p artifacts && npm run benchmark:local > artifacts/benchmark-local.json
+
+      - name: Generate dependency SBOM
+        run: npm sbom --sbom-format cyclonedx > artifacts/sbom.cdx.json
+
+      - name: Upload verification artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: cvg-verification-${{ github.sha }}
+          path: artifacts/
+          if-no-files-found: error
+
+      - name: Check diff whitespace
+        run: git diff --check
+
+  container-build:
+    name: Build API and web images
+    needs: checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build API image
+        run: docker build --file Dockerfile.api --tag cvg-corp/api:ci .
+
+      - name: Build web image
+        run: docker build --file Dockerfile.web --tag cvg-corp/web:ci .
+
+      - name: Scan API image
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: cvg-corp/api:ci
+          format: table
+          exit-code: "1"
+          ignore-unfixed: true
+          severity: HIGH,CRITICAL
+
+      - name: Scan web image
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: cvg-corp/web:ci
+          format: table
+          exit-code: "1"
+          ignore-unfixed: true
+          severity: HIGH,CRITICAL

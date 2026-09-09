@@ -1,0 +1,175 @@
+# CVG-Corp — State of the Art / Triplo AAA vNext
+
+## Purpose / Big Picture
+
+Transformar o artifact local-first existente em uma base modular, segura, observável, recuperável e preparada para produção conforme o prompt preservado em `docs/prompt-state-of-the-art-triplo-aaa.md`, sem inventar provider, autoridade, dados ou evidência que não existam.
+
+O resultado esperado é um produto executável com uma rota completa de desenvolvimento até release evidence. A elegibilidade Triplo AAA só será avaliada depois de todos os critérios obrigatórios da barra `.gauntlet/bar-v3.json` terem evidência atual, score mínimo de 95 em cada dimensão e críticos independentes frescos sem blocker.
+
+## Progress
+
+- [x] (2026-09-08T20:54:00-03:00) — Prompt copiado e verificado byte a byte; SHA-256 registrado.
+- [x] (2026-09-08T20:54:00-03:00) — Fase 0 concluída em `docs/architecture-audit-vNext.md` com inventário, trust boundaries, gaps, dependências, plano e rollback.
+- [x] (2026-09-08T20:54:00-03:00) — Barra v3 congelada em `.gauntlet/bar-v3.json`; barra v2 histórica preservada.
+- [x] (2026-09-08T20:54:00-03:00) — Sessão recuperada; estado, backlog, gates e ledgers JSON/JSONL validados.
+- [ ] Onda A — contratos de runtime, Tool Gateway, PDP/ABAC, configuração typed e ADRs (fundação inicial implementada; integração, catálogo/proveniência completo e fechamento da onda ainda pendentes).
+- [ ] Onda B — decomposição da API e application layer com compatibilidade v1.
+- [ ] Onda C — repositories completos, worker separado, recovery e fault drills.
+- [ ] Onda D — frontend modular, offline state machine e acessibilidade multi-browser.
+- [ ] Onda E — deploy, CI, SBOM, observabilidade, SLOs e runbooks.
+- [ ] Onda F — adapter DeepSeek/provider e vertical real, somente se autoridade e endpoint existirem.
+- [ ] Onda G — verificação de produção, críticas independentes frescas e scorecard honesto.
+
+## Context and Orientation
+
+O repositório contém uma aplicação TypeScript/Fastify/React com domínio sintético, persistência PostgreSQL e migrations 001–018, Harness local determinístico e testes locais. O commit de entrada é `7b49bd22ec32c72d9aff8fb39bfb6be7fb6bd295`; o working tree inicial desta etapa contém somente a cópia do prompt não commitada.
+
+O repositório local do DeepSeek Harness está em `/home/ricardo/deepseek-harness`, commit `5dda764ed3`. Ele é uma dependência externa observada e documentada, não uma autoridade de runtime do CVG e não será editado por este plano.
+
+A especificação exige que o fluxo permaneça `CVG Domain → Application Layer → Agent Runtime Interface → Harness Adapter → DeepSeek Harness`. O domínio mantém a verdade transacional; o Harness só executa capacidades autorizadas; nenhum provider externo é considerado disponível sem health, versão, capabilities, credencial, aprovação e teste real.
+
+## Scope and Constraints
+
+Inclui refatoração, novos packages/apps, contratos, migrations aditivas, testes, documentação, CI, container e evidências locais/production-like que possam ser executadas neste workspace.
+
+Não inclui obtenção de credenciais, envio de dados a terceiros, uso de dados reais, alteração do repositório DeepSeek, criação de infraestrutura externa, aprovação de risco, release ou push automático. Providers reais continuam deny-by-default até existir autoridade explícita.
+
+Não editar migrations aplicadas 001–018. Qualquer evolução de schema deve usar migration nova, checksum, dry-run, compatibilidade e rollback-forward.
+
+## Architecture and Interfaces
+
+### Agent Runtime
+
+Criar uma interface estável com `health`, `createSession`, `executeTurn`, `approve`, `replay` e `shutdown`; definir requests/responses com correlation, actor, organization, unit/workspace, purpose, data classes, policy revision, budget, deadlines, approval binding, provenance e erro estável.
+
+O Mock adapter é determinístico e seguro para testes. O DeepSeek adapter encapsula transporte e ciclo de vida do harness, verifica manifest/version/commit/tool registry e transforma timeout/cancelamento/provider failure em estados explícitos. Sem endpoint ou autoridade, o adapter retorna capability unavailable e não tenta egress.
+
+### Tool Gateway and PDP
+
+Tool metadata inclui risco, capability, roles, scope, schema, classes D0–D5, approval, timeout, idempotency, audit, secret refs e egress. O gateway é o único caminho de execução.
+
+O PDP é separado e recebe subject/resource/context/purpose/operation/risk/time/policy/session. Ele devolve decisão explicável, policy revision e obrigações. High/critical exige aprovação humana independente, one-shot, TTL, digest binding e não pode aceitar o próprio ator como aprovador.
+
+### Application and persistence
+
+Routes validam requests e delegam a use cases. Use cases resolvem contexto, PDP, unidade de trabalho, domínio, repositories e outbox/receipt/audit. Repositories tipados são a porta de leitura/escrita; snapshot/journal continuam como reconstrução e trilha, não como atalho para cada rota.
+
+Outbox/inbox/effect ledger têm lease/fencing, retry bounded, backoff, quarantine, unknown e reconciliation. Um efeito externo só é confirmado por receipt verificável ou consulta autorizada; callback duplicado é idempotente.
+
+### Operational process model
+
+`apps/worker` é um processo separado para outbox, jobs, reconciliation, notification e maintenance. API, worker e harness usam configuração validada, health/readiness, telemetry redigida e least privilege.
+
+### Web
+
+`apps/web` é separado em app shell, routes, features, components, hooks, API client, state machine e design tokens. O navegador exibe estados de autoridade e conectividade sem decidir autorização. Writes críticos ficam bloqueados em `OFFLINE_READ_ONLY`, e reconnect exige revalidação de identidade e contexto.
+
+## Plan of Work
+
+1. Congelar e validar a barra v3, atualizar este plano e o control plane.
+2. Implementar contratos de config, runtime, provider, tools, policy, provenance, errors e API versioning.
+3. Integrar Mock adapter e manter o adapter DeepSeek explícito, fail-closed e coberto por contrato.
+4. Extrair PDP/Tool Gateway e decompor `server.ts`; migrar rotas por fatias pequenas com testes de regressão.
+5. Criar application services e repositories por contexto; manter transações, RLS e migrations aditivas.
+6. Criar worker separado, fault harness, backup/recovery manifest e drills sem apagar efeitos desconhecidos.
+7. Modularizar a web, ampliar estados offline, acessibilidade, browsers e inspeção visual.
+8. Criar Docker/CI/SBOM/config/headers/telemetria/SLO/runbooks e `verify:production`.
+9. Implementar a vertical Appointment → comunicação apenas quando provider/authority existirem; caso contrário registrar `NOT_RUN`.
+10. Rodar testes e críticos frescos; reparar somente findings reproduzíveis; gerar scorecard e veredito sem overclaim.
+
+## Concrete Steps
+
+<!-- engineering-framework: active_action_id=CVG-FULL-STATE-OF-THE-ART:EXTERNAL-EVIDENCE-AND-INDEPENDENT-REVIEW -->
+
+1. `CVG-FULL-STATE-OF-THE-ART:EXTERNAL-EVIDENCE-AND-INDEPENDENT-REVIEW` — obter evidência autorizada production-like e repetir a barra; manter qualquer capacidade externa bloqueada sem autoridade.
+
+### Onda A — fundamento seguro
+
+- Adicionar `packages/agent-runtime`, `packages/agent-policy` e `packages/agent-tools` com contratos públicos e testes negativos.
+- Adicionar provider registry, provenance model, data-class registry, stable error taxonomy e config schema typed.
+- Adicionar ADRs 001–008 e catálogo executável de capabilities.
+- Atualizar imports do Harness para depender da interface, preservando comportamento local.
+
+### Onda B — API e aplicação
+
+- Criar `apps/api/src/app`, `plugins`, `middleware`, `auth`, `context`, `routes`, `services`, `errors` e `telemetry`.
+- Extrair primeiro health/auth/context/operations, depois identidade/admin/patient/appointment e por último clinical/AI/integrations.
+- Manter `/api/v1`; preparar `/api/v2` apenas com schema/compatibilidade definidos.
+- Fazer `server.ts` ficar abaixo de 300 linhas e provar o grafo de imports sem rota acessando store fora do use case.
+
+### Onda C — dados e reliability
+
+- Criar repositories typed para todos os bounded contexts e contratos de transação.
+- Criar `apps/worker` e migrações de jobs/leases/reconciliation somente aditivas.
+- Expandir fault matrix para crash before/after commit/dispatch/receipt, lease loss, reconnect, timeout, duplicate callback e restore cases.
+- Separar backup manifest, key reference, checksum, quarantine, authority invalidation e replay pós-watermark.
+
+### Onda D — web e acessibilidade
+
+- Decompor `main.tsx` sem perder a demonstração local.
+- Implementar state machine de conectividade e contexto, cache somente de dados permitidos e purge auditado se autorizado.
+- Rodar Chromium/Firefox/WebKit, teclado, focus, reduced motion, touch, DPR e scanner de acessibilidade.
+
+### Onda E — produção e operação
+
+- Completar compose e Dockerfiles com proxy/web/api/worker/harness/postgres/telemetry; non-root, read-only, health, resources e secrets.
+- Criar workflows de lint/typecheck/tests/postgres/e2e/security/migrations/docker/SBOM/artifact.
+- Criar OTel seam, dashboards/alerts, measured SLOs/error budgets e runbooks com owners/abort criteria.
+- Implementar `npm run verify:production` como gate bloqueante e atualizar README/documentação vNext.
+
+### Onda F — provider e vertical
+
+- Implementar DeepSeek adapter baseado somente em contrato observável do harness e provider abstraction.
+- Executar health/version/capability/tool registry/session lifecycle com processo ou HTTP autorizado.
+- Integrar uma Appointment communication staged com approval independente, outbox, receipt, audit e reconciliation.
+- Se endpoint, credencial ou autoridade não estiverem disponíveis, não simular sucesso; manter adapter bloqueado e evidência `NOT_RUN`.
+
+## Validation and Acceptance
+
+Cada ação deve adicionar teste conhecido-bom e conhecido-ruim. Nenhum status `PASS` será promovido a partir de source inspection isolada.
+
+Gates mínimos por onda: `npm run typecheck`, testes focados, `npm run build`, static/contract/security checks, database checks quando aplicável, E2E/visual quando UI mudar e fingerprint antes/depois de critics.
+
+Gates finais: `npm run verify:production`, PostgreSQL production-like, restore/fault matrix, benchmark, browser matrix, dependency/SBOM scan, diff check, audit ledger parse, fresh independent critiques e scorecard. Falhas permanecem registradas.
+
+Critérios detalhados, prioridade e blockers pertencem a `.gauntlet/bar-v3.json`; este plano não reduz a barra.
+
+## Risks and Human Decisions
+
+R-01: bypass de PDP/Tool Gateway. Mitigação: imports disjuntos, default deny, matrix negativa, RLS e crítico fresco.
+
+R-02: duplicação de efeito externo. Mitigação: idempotency key, effect ledger, receipt, fencing, unknown e reconciliation.
+
+R-03: vazamento de segredo/dado clínico. Mitigação: SecretProvider, D-class, redaction, egress deny e provider gate.
+
+R-04: restore reativa autoridade antiga. Mitigação: quarantine, session revoke, readiness blocked e replay supervisionado.
+
+R-05: regressão de API/UI durante decomposição. Mitigação: rotas v1, testes contract/E2E, extração incremental e rollback por commit.
+
+R-06: alegação falsa de AAA. Mitigação: barra imutável, scorecard por evidência, critics frescos e política de elegibilidade explícita.
+
+Decisões de provider, credenciais, dados reais, retenção, residência, MFA, RTO/RPO, SLO, suporte, break-glass e risco residual exigem autoridade humana e permanecem abertas.
+
+## Idempotence and Recovery
+
+Todas as mudanças de schema são append-only. Todos os comandos externos usam chaves idempotentes e receipts; erro desconhecido nunca recebe retry cego. A recuperação começa por preservar o estado, consultar ledgers e quarentenar quando integridade/autoridade não puder ser provada.
+
+O plan/recovery pointer é `.agent/state.json` → este arquivo → `.agent/backlog.json` → `.agent/execution-log.jsonl`/`.agent/verification.jsonl` → gate e bar atuais. O plano anterior continua em `.agent/plans/2026-09-08-cvg-full-implementation.md` como histórico de execução do recorte local.
+
+## Artifacts and Evidence
+
+- Requisitos: `docs/prompt-state-of-the-art-triplo-aaa.md` e docs 00–12.
+- Auditoria: `docs/architecture-audit-vNext.md`.
+- Barra: `.gauntlet/bar-v3.json`.
+- Plano corrente: este arquivo.
+- Estado/ledger: `.agent/state.json`, `.agent/backlog.json`, `.agent/*.jsonl`.
+- Artefatos de execução: `artifacts/runs/<timestamp>/` sem serem fonte de autorização.
+- Entregáveis finais: `docs/production-readiness-vNext.md`, `docs/security-review-vNext.md`, `docs/ai-runtime-vNext.md`, `docs/deployment-vNext.md`, `docs/verification-vNext.md`, `docs/state-of-the-art-scorecard.md`, `docs/adr/`, `docs/runbooks/` e README atualizado.
+
+## Outcomes & Retrospective
+
+O ponto de partida é uma demonstração local robusta, não uma plataforma de produção. A principal decisão é preservar esse recorte como fixture segura enquanto a arquitetura é extraída e as garantias externas são provadas. O resultado final poderá ser `AAA`, `FAIL_WITH_LIMITATIONS` ou `BLOCKED`; o plano não autoriza elevar o status por intenção.
+
+## Current checkpoint — 2026-09-08 22:20
+
+The current working tree passes typecheck, 56 unit/integration tests, web build, static verification (including the domain-command boundary), 15 Chromium E2E tests across three viewports, contrast/token audits, dependency/license audit, CycloneDX SBOM, synthetic benchmark, release verification and diff check. Local design audits are repository-owned and no longer depend on `/home/ricardo/`. The CI declares Dependabot and Trivy image scans, but Docker image build/scan and remote CI execution remain unrun here. PostgreSQL/provider/secret-manager production evidence, fault/recovery drills, production SLOs, expanded browser/accessibility matrix and a new final independent review remain required before any AAA decision.

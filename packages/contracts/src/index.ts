@@ -438,6 +438,7 @@ export interface CvgContext {
   unitId: OpaqueId | null;
   workspaceId: OpaqueId | null;
   actorId: OpaqueId;
+  sessionId: OpaqueId | null;
   actorRoleSnapshot: Role[];
   patientId: OpaqueId | null;
   encounterId: OpaqueId | null;
@@ -937,3 +938,5 @@ export function failure(code: ErrorCode, message: string, correlationId: string,
 export function isApiError(value: unknown): value is ApiErrorBody {
   return typeof value === "object" && value !== null && "error" in value;
 }
+
+export * from "./api-catalog.js";

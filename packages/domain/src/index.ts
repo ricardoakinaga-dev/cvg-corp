@@ -426,7 +426,7 @@ export class CvgStore {
     return options;
   }
 
-  resolveContext(userId: OpaqueId, selector: ContextSelector, purpose: string, correlationId: string, patientId: OpaqueId | null = null, encounterId: OpaqueId | null = null): CvgContext {
+  resolveContext(userId: OpaqueId, selector: ContextSelector, purpose: string, correlationId: string, patientId: OpaqueId | null = null, encounterId: OpaqueId | null = null, sessionId: OpaqueId | null = null): CvgContext {
     const user = this.getUser(userId);
     const assignments = this.effectiveAssignments(userId, user.organizationId);
     const unit = selector.unitId ? this.units.get(selector.unitId) : undefined;
@@ -435,7 +435,7 @@ export class CvgStore {
     if (workspace && (workspace.organizationId !== user.organizationId || (unit && workspace.unitId !== unit.id))) throw new DomainError("NOT_FOUND", "Contexto não encontrado.", 404);
     const matching = assignments.filter((assignment) => this.assignmentMatches(assignment, unit?.id ?? null, workspace?.id ?? null));
     if (!matching.length) throw new DomainError("FORBIDDEN", "O ator não possui autorização para este contexto.", 403);
-    return { organizationId: user.organizationId, unitId: unit?.id ?? null, workspaceId: workspace?.id ?? null, actorId: userId, actorRoleSnapshot: [...new Set(matching.map((assignment) => assignment.role))], patientId, encounterId, purpose, policyRevision: String(this.organizations.get(user.organizationId)?.authorizationRevision ?? 0n), correlationId };
+    return { organizationId: user.organizationId, unitId: unit?.id ?? null, workspaceId: workspace?.id ?? null, actorId: userId, sessionId, actorRoleSnapshot: [...new Set(matching.map((assignment) => assignment.role))], patientId, encounterId, purpose, policyRevision: String(this.organizations.get(user.organizationId)?.authorizationRevision ?? 0n), correlationId };
   }
 
   private assignmentMatches(assignment: RoleAssignment, unitId: OpaqueId | null, workspaceId: OpaqueId | null): boolean {
@@ -477,13 +477,17 @@ export class CvgStore {
    * policy revision change.
    */
   validateContext(context: CvgContext): void {
-    if (!context || typeof context !== "object" || !context.organizationId || !context.actorId || !Array.isArray(context.actorRoleSnapshot) || typeof context.purpose !== "string" || !context.purpose.trim() || typeof context.correlationId !== "string" || !context.correlationId.trim()) {
+    if (!context || typeof context !== "object" || !context.organizationId || !context.actorId || (context.sessionId !== null && !context.sessionId) || !Array.isArray(context.actorRoleSnapshot) || typeof context.purpose !== "string" || !context.purpose.trim() || typeof context.correlationId !== "string" || !context.correlationId.trim()) {
       throw new DomainError("POLICY_DENIED", "O contexto de segurança é inválido.", 403);
     }
     const organization = this.organizations.get(context.organizationId);
     const actor = this.users.get(context.actorId);
     if (!organization || organization.status !== "ACTIVE" || !actor || actor.organizationId !== organization.id || actor.status !== "ACTIVE") {
       throw new DomainError("POLICY_DENIED", "O contexto de segurança não está ativo.", 403);
+    }
+    if (context.sessionId !== null) {
+      const session = this.sessions.get(context.sessionId);
+      if (!session || session.organizationId !== organization.id || session.userId !== context.actorId || session.revokedAt !== null || Date.parse(session.expiresAt) <= Date.now()) throw new DomainError("UNAUTHENTICATED", "A sessão vinculada ao contexto não está ativa.", 401);
     }
     if (!/^\d{1,18}$/.test(context.policyRevision)) {
       throw new DomainError("POLICY_STALE", "A versão da policy não pode ser validada.", 409);
@@ -977,6 +981,33 @@ export function idempotent<T>(store: CvgStore, input: IdempotencyInput, execute:
   store.commandReceipts.set(lookup, receipt);
   try {
     const value = execute();
+    receipt.status = "SUCCEEDED";
+    receipt.result = clone(value);
+    receipt.completedAt = now();
+    return { receipt, value, replayed: false };
+  } catch (error) {
+    receipt.status = error instanceof DomainError && error.code === "OUTCOME_UNKNOWN" ? "OUTCOME_UNKNOWN" : "FAILED";
+    receipt.result = null;
+    receipt.completedAt = now();
+    throw error;
+  }
+}
+
+/** Runs one idempotent command whose implementation crosses an asynchronous adapter. */
+export async function idempotentAsync<T>(store: CvgStore, input: IdempotencyInput, execute: () => Promise<T>): Promise<{ receipt: CommandReceipt; value: T; replayed: boolean }> {
+  const lookup = idempotencyLookup(input);
+  const bodyDigest = digest({ v: 1, body: input.body });
+  const existing = store.commandReceipts.get(lookup);
+  if (existing) {
+    if (existing.bodyDigest !== bodyDigest) throw new DomainError("IDEMPOTENCY_CONFLICT", "A chave já foi usada com outro corpo.", 409);
+    if (existing.status === "SUCCEEDED") return { receipt: existing, value: existing.result as T, replayed: true };
+    if (existing.status === "IN_FLIGHT" || existing.status === "OUTCOME_UNKNOWN") throw new DomainError("OUTCOME_UNKNOWN", "A execução anterior permanece em reconciliação.", 409, { receiptId: existing.id });
+    throw new DomainError("CONFLICT", "A execução anterior falhou; use uma nova intenção.", 409);
+  }
+  const receipt: CommandReceipt = { id: makeId(), organizationId: input.organizationId, actorId: input.actorId, unitId: input.unitId, workspaceId: input.workspaceId, auditRecordId: null, operation: input.operation, idempotencyLookup: lookup, bodyDigest, status: "IN_FLIGHT", result: null, createdAt: now(), completedAt: null };
+  store.commandReceipts.set(lookup, receipt);
+  try {
+    const value = await execute();
     receipt.status = "SUCCEEDED";
     receipt.result = clone(value);
     receipt.completedAt = now();

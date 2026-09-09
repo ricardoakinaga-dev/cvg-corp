@@ -16,6 +16,8 @@
     "dev": "tsx scripts/dev.ts",
     "start": "npm run dev:api",
     "dev:api": "tsx apps/api/src/server.ts",
+    "dev:worker": "tsx apps/worker/src/main.ts",
+    "worker": "npm run dev:worker",
     "dev:web": "vite --config apps/web/vite.config.ts --host 127.0.0.1",
     "build": "tsc -p tsconfig.json --noEmit && vite build --config apps/web/vite.config.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
@@ -24,7 +26,9 @@
     "test:integration": "node --import tsx --test tests/integration/*.test.ts",
     "test:e2e": "playwright test",
     "test:restore": "node --import tsx --test tests/integration/restore.test.ts",
+    "benchmark:local": "tsx scripts/benchmark-local.ts",
     "verify:static": "tsx scripts/verify-static.ts",
+    "verify:production": "tsx scripts/verify-production.ts",
     "verify:m1": "npm run typecheck && npm test && npm run build && npm run verify:static",
     "verify:all": "npm run verify:m1 && npm run test:e2e",
     "verify:postgres": "tsx scripts/verify-postgres.ts",
@@ -32,8 +36,9 @@
     "db:migrate": "tsx scripts/db.ts migrate",
     "db:check": "tsx scripts/db.ts check",
     "bootstrap": "tsx scripts/bootstrap.ts",
-    "audit:tokens": "python3 -B /home/ricardo/.codex/skills/design-director/scripts/audit_design_tokens.py apps/web/src --strict",
-    "audit:contrast": "python3 -B /home/ricardo/.codex/skills/design-director/scripts/check_contrast.py --foreground '#385263' --background '#f5f8f6' && python3 -B /home/ricardo/.codex/skills/design-director/scripts/check_contrast.py --foreground '#59717c' --background '#f5f8f6' && python3 -B /home/ricardo/.codex/skills/design-director/scripts/check_contrast.py --foreground '#ffffff' --background '#08786f' && python3 -B /home/ricardo/.codex/skills/design-director/scripts/check_contrast.py --foreground '#a83f3c' --background '#fbe7e1' && python3 -B /home/ricardo/.codex/skills/design-director/scripts/check_contrast.py --foreground '#8d5d0e' --background '#fff2d4'"
+    "audit:licenses": "tsx scripts/verify-licenses.ts",
+    "audit:tokens": "tsx scripts/audit-design-tokens.ts apps/web/src --strict",
+    "audit:contrast": "tsx scripts/check-contrast.ts"
   },
   "dependencies": {
     "@fastify/cookie": "^11.0.2",

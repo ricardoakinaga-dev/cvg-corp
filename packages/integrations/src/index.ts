@@ -1,5 +1,7 @@
 import type { OpaqueId } from "@cvg/contracts";
 import { DomainError, digest, makeId, now } from "@cvg/domain";
+import { existsSync, readFileSync } from "node:fs";
+import { join, resolve, sep } from "node:path";
 import type { DurableExternalEffectInput, DurableExternalEffectOutcome, DurableExternalEffectRecord, DurableExternalReconciliationEvidence, DurableInboxInput, DurableOutboxInput, DurableOutboxRecord, PostgresPersistence } from "@cvg/persistence";
 
 export interface IntegrationContract {
@@ -30,6 +32,7 @@ export type SecretProviderStatus = "READY" | "UNAVAILABLE" | "NOT_CONFIGURED" | 
 export interface SecretProvider {
   status(): SecretProviderStatus;
   has(reference: string): boolean;
+  resolve?(reference: string): Promise<string | null>;
 }
 
 /** Synthetic-only reference registry for tests and local wiring. */
@@ -47,6 +50,71 @@ export class StaticSecretProvider implements SecretProvider {
   has(reference: string): boolean {
     return this.references.has(reference);
   }
+
+  async resolve(reference: string): Promise<string | null> {
+    void reference;
+    return null;
+  }
+}
+
+/** Reads only explicitly named CVG_SECRET_* environment variables. */
+export class EnvironmentSecretProvider implements SecretProvider {
+  constructor(private readonly environment: NodeJS.ProcessEnv = process.env, private readonly prefix = "CVG_SECRET_") {}
+
+  status(): SecretProviderStatus {
+    return Object.entries(this.environment).some(([key, value]) => key.startsWith(this.prefix) && typeof value === "string" && value.length > 0) ? "READY" : "NOT_CONFIGURED";
+  }
+
+  has(reference: string): boolean {
+    return this.key(reference) in this.environment && Boolean(this.environment[this.key(reference)]);
+  }
+
+  async resolve(reference: string): Promise<string | null> {
+    if (!this.has(reference)) return null;
+    return this.environment[this.key(reference)] ?? null;
+  }
+
+  private key(reference: string): string {
+    if (!/^[A-Za-z0-9._:-]{1,160}$/.test(reference)) return "__INVALID_SECRET_REFERENCE__";
+    return `${this.prefix}${reference.replace(/[^A-Za-z0-9]/g, "_").toUpperCase()}`;
+  }
+}
+
+/** Reads one secret file below an explicitly configured directory; traversal is rejected. */
+export class FileSecretProvider implements SecretProvider {
+  private readonly root: string;
+
+  constructor(rootDirectory: string) {
+    this.root = resolve(rootDirectory);
+  }
+
+  status(): SecretProviderStatus {
+    return existsSync(this.root) ? "DEGRADED" : "NOT_CONFIGURED";
+  }
+
+  has(reference: string): boolean {
+    const file = this.file(reference);
+    return file !== null && existsSync(file);
+  }
+
+  async resolve(reference: string): Promise<string | null> {
+    const file = this.file(reference);
+    if (!file || !existsSync(file)) return null;
+    return readFileSync(file, "utf8").trim() || null;
+  }
+
+  private file(reference: string): string | null {
+    if (!/^[A-Za-z0-9._:-]{1,160}$/.test(reference)) return null;
+    const file = resolve(join(this.root, reference));
+    return file === this.root || file.startsWith(`${this.root}${sep}`) ? file : null;
+  }
+}
+
+export function configuredSecretProvider(kind: "none" | "env" | "file" | "vault" | "aws" | "gcp" | "azure" | "kubernetes", environment: NodeJS.ProcessEnv = process.env, fileRoot = environment.CVG_SECRET_DIR ?? "/run/secrets/cvg"): SecretProvider | null {
+  if (kind === "none") return null;
+  if (kind === "env") return new EnvironmentSecretProvider(environment);
+  if (kind === "file") return new FileSecretProvider(fileRoot);
+  return new StaticSecretProvider([]);
 }
 
 export interface IntegrationAttempt {

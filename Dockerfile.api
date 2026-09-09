@@ -1,0 +1,36 @@
+# syntax=docker/dockerfile:1
+
+FROM node:24.20.0-bookworm-slim AS dependencies
+
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+COPY apps ./apps
+COPY packages ./packages
+COPY db ./db
+COPY scripts ./scripts
+COPY docker ./docker
+
+RUN npm ci --include=dev --ignore-scripts
+
+FROM dependencies AS verified
+
+RUN npm run typecheck
+
+# The repository currently ships TypeScript source without an emit step. Keep
+# the checked source and tsx loader together until a dedicated production
+# compiler/bundle is introduced by the application owners.
+FROM verified AS runtime
+
+ENV NODE_ENV=production \
+    NPM_CONFIG_FUND=false \
+    NPM_CONFIG_UPDATE_NOTIFIER=false
+
+USER node
+
+EXPOSE 4310
+
+HEALTHCHECK --interval=10s --timeout=4s --start-period=30s --retries=6 \
+  CMD node --input-type=module -e "fetch('http://127.0.0.1:4310/api/v1/ready').then(async (response) => { const body = await response.json(); if (!response.ok || body?.data?.ready !== true) process.exit(1); }).catch(() => process.exit(1))"
+
+ENTRYPOINT ["node", "--import", "tsx", "apps/api/src/server.ts"]

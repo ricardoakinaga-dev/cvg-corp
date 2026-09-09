@@ -1,8 +1,8 @@
 # Estado da implementação local
 
 **Data da leitura:** 2026-09-08
-**Escopo:** artifact local-first, dados sintéticos, loopback, memória descartável por padrão e PostgreSQL sintético verificado separadamente.
-**Veredito atual:** `FAIL` na barra integral; o recorte local é demonstrável, mas não é release de produção.
+**Escopo:** artifact local-first em evolução vNext, dados sintéticos, loopback, memória descartável por padrão e PostgreSQL verificável somente quando uma instância explícita estiver disponível.
+**Veredito atual:** `FAIL_WITH_LIMITATIONS` na barra v3; os gates locais determinísticos passam, mas não há release de produção.
 
 Esta página é o estado corrente da implementação e complementa os registros históricos de preparação e veredito em [10](10-preparacao-m1.md) e [09](09-gauntlet-verdict.md). Os documentos históricos continuam válidos como registro do que era proposto ou ainda não executado naquele momento; esta página não transforma seus aceites documentais em aprovação operacional.
 
@@ -13,7 +13,7 @@ Esta página é o estado corrente da implementação e complementa os registros 
 - Domínio em `packages/domain`, com store isolado em memória e invariantes para pacientes, agenda/fila, encontros, documentos clínicos/addenda, diagnóstico/amostras/resultados, hospitalização, medicação/dispensação/administração, estoque por unidade, cobranças/ledger por unidade, comunicação staged e conhecimento D0–D2.
 - Harness local determinístico em `packages/harness`, com registro de tools, policy, budget pré-turno, prompt injection em quarentena, approval contextual one-shot, provenance e replay.
 - Interface React/Vite em `apps/web`, com estados de loading/empty/error, aviso de ambiente, caminho manual, telas operacionais, navegação por teclado, menu responsivo e capturas nativas em 375/768/1440.
-- Migrations SQL em `db/migrations/001_initial.sql`–`018_require_patient_context.sql`, compose local e `PostgresPersistence` formam uma fatia transacional executável: bootstrap, lock advisory, CAS de revisão, journal/snapshot com escopo organizacional, projeções normalizadas, leituras de guardians/patients/appointments, escopo contextual de paciente/tutor, ledgers independentes de auditoria/receipts, outbox com lease/fencing, usage ledger idempotente, inbox atômico com schema/assinatura verificados, efeitos externos com recibo obrigatório, reconciliação explícita, `FORCE RLS` em 54/54 tabelas de domínio e FKs cross-table com proveniência organizacional ocorrem em caminhos verificados. O JSONB ainda é a fonte agregada de reconstrução; repositories normalizados completos, PDP de negócio por unidade/workspace, provider real e consulta externa de reconciliação ainda não foram promovidos.
+- Migrations SQL em `db/migrations/001_initial.sql`–`019_runtime_scope_guards.sql`, compose local e `PostgresPersistence` formam uma fatia transacional executável: bootstrap, lock advisory, CAS de revisão, journal/snapshot com escopo organizacional, projeções normalizadas, leituras de guardians/patients/appointments, escopo contextual de paciente/tutor, ledgers independentes de auditoria/receipts, outbox com lease/fencing, usage ledger idempotente, inbox atômico com schema/assinatura verificados, efeitos externos com recibo obrigatório, reconciliação explícita, `FORCE RLS` em 54/54 tabelas de domínio, FKs cross-table com proveniência organizacional e escopo obrigatório nas projeções de IA. O JSONB ainda é a fonte agregada de reconstrução; repositories normalizados completos, PDP universal por unidade/workspace, provider real e consulta externa de reconciliação ainda não foram promovidos.
 
 ## Matriz de evidência da barra v2
 
@@ -164,3 +164,23 @@ O critic `Galileo` (`01a0833c-36b2-7f70-92cc-bf05a0fa62d7`) produziu um parecer 
 O único achado técnico novo diretamente corrigível — leitura de pacientes/tutores sem unidade nas policies RLS — foi fechado pela migration aditiva `018_require_patient_context.sql`, pelo PDP em memória e por uma asserção negativa no verificador. A reexecução passou `verify:postgres` com migrations `001`–`018`, 54/54 tabelas sob `FORCE RLS`, 94 FKs organizacionais e zero visibilidade sem unidade. Continuam abertos PDP/ABAC completo, provider/secret-provider e consulta externa reais, backup gerenciado, replay pós-watermark, stores externos, fault/workload, RTO/RPO/SLO, browsers adicionais, acessibilidade profunda e aceite humano.
 
 O resultado consolidado da rodada é `FAIL_WITH_LIMITATIONS`: evidência local sintética suficiente para continuar desenvolvimento, insuficiente para `VERIFIED`, `RELEASE_READY`, dados reais, homologação, piloto ou produção.
+
+## 22. Fechamento da fotografia vNext — 2026-09-08 22:53
+
+Depois da crítica independente, a fundação vNext foi integrada ao artifact corrente: runtime/policy/tools tipados, bridge DeepSeek fail-closed, catálogo de rotas v1, application services, read repositories e `DomainCommandService`, PDP de aplicação no request boundary, worker isolado em quarentena, máquina de estados web, Compose/Dockerfiles, telemetria OTel redigida, runbooks, barra v3, scorecard e verificador de release. O prompt preservado em `docs/prompt-state-of-the-art-triplo-aaa.md` continua byte-a-byte idêntico à fonte anexada.
+
+Evidência local mais recente:
+
+- `npm run typecheck`: **PASS**;
+- `npm test`: **56/56 PASS**;
+- `npm run build`: **PASS**;
+- `npm run verify:static`: **PASS** — 23 artefatos e 97 arquivos-fonte; inclui bloqueio estático de mutações de domínio diretamente no HTTP layer;
+- `npm run test:e2e`: **15/15 PASS** em Chromium, projetos mobile 375, tablet 768 e desktop 1440;
+- `npm run audit:contrast`: **PASS**; `npm run audit:tokens -- --strict`: **PASS**, zero high/critical e 72 sinais médios heurísticos;
+- `npm audit --omit=dev`, `npm run audit:licenses` (193 dependências de terceiros), SBOM CycloneDX e `git diff --check`: **PASS**;
+- `npm run benchmark:local`: **PASS limitado**, com amostras brutas da fixture local e sem SLO;
+- `node --import tsx scripts/verify-production.ts`: **PASS limitado**, artifacts e Compose estrutural validados, nenhum serviço iniciado.
+
+Os comandos de design foram internalizados em `scripts/check-contrast.ts` e `scripts/audit-design-tokens.ts`, eliminando a dependência de `/home/ricardo/` para build e verificação. O workflow adiciona Dependabot, política de licenças e scan Trivy de imagens; o scan de imagens não foi executado neste host porque o daemon Docker não está disponível.
+
+O veredito permanece **`FAIL_WITH_LIMITATIONS`** e a tarefa continua `IN_PROGRESS`/`PARTIAL`. Ainda não há evidência de PostgreSQL/Docker production-like nesta fotografia, MFA/secret manager real, processo DeepSeek real, provider/receipt/reconciliation externos, sink habilitado, fault/recovery distribuído, carga e SLO/RTO/RPO medidos, browsers Firefox/WebKit, axe/leitor de tela ou aceite humano independente. Nenhum dado real, segredo, egress, break-glass, deploy, piloto ou produção foi acionado; Triplo AAA continua inelegível pela barra congelada.

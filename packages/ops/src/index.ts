@@ -1,4 +1,5 @@
 import type { CvgMetrics } from "@cvg/contracts";
+import { randomUUID } from "node:crypto";
 
 export interface MetricsSignals {
   dependencies?: Partial<CvgMetrics["dependencies"]>;
@@ -15,6 +16,27 @@ export interface RedactedLog {
   metadata: Record<string, string | number | boolean | null>;
 }
 
+export type TelemetryAttribute = string | number | boolean | null;
+
+export interface OtelSpan {
+  traceId: string;
+  spanId: string;
+  name: string;
+  startedAt: number;
+  finishedAt: number;
+  statusCode: number;
+  attributes: Record<string, TelemetryAttribute>;
+}
+
+export interface TelemetryExporter {
+  export(span: OtelSpan): void | Promise<void>;
+}
+
+export interface OpsTelemetryOptions {
+  exporter?: TelemetryExporter;
+  maxSpans?: number;
+}
+
 export class OpsTelemetry {
   private readonly latencies: number[] = [];
   private requestsTotal = 0;
@@ -24,6 +46,15 @@ export class OpsTelemetry {
   private readonly operations = new Map<string, number>();
   private readonly statusCodes = new Map<string, number>();
   readonly logs: RedactedLog[] = [];
+  readonly spans: OtelSpan[] = [];
+  private readonly exporter: TelemetryExporter | null;
+  private readonly maxSpans: number;
+  private droppedSpans = 0;
+
+  constructor(options: OpsTelemetryOptions = {}) {
+    this.exporter = options.exporter ?? null;
+    this.maxSpans = Math.max(1, Math.min(options.maxSpans ?? 500, 10_000));
+  }
 
   requestStarted(): number {
     this.requestsTotal += 1;
@@ -45,6 +76,31 @@ export class OpsTelemetry {
   log(entry: RedactedLog): void {
     const sanitized = { ...entry, metadata: Object.fromEntries(Object.entries(entry.metadata).map(([key, value]) => [key, /password|secret|token|credential|prompt/i.test(key) ? "[REDACTED]" : value])) };
     this.logs.push(sanitized);
+  }
+
+  startSpan(name: string, attributes: Record<string, TelemetryAttribute> = {}): { traceId: string; spanId: string; name: string; startedAt: number; attributes: Record<string, TelemetryAttribute> } {
+    return { traceId: randomUUID(), spanId: randomUUID(), name, startedAt: Date.now(), attributes: this.redactAttributes(attributes) };
+  }
+
+  finishSpan(span: { traceId: string; spanId: string; name: string; startedAt: number; attributes: Record<string, TelemetryAttribute> }, statusCode: number): void {
+    const finished: OtelSpan = { ...span, finishedAt: Date.now(), statusCode, attributes: this.redactAttributes(span.attributes) };
+    if (this.spans.length >= this.maxSpans) {
+      this.spans.shift();
+      this.droppedSpans += 1;
+    }
+    this.spans.push(finished);
+    if (this.exporter) {
+      try {
+        const result = this.exporter.export(finished);
+        if (result instanceof Promise) void result.catch(() => { this.droppedSpans += 1; });
+      } catch {
+        this.droppedSpans += 1;
+      }
+    }
+  }
+
+  private redactAttributes(attributes: Record<string, TelemetryAttribute>): Record<string, TelemetryAttribute> {
+    return Object.fromEntries(Object.entries(attributes).map(([key, value]) => [key, /password|secret|token|credential|prompt|content/i.test(key) ? "[REDACTED]" : value]));
   }
 
   metrics(storageMode: "memory" | "postgres", signals: MetricsSignals = {}): CvgMetrics {
@@ -79,7 +135,7 @@ export class OpsTelemetry {
       dependencies,
       domain,
       queues,
-      telemetry: { mode: "REDACTED_BEST_EFFORT", logsStored: this.logs.length, dropped: 0, duplicates: 0 }
+      telemetry: { mode: "REDACTED_BEST_EFFORT", logsStored: this.logs.length, dropped: this.droppedSpans, duplicates: 0 }
     };
   }
 }

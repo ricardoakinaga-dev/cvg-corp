@@ -1,0 +1,16 @@
+{
+  "name": "@cvg/worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/main.ts"
+  },
+  "dependencies": {
+    "@cvg/config": "*",
+    "@cvg/contracts": "*",
+    "@cvg/domain": "*",
+    "@cvg/integrations": "*",
+    "@cvg/persistence": "*"
+  }
+}

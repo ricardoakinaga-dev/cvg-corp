@@ -1,11 +1,14 @@
 {
   "name": "@cvg/harness",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
   "exports": {
     ".": "./src/index.ts"
   },
   "dependencies": {
+    "@cvg/agent-policy": "*",
+    "@cvg/agent-tools": "*",
     "@cvg/contracts": "*",
     "@cvg/domain": "*"
   }

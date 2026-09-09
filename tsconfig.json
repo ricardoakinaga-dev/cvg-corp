@@ -24,7 +24,12 @@
       "@cvg/harness": ["packages/harness/src/index.ts"],
       "@cvg/integrations": ["packages/integrations/src/index.ts"],
       "@cvg/ops": ["packages/ops/src/index.ts"],
-      "@cvg/persistence": ["packages/persistence/src/index.ts"]
+      "@cvg/persistence": ["packages/persistence/src/index.ts"],
+      "@cvg/agent-policy": ["packages/agent-policy/src/index.ts"],
+      "@cvg/agent-tools": ["packages/agent-tools/src/index.ts"],
+      "@cvg/agent-runtime": ["packages/agent-runtime/src/index.ts"],
+      "@cvg/harness-adapters": ["packages/harness-adapters/src/index.ts"],
+      "@cvg/config": ["packages/config/src/index.ts"]
     }
   },
   "include": [

@@ -1,8 +1,9 @@
 {
   "name": "@cvg/web",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
-  "scripts": {"dev":"vite --host 127.0.0.1","build":"vite build"},
+  "scripts": {"dev":"cd ../.. && vite --config apps/web/vite.config.ts --host 127.0.0.1","typecheck":"tsc --noEmit --pretty false --target ES2023 --lib ES2023,DOM,DOM.Iterable --module ESNext --moduleResolution Bundler --jsx react-jsx --strict --noUncheckedIndexedAccess --exactOptionalPropertyTypes --noFallthroughCasesInSwitch --noImplicitOverride --forceConsistentCasingInFileNames --skipLibCheck --allowImportingTsExtensions --verbatimModuleSyntax --esModuleInterop --types node,vite/client src/main.tsx","build":"cd ../.. && vite build --config apps/web/vite.config.ts"},
   "dependencies": {"@cvg/contracts":"*","react":"^19.1.1","react-dom":"^19.1.1"},
   "devDependencies": {"@vitejs/plugin-react":"^5.0.2","vite":"^7.1.5","typescript":"^5.9.2"}
 }

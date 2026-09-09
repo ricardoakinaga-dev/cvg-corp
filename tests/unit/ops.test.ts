@@ -14,3 +14,15 @@ test("redacted telemetry preserves safe diagnostics and removes sensitive metada
   });
   assert.deepEqual(telemetry.logs[0]?.metadata, { databaseCode: "23505", constraint: "role_assignments_active_unique", password: "[REDACTED]", prompt: "[REDACTED]" });
 });
+
+test("telemetry exposes an OpenTelemetry-compatible span seam without sensitive attributes", async () => {
+  const exported: string[] = [];
+  const telemetry = new OpsTelemetry({ exporter: { export: (span) => { exported.push(span.name); } }, maxSpans: 1 });
+  const span = telemetry.startSpan("GET /patients", { requestId: "request-1", prompt: "clinical text", organizationId: "org-1" });
+  telemetry.finishSpan(span, 200);
+  assert.equal(telemetry.spans[0]?.statusCode, 200);
+  assert.equal(telemetry.spans[0]?.attributes.prompt, "[REDACTED]");
+  assert.deepEqual(exported, ["GET /patients"]);
+  const metrics = telemetry.metrics("memory");
+  assert.equal(metrics.telemetry.dropped, 0);
+});

@@ -6,10 +6,10 @@ Este diretório contém a documentação da arquitetura-alvo de um programa de g
 
 | Campo | Estado |
 |---|---|
-| Fase | BUILD B1–B6 local sintético; slice PostgreSQL transacional com migrations 001–014, leituras normalizadas, outbox/usage, inbox/efeitos externos, RLS forçado no catálogo de domínio e FKs com proveniência organizacional, além de restore AES-256-GCM em quarentena, verificados em banco sintético |
-| Escopo desta fase | B1–B6 locais verificados, mais a fatia PostgreSQL sintética; aceite operacional independente e produção continuam pendentes, evidências em 07 e 12 |
-| Motor proposto | `deepseek-harness` como runtime plugável de agentes |
-| Qualidade | barra v2 integral `FAIL`; recorte local demonstrável, produção bloqueada |
+| Fase | BUILD vNext; fundação de runtime/policy/tools, API e web modulares, worker separado, migrations 001–019, release artifacts e verificação local determinística |
+| Escopo desta fase | Evolução brownfield controlada; mock/sintético e PostgreSQL local continuam permitidos; aceite operacional independente e produção continuam pendentes |
+| Motor proposto | `AgentRuntime` com adapter Mock e ponte DeepSeek opcional; protocolo externo ainda não provado |
+| Qualidade | barra v3 `FAIL_WITH_LIMITATIONS`; recorte local executável, produção bloqueada |
 | Fonte de verdade clínica | O domínio transacional do CVG, não a conversa do agente |
 | Próximo gate | PDP de negócio e autorização contextual completa, provider/consulta externa real, secret-provider e backup operacional gerenciado, cache offline autorizado, fault/crash drills, SLOs e aceite independente |
 
@@ -32,6 +32,20 @@ Este diretório contém a documentação da arquitetura-alvo de um programa de g
 13. [`11-transicao-para-producao.md`](11-transicao-para-producao.md) — demonstração, homologação, piloto e produção por escopo, com critérios de passagem.
 
 14. [`12-estado-da-implementacao.md`](12-estado-da-implementacao.md) — matriz corrente de evidências, limites do runtime local e reprodução dos gates.
+15. [`architecture-audit-vNext.md`](architecture-audit-vNext.md) — auditoria brownfield e plano de migração vNext.
+16. [`production-readiness-vNext.md`](production-readiness-vNext.md) — gate operacional e dependências ainda bloqueadas.
+17. [`security-review-vNext.md`](security-review-vNext.md) — controles de segurança, dados e lacunas.
+18. [`ai-runtime-vNext.md`](ai-runtime-vNext.md) — runtime, tools, PDP, adapter e proveniência.
+19. [`deployment-vNext.md`](deployment-vNext.md) — artifact, Compose, CI, worker e runbooks.
+20. [`verification-vNext.md`](verification-vNext.md) — comandos executados e evidência atual.
+21. [`state-of-the-art-scorecard.md`](state-of-the-art-scorecard.md) — scorecard honesto da barra v3.
+22. [`benchmarks/local-baseline.md`](benchmarks/local-baseline.md) — metodologia e baseline sintético, sem SLO de produção.
+23. [`fault-matrix-vNext.md`](fault-matrix-vNext.md) — cenários de falha, recuperação e limites de execução.
+24. [`error-taxonomy-vNext.md`](error-taxonomy-vNext.md) — envelope e taxonomia estável de erros.
+
+Os procedimentos operacionais estão em [`runbooks/`](runbooks/), incluindo deploy, rollback, backup/restore, incidentes de banco e segurança, indisponibilidade de provider/DeepSeek, rotação de credenciais, backlog do worker, quarentena e o break-glass ainda bloqueado.
+
+As decisões técnicas vNext estão em [`adr/`](adr/), com boundaries de runtime, PDP, tools, persistência, worker, secrets, release, DeepSeek, RLS, approval, fonte de verdade da IA e restore.
 
 ## Princípio de leitura
 

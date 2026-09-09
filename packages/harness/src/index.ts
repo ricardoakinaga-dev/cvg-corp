@@ -1,7 +1,9 @@
 import { createHash } from "node:crypto";
-import type { AiApproval, AiDraft, AiSession, AiTurn, CvgContext, OpaqueId, Role } from "@cvg/contracts";
+import type { AiApproval, AiDraft, AiSession, AiTurn, CvgContext, DataClass, OpaqueId, Role } from "@cvg/contracts";
 import type { AiTurnInput } from "@cvg/contracts";
 import { CvgStore, DomainError, digest, isInContext, makeId, now } from "@cvg/domain";
+import { StaticPolicyDecisionPoint } from "@cvg/agent-policy";
+import { ToolGateway, ToolGatewayError } from "@cvg/agent-tools";
 
 export const DSH_ENGINE_COMMIT = "6454e3270642c3a7551dcae4f7447e4032febd77";
 export const DSH_MANIFEST_VERSION = "0.1.1-rc.2";
@@ -10,21 +12,36 @@ export type ToolRisk = "READ_ONLY" | "DRAFT" | "REVERSIBLE" | "HIGH_IMPACT";
 
 export interface GovernedTool {
   name: string;
+  version: string;
   description: string;
+  operation: string;
   risk: ToolRisk;
+  approvalMode: "NONE" | "SAME_ACTOR" | "INDEPENDENT";
   allowedRoles: Role[];
   requiresApproval: boolean;
+  idempotency: "REQUIRED" | "OPTIONAL";
+  auditAction: string;
+  secretRefs: readonly string[];
   capability: string;
+  acceptedDataClasses: readonly DataClass[];
+  scope: "ORGANIZATION" | "UNIT" | "WORKSPACE";
 }
 
 export const TOOL_REGISTRY: GovernedTool[] = [
-  { name: "cvg.patient.read", description: "Ler dados mínimos de um paciente no escopo", risk: "READ_ONLY", allowedRoles: ["admin", "veterinario", "recepcao"], requiresApproval: false, capability: "patients:read" },
-  { name: "cvg.agenda.read", description: "Consultar agenda e fila autorizadas", risk: "READ_ONLY", allowedRoles: ["admin", "veterinario", "recepcao"], requiresApproval: false, capability: "appointments:read" },
-  { name: "cvg.clinical.draft", description: "Gerar rascunho clínico sem alterar prontuário", risk: "DRAFT", allowedRoles: ["admin", "veterinario"], requiresApproval: false, capability: "clinical:draft" },
-  { name: "cvg.communication.stage", description: "Preparar comunicação para revisão humana", risk: "REVERSIBLE", allowedRoles: ["admin", "veterinario", "recepcao"], requiresApproval: true, capability: "communication:stage" },
-  { name: "cvg.stock.dispense", description: "Dispensar item de estoque", risk: "HIGH_IMPACT", allowedRoles: ["admin", "estoque"], requiresApproval: true, capability: "stock:write" },
-  { name: "cvg.finance.refund", description: "Solicitar estorno financeiro", risk: "HIGH_IMPACT", allowedRoles: ["admin", "financeiro"], requiresApproval: true, capability: "finance:refund" }
+  { name: "cvg.patient.read", version: "1.0.0", description: "Ler dados mínimos de um paciente no escopo", operation: "patients.read", risk: "READ_ONLY", approvalMode: "NONE", allowedRoles: ["admin", "veterinario", "recepcao"], requiresApproval: false, idempotency: "REQUIRED", auditAction: "patients.read", secretRefs: [], capability: "patients:read", acceptedDataClasses: ["D2", "D3"], scope: "WORKSPACE" },
+  { name: "cvg.agenda.read", version: "1.0.0", description: "Consultar agenda e fila autorizadas", operation: "appointments.read", risk: "READ_ONLY", approvalMode: "NONE", allowedRoles: ["admin", "veterinario", "recepcao"], requiresApproval: false, idempotency: "REQUIRED", auditAction: "appointments.read", secretRefs: [], capability: "appointments:read", acceptedDataClasses: ["D0", "D1"], scope: "WORKSPACE" },
+  { name: "cvg.clinical.draft", version: "1.0.0", description: "Gerar rascunho clínico sem alterar prontuário", operation: "clinical.draft", risk: "DRAFT", approvalMode: "NONE", allowedRoles: ["admin", "veterinario"], requiresApproval: false, idempotency: "REQUIRED", auditAction: "clinical.draft", secretRefs: [], capability: "clinical:draft", acceptedDataClasses: ["D3"], scope: "WORKSPACE" },
+  { name: "cvg.communication.stage", version: "1.0.0", description: "Preparar comunicação para revisão humana", operation: "communication.stage", risk: "REVERSIBLE", approvalMode: "SAME_ACTOR", allowedRoles: ["admin", "veterinario", "recepcao"], requiresApproval: true, idempotency: "REQUIRED", auditAction: "communication.stage", secretRefs: [], capability: "communication:stage", acceptedDataClasses: ["D2", "D3"], scope: "WORKSPACE" },
+  { name: "cvg.stock.dispense", version: "1.0.0", description: "Dispensar item de estoque", operation: "stock.dispense", risk: "HIGH_IMPACT", approvalMode: "INDEPENDENT", allowedRoles: ["admin", "estoque"], requiresApproval: true, idempotency: "REQUIRED", auditAction: "stock.dispense", secretRefs: [], capability: "stock:write", acceptedDataClasses: ["D2"], scope: "UNIT" },
+  { name: "cvg.finance.refund", version: "1.0.0", description: "Solicitar estorno financeiro", operation: "finance.refund", risk: "HIGH_IMPACT", approvalMode: "INDEPENDENT", allowedRoles: ["admin", "financeiro"], requiresApproval: true, idempotency: "REQUIRED", auditAction: "finance.refund", secretRefs: [], capability: "finance:refund", acceptedDataClasses: ["D2"], scope: "UNIT" }
 ];
+
+function policyRisk(risk: ToolRisk): "LOW" | "MEDIUM" | "HIGH" | "CRITICAL" {
+  if (risk === "READ_ONLY") return "LOW";
+  if (risk === "DRAFT") return "MEDIUM";
+  if (risk === "REVERSIBLE") return "MEDIUM";
+  return "CRITICAL";
+}
 
 export interface HarnessTurnResult {
   session: AiSession;
@@ -52,8 +69,12 @@ export interface HarnessHealth {
 export class GovernedHarness {
   private readonly budgetLimit = 12_000;
   private readonly profileDigest = createHash("sha256").update(JSON.stringify(TOOL_REGISTRY)).digest("hex");
+  private readonly toolGateway: ToolGateway;
 
-  constructor(private readonly store: CvgStore) {}
+  constructor(private readonly store: CvgStore) {
+    this.toolGateway = new ToolGateway(new StaticPolicyDecisionPoint("local-synthetic-v1"));
+    for (const tool of TOOL_REGISTRY) this.toolGateway.register({ ...tool, risk: policyRisk(tool.risk), timeoutMs: 5_000, egress: "LOCAL_ONLY", parseInput: (value: unknown) => value });
+  }
 
   health(): HarnessHealth {
     return { engine: "READY", provider: "LOCAL_STUB_ONLY", engineCommit: DSH_ENGINE_COMMIT, manifestVersion: DSH_MANIFEST_VERSION, tools: TOOL_REGISTRY.length, profileDigest: this.profileDigest };
@@ -117,6 +138,23 @@ export class GovernedHarness {
       if (!originalTurn || originalTurn.prompt !== prompt) {
         const turn = this.persistTurn(session, prompt, "DENIED", "Os argumentos diferem do turno aprovado; nenhum dispatch foi realizado.", this.estimateInput(prompt), 0, []);
         throw new DomainError("POLICY_DENIED", "A aprovação está vinculada a outros argumentos.", 403, { turnId: turn.id });
+      }
+    }
+    if (tool) {
+      const approval = approvalId ? this.store.aiApprovals.get(approvalId) : undefined;
+      try {
+        this.toolGateway.authorize(tool.name, {
+          context,
+          sessionId: session.id,
+          resource: { organizationId: context.organizationId, unitId: context.unitId, workspaceId: context.workspaceId, resourceId: input.encounterId ?? input.patientId, dataClass: input.patientId ? "D3" : tool.acceptedDataClasses[0] ?? "D0" },
+          input: { prompt, purpose: input.purpose, patientId: input.patientId, encounterId: input.encounterId },
+          idempotencyKey: input.idempotencyKey,
+          requestDigest: this.approvalRequestDigest(context, session, input, tool.name),
+          ...(approval ? { approval: { approvalId: approval.id, actorId: approval.actorId, approverId: approval.decidedBy, requestDigest: approval.requestDigest, policyRevision: approval.policyRevision, expiresAt: approval.expiresAt, oneShot: true, consumed: approval.decision === "consumed" } } : {})
+        });
+      } catch (error) {
+        if (error instanceof ToolGatewayError) throw new DomainError(error.code, error.message, error.code === "APPROVAL_REQUIRED" ? 409 : 403, error.details);
+        throw error;
       }
     }
     const estimated = this.estimateInput(prompt);

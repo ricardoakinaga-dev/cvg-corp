@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { randomBytes, randomUUID } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
 import { CvgStore, digest, idempotent, serializeSnapshot } from "@cvg/domain";
+import { GovernedHarness } from "@cvg/harness";
 import { createRuntime } from "@cvg/api";
 import { decryptRecoveryBundle, encryptRecoveryBundle, PersistenceConflictError, PersistenceCorruptionError, PersistenceUnavailableError, PostgresPersistence } from "@cvg/persistence";
 
@@ -31,7 +32,7 @@ function fakePool(options: { revision?: string; failSnapshotInsert?: boolean; au
       const normalized = sql.trim().replace(/\s+/g, " ");
       statements.push(normalized);
       if (sql.includes("current_database()")) return { rows: [{ database: "cvg_synthetic", server_version: "16.0" }] };
-      if (sql.includes("to_regclass('public.cvg_state_snapshots')")) return { rows: [{ snapshots: true, journal: true, audit: true, receipts: true, communications: true, outbox: true, usage_ledger: true, inbox: true, external_effects: true }] };
+      if (sql.includes("to_regclass('public.cvg_state_snapshots')")) return { rows: [{ snapshots: true, journal: true, audit: true, receipts: true, communications: true, outbox: true, usage_ledger: true, inbox: true, external_effects: true, runtime_scope_guards: true, ai_turn_scope: true, ai_draft_scope: true }] };
       if (sql.includes("from cvg_state_snapshots s")) return { rows: [] };
       if (sql.includes("select revision::text as revision")) return { rows: revision === "0" ? [] : [{ revision }] };
       return { rows: [] };
@@ -95,6 +96,19 @@ test("Postgres persistence commits journal and snapshot atomically", async () =>
   assert.ok(fake.statements.some((statement) => statement.includes("insert into cvg_command_receipt_ledger")));
   assert.ok(fake.statements.some((statement) => statement.includes("insert into cvg_state_snapshots")));
   assert.ok(fake.statements.some((statement) => statement === "COMMIT"));
+});
+
+test("AI projections derive mandatory tenant scope from the persisted session", async () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const option = store.contextOptions(store.bootstrapCredentials.userId)[0];
+  assert.ok(option);
+  const context = store.resolveContext(store.bootstrapCredentials.userId, { unitId: option.unit.id, workspaceId: option.workspace.id }, "ai.turn.SUMMARY", "ai-projection");
+  new GovernedHarness(store).executeTurn(context, { sessionId: null, prompt: "resumir a fila", purpose: "SUMMARY", patientId: null, encounterId: null, requestedTool: null, approvalId: null, idempotencyKey: "ai-projection-1" });
+  const fake = fakePool();
+  const persistence = new PostgresPersistence({ connectionString: "postgres://synthetic.invalid", pool: fake.pool });
+  await persistence.commit({ ...commitInput(store), snapshot: store.snapshot() });
+  const turnStatement = fake.statements.find((statement) => statement.startsWith("insert into ai_turns"));
+  assert.ok(turnStatement?.includes("organization_id, unit_id, workspace_id, session_id"));
 });
 
 test("normalized read repositories scope the transaction and preserve joined projections", async () => {

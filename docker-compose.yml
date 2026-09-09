@@ -1,21 +1,185 @@
+name: cvg-corp-local
+
 services:
   postgres:
-    image: postgres:18
-    container_name: cvg-corp-postgres
+    image: postgres:18.0-bookworm
     restart: unless-stopped
     environment:
-      POSTGRES_DB: cvg_m1_synthetic
-      POSTGRES_USER: cvg
-      POSTGRES_PASSWORD: cvg_local_only
+      POSTGRES_DB: cvg_local
+      POSTGRES_USER: cvg_app
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be supplied through an external env file}
     ports:
-      - "127.0.0.1:5440:5432"
+      - "127.0.0.1:${CVG_POSTGRES_PORT:-5440}:5432"
     volumes:
       - cvg_corp_pgdata:/var/lib/postgresql
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /run/postgresql
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - backend
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U cvg -d cvg_m1_synthetic"]
+      test: ["CMD-SHELL", "pg_isready -U cvg_app -d cvg_local"]
       interval: 5s
       timeout: 3s
-      retries: 10
+      retries: 12
+      start_period: 10s
+
+  migrate:
+    image: ${CVG_API_IMAGE:-cvg-corp/api:local}
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    command: ["node", "--import", "tsx", "scripts/db.ts", "migrate"]
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL must be supplied with an URL-encoded password}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      disable: true
+    networks:
+      - backend
+
+  api:
+    image: ${CVG_API_IMAGE:-cvg-corp/api:local}
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      CVG_HOST: 0.0.0.0
+      CVG_API_PORT: 4310
+      CVG_WEB_ORIGIN: ${CVG_WEB_ORIGIN:-http://localhost:8080}
+      CVG_STORAGE: postgres
+      CVG_DEMO_MODE: ${CVG_DEMO_MODE:-true}
+      CVG_BOOTSTRAP_PASSWORD: ${CVG_BOOTSTRAP_PASSWORD:?CVG_BOOTSTRAP_PASSWORD must be supplied through an external env file}
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL must be supplied with an URL-encoded password}
+      CVG_SECRET_PROVIDER: ${CVG_SECRET_PROVIDER:-none}
+      CVG_SECRET_DIR: ${CVG_SECRET_DIR:-/run/secrets/cvg}
+      CVG_DEEPSEEK_BASE_URL: ${CVG_DEEPSEEK_BASE_URL:-https://deepseek.invalid}
+      CVG_DEEPSEEK_RUNTIME_ENABLED: ${CVG_DEEPSEEK_RUNTIME_ENABLED:-false}
+      CVG_DEEPSEEK_EXPECTED_ENGINE_COMMIT: ${CVG_DEEPSEEK_EXPECTED_ENGINE_COMMIT:-0000000000000000000000000000000000000000}
+      CVG_DEEPSEEK_EXPECTED_MANIFEST_VERSION: ${CVG_DEEPSEEK_EXPECTED_MANIFEST_VERSION:-local-placeholder}
+      CVG_DEEPSEEK_BEARER_TOKEN_REF: ${CVG_DEEPSEEK_BEARER_TOKEN_REF:-cvg-deepseek-token}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    networks:
+      - backend
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          node --input-type=module -e "fetch('http://127.0.0.1:4310/api/v1/ready').then(async (response) => { const body = await response.json(); if (!response.ok || body?.data?.ready !== true) process.exit(1); }).catch(() => process.exit(1))"
+      interval: 10s
+      timeout: 4s
+      retries: 6
+      start_period: 30s
+
+  web:
+    image: ${CVG_WEB_IMAGE:-cvg-corp/web:local}
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:8080/healthz | grep -qx ok"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+      start_period: 10s
+
+  worker:
+    image: ${CVG_API_IMAGE:-cvg-corp/api:local}
+    command: ["node", "--import", "tsx", "docker/worker.ts"]
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL must be supplied with an URL-encoded password}
+      CVG_ORGANIZATION_ID: ${CVG_ORGANIZATION_ID:-00000000-0000-4000-8000-000000000010}
+      CVG_WORKER_ID: ${CVG_WORKER_ID:-cvg-worker-local}
+      CVG_WORKER_INTERVAL_MS: ${CVG_WORKER_INTERVAL_MS:-5000}
+      CVG_WORKER_SINK_MODE: ${CVG_WORKER_SINK_MODE:-quarantine}
+      CVG_WORKER_HEARTBEAT_FILE: /tmp/cvg-worker/heartbeat
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    networks:
+      - backend
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          test -s /tmp/cvg-worker/heartbeat && test $$(( $$(date +%s) - $$(stat -c %Y /tmp/cvg-worker/heartbeat) )) -lt 60
+      interval: 15s
+      timeout: 3s
+      retries: 4
+      start_period: 20s
+
+  proxy:
+    image: nginxinc/nginx-unprivileged:1.27-alpine
+    ports:
+      - "${CVG_PROXY_BIND:-127.0.0.1}:${CVG_PROXY_PORT:-8080}:8080"
+    volumes:
+      - ./docker/nginx/proxy.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      api:
+        condition: service_healthy
+      web:
+        condition: service_healthy
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    user: "101"
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:8080/healthz | grep -qx ok"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+      start_period: 10s
 
 volumes:
   cvg_corp_pgdata:
+
+networks:
+  backend:
+    internal: true

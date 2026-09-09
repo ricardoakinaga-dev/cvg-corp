@@ -1,14 +1,18 @@
 {
   "name": "@cvg/api",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
   "exports": {
     ".": "./src/server.ts"
   },
   "dependencies": {
+    "@cvg/agent-runtime": "*",
+    "@cvg/config": "*",
     "@cvg/contracts": "*",
     "@cvg/domain": "*",
     "@cvg/harness": "*",
+    "@cvg/harness-adapters": "*",
     "@cvg/integrations": "*",
     "@cvg/ops": "*",
     "@cvg/persistence": "*",

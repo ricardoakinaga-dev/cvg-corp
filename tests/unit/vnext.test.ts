@@ -1,0 +1,186 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { API_ROUTE_CATALOG, id } from "@cvg/contracts";
+import { CvgStore } from "@cvg/domain";
+import { GovernedHarness } from "@cvg/harness";
+import { StaticPolicyDecisionPoint, applicationPolicyFor, assertPolicyAllowed, authorizeApplicationRequest } from "@cvg/agent-policy";
+import { ToolGateway, ToolGatewayError, toolRegistryDigest, type ToolDescriptor } from "@cvg/agent-tools";
+import { DeepSeekHarnessAdapter, MockHarnessAdapter } from "@cvg/harness-adapters";
+import { ConfigError, loadCvgConfig } from "@cvg/config";
+import { createRuntime } from "@cvg/api";
+import { EnvironmentSecretProvider } from "@cvg/integrations";
+import { canRenderContextData, isWriteAllowed, RUNTIME_STATES, runtimeStateReducer, type RuntimeSnapshot } from "../../apps/web/src/state/runtime-state.ts";
+
+function contextFor(store: CvgStore, purpose: string) {
+  const option = store.contextOptions(store.bootstrapCredentials.userId)[0];
+  assert.ok(option);
+  return store.resolveContext(store.bootstrapCredentials.userId, { unitId: option.unit.id, workspaceId: option.workspace.id }, purpose, "vnext-test");
+}
+
+test("vNext PDP rejects foreign scope and requires independent approval", async () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const context = contextFor(store, "communication.stage");
+  const policy = new StaticPolicyDecisionPoint(context.policyRevision);
+  const gateway = new ToolGateway(policy);
+  const descriptor: ToolDescriptor<{ message: string }> = {
+    name: "cvg.test.high-impact",
+    version: "1.0.0",
+    description: "tool fixture",
+    operation: "communication.stage",
+    capability: "communication:stage",
+    risk: "HIGH",
+    approvalMode: "INDEPENDENT",
+    allowedRoles: ["admin"],
+    acceptedDataClasses: ["D2"],
+    scope: "WORKSPACE",
+    requiresApproval: true,
+    idempotency: "REQUIRED",
+    auditAction: "test.high-impact",
+    secretRefs: [],
+    timeoutMs: 1_000,
+    egress: "NONE",
+    parseInput: (value) => {
+      if (typeof value !== "object" || value === null || typeof (value as { message?: unknown }).message !== "string") throw new Error("message required");
+      return value as { message: string };
+    }
+  };
+  gateway.register(descriptor);
+  const resource = { organizationId: context.organizationId, unitId: context.unitId, workspaceId: context.workspaceId, resourceId: null, dataClass: "D2" as const };
+  let calls = 0;
+  await assert.rejects(() => gateway.execute(descriptor.name, { context, resource, input: { message: "send" }, idempotencyKey: "approval-1" }, async () => { calls += 1; return true; }), (error: unknown) => error instanceof ToolGatewayError && error.code === "APPROVAL_REQUIRED");
+  assert.equal(calls, 0);
+
+  const pendingError = await gateway.execute(descriptor.name, { context, resource, input: { message: "send" }, idempotencyKey: "approval-1" }, async () => true).catch((error: unknown) => error);
+  assert.ok(pendingError instanceof ToolGatewayError);
+  const requestDigest = String(pendingError.details.requestDigest);
+  const allowed = await gateway.execute(descriptor.name, {
+    context,
+    resource,
+    input: { message: "send" },
+    idempotencyKey: "approval-1",
+    approval: { approvalId: id("00000000-0000-4000-8000-000000000901"), actorId: context.actorId, approverId: id("00000000-0000-4000-8000-000000000902"), requestDigest, policyRevision: context.policyRevision, expiresAt: new Date(Date.now() + 60_000).toISOString(), oneShot: true, consumed: false }
+  }, async (input: { message: string }) => { calls += 1; return input.message; });
+  assert.equal(allowed.result, "send");
+  const replay = await gateway.execute(descriptor.name, {
+    context,
+    resource,
+    input: { message: "send" },
+    idempotencyKey: "approval-1",
+    approval: { approvalId: id("00000000-0000-4000-8000-000000000901"), actorId: context.actorId, approverId: id("00000000-0000-4000-8000-000000000902"), requestDigest, policyRevision: context.policyRevision, expiresAt: new Date(Date.now() + 60_000).toISOString(), oneShot: true, consumed: false }
+  }, async () => "must-not-run");
+  assert.equal(replay.result, "send");
+  assert.equal(calls, 1);
+
+  const foreign = policy.evaluate({ context, operation: descriptor.operation, sessionId: null, purpose: context.purpose, capability: descriptor.capability, risk: "LOW", requiresApproval: false, approvalMode: "NONE", allowedRoles: descriptor.allowedRoles, acceptedDataClasses: descriptor.acceptedDataClasses, resource: { ...resource, organizationId: id("00000000-0000-4000-8000-000000009999") }, requestDigest: "a".repeat(64), constraints: {} });
+  assert.equal(foreign.status, "DENY");
+  assert.throws(() => assertPolicyAllowed(foreign));
+});
+
+test("application policy catalog denies an unlisted role before a durable read", () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const operator = [...store.users.values()].find((user) => user.login === "ops@cvg.local");
+  assert.ok(operator);
+  const option = store.contextOptions(operator.id)[0];
+  assert.ok(option);
+  const context = store.resolveContext(operator.id, { unitId: option.unit.id, workspaceId: option.workspace.id }, "guardians.read", "application-policy-test", null, null, [...store.sessions.values()].find((session) => session.userId === operator.id)?.id ?? null);
+  const rule = applicationPolicyFor("guardians.read");
+  assert.ok(rule);
+  const decision = authorizeApplicationRequest(context, "guardians.read", { dataClass: "D2" });
+  assert.equal(decision.status, "DENY");
+  assert.match(decision.reason, /role/i);
+});
+
+test("tool registry digest excludes parser functions and remains deterministic", () => {
+  const parser = () => ({ ok: true });
+  const descriptor = { name: "cvg.test.read", version: "1.0.0", description: "read", operation: "test.read", capability: "test:read", risk: "LOW" as const, approvalMode: "NONE" as const, allowedRoles: ["admin"] as const, acceptedDataClasses: ["D0"] as const, scope: "ORGANIZATION" as const, requiresApproval: false, idempotency: "REQUIRED" as const, auditAction: "test.read", secretRefs: [] as const, timeoutMs: 1_000, egress: "NONE" as const, parseInput: parser };
+  assert.equal(toolRegistryDigest([descriptor]), toolRegistryDigest([{ ...descriptor, parseInput: () => ({ ok: true }) }]));
+});
+
+test("API catalog covers the versioned surface without duplicate route keys", () => {
+  const keys = API_ROUTE_CATALOG.map((route) => `${route.method} ${route.path}`);
+  assert.equal(new Set(keys).size, keys.length);
+  assert.ok(API_ROUTE_CATALOG.length >= 60);
+  assert.equal(API_ROUTE_CATALOG.every((route) => route.version === "v1" && route.responseSchema.length > 0), true);
+});
+
+test("Mock adapter exposes the provider-neutral runtime lifecycle", async () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const context = contextFor(store, "OPERATIONS");
+  const adapter = new MockHarnessAdapter(new GovernedHarness(store));
+  const health = await adapter.health();
+  assert.equal(health.status, "READY");
+  const session = await adapter.createSession(context, { purpose: "OPERATIONS", patientId: null, encounterId: null });
+  const result = await adapter.executeTurn(context, { sessionId: session.id, prompt: "organize a fila", purpose: "OPERATIONS", patientId: null, encounterId: null, requestedTool: null, approvalId: null, idempotencyKey: "mock-turn-1" });
+  assert.equal(result.provenance.provider, "local-stub");
+  assert.equal(result.provenance.manifestVersion, "0.1.1-rc.2");
+  const replay = await adapter.replay(context, session.id);
+  assert.equal(replay.turns.length, 1);
+  await adapter.shutdown();
+});
+
+test("DeepSeek adapter fails closed on unavailable or mismatched harness", async () => {
+  const calls: string[] = [];
+  const adapter = new DeepSeekHarnessAdapter({ baseUrl: "http://127.0.0.1:9999", expectedEngineCommit: "approved-commit", expectedManifestVersion: "approved-manifest", requestTimeoutMs: 500, allowInsecureHttp: true }, async (url) => {
+    calls.push(url.toString());
+    return { ok: true, status: 200, json: async () => ({ status: "READY", engineCommit: "other-commit", manifestVersion: "approved-manifest", tools: [], supports: { cancellation: true, approvals: true, replay: true, provenance: true } }) };
+  });
+  const health = await adapter.health();
+  assert.equal(health.status, "UNAVAILABLE");
+  assert.match(health.reason ?? "", /não corresponde/);
+  await assert.rejects(() => adapter.createSession(contextFor(new CvgStore({ bootstrapPassword: "synthetic-password-123" }), "OPERATIONS"), { purpose: "OPERATIONS", patientId: null, encounterId: null }));
+  assert.deepEqual(calls, ["http://127.0.0.1:9999/v1/health", "http://127.0.0.1:9999/v1/health"]);
+});
+
+test("typed configuration rejects unknown CVG keys and insecure production", () => {
+  const config = loadCvgConfig({ NODE_ENV: "test", CVG_DEMO_MODE: "false", CVG_API_PORT: "4321" });
+  assert.equal(config.demoMode, false);
+  assert.equal(config.apiPort, 4321);
+  assert.throws(() => loadCvgConfig({ CVG_UNSAFE_MODE: "true" }), (error: unknown) => error instanceof ConfigError);
+  assert.throws(() => loadCvgConfig({ NODE_ENV: "production", CVG_DEMO_MODE: "false", CVG_WEB_ORIGIN: "http://example.test" }), (error: unknown) => error instanceof ConfigError);
+  assert.throws(() => loadCvgConfig({ NODE_ENV: "production", CVG_DEMO_MODE: "false", CVG_WEB_ORIGIN: "https://example.test", CVG_STORAGE: "memory", CVG_SECRET_PROVIDER: "none", CVG_DEEPSEEK_RUNTIME_ENABLED: "false" }), (error: unknown) => error instanceof ConfigError);
+});
+
+test("default runtime registers the complete tool catalog", async () => {
+  const runtime = await createRuntime({ store: new CvgStore({ bootstrapPassword: "synthetic-password-123" }), config: { nodeEnv: "test", host: "127.0.0.1", port: 4310, webOrigin: "http://127.0.0.1:5173", storageMode: "memory", demoMode: true } });
+  const health = await runtime.agentRuntime.health();
+  assert.equal(health.status, "READY");
+  assert.equal(health.capabilities.toolNames.length, 6);
+  await runtime.app.close();
+});
+
+test("tool gateway reports an unknown outcome when an executor exceeds its deadline", async () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const context = contextFor(store, "timeout.test");
+  const gateway = new ToolGateway(new StaticPolicyDecisionPoint(context.policyRevision));
+  gateway.register({ name: "cvg.test.timeout", version: "1.0.0", description: "timeout fixture", operation: "timeout.test", capability: "test:timeout", risk: "LOW", approvalMode: "NONE", allowedRoles: ["admin"], acceptedDataClasses: ["D0"], scope: "WORKSPACE", requiresApproval: false, idempotency: "REQUIRED", auditAction: "test.timeout", secretRefs: [], timeoutMs: 100, egress: "NONE", parseInput: (value: unknown) => value });
+  await assert.rejects(() => gateway.execute("cvg.test.timeout", { context, resource: { organizationId: context.organizationId, unitId: context.unitId, workspaceId: context.workspaceId, resourceId: null, dataClass: "D0" }, input: {}, idempotencyKey: "timeout-1" }, async (_input, signal) => new Promise<boolean>((resolve) => setTimeout(() => resolve(signal.aborted), 500))), (error: unknown) => error instanceof ToolGatewayError && error.code === "OUTCOME_UNKNOWN");
+});
+
+test("secret providers resolve only approved references", async () => {
+  const provider = new EnvironmentSecretProvider({ CVG_SECRET_DEEPSEEK_GATEWAY_TOKEN: "synthetic-only-secret" });
+  assert.equal(provider.status(), "READY");
+  assert.equal(provider.has("deepseek.gateway.token"), true);
+  assert.equal(await provider.resolve?.("deepseek.gateway.token"), "synthetic-only-secret");
+  assert.equal(provider.has("../escape"), false);
+});
+
+test("web runtime state machine never grants writes during reconnect or context loss", () => {
+  const initial: RuntimeSnapshot = { state: RUNTIME_STATES.ONLINE, reconnectVersion: 0 };
+  const offline = runtimeStateReducer(initial, { type: "NETWORK_OFFLINE" });
+  assert.equal(offline.state, RUNTIME_STATES.OFFLINE_READ_ONLY);
+  assert.equal(isWriteAllowed(offline.state), false);
+  assert.equal(canRenderContextData(offline.state), false);
+
+  const reconnecting = runtimeStateReducer(offline, { type: "NETWORK_ONLINE" });
+  assert.equal(reconnecting.state, RUNTIME_STATES.DEGRADED);
+  assert.equal(reconnecting.reconnectVersion, 1);
+  assert.equal(isWriteAllowed(reconnecting.state), false);
+  assert.equal(canRenderContextData(reconnecting.state), true);
+
+  const invalid = runtimeStateReducer(reconnecting, { type: "CONTEXT_INVALIDATED", reason: "scope changed" });
+  assert.equal(invalid.state, RUNTIME_STATES.CONTEXT_INVALID);
+  assert.equal(isWriteAllowed(invalid.state), false);
+  const reauthenticated = runtimeStateReducer(invalid, { type: "SESSION_VALIDATED" });
+  assert.equal(reauthenticated.state, RUNTIME_STATES.ONLINE);
+  assert.equal(isWriteAllowed(reauthenticated.state), true);
+});

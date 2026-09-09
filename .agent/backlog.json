@@ -25,14 +25,14 @@
     {
       "id": "CVG-FULL-STATE-OF-THE-ART",
       "title": "CVG-Corp State of the Art / Triplo AAA vNext",
-      "stage": "BUILD",
+      "stage": "VERIFY",
       "priority": "P0",
       "status": "IN_PROGRESS",
       "origin": "docs/prompt-state-of-the-art-triplo-aaa.md; docs/architecture-audit-vNext.md; .gauntlet/bar-v3.json",
       "dependencies": [],
       "owner": "lead",
       "acceptance_summary": "Implementar e verificar a arquitetura, segurança, confiabilidade, AI governance, operações, DX, frontend, documentação e produção exigidas pelo prompt; AAA só é elegível com a barra v3 completa e autoridade humana para qualquer efeito externo.",
-      "evidence_refs": ["docs/architecture-audit-vNext.md", ".gauntlet/bar-v3.json", ".gauntlet/critique-v3-fresh.md", "docs/verification-vNext.md", "VER-CVG-031", "VER-CVG-033", "VER-CVG-034"],
+      "evidence_refs": ["docs/architecture-audit-vNext.md", ".gauntlet/bar-v3.json", ".gauntlet/critique-v3-fresh.md", "docs/verification-vNext.md", "VER-CVG-031", "VER-CVG-033", "VER-CVG-034", "VER-CVG-035", "VER-CVG-036"],
       "next_action": {
         "id": "CVG-FULL-STATE-OF-THE-ART:PRODUCTION-LIKE-EVIDENCE",
         "kind": "VERIFY",

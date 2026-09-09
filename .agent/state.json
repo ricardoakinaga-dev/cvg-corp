@@ -16,12 +16,12 @@
   "verification_state": "PARTIAL",
   "repository_state": "BROWNFIELD; prompt copy, vNext architecture audit, modular runtime/policy/tools/API/web/worker/release controls, application PDP/domain-command boundary, auth security boundary and deterministic worker fault harness with local evidence added; external data/provider/release remain blocked",
   "instruction_scope_refs": ["docs/prompt-state-of-the-art-triplo-aaa.md", "docs/architecture-audit-vNext.md", "docs/00-quality-bar-v1.md", "docs/01-prd-cvg.md", "docs/02-arquitetura-alvo.md", "docs/03-dominio-dados-contratos.md", "docs/04-motor-deepseek-e-plugins.md", "docs/05-seguranca-privacidade.md", "docs/06-operacao-qualidade-e-recuperacao.md", "docs/07-plano-execucao.md", "docs/08-rastreabilidade-e-decisoes.md", "docs/10-preparacao-m1.md", "docs/11-transicao-para-producao.md", "docs/12-estado-da-implementacao.md", ".gauntlet/bar-v3.json", "/home/ricardo/deepseek-harness/AGENTS.md", "/home/ricardo/deepseek-harness/docs/architecture.md"],
-  "last_gate_record": "VER-CVG-034",
-  "last_event_id": "EVT-CVG-20260909-VERIFY-042",
-  "state_revision": 36,
+  "last_gate_record": "VER-CVG-035",
+  "last_event_id": "EVT-CVG-20260909-VERIFY-046",
+  "state_revision": 40,
   "next_gate": "V3-AAA-001",
   "active_action_id": "CVG-FULL-STATE-OF-THE-ART:PRODUCTION-LIKE-EVIDENCE",
   "blocked_by": [],
   "human_approval_required": ["production release, real data, real provider, credential handling, break-glass, retention/residency, RTO/RPO/SLO and residual high/critical risk"],
-  "updated_at": "2026-09-09T00:09:44-03:00"
+  "updated_at": "2026-09-09T00:22:47-03:00"
 }

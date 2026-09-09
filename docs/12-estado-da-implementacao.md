@@ -200,3 +200,17 @@ Passe final reproduzido nesta fotografia:
 - `npm run verify:production`: **PASS estrutural limitado**, Compose validado com valores sintéticos sem iniciar serviço; `node --import tsx scripts/verify-production.ts --production`: **FAIL-CLOSED esperado** pela ausência de configuração de produção real.
 
 A tentativa do crítico amplo fresco `Zeno` e três janelas de espera não produziram relatório; o worker foi encerrado sem editar o workspace e isso foi mantido como `NOT_RUN`. As três críticas estreitas frescas de auth, frontend e worker também expiraram sem relatório em duas janelas; foram encerradas sem escrita e permanecem `NOT_RUN`, não aprovação. O veredito integral permanece **`FAIL_WITH_LIMITATIONS`**, o estado `IN_PROGRESS`/`PARTIAL` e Triplo AAA inelegível. Permanecem abertos provider/secret authority/TLS, PDP/ABAC completo de produção, browsers Firefox/WebKit e axe/leitor de tela, Docker/container smoke, CI remoto, fault/recovery distribuído, backup gerenciado, carga/SLO/RTO/RPO, vertical externa e aceite humano.
+
+## 24. Revalidação do control plane após correção — 2026-09-09 00:18
+
+Após a correção append-only do evento `EVT-CVG-20260909-CORRECTION-044`, os ponteiros `active_action_id` de `state.json`, backlog, plano e Gauntlet foram revalidados como `CVG-FULL-STATE-OF-THE-ART:PRODUCTION-LIKE-EVIDENCE`. A linha `VER-CVG-035` é a nova evidência corrente; `VER-CVG-034` permanece preservada como histórico e não foi reescrita.
+
+O gate local continuou passando: 65/65 testes unitários/integração, 29 artefatos estáticos e 100 fontes, 22/22 E2E Chromium executados, contraste 7/7, auditorias de tokens/dependências/licenças, SBOM, benchmark sintético, verificação estrutural de release/Compose, diff check e hash do prompt. A verificação de produção permaneceu fail-closed pela ausência de configuração real.
+
+Esta revalidação confirma integridade do control plane e do recorte local; não cria evidência production-like. O estado segue `IN_PROGRESS`/`PARTIAL`, o veredito `FAIL_WITH_LIMITATIONS` e o Triplo AAA inelegível até haver autoridade e execução para provider/secret manager, PostgreSQL/Docker alvo, fault/recovery distribuído, carga/SLO/RTO/RPO, matriz de browsers/acessibilidade e revisão independente.
+
+## 25. Reexecução da suíte núcleo — 2026-09-09 00:22
+
+Após a reconciliação, `npm run verify:all` passou novamente com typecheck, build, static verification (29 artefatos obrigatórios e 100 fontes), 65/65 testes unitários/integração e 22/22 E2E Chromium executados em 375/768/1440; dois testes móveis foram pulados por serem inaplicáveis. `git diff --check` também passou. A evidência foi registrada em `VER-CVG-036`.
+
+O resultado permanece restrito ao núcleo local. Não há promoção a production-like, release ou AAA; os gaps externos e a revisão independente continuam controlando o próximo gate.

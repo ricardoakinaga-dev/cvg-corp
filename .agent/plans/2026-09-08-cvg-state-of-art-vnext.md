@@ -79,9 +79,9 @@ Outbox/inbox/effect ledger têm lease/fencing, retry bounded, backoff, quarantin
 
 ## Concrete Steps
 
-<!-- engineering-framework: active_action_id=CVG-FULL-STATE-OF-THE-ART:WORKER-FAULT-HARNESS -->
+<!-- engineering-framework: active_action_id=CVG-FULL-STATE-OF-THE-ART:PRODUCTION-LIKE-EVIDENCE -->
 
-1. `CVG-FULL-STATE-OF-THE-ART:WORKER-FAULT-HARNESS` — ampliar a evidência local determinística de worker/ledger/falhas, preservando o bloqueio de produção sem infraestrutura e autoridade externas.
+1. `CVG-FULL-STATE-OF-THE-ART:PRODUCTION-LIKE-EVIDENCE` — obter e executar, somente em ambiente autorizado, a evidência production-like que ainda impede o gate integral; manter a ausência de autoridade como `NOT_RUN`.
 
 ### Onda A — fundamento seguro
 
@@ -134,11 +134,18 @@ Outbox/inbox/effect ledger têm lease/fencing, retry bounded, backoff, quarantin
 
 Resultado: migration `020_auth_security_boundary.sql`, package `@cvg/auth`, MFA/TOTP, política de senha, lockout, recuperação, rotação, revogação de sessões/dispositivos, auditoria redigida e testes locais foram integrados. `npm test` cobre 65 casos. A boundary permanece `PARTIAL` para o critério de produção até haver secret-provider/canal/TLS/sessão distribuída autorizados.
 
-### Ação corrente — worker e fault harness local
+### Ação concluída — worker e fault harness local
 
 - Unificar o entrypoint separado do worker com a mesma `CvgWorkerApplication` e configuração canônica `CVG_WORKER_ORGANIZATION_ID`.
 - Cobrir health, quarentena, ausência de sink, encerramento, crash após marcador de dispatch, perda de lease e ausência de retry cego.
 - Atualizar a matriz de falhas e executar novamente os gates completos antes de registrar o checkpoint.
+
+Resultado: os entrypoints compartilham `CvgWorkerApplication`, o sink padrão continua em quarentena, e `tests/unit/worker.test.ts`/`tests/integration/faults.test.ts` passaram. O worker ainda não executa provider externo ou os loops de jobs/reconciliation/notifications/maintenance em ambiente real.
+
+### Ação corrente — evidência production-like
+
+- Executar PostgreSQL/Docker, CI remoto, imagem/container smoke, provider/secret authority, fault/recovery distribuído, carga/SLO e matriz de browsers/acessibilidade somente quando o ambiente e a aprovação correspondentes existirem.
+- Registrar cada ausência como `NOT_RUN`, preservar egress fechado e não promover o artifact a dados reais, homologação, piloto ou release.
 
 ## Validation and Acceptance
 
@@ -195,3 +202,11 @@ The current working tree passes typecheck, 56 unit/integration tests, web build,
 The auth boundary is now locally exercised through MFA/TOTP, password policy, lockout, recovery, rotation, session/device revocation and redacted audit paths, with additive migration `020_auth_security_boundary.sql`. The worker entrypoints share `CvgWorkerApplication`; `tests/unit/worker.test.ts` covers lifecycle/health/quarantine and `tests/integration/faults.test.ts` covers dispatch-marker crash, `OUTCOME_UNKNOWN`, no blind retry and lease loss.
 
 Fresh local evidence: 65/65 unit/integration tests, build, static verification with 29 required artifacts and 100 source files, 22/22 executed Chromium E2E cases across 375/768/1440 (two mobile skips), contrast 7/7, token audit with zero high/critical and 72 heuristic medium findings, zero production dependency vulnerabilities, 193 approved third-party licenses, SBOM, synthetic benchmark, release/Compose structural verification and diff check. Production-mode verification fails closed because real configuration is absent. The fresh critic attempts timed out and are recorded as `NOT_RUN`; the prior negative/limited critique remains authoritative for the current local bar. Next action is `CVG-FULL-STATE-OF-THE-ART:PRODUCTION-LIKE-EVIDENCE`; the artifact remains `IN_PROGRESS`/`FAIL_WITH_LIMITATIONS` and not AAA-eligible.
+
+## Current checkpoint — 2026-09-09 00:18
+
+Após `EVT-CVG-20260909-CORRECTION-044`, o control plane foi revalidado e os ponteiros de state, backlog, plano e Gauntlet estão alinhados na ação `CVG-FULL-STATE-OF-THE-ART:PRODUCTION-LIKE-EVIDENCE`. A nova evidência corrente é `VER-CVG-035`; ela confirma os gates locais, mas não promove o resultado a production-like ou AAA. O próximo passo continua condicionado a ambiente, autoridade e revisão independente executáveis.
+
+## Current checkpoint — 2026-09-09 00:22
+
+`VER-CVG-036` registra nova execução verde de `npm run verify:all` e `git diff --check`. O pointer de recuperação não mudou: `CVG-FULL-STATE-OF-THE-ART:PRODUCTION-LIKE-EVIDENCE`. O núcleo local permanece verificável, enquanto a barra integral segue `FAIL_WITH_LIMITATIONS` até a evidência externa e a revisão independente exigidas.

@@ -7,13 +7,13 @@ Este documento é o gate operacional da implementação vNext. Um check estrutur
 ## Evidência disponível
 
 - TypeScript: `npm run typecheck` — PASS.
-- Testes unitários e de integração: `npm test` — 65/65 PASS.
+- Testes unitários e de integração: `npm test` — 70/70 PASS.
 - Artifact web: `npm run build` — PASS.
-- Verificação estática: `npm run verify:static` — PASS (29 artefatos, 100 fontes), incluindo a proibição de mutações de domínio diretamente no HTTP layer.
+- Verificação estática: `npm run verify:static` — PASS (30 artefatos, 101 fontes), incluindo a proibição de mutações de domínio diretamente no HTTP layer.
 - E2E responsivo: `npm run test:e2e` — 22/22 executados PASS em Chromium, 375/768/1440; dois skips intencionais da busca global em viewports móveis.
 - Contraste/tokens: `npm run audit:contrast` e `npm run audit:tokens -- --strict` — PASS; zero high/critical, 72 sinais médios heurísticos.
 - Supply chain local: `npm audit --omit=dev`, `npm run audit:licenses` e SBOM CycloneDX — PASS.
-- Fault/worker local: `tests/integration/faults.test.ts` e `tests/unit/worker.test.ts` — PASS; cobre crash após marcador, perda de lease, health, quarentena e lifecycle, sem alegar distribuição ou container smoke.
+- Fault/worker local: `npm run test:fault` — 8/8 PASS; cobre crash após marcador, perda de lease, health, quarentena, lifecycle, ciclo de seis lanes e falha de runner, sem alegar distribuição ou container smoke.
 - Release/Compose: `node --import tsx scripts/verify-production.ts` — PASS estrutural; nenhum serviço iniciado.
 - Perfil de produção: `node --import tsx scripts/verify-production.ts --production` — FAIL-CLOSED esperado por ausência de configuração real.
 - Workspace: `git diff --check` — PASS.

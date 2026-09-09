@@ -24,7 +24,7 @@
     "test": "node --import tsx --test tests/unit/*.test.ts tests/integration/*.test.ts",
     "test:unit": "node --import tsx --test tests/unit/*.test.ts",
     "test:integration": "node --import tsx --test tests/integration/*.test.ts",
-    "test:e2e": "playwright test --project=chromium-wide-1440 --project=chromium-tablet-768 --project=chromium-mobile-375 --project=firefox-wide-1440 --project=firefox-tablet-768 --project=firefox-mobile-375",
+    "test:e2e": "playwright test --project=chromium-wide-1440 --project=chromium-tablet-768 --project=chromium-mobile-375 --project=firefox-wide-1440 --project=firefox-tablet-768 --project=firefox-mobile-375 --project=chromium-stress",
     "test:e2e:full": "playwright test",
     "test:contract": "node --import tsx --test tests/unit/contracts.test.ts",
     "test:database": "node --import tsx --test tests/integration/persistence.test.ts tests/integration/restore.test.ts",

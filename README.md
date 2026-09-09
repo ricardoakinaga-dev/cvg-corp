@@ -51,7 +51,7 @@ O caminho de IA usa a interface `AgentRuntime`, um adapter Mock determinístico 
 ## Estrutura
 
 - `apps/api`: BFF Fastify, application services, rotas de health, pacientes e IA, autenticação, escopo e auditoria.
-- `apps/worker`: processo separado para outbox, leases e reconciliação; dispatch externo permanece bloqueado.
+- `apps/worker`: processo separado com health, heartbeat e ciclo de outbox/jobs/schedule/reconciliation/notifications/maintenance; lanes sem runner e dispatch externo permanecem bloqueados.
 - `apps/web`: interface React/Vite responsiva, modular por shell/rotas/features e com máquina de estados operacionais.
 - `packages/contracts`: schemas e contratos públicos compartilhados.
 - `packages/domain`: invariantes e store sintético.

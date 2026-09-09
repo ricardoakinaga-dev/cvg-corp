@@ -31,8 +31,10 @@ async function main(): Promise<void> {
     if (health.status === "UNAVAILABLE") throw new Error(health.reason ?? "worker persistence is unavailable");
     if (!await persistence.loadLatest(id(config.workerOrganizationId))) throw new Error("the configured organization has not been bootstrapped");
     while (!stopping) {
-      const result = await worker.runOnce(id(config.workerOrganizationId), config.workerId, { limit: 10, leaseSeconds: 30, maxAttempts: 5 });
-      await writeHeartbeat({ status: health.status, dispatch: health.dispatch, claimed: result.claimed, delivered: result.delivered, retried: result.retried, quarantined: result.quarantined, outcomeUnknown: result.outcomeUnknown });
+      const result = await worker.runCycle(id(config.workerOrganizationId), config.workerId, { limit: 10, leaseSeconds: 30, maxAttempts: 5 });
+      const blockedLanes = Object.entries(result.lanes).filter(([, lane]) => lane.status === "BLOCKED").map(([lane]) => lane).join(",");
+      const failedLanes = Object.entries(result.lanes).filter(([, lane]) => lane.status === "FAILED").map(([lane]) => lane).join(",");
+      await writeHeartbeat({ status: health.status, lifecycle: health.lifecycle, cycleStatus: result.status, cycleId: result.cycleId, blockedLanes, failedLanes, claimed: result.claimed, delivered: result.delivered, retried: result.retried, quarantined: result.quarantined, outcomeUnknown: result.outcomeUnknown });
       if (!stopping) await sleep(config.workerIntervalMs);
     }
   } finally {

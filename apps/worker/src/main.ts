@@ -25,8 +25,8 @@ try {
     process.exitCode = 1;
   } else {
     while (!stopping) {
-      const result = await worker.runOnce(id(config.workerOrganizationId), config.workerId, { limit: 10, leaseSeconds: 30, maxAttempts: 5 });
-      process.stdout.write(`${JSON.stringify({ service: "cvg-worker", status: health.status, ...result })}\n`);
+      const result = await worker.runCycle(id(config.workerOrganizationId), config.workerId, { limit: 10, leaseSeconds: 30, maxAttempts: 5 });
+      process.stdout.write(`${JSON.stringify({ service: "cvg-worker", healthStatus: health.status, ...result })}\n`);
       if (!stopping) await sleep(config.workerIntervalMs);
     }
   }

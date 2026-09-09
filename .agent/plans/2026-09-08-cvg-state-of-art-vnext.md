@@ -172,6 +172,18 @@ Resultado: `GET /api/v1/patients/:id` carrega o alvo no contexto autenticado, co
 
 Evidência: `VER-CVG-041`; 67/67 testes, 9/9 testes database, 5/5 fault/worker, typecheck, lint, static (30/101), `verify:production` e diff check passaram. O modo `--production` saiu 1 por configuração real ausente, fail-closed esperado.
 
+### Ação concluída — scheduler de lanes do worker
+
+- Adicionar um ciclo único observável para outbox, jobs, schedule, reconciliação, notificações e manutenção, com contagens, duração e resultado por lane.
+- Expor runners injetáveis para cada lane; quando uma capacidade, adapter ou store não estiver configurado, retornar `BLOCKED` sem claim, egress, retry ou efeito implícito.
+- Integrar os entrypoints `apps/worker` e `docker/worker.ts` ao ciclo, registrar heartbeat/saúde e cobrir execução, bloqueio, parada e erro de runner com testes determinísticos.
+
+Critério de saída: um processo separado pode executar um ciclo com todas as lanes nomeadas, cada lane tem resultado auditável, capacidades ausentes falham fechado e nenhuma lane não configurada é tratada como sucesso.
+
+Resultado: `CvgWorkerApplication` agora expõe um ciclo com as lanes `outbox`, `jobs`, `schedule`, `reconciliation`, `notifications` e `maintenance`, resultado global `COMPLETED/DEGRADED/FAILED`, contagens, duração, lifecycle e sinal de abort. Os entrypoints `apps/worker` e `docker/worker.ts` usam o ciclo; sink ausente/quarentena não faz claim e runners ausentes ficam `BLOCKED` sem efeito. Os testes cobrem health, parada, execução de todas as lanes, bloqueio e falha isolada.
+
+Evidência: `VER-CVG-042`; 70/70 testes, 8/8 fault/worker, 9/9 database, typecheck, lint, static (30/101), `verify:production` e diff check passaram. O modo `--production` saiu 1 por configuração real ausente, fail-closed esperado. A implementação fornece a orquestração e os hooks; jobs, stores de manutenção, reconciliação externa e sink/provider real continuam não configurados.
+
 ### Ação corrente — evidência production-like
 
 - Executar PostgreSQL/Docker, CI remoto, imagem/container smoke, provider/secret authority, fault/recovery distribuído, carga/SLO e matriz de browsers/acessibilidade somente quando o ambiente e a aprovação correspondentes existirem.

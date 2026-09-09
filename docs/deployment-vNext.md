@@ -4,7 +4,7 @@
 
 O caminho de release contém `Dockerfile.api`, `Dockerfile.web`, `docker-compose.yml`, proxy Nginx, worker separado, `.github/workflows/ci.yml`, `.github/dependabot.yml`, lint repository-owned, política SPDX local, scan Trivy de imagens no CI, `scripts/verify-production.ts`, baseline sintético, SBOM CycloneDX e runbooks de deploy, rollback e backup/incidente.
 
-Compose define PostgreSQL, migration job, API, web, worker e proxy com healthchecks, dependências ordenadas, rede backend interna, containers read-only, non-root quando aplicável, capabilities removidas e sem publicação direta de API/worker. O worker Compose usa o mesmo `CvgWorkerApplication` de `apps/worker` e exige `CVG_WORKER_ORGANIZATION_ID` explícito.
+Compose define PostgreSQL, migration job, API, web, worker e proxy com healthchecks, dependências ordenadas, rede backend interna, containers read-only, non-root quando aplicável, capabilities removidas e sem publicação direta de API/worker. O worker Compose usa o mesmo `CvgWorkerApplication` de `apps/worker`, executa o ciclo observável de outbox/jobs/schedule/reconciliation/notifications/maintenance e exige `CVG_WORKER_ORGANIZATION_ID` explícito.
 
 ## Gates reproduzidos
 
@@ -29,4 +29,4 @@ No CI, lint, testes de contrato/segurança/banco/fault, E2E Chromium, migrations
 
 ## Operação segura
 
-O worker mantém `CVG_WORKER_SINK_MODE=quarantine` até que um sink governado exista. O runbook de deploy exige artifact imutável, configuração externa validada e smoke; rollback preserva schema/efeitos desconhecidos e exige reconciliação. Nenhum segredo é versionado ou embutido nos artefatos.
+O worker mantém `CVG_WORKER_SINK_MODE=quarantine` até que um sink governado exista. O ciclo publica status, duração, contagens e lanes bloqueadas/fracassadas no heartbeat; runners de jobs, schedule, reconciliação, notificações e manutenção são injetáveis e ausências permanecem `BLOCKED`. O runbook de deploy exige artifact imutável, configuração externa validada e smoke; rollback preserva schema/efeitos desconhecidos e exige reconciliação. Nenhum segredo é versionado ou embutido nos artefatos.

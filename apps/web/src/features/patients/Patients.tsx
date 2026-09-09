@@ -6,9 +6,9 @@ import type { ContextOption } from "../../state/types";
 
 type Patient = { id: string; name: string; species: string; breed: string | null; guardian: { displayName: string; phone: string } | null; status: string };
 
-export function Patients({ client, context, notify }: { client: ApiClient; context: ContextOption | null; notify: (message: string) => void }) {
+export function Patients({ client, context, notify, initialQuery = "" }: { client: ApiClient; context: ContextOption | null; notify: (message: string) => void; initialQuery?: string }) {
   const [items, setItems] = useState<Patient[]>([]);
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(initialQuery);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const load = useCallback(async () => {
@@ -18,6 +18,8 @@ export function Patients({ client, context, notify }: { client: ApiClient; conte
     catch (reason) { setError(reason instanceof Error ? reason.message : "Pacientes indisponíveis."); }
     finally { setLoading(false); }
   }, [client, context, query]);
+
+  useEffect(() => { setQuery(initialQuery); }, [initialQuery]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => void load(), 180);

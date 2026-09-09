@@ -1,6 +1,7 @@
 export const RUNTIME_STATES = {
   ONLINE: "ONLINE",
   OFFLINE_READ_ONLY: "OFFLINE_READ_ONLY",
+  REVALIDATING: "REVALIDATING",
   DEGRADED: "DEGRADED",
   CONTEXT_INVALID: "CONTEXT_INVALID",
   REAUTH_REQUIRED: "REAUTH_REQUIRED"
@@ -41,10 +42,10 @@ export function runtimeStateReducer(snapshot: RuntimeSnapshot, event: RuntimeEve
       return snapshotWith(snapshot, RUNTIME_STATES.OFFLINE_READ_ONLY, "O navegador informou que a conexão foi interrompida.");
     case "NETWORK_ONLINE":
       return snapshot.state === RUNTIME_STATES.OFFLINE_READ_ONLY
-        ? { state: RUNTIME_STATES.DEGRADED, reconnectVersion: snapshot.reconnectVersion + 1, reason: "A conexão voltou; sessão e contexto aguardam revalidação." }
+        ? { state: RUNTIME_STATES.REVALIDATING, reconnectVersion: snapshot.reconnectVersion + 1, reason: "A conexão voltou; sessão e contexto aguardam revalidação." }
         : snapshot;
     case "RECONNECT_STARTED":
-      return snapshotWith(snapshot, RUNTIME_STATES.DEGRADED, "Revalidando sessão e contexto autorizado.");
+      return snapshotWith(snapshot, RUNTIME_STATES.REVALIDATING, "Revalidando sessão e contexto autorizado.");
     case "SESSION_VALIDATED":
       return snapshotWith(snapshot, RUNTIME_STATES.ONLINE);
     case "REQUEST_DEGRADED":
@@ -71,7 +72,7 @@ export function isWriteAllowed(state: RuntimeState): boolean {
 }
 
 export function canRenderContextData(state: RuntimeState): boolean {
-  return state === RUNTIME_STATES.ONLINE || state === RUNTIME_STATES.DEGRADED;
+  return state === RUNTIME_STATES.ONLINE;
 }
 
 export function runtimeStatePresentation(state: RuntimeState): { label: string; message: string; tone: "teal" | "amber" | "coral" } {
@@ -80,6 +81,8 @@ export function runtimeStatePresentation(state: RuntimeState): { label: string; 
       return { label: "LOCAL SINTÉTICO", message: "Dados descartáveis · caminho manual disponível · providers externos bloqueados", tone: "amber" };
     case RUNTIME_STATES.OFFLINE_READ_ONLY:
       return { label: "OFFLINE_READ_ONLY", message: "Sem cache autorizado para este contexto · nenhum efeito ou sincronização será executado", tone: "coral" };
+    case RUNTIME_STATES.REVALIDATING:
+      return { label: "REVALIDATING", message: "Sessão, escopo e policy estão sendo confirmados antes de exibir dados", tone: "amber" };
     case RUNTIME_STATES.DEGRADED:
       return { label: "DEGRADED", message: "Conectividade parcial · leituras podem falhar · escritas críticas permanecem bloqueadas", tone: "amber" };
     case RUNTIME_STATES.CONTEXT_INVALID:

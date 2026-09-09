@@ -34,3 +34,6 @@ Os críticos não encontraram autorização para liberar dados, segredos, egress
 ## Tentativa posterior de revisão final
 
 Três novos workers read-only (`Arendt` `01a083c9-4675-7ea3-bad6-f0829aea7345`, `Plato` `01a083c9-46e1-7ab0-954e-4e8a0ed6af26` e `Hegel` `01a083c9-4638-75a0-bdcb-102b89cda68e`) foram iniciados após a integração final. Nenhum produziu relatório dentro de três janelas de 30 segundos; foram encerrados, sem escrita no workspace. Esta tentativa é `NOT_RUN`, não aprovação e não altera o veredito. Uma revisão independente final continua sendo requisito do próximo gate.
+# Registro de tentativa de crítica fresca — round 2 — 2026-09-09
+
+Após as mudanças de autenticação, UI, worker e fault harness, foi aberta uma crítica ampla read-only (`Zeno`, `01a08418-696a-7d61-b0fc-eb459aa519e5`) e, em seguida, três críticas estreitas independentes (`Carver`, `Aquinas`, `Hilbert`) para auth, frontend e operations. Nenhum relatório retornou após as janelas de espera; todos foram encerrados sem escrita. Esta tentativa é `NOT_RUN_TIMEOUT`, não aprovação. Os pareceres efetivamente disponíveis abaixo continuam sendo a evidência negativa/limitada da rodada anterior.

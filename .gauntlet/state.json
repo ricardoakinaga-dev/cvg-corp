@@ -3,13 +3,13 @@
   "bar_ref": ".gauntlet/bar-v3.json",
   "goal": "CVG-Corp State of the Art / Triplo AAA conforme prompt preservado",
   "scope_ref": "CVG-FULL-STATE-OF-THE-ART",
-  "round": 1,
+  "round": 2,
   "phase": "VERIFY",
   "status": "IN_PROGRESS",
-  "largest_gap": "evidência externa e autoridade operacional continuam ausentes: PostgreSQL/Docker production-like, secret manager, provider/DeepSeek real, fault/recovery, SLO e aceite independente",
-  "next_action": "CVG-FULL-STATE-OF-THE-ART:EXTERNAL-EVIDENCE-AND-INDEPENDENT-REVIEW",
+  "largest_gap": "evidência production-like de provider/secret authority, Docker/PostgreSQL, fault/recovery distribuído, carga/SLO e revisão independente permanece ausente",
+  "next_action": "CVG-FULL-STATE-OF-THE-ART:PRODUCTION-LIKE-EVIDENCE",
   "limitations": ["a auditoria arquitetural e os gates locais autorizam apenas desenvolvimento controlado", "o artifact é uma base local sintética; evidência local não satisfaz automaticamente critérios de produção", "o bridge DeepSeek CVG /v1 não prova protocolo nativo nem integração com processo externo", "dados reais, egress, provider, break-glass, homologação, piloto e release permanecem bloqueados"],
   "critique_ref": ".gauntlet/critique-v3-fresh.md",
   "supersedes": ".gauntlet/state-v2-round4.json",
-  "updated_at": "2026-09-08T22:57:24-03:00"
+  "updated_at": "2026-09-09T00:05:40-03:00"
 }

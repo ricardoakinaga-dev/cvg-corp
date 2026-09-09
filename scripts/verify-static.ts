@@ -5,7 +5,7 @@ import { applicationPolicyFor } from "@cvg/agent-policy";
 
 const failures: string[] = [];
 const required = [
-  "packages/contracts/src/index.ts", "packages/contracts/src/api-catalog.ts", "packages/domain/src/index.ts", "packages/harness/src/index.ts", "packages/agent-runtime/src/index.ts", "packages/agent-policy/src/index.ts", "packages/agent-tools/src/index.ts", "packages/harness-adapters/src/index.ts", "packages/config/src/index.ts", "apps/api/src/server.ts", "apps/api/src/routes/health.ts", "apps/api/src/application/read-services.ts", "apps/api/src/application/domain-command-service.ts", "apps/worker/src/main.ts", "apps/web/src/main.tsx", "apps/web/src/app-shell/App.tsx", "apps/web/src/state/runtime-state.ts", "apps/web/src/styles.css", "db/migrations/001_initial.sql", "db/migrations/019_runtime_scope_guards.sql", "scripts/benchmark-local.ts", "tests/unit/domain.test.ts", "tests/integration/api.test.ts"
+  "packages/contracts/src/index.ts", "packages/contracts/src/api-catalog.ts", "packages/domain/src/index.ts", "packages/harness/src/index.ts", "packages/agent-runtime/src/index.ts", "packages/agent-policy/src/index.ts", "packages/agent-tools/src/index.ts", "packages/auth/src/index.ts", "packages/harness-adapters/src/index.ts", "packages/config/src/index.ts", "apps/api/src/server.ts", "apps/api/src/routes/health.ts", "apps/api/src/application/read-services.ts", "apps/api/src/application/domain-command-service.ts", "apps/worker/src/main.ts", "apps/worker/src/worker.ts", "apps/web/src/main.tsx", "apps/web/src/app-shell/App.tsx", "apps/web/src/state/runtime-state.ts", "apps/web/src/styles.css", "db/migrations/001_initial.sql", "db/migrations/019_runtime_scope_guards.sql", "db/migrations/020_auth_security_boundary.sql", "scripts/benchmark-local.ts", "tests/unit/auth.test.ts", "tests/unit/worker.test.ts", "tests/unit/domain.test.ts", "tests/integration/api.test.ts", "tests/integration/faults.test.ts"
 ];
 for (const path of required) { try { const content = await readFile(path, "utf8"); if (content.trim().length < 40) failures.push(`${path}: empty artifact`); } catch { failures.push(`${path}: missing`); } }
 const sourceFiles: string[] = [];
@@ -38,7 +38,7 @@ for (const match of apiSource.matchAll(/requestContext\(request,\s*(?:"([^"]+)"|
 }
 for (const match of apiSource.matchAll(/app\.(get|post|delete)\("([^\"]+)"[\s\S]*?(?=\n  app\.(?:get|post|delete)\(|\n  app\.setNotFoundHandler|\n  app\.setErrorHandler)/g)) {
   const path = match[2] ?? "";
-  if (["/api/v1/auth/login", "/api/v1/auth/demo", "/api/v1/auth/logout", "/api/v1/integrations/:provider/events"].includes(path)) continue;
+  if (["/api/v1/auth/login", "/api/v1/auth/mfa/verify", "/api/v1/auth/recovery/start", "/api/v1/auth/recovery/complete", "/api/v1/auth/demo", "/api/v1/auth/logout", "/api/v1/integrations/:provider/events"].includes(path)) continue;
   if (!match[0].includes("requestContext(request") && !match[0].includes("enforceApplicationPolicy(request")) failures.push(`apps/api/src/app.ts: protected route ${path} bypasses requestContext/application policy`);
 }
 for (const method of ["listGuardians", "listPatients", "listAppointments"]) if (apiSource.includes(`persistence.${method}`)) failures.push(`apps/api/src/app.ts: ${method} bypasses the read application service`);

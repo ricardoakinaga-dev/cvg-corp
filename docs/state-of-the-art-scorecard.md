@@ -3,7 +3,7 @@
 **Barra:** `.gauntlet/bar-v3.json` — congelada, 2026-09-08.
 **Resultado:** `FAIL_WITH_LIMITATIONS`; não elegível para `AAA`.
 
-**Fotografia de evidência local:** typecheck PASS; 56/56 testes unitários/integração; build PASS; 15/15 E2E Chromium em 375/768/1440; static PASS com 23 artefatos/97 fontes; dependency audit, SBOM CycloneDX, política de licenças, contraste e benchmark sintético PASS. O workflow declara Dependabot e scan Trivy de imagens; imagens não foram construídas neste host sem daemon Docker.
+**Fotografia de evidência local:** typecheck, build e static PASS; 65/65 testes unitários/integração; static com 29 artefatos e 100 fontes; E2E Chromium com 22/22 casos executados PASS em 375/768/1440 e dois skips intencionais; contraste 7/7, dependency audit sem vulnerabilidades, SBOM CycloneDX, política de licenças para 193 dependências e fault/worker harness local PASS. O workflow declara Dependabot e scan Trivy de imagens; imagens não foram construídas neste host sem daemon Docker.
 
 ## Dimensões
 
@@ -12,10 +12,10 @@
 | Arquitetura e contratos | Parcial | packages de runtime/policy/tools, catálogo API e ADRs |
 | Runtime e tools | Parcial | Mock + testes negativos; DeepSeek real não executado |
 | API e aplicação | Parcial | entrypoint pequeno, services/routes/read repositories/command boundary extraídos; app ainda concentra composição HTTP |
-| Dados e reliability | Parcial | migrations aditivas e testes locais; DB limpo/multi-instância não executados |
-| Segurança e governança | Parcial | fail-closed, escopo, headers, secret refs; auth de produção ausente |
-| Web e offline | Parcial | shell/features/state machine; browsers/axe profundo não executados |
-| Deploy e operação | Parcial | Docker/Compose/CI/runbooks e baseline local; imagens/startup/SBOM não executados |
+| Dados e reliability | Parcial | migrations aditivas, ledger/fencing e fault harness local; DB limpo/multi-instância/distribuído não executados |
+| Segurança e governança | Parcial | fail-closed, escopo, headers, secret refs, MFA/lockout/rotação/recuperação local; autoridade real ausente |
+| Web e offline | Parcial | shell/features, URL/history, agenda real, `REVALIDATING` bloqueador; browsers/axe profundo não executados |
+| Deploy e operação | Parcial | Docker/Compose/CI/runbooks, worker lifecycle e release estrutural; imagens/startup/container smoke não executados |
 | Vertical real | Não executada | provider, receipt, settlement e reconciliação externos bloqueados |
 
 ## Regra de elegibilidade

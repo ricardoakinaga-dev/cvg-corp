@@ -1,11 +1,13 @@
 type Rgb = readonly [number, number, number];
 
-const checks: Array<{ foreground: string; background: string }> = [
+const checks: Array<{ foreground: string; background: string; threshold?: number }> = [
   { foreground: "#385263", background: "#f5f8f6" },
   { foreground: "#59717c", background: "#f5f8f6" },
+  { foreground: "#385263", background: "#fbf8ef" },
   { foreground: "#ffffff", background: "#08786f" },
   { foreground: "#a83f3c", background: "#fbe7e1" },
-  { foreground: "#8d5d0e", background: "#fff2d4" }
+  { foreground: "#8d5d0e", background: "#fff2d4" },
+  { foreground: "#08786f", background: "#f2f7f5", threshold: 3 }
 ];
 
 function parseHex(value: string): Rgb {
@@ -28,7 +30,8 @@ const results = checks.map((check) => {
   const foreground = luminance(parseHex(check.foreground));
   const background = luminance(parseHex(check.background));
   const ratio = (Math.max(foreground, background) + 0.05) / (Math.min(foreground, background) + 0.05);
-  return { ...check, ratio: Number(ratio.toFixed(2)), threshold: 4.5, pass: ratio >= 4.5 };
+  const threshold = check.threshold ?? 4.5;
+  return { ...check, ratio: Number(ratio.toFixed(2)), threshold, pass: ratio >= threshold };
 });
 
 process.stdout.write(`${JSON.stringify(results, null, 2)}\n`);

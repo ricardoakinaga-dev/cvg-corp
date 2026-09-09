@@ -10,7 +10,7 @@ export interface GuardianReadRepository {
 }
 
 export interface AppointmentReadRepository {
-  list(context: CvgContext): Promise<AppointmentRead[]>;
+  list(context: CvgContext, range?: "today" | "week"): Promise<AppointmentRead[]>;
 }
 
 class StoreGuardianReadRepository implements GuardianReadRepository {
@@ -32,8 +32,8 @@ class PostgresGuardianReadRepository implements GuardianReadRepository {
 class StoreAppointmentReadRepository implements AppointmentReadRepository {
   constructor(private readonly store: CvgStore) {}
 
-  async list(context: CvgContext): Promise<AppointmentRead[]> {
-    return this.store.listAppointments(context).map((appointment) => ({
+  async list(context: CvgContext, range: "today" | "week" = "today"): Promise<AppointmentRead[]> {
+    return this.store.listAppointments(context, range).map((appointment) => ({
       ...appointment,
       patient: this.store.patients.get(appointment.patientId) ? { id: appointment.patientId, name: this.store.patients.get(appointment.patientId)!.name } : null,
       provider: this.store.providers.get(appointment.providerId)?.displayName ?? null
@@ -44,8 +44,8 @@ class StoreAppointmentReadRepository implements AppointmentReadRepository {
 class PostgresAppointmentReadRepository implements AppointmentReadRepository {
   constructor(private readonly persistence: PostgresPersistence) {}
 
-  async list(context: CvgContext): Promise<NormalizedAppointmentRead[]> {
-    return this.persistence.listAppointments(context);
+  async list(context: CvgContext, range: "today" | "week" = "today"): Promise<NormalizedAppointmentRead[]> {
+    return this.persistence.listAppointments(context, range);
   }
 }
 
@@ -57,8 +57,8 @@ export class ReadApplicationService {
     return this.guardians.list(context, query);
   }
 
-  listAppointments(context: CvgContext): Promise<AppointmentRead[]> {
-    return this.appointments.list(context);
+  listAppointments(context: CvgContext, range: "today" | "week" = "today"): Promise<AppointmentRead[]> {
+    return this.appointments.list(context, range);
   }
 }
 

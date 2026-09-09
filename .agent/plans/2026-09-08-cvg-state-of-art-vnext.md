@@ -79,9 +79,9 @@ Outbox/inbox/effect ledger têm lease/fencing, retry bounded, backoff, quarantin
 
 ## Concrete Steps
 
-<!-- engineering-framework: active_action_id=CVG-FULL-STATE-OF-THE-ART:EXTERNAL-EVIDENCE-AND-INDEPENDENT-REVIEW -->
+<!-- engineering-framework: active_action_id=CVG-FULL-STATE-OF-THE-ART:WORKER-FAULT-HARNESS -->
 
-1. `CVG-FULL-STATE-OF-THE-ART:EXTERNAL-EVIDENCE-AND-INDEPENDENT-REVIEW` — obter evidência autorizada production-like e repetir a barra; manter qualquer capacidade externa bloqueada sem autoridade.
+1. `CVG-FULL-STATE-OF-THE-ART:WORKER-FAULT-HARNESS` — ampliar a evidência local determinística de worker/ledger/falhas, preservando o bloqueio de produção sem infraestrutura e autoridade externas.
 
 ### Onda A — fundamento seguro
 
@@ -123,6 +123,22 @@ Outbox/inbox/effect ledger têm lease/fencing, retry bounded, backoff, quarantin
 - Executar health/version/capability/tool registry/session lifecycle com processo ou HTTP autorizado.
 - Integrar uma Appointment communication staged com approval independente, outbox, receipt, audit e reconciliation.
 - Se endpoint, credencial ou autoridade não estiverem disponíveis, não simular sucesso; manter adapter bloqueado e evidência `NOT_RUN`.
+
+### Ação concluída — boundary de autenticação local
+
+- Adicionar estado de segurança tipado para senha, credencial, MFA, lockout, recuperação e sessões; manter snapshots antigos compatíveis por normalização explícita.
+- Criar primitives testáveis de política de senha, TOTP e códigos de recuperação sem persistir segredo bruto; resolver segredos somente por `SecretProvider` injetado.
+- Expor desafios de MFA/recuperação com respostas não enumeráveis, tentativas limitadas, expiração, uso único, revogação de sessões e auditoria redigida.
+- Adicionar migration aditiva e projeção PostgreSQL para os metadados de segurança; sem executar migration em banco não autorizado nesta sessão.
+- Cobrir conhecido-bom e conhecido-ruim no domínio/API, atualizar a barra com evidência local honesta e retornar a próxima ação para evidência production-like.
+
+Resultado: migration `020_auth_security_boundary.sql`, package `@cvg/auth`, MFA/TOTP, política de senha, lockout, recuperação, rotação, revogação de sessões/dispositivos, auditoria redigida e testes locais foram integrados. `npm test` cobre 65 casos. A boundary permanece `PARTIAL` para o critério de produção até haver secret-provider/canal/TLS/sessão distribuída autorizados.
+
+### Ação corrente — worker e fault harness local
+
+- Unificar o entrypoint separado do worker com a mesma `CvgWorkerApplication` e configuração canônica `CVG_WORKER_ORGANIZATION_ID`.
+- Cobrir health, quarentena, ausência de sink, encerramento, crash após marcador de dispatch, perda de lease e ausência de retry cego.
+- Atualizar a matriz de falhas e executar novamente os gates completos antes de registrar o checkpoint.
 
 ## Validation and Acceptance
 
@@ -173,3 +189,9 @@ O ponto de partida é uma demonstração local robusta, não uma plataforma de p
 ## Current checkpoint — 2026-09-08 22:20
 
 The current working tree passes typecheck, 56 unit/integration tests, web build, static verification (including the domain-command boundary), 15 Chromium E2E tests across three viewports, contrast/token audits, dependency/license audit, CycloneDX SBOM, synthetic benchmark, release verification and diff check. Local design audits are repository-owned and no longer depend on `/home/ricardo/`. The CI declares Dependabot and Trivy image scans, but Docker image build/scan and remote CI execution remain unrun here. PostgreSQL/provider/secret-manager production evidence, fault/recovery drills, production SLOs, expanded browser/accessibility matrix and a new final independent review remain required before any AAA decision.
+
+## Current checkpoint — 2026-09-09 00:05
+
+The auth boundary is now locally exercised through MFA/TOTP, password policy, lockout, recovery, rotation, session/device revocation and redacted audit paths, with additive migration `020_auth_security_boundary.sql`. The worker entrypoints share `CvgWorkerApplication`; `tests/unit/worker.test.ts` covers lifecycle/health/quarantine and `tests/integration/faults.test.ts` covers dispatch-marker crash, `OUTCOME_UNKNOWN`, no blind retry and lease loss.
+
+Fresh local evidence: 65/65 unit/integration tests, build, static verification with 29 required artifacts and 100 source files, 22/22 executed Chromium E2E cases across 375/768/1440 (two mobile skips), contrast 7/7, token audit with zero high/critical and 72 heuristic medium findings, zero production dependency vulnerabilities, 193 approved third-party licenses, SBOM, synthetic benchmark, release/Compose structural verification and diff check. Production-mode verification fails closed because real configuration is absent. The fresh critic attempts timed out and are recorded as `NOT_RUN`; the prior negative/limited critique remains authoritative for the current local bar. Next action is `CVG-FULL-STATE-OF-THE-ART:PRODUCTION-LIKE-EVIDENCE`; the artifact remains `IN_PROGRESS`/`FAIL_WITH_LIMITATIONS` and not AAA-eligible.

@@ -172,10 +172,10 @@ test("web runtime state machine never grants writes during reconnect or context 
   assert.equal(canRenderContextData(offline.state), false);
 
   const reconnecting = runtimeStateReducer(offline, { type: "NETWORK_ONLINE" });
-  assert.equal(reconnecting.state, RUNTIME_STATES.DEGRADED);
+  assert.equal(reconnecting.state, RUNTIME_STATES.REVALIDATING);
   assert.equal(reconnecting.reconnectVersion, 1);
   assert.equal(isWriteAllowed(reconnecting.state), false);
-  assert.equal(canRenderContextData(reconnecting.state), true);
+  assert.equal(canRenderContextData(reconnecting.state), false);
 
   const invalid = runtimeStateReducer(reconnecting, { type: "CONTEXT_INVALIDATED", reason: "scope changed" });
   assert.equal(invalid.state, RUNTIME_STATES.CONTEXT_INVALID);

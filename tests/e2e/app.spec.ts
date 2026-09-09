@@ -60,6 +60,60 @@ test("rotas e controles permanecem utilizáveis sem overflow", async ({ page }, 
   }
 });
 
+test("agenda alterna períodos e fila por meio de consultas reais", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: /Abrir demonstração sintética/i }).click();
+  await expect(page.getByRole("heading", { name: "Bom dia, Ricardo." })).toBeVisible();
+  const menu = page.getByRole("button", { name: "Abrir menu" });
+  if (await menu.isVisible()) await menu.click();
+  await page.locator('nav[aria-label="Navegação principal"]').getByRole("button", { name: "Agenda" }).click();
+  await expect(page.getByRole("heading", { name: "Agenda", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Próximos 7 dias", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Próximos 7 dias", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Visão de fila", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Fila de atendimento", exact: true })).toBeVisible();
+  await expect(page.getByText("Luna")).toBeVisible();
+});
+
+test("revalidação bloqueia conteúdo enquanto /me e /contexts respondem", async ({ page, context }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: /Abrir demonstração sintética/i }).click();
+  await expect(page.getByRole("heading", { name: "Bom dia, Ricardo." })).toBeVisible();
+  const menu = page.getByRole("button", { name: "Abrir menu" });
+  if (await menu.isVisible()) await menu.click();
+  await page.locator('nav[aria-label="Navegação principal"]').getByRole("button", { name: "Copiloto", exact: true }).click();
+  const prompt = page.getByLabel("Pedido");
+  await prompt.fill("rascunho clínico que deve permanecer oculto");
+  await context.setOffline(true);
+  await expect(page.getByRole("heading", { name: "Conexão interrompida." })).toBeVisible();
+  await expect(page.getByText("rascunho clínico que deve permanecer oculto")).toHaveCount(0);
+
+  await page.route("**/api/v1/me", async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 700));
+    await route.continue();
+  });
+  await context.setOffline(false);
+  await expect(page.getByRole("region").getByText("REVALIDATING", { exact: true })).toBeVisible();
+  await expect(page.getByLabel("Pedido")).toHaveCount(0);
+  await expect(page.getByText("rascunho clínico que deve permanecer oculto")).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Copiloto", exact: true })).toBeVisible();
+  await page.unroute("**/api/v1/me");
+});
+
+test("busca rápida abre pacientes com filtro e histórico do navegador", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "wide-1440", "A busca global fica oculta em viewports móveis.");
+  await page.goto("/");
+  await page.getByRole("button", { name: /Abrir demonstração sintética/i }).click();
+  await expect(page.getByRole("heading", { name: "Bom dia, Ricardo." })).toBeVisible();
+  await page.getByLabel("Busca rápida").fill("Luna");
+  await page.getByLabel("Busca rápida").press("Enter");
+  await expect(page).toHaveURL(/\/patients\?q=Luna$/);
+  await expect(page.getByRole("heading", { name: "Pacientes", exact: true })).toBeVisible();
+  await expect(page.getByText("Luna")).toBeVisible();
+  await page.goBack();
+  await expect(page.getByRole("heading", { name: "Bom dia, Ricardo.", exact: true })).toBeVisible();
+});
+
 test("captura os limites visuais principais", async ({ page }, testInfo) => {
   await page.goto("/");
   await page.getByRole("button", { name: /Abrir demonstração sintética/i }).click();

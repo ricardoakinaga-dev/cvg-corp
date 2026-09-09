@@ -15,6 +15,13 @@ export const cvgConfigSchema = z.object({
   storageMode: z.enum(["memory", "postgres"]).default("memory"),
   demoMode: z.boolean().default(true),
   sessionTtlMinutes: z.number().int().min(5).max(1_440).default(480),
+  authMfaMode: z.enum(["disabled", "optional", "required"]).default("disabled"),
+  passwordMinLength: z.number().int().min(12).max(128).default(12),
+  passwordMaxAgeDays: z.number().int().min(0).max(730).default(90),
+  authMaxFailedAttempts: z.number().int().min(3).max(20).default(8),
+  authLockoutMinutes: z.number().int().min(1).max(240).default(15),
+  authChallengeTtlSeconds: z.number().int().min(60).max(900).default(300),
+  authMaxChallengeAttempts: z.number().int().min(3).max(10).default(5),
   databaseUrl: z.string().trim().min(1).max(2_000).default("postgresql://127.0.0.1:5440/cvg_m1_synthetic"),
   bootstrapPassword: z.string().min(12).max(256).nullable().default(null),
   deepseekBaseUrl: z.string().url().nullable().default(null),
@@ -31,9 +38,12 @@ export const cvgConfigSchema = z.object({
   secretProvider: z.enum(["none", "env", "file", "vault", "aws", "gcp", "azure", "kubernetes"]).default("none")
 }).strict().superRefine((value, ctx) => {
   if (value.nodeEnv === "production" && !value.webOrigin.startsWith("https://")) ctx.addIssue({ code: "custom", path: ["webOrigin"], message: "production webOrigin must use HTTPS" });
+  if (value.nodeEnv === "production" && (value.host === "localhost" || value.host === "127.0.0.1" || value.host === "::1" || value.host.startsWith("127."))) ctx.addIssue({ code: "custom", path: ["host"], message: "production cannot bind to a loopback host" });
   if (value.nodeEnv === "production" && value.demoMode) ctx.addIssue({ code: "custom", path: ["demoMode"], message: "demoMode is forbidden in production" });
   if (value.nodeEnv === "production" && value.storageMode !== "postgres") ctx.addIssue({ code: "custom", path: ["storageMode"], message: "production requires PostgreSQL durable storage" });
   if (value.nodeEnv === "production" && value.secretProvider === "none") ctx.addIssue({ code: "custom", path: ["secretProvider"], message: "production requires an explicit secret provider" });
+  if (value.nodeEnv === "production" && value.authMfaMode !== "required") ctx.addIssue({ code: "custom", path: ["authMfaMode"], message: "production requires MFA" });
+  if (value.nodeEnv === "production" && value.passwordMaxAgeDays === 0) ctx.addIssue({ code: "custom", path: ["passwordMaxAgeDays"], message: "production requires credential rotation" });
   if (value.nodeEnv === "production" && !value.deepseekRuntimeEnabled) ctx.addIssue({ code: "custom", path: ["deepseekRuntimeEnabled"], message: "production cannot use the local mock runtime" });
   if (value.nodeEnv === "production" && value.deepseekBaseUrl && !value.deepseekBaseUrl.startsWith("https://")) ctx.addIssue({ code: "custom", path: ["deepseekBaseUrl"], message: "production DeepSeek bridge must use HTTPS" });
   if (value.deepseekRuntimeEnabled && !value.deepseekBaseUrl) ctx.addIssue({ code: "custom", path: ["deepseekBaseUrl"], message: "DeepSeek runtime requires an explicit base URL" });
@@ -61,7 +71,7 @@ export function validateCvgConfig(value: unknown): CvgConfig {
   return parsed.data;
 }
 
-const knownEnvironmentKeys = new Set(["NODE_ENV", "SESSION_TTL_MINUTES", "DATABASE_URL", "CVG_HOST", "CVG_API_PORT", "CVG_WEB_ORIGIN", "CVG_STORAGE", "CVG_DEMO_MODE", "CVG_BOOTSTRAP_PASSWORD", "CVG_DEEPSEEK_BASE_URL", "CVG_DEEPSEEK_RUNTIME_ENABLED", "CVG_DEEPSEEK_EXPECTED_ENGINE_COMMIT", "CVG_DEEPSEEK_EXPECTED_MANIFEST_VERSION", "CVG_DEEPSEEK_BEARER_TOKEN_REF", "CVG_SECRET_DIR", "CVG_WORKER_ORGANIZATION_ID", "CVG_WORKER_ID", "CVG_WORKER_INTERVAL_MS", "CVG_WORKER_SINK_MODE", "CVG_WORKER_HEARTBEAT_FILE", "CVG_SECRET_PROVIDER"]);
+const knownEnvironmentKeys = new Set(["NODE_ENV", "SESSION_TTL_MINUTES", "CVG_AUTH_MFA_MODE", "CVG_PASSWORD_MIN_LENGTH", "CVG_PASSWORD_MAX_AGE_DAYS", "CVG_AUTH_MAX_FAILED_ATTEMPTS", "CVG_AUTH_LOCKOUT_MINUTES", "CVG_AUTH_CHALLENGE_TTL_SECONDS", "CVG_AUTH_MAX_CHALLENGE_ATTEMPTS", "DATABASE_URL", "CVG_HOST", "CVG_API_PORT", "CVG_WEB_ORIGIN", "CVG_STORAGE", "CVG_DEMO_MODE", "CVG_BOOTSTRAP_PASSWORD", "CVG_DEEPSEEK_BASE_URL", "CVG_DEEPSEEK_RUNTIME_ENABLED", "CVG_DEEPSEEK_EXPECTED_ENGINE_COMMIT", "CVG_DEEPSEEK_EXPECTED_MANIFEST_VERSION", "CVG_DEEPSEEK_BEARER_TOKEN_REF", "CVG_SECRET_DIR", "CVG_WORKER_ORGANIZATION_ID", "CVG_WORKER_ID", "CVG_WORKER_INTERVAL_MS", "CVG_WORKER_SINK_MODE", "CVG_WORKER_HEARTBEAT_FILE", "CVG_SECRET_PROVIDER"]);
 
 function parseEnvironmentValue(value: string | undefined, parser: (value: string) => unknown): unknown {
   return value === undefined ? undefined : parser(value);
@@ -79,6 +89,13 @@ export function loadCvgConfig(environment: NodeJS.ProcessEnv = process.env): Cvg
     ...(environment.CVG_STORAGE === undefined ? {} : { storageMode: environment.CVG_STORAGE }),
     ...(environment.CVG_DEMO_MODE === undefined ? {} : { demoMode: parseEnvironmentValue(environment.CVG_DEMO_MODE, (value) => booleanFromEnv.parse(value)) }),
     ...(environment.SESSION_TTL_MINUTES === undefined ? {} : { sessionTtlMinutes: Number(environment.SESSION_TTL_MINUTES) }),
+    ...(environment.CVG_AUTH_MFA_MODE === undefined ? {} : { authMfaMode: environment.CVG_AUTH_MFA_MODE }),
+    ...(environment.CVG_PASSWORD_MIN_LENGTH === undefined ? {} : { passwordMinLength: Number(environment.CVG_PASSWORD_MIN_LENGTH) }),
+    ...(environment.CVG_PASSWORD_MAX_AGE_DAYS === undefined ? {} : { passwordMaxAgeDays: Number(environment.CVG_PASSWORD_MAX_AGE_DAYS) }),
+    ...(environment.CVG_AUTH_MAX_FAILED_ATTEMPTS === undefined ? {} : { authMaxFailedAttempts: Number(environment.CVG_AUTH_MAX_FAILED_ATTEMPTS) }),
+    ...(environment.CVG_AUTH_LOCKOUT_MINUTES === undefined ? {} : { authLockoutMinutes: Number(environment.CVG_AUTH_LOCKOUT_MINUTES) }),
+    ...(environment.CVG_AUTH_CHALLENGE_TTL_SECONDS === undefined ? {} : { authChallengeTtlSeconds: Number(environment.CVG_AUTH_CHALLENGE_TTL_SECONDS) }),
+    ...(environment.CVG_AUTH_MAX_CHALLENGE_ATTEMPTS === undefined ? {} : { authMaxChallengeAttempts: Number(environment.CVG_AUTH_MAX_CHALLENGE_ATTEMPTS) }),
     ...(environment.DATABASE_URL === undefined ? {} : { databaseUrl: environment.DATABASE_URL }),
     ...(environment.CVG_BOOTSTRAP_PASSWORD === undefined ? {} : { bootstrapPassword: environment.CVG_BOOTSTRAP_PASSWORD }),
     ...(environment.CVG_DEEPSEEK_BASE_URL === undefined ? {} : { deepseekBaseUrl: environment.CVG_DEEPSEEK_BASE_URL }),

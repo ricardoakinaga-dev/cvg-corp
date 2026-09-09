@@ -33,6 +33,12 @@ export type AuditResult = (typeof auditResults)[number];
 export const errorCodes = [
   "INVALID_INPUT",
   "UNAUTHENTICATED",
+  "AUTHENTICATION_FAILED",
+  "MFA_REQUIRED",
+  "MFA_INVALID",
+  "ACCOUNT_LOCKED",
+  "CREDENTIAL_EXPIRED",
+  "RECOVERY_INVALID",
   "FORBIDDEN",
   "NOT_FOUND",
   "CONFLICT",
@@ -100,6 +106,31 @@ export const loginInputSchema = z.object({
   password: z.string().min(8).max(256)
 }).strict();
 export type LoginInput = z.infer<typeof loginInputSchema>;
+
+export const challengeTokenSchema = z.string().trim().regex(/^[A-Za-z0-9_-]{32,160}$/, "challenge token has an invalid format");
+export const mfaVerificationInputSchema = z.object({
+  challengeId: challengeTokenSchema,
+  code: z.string().trim().regex(/^\d{6}$/, "MFA code must contain six digits")
+}).strict();
+export type MfaVerificationInput = z.infer<typeof mfaVerificationInputSchema>;
+
+export const recoveryStartInputSchema = z.object({
+  login: z.string().trim().min(3).max(160)
+}).strict();
+export type RecoveryStartInput = z.infer<typeof recoveryStartInputSchema>;
+
+export const recoveryCompleteInputSchema = z.object({
+  challengeId: challengeTokenSchema,
+  recoveryCode: z.string().trim().min(8).max(80),
+  newPassword: z.string().min(12).max(256)
+}).strict();
+export type RecoveryCompleteInput = z.infer<typeof recoveryCompleteInputSchema>;
+
+export const passwordRotationInputSchema = z.object({
+  currentPassword: z.string().min(8).max(256),
+  newPassword: z.string().min(12).max(256)
+}).strict();
+export type PasswordRotationInput = z.infer<typeof passwordRotationInputSchema>;
 
 export const contextSelectorSchema = z.object({
   unitId: idSchema.nullable().default(null),
@@ -407,7 +438,20 @@ export interface User {
   status: "ACTIVE" | "DISABLED";
   passwordDigest: string;
   lastLoginAt: string | null;
+  security: AuthSecurityState;
   createdAt: string;
+}
+
+export interface AuthSecurityState {
+  passwordChangedAt: string | null;
+  passwordExpiresAt: string | null;
+  credentialVersion: number;
+  failedLoginAttempts: number;
+  lockedUntil: string | null;
+  mfaRequired: boolean;
+  mfaSecretRef: string | null;
+  recoveryCodeDigests: string[];
+  recoveryCodesIssuedAt: string | null;
 }
 
 export interface RoleAssignment {
@@ -430,6 +474,30 @@ export interface Session {
   csrfToken: string;
   expiresAt: string;
   revokedAt: string | null;
+  deviceIdDigest: string | null;
+  userAgentDigest: string | null;
+  ipDigest: string | null;
+  lastSeenAt: string;
+  mfaVerifiedAt: string | null;
+  credentialVersion: number;
+  createdAt: string;
+}
+
+export type AuthChallengeType = "MFA" | "RECOVERY";
+export type AuthChallengeStatus = "PENDING" | "CONSUMED" | "LOCKED" | "EXPIRED";
+
+export interface AuthChallenge {
+  id: OpaqueId;
+  type: AuthChallengeType;
+  tokenDigest: string;
+  userId: OpaqueId;
+  organizationId: OpaqueId;
+  credentialVersion: number;
+  expiresAt: string;
+  attempts: number;
+  maxAttempts: number;
+  status: AuthChallengeStatus;
+  consumedAt: string | null;
   createdAt: string;
 }
 

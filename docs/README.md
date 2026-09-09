@@ -6,7 +6,7 @@ Este diretório contém a documentação da arquitetura-alvo de um programa de g
 
 | Campo | Estado |
 |---|---|
-| Fase | BUILD vNext; fundação de runtime/policy/tools, API e web modulares, worker separado, migrations 001–019, release artifacts e verificação local determinística |
+| Fase | BUILD vNext; fundação de runtime/policy/tools, API e web modulares, worker separado, migrations 001–020, boundary local de autenticação e verificação local determinística |
 | Escopo desta fase | Evolução brownfield controlada; mock/sintético e PostgreSQL local continuam permitidos; aceite operacional independente e produção continuam pendentes |
 | Motor proposto | `AgentRuntime` com adapter Mock e ponte DeepSeek opcional; protocolo externo ainda não provado |
 | Qualidade | barra v3 `FAIL_WITH_LIMITATIONS`; recorte local executável, produção bloqueada |
@@ -42,6 +42,8 @@ Este diretório contém a documentação da arquitetura-alvo de um programa de g
 22. [`benchmarks/local-baseline.md`](benchmarks/local-baseline.md) — metodologia e baseline sintético, sem SLO de produção.
 23. [`fault-matrix-vNext.md`](fault-matrix-vNext.md) — cenários de falha, recuperação e limites de execução.
 24. [`error-taxonomy-vNext.md`](error-taxonomy-vNext.md) — envelope e taxonomia estável de erros.
+25. [`auth-boundary-vNext.md`](auth-boundary-vNext.md) — MFA, rotação, lockout, recuperação e autoridade de sessão.
+26. [`visual-qa-vNext.md`](visual-qa-vNext.md) — correções visuais, acessibilidade e limites da evidência.
 
 Os procedimentos operacionais estão em [`runbooks/`](runbooks/), incluindo deploy, rollback, backup/restore, incidentes de banco e segurança, indisponibilidade de provider/DeepSeek, rotação de credenciais, backlog do worker, quarentena e o break-glass ainda bloqueado.
 

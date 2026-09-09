@@ -1,5 +1,6 @@
 import test, { after, before } from "node:test";
 import assert from "node:assert/strict";
+import { createHmac } from "node:crypto";
 import { createRuntime } from "@cvg/api";
 import { CvgStore, DomainError } from "@cvg/domain";
 
@@ -224,4 +225,115 @@ test("login abuse is throttled without revealing account existence", async () =>
   const blocked = await runtime.app.inject({ method: "POST", url: "/api/v1/auth/login", headers: { "content-type": "application/json" }, payload: JSON.stringify({ login: "unknown-rate-limit@example.test", password: "wrongpass" }) });
   assert.equal(blocked.statusCode, 429);
   assert.equal(blocked.json<{ error: { code: string } }>().error.code, "RATE_LIMITED");
+});
+
+function fixtureTotpCode(secret: string, atMs = Date.now()): string {
+  let buffer = 0;
+  let bits = 0;
+  const bytes: number[] = [];
+  for (const character of secret) {
+    buffer = (buffer << 5) | "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567".indexOf(character);
+    bits += 5;
+    if (bits >= 8) {
+      bits -= 8;
+      bytes.push((buffer >>> bits) & 0xff);
+    }
+  }
+  const counter = Buffer.alloc(8);
+  counter.writeBigUInt64BE(BigInt(Math.floor(atMs / 30_000)));
+  const hmac = createHmac("sha1", Buffer.from(bytes)).update(counter).digest();
+  const offset = hmac[hmac.length - 1]! & 0x0f;
+  const binary = ((hmac[offset]! & 0x7f) << 24) | ((hmac[offset + 1]! & 0xff) << 16) | ((hmac[offset + 2]! & 0xff) << 8) | (hmac[offset + 3]! & 0xff);
+  return String(binary % 1_000_000).padStart(6, "0");
+}
+
+test("production-auth boundary requires MFA, tracks redacted sessions, rotates credentials and consumes recovery codes", async () => {
+  const password = "synthetic-password-123";
+  const secret = "JBSWY3DPEHPK3PXP";
+  const store = new CvgStore({ bootstrapPassword: password });
+  const user = store.getUser(store.bootstrapCredentials.userId);
+  user.security.mfaRequired = true;
+  user.security.mfaSecretRef = "synthetic/mfa/admin";
+  const mfaRuntime = await createRuntime({
+    store,
+    config: { storageMode: "memory", demoMode: false, authMfaMode: "required", webOrigin: "http://127.0.0.1:5173" },
+    mfaSecretResolver: { resolve: (reference) => reference === "synthetic/mfa/admin" ? secret : null }
+  });
+  let cookieJar = "";
+  let csrfToken = "";
+  const request = async (path: string, init: { method?: string; payload?: unknown; headers?: Record<string, string> } = {}) => {
+    const unit = [...store.units.values()][0]!;
+    const workspace = [...store.workspaces.values()][0]!;
+    const headers: Record<string, string> = { ...(init.payload ? { "content-type": "application/json" } : {}), cookie: cookieJar, "x-cvg-unit-id": unit.id, "x-cvg-workspace-id": workspace.id, ...(init.headers ?? {}) };
+    if (init.method && init.method !== "GET" && csrfToken) headers["x-csrf-token"] = csrfToken;
+    const injectRequest = mfaRuntime.app.inject.bind(mfaRuntime.app) as unknown as (options: { method: "GET" | "POST"; url: string; headers: Record<string, string>; payload?: string }) => Promise<{ statusCode: number; headers: Record<string, unknown>; json: <T>() => T }>;
+    const result = await injectRequest({ method: (init.method ?? "GET") as "GET" | "POST", url: `/api/v1${path}`, headers, ...(init.payload ? { payload: JSON.stringify(init.payload) } : {}) });
+    const setCookie = result.headers["set-cookie"];
+    const values: string[] = Array.isArray(setCookie) ? setCookie.filter((value): value is string => typeof value === "string") : typeof setCookie === "string" ? [setCookie] : [];
+    const map = new Map<string, string>();
+    for (const pair of cookieJar.split("; ").filter(Boolean)) { const separator = pair.indexOf("="); if (separator > 0) map.set(pair.slice(0, separator), pair.slice(separator + 1)); }
+    for (const value of values) { const pair = value.split(";")[0] ?? ""; const separator = pair.indexOf("="); if (separator > 0) map.set(pair.slice(0, separator), pair.slice(separator + 1)); }
+    cookieJar = [...map.entries()].map(([key, value]) => `${key}=${value}`).join("; ");
+    csrfToken = decodeURIComponent(map.get("cvg_csrf") ?? "");
+    return { statusCode: result.statusCode, body: result.json<{ data?: Record<string, unknown>; error?: { code: string } }>() };
+  };
+  try {
+    const challenge = await request("/auth/login", { method: "POST", payload: { login: user.login, password }, headers: { "x-cvg-device-id": "fixture-device-admin" } });
+    assert.equal(challenge.statusCode, 202);
+    assert.equal(challenge.body.data?.mfaRequired, true);
+    const challengeId = challenge.body.data?.challengeId as string;
+    const verified = await request("/auth/mfa/verify", { method: "POST", payload: { challengeId, code: fixtureTotpCode(secret) }, headers: { "x-cvg-device-id": "fixture-device-admin" } });
+    assert.equal(verified.statusCode, 200);
+    const sessions = await request("/auth/sessions");
+    assert.equal(sessions.statusCode, 200);
+    const sessionData = sessions.body.data as { items: Array<Record<string, unknown>>; currentSessionId: string };
+    assert.equal(sessionData.items.length, 1);
+    assert.equal(sessionData.items[0]?.device, "registered");
+    assert.equal("ipDigest" in (sessionData.items[0] ?? {}), false);
+    assert.equal("userAgentDigest" in (sessionData.items[0] ?? {}), false);
+    const rotated = await request("/auth/password/rotate", { method: "POST", payload: { currentPassword: password, newPassword: "Rotated-Password-123!" } });
+    assert.equal(rotated.statusCode, 200);
+    assert.equal(user.security.credentialVersion, 2);
+    assert.equal([...store.sessions.values()].filter((session) => session.revokedAt === null).length, 1);
+    const recoveryCodes = store.issueRecoveryCodes(user.id, 2);
+    const secondChallenge = await request("/auth/login", { method: "POST", payload: { login: user.login, password: "Rotated-Password-123!" } });
+    const secondVerified = await request("/auth/mfa/verify", { method: "POST", payload: { challengeId: secondChallenge.body.data?.challengeId, code: fixtureTotpCode(secret) } });
+    assert.equal(secondVerified.statusCode, 200);
+    const afterSecondLogin = await request("/auth/sessions");
+    const currentSessionId = (afterSecondLogin.body.data as { currentSessionId: string }).currentSessionId;
+    const other = [...store.sessions.values()].find((session) => session.id !== currentSessionId && session.revokedAt === null);
+    assert.ok(other);
+    const revoked = await request(`/auth/sessions/${other.id}/revoke`, { method: "POST" });
+    assert.equal(revoked.statusCode, 200);
+    assert.notEqual(store.sessions.get(other.id)?.revokedAt, null);
+    const recoveryChallenge = await request("/auth/recovery/start", { method: "POST", payload: { login: user.login } });
+    const recovered = await request("/auth/recovery/complete", { method: "POST", payload: { challengeId: recoveryChallenge.body.data?.challengeId, recoveryCode: recoveryCodes[0], newPassword: "Recovered-Password-321!" } });
+    assert.equal(recovered.statusCode, 200);
+    assert.equal(user.security.recoveryCodeDigests.length, 1);
+    assert.equal([...store.sessions.values()].filter((session) => session.revokedAt === null).length, 1);
+    const replayChallenge = await request("/auth/recovery/start", { method: "POST", payload: { login: user.login } });
+    const replay = await request("/auth/recovery/complete", { method: "POST", payload: { challengeId: replayChallenge.body.data?.challengeId, recoveryCode: recoveryCodes[0], newPassword: "Another-Password-321!" } });
+    assert.equal(replay.statusCode, 401);
+    assert.equal(replay.body.error?.code, "RECOVERY_INVALID");
+  } finally {
+    await mfaRuntime.app.close();
+  }
+});
+
+test("account lockout is durable in the user security state and blocks a valid password", async () => {
+  const password = "synthetic-password-123";
+  const store = new CvgStore({ bootstrapPassword: password });
+  const lockRuntime = await createRuntime({ store, config: { storageMode: "memory", demoMode: false, authMaxFailedAttempts: 3, authLockoutMinutes: 5, webOrigin: "http://127.0.0.1:5173" } });
+  try {
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const result = await lockRuntime.app.inject({ method: "POST", url: "/api/v1/auth/login", headers: { "content-type": "application/json" }, payload: JSON.stringify({ login: "admin@cvg.local", password: "Wrong-Password-321!" }) });
+      assert.equal(result.statusCode, 401);
+    }
+    assert.equal(store.getUser(store.bootstrapCredentials.userId).security.failedLoginAttempts, 3);
+    const blocked = await lockRuntime.app.inject({ method: "POST", url: "/api/v1/auth/login", headers: { "content-type": "application/json" }, payload: JSON.stringify({ login: "admin@cvg.local", password }) });
+    assert.equal(blocked.statusCode, 429);
+    assert.equal(blocked.json<{ error: { code: string } }>().error.code, "RATE_LIMITED");
+  } finally {
+    await lockRuntime.app.close();
+  }
 });

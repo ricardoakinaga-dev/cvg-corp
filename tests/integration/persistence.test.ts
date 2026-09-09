@@ -32,7 +32,7 @@ function fakePool(options: { revision?: string; failSnapshotInsert?: boolean; au
       const normalized = sql.trim().replace(/\s+/g, " ");
       statements.push(normalized);
       if (sql.includes("current_database()")) return { rows: [{ database: "cvg_synthetic", server_version: "16.0" }] };
-      if (sql.includes("to_regclass('public.cvg_state_snapshots')")) return { rows: [{ snapshots: true, journal: true, audit: true, receipts: true, communications: true, outbox: true, usage_ledger: true, inbox: true, external_effects: true, runtime_scope_guards: true, ai_turn_scope: true, ai_draft_scope: true }] };
+      if (sql.includes("to_regclass('public.cvg_state_snapshots')")) return { rows: [{ snapshots: true, journal: true, audit: true, receipts: true, communications: true, outbox: true, usage_ledger: true, inbox: true, external_effects: true, runtime_scope_guards: true, auth_security: true, ai_turn_scope: true, ai_draft_scope: true }] };
       if (sql.includes("from cvg_state_snapshots s")) return { rows: [] };
       if (sql.includes("select revision::text as revision")) return { rows: revision === "0" ? [] : [{ revision }] };
       return { rows: [] };

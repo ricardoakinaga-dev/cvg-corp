@@ -24,7 +24,9 @@ const requiredFiles = [
   "packages/agent-runtime/src/index.ts",
   "packages/agent-policy/src/index.ts",
   "packages/agent-tools/src/index.ts",
+  "packages/auth/src/index.ts",
   "db/migrations/019_runtime_scope_guards.sql",
+  "db/migrations/020_auth_security_boundary.sql",
   "docs/runbooks/deploy.md",
   "docs/runbooks/deployment.md",
   "docs/runbooks/rollback.md",
@@ -51,6 +53,8 @@ const requiredFiles = [
   "scripts/verify-licenses.ts",
   "scripts/audit-design-tokens.ts",
   "scripts/check-contrast.ts",
+  "tests/unit/worker.test.ts",
+  "tests/integration/faults.test.ts",
   ".gauntlet/bar-v3.json",
   ".gauntlet/critique-v3-fresh.md",
   "scripts/verify-production.ts"
@@ -104,7 +108,7 @@ function inspectStaticContracts(): void {
   requireText("docker-compose.yml", "condition: service_completed_successfully");
   requireText("docker-compose.yml", "internal: true");
   requireText("docker-compose.yml", "CVG_WORKER_SINK_MODE");
-  requireText("docker/worker.ts", "sinkMode !== \"quarantine\"");
+  requireText("docker/worker.ts", "CvgWorkerApplication");
   requireText("docker/worker.ts", "process.exitCode = 1");
   requireText("apps/worker/src/main.ts", "blockedWorkerSink");
   requireText("packages/config/src/index.ts", "Unknown CVG configuration key");
@@ -156,7 +160,7 @@ function syntheticComposeEnvironment(): NodeJS.ProcessEnv {
     POSTGRES_PASSWORD: "verify-local-only-password",
     DATABASE_URL: "postgresql://cvg_app:verify-local-only-password@postgres:5432/cvg_local",
     CVG_BOOTSTRAP_PASSWORD: "verify-local-only-bootstrap-password",
-    CVG_ORGANIZATION_ID: "00000000-0000-4000-8000-000000000010",
+    CVG_WORKER_ORGANIZATION_ID: "00000000-0000-4000-8000-000000000010",
     NODE_ENV: "development",
     CVG_WEB_ORIGIN: "http://localhost:8080",
     CVG_DEMO_MODE: "true",

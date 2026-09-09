@@ -4,6 +4,7 @@ import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest }
 import cookie from "@fastify/cookie";
 import cors from "@fastify/cors";
 import { z } from "zod";
+import { generateOpaqueToken, passwordPolicyIssues, verifyTotpCode, type MfaSecretResolver } from "@cvg/auth";
 import { loadCvgConfig, validateCvgConfig, ConfigError } from "@cvg/config";
 import { assertPolicyAllowed, authorizeApplicationRequest, applicationPolicyFor, PolicyEvaluationError } from "@cvg/agent-policy";
 import {
@@ -27,10 +28,14 @@ import {
   isApiError,
   knowledgeDocumentInputSchema,
   loginInputSchema,
+  mfaVerificationInputSchema,
   medicationOrderInputSchema,
   patientInputSchema,
   patientMergeInputSchema,
   paymentInputSchema,
+  passwordRotationInputSchema,
+  recoveryCompleteInputSchema,
+  recoveryStartInputSchema,
   refundInputSchema,
   resultInputSchema,
   roleAssignmentInputSchema,
@@ -89,6 +94,13 @@ export interface ServerConfig {
   storageMode: "memory" | "postgres";
   demoMode: boolean;
   sessionTtlMinutes: number;
+  authMfaMode: "disabled" | "optional" | "required";
+  passwordMinLength: number;
+  passwordMaxAgeDays: number;
+  authMaxFailedAttempts: number;
+  authLockoutMinutes: number;
+  authChallengeTtlSeconds: number;
+  authMaxChallengeAttempts: number;
   databaseUrl: string;
   bootstrapPassword: string | null;
   deepseekBaseUrl: string | null;
@@ -112,6 +124,7 @@ export interface ServerOptions {
   outboxSink?: OutboxSink;
   providerQueryAdapter?: ExternalEffectQueryAdapter;
   secretProvider?: SecretProvider;
+  mfaSecretResolver?: MfaSecretResolver;
 }
 
 export interface CvgServerRuntime {
@@ -142,6 +155,13 @@ function getConfig(overrides: Partial<ServerConfig> = {}): ServerConfig {
     storageMode: overrides.storageMode ?? typed.storageMode,
     demoMode: overrides.demoMode ?? typed.demoMode,
     sessionTtlMinutes: overrides.sessionTtlMinutes ?? typed.sessionTtlMinutes,
+    authMfaMode: overrides.authMfaMode ?? typed.authMfaMode,
+    passwordMinLength: overrides.passwordMinLength ?? typed.passwordMinLength,
+    passwordMaxAgeDays: overrides.passwordMaxAgeDays ?? typed.passwordMaxAgeDays,
+    authMaxFailedAttempts: overrides.authMaxFailedAttempts ?? typed.authMaxFailedAttempts,
+    authLockoutMinutes: overrides.authLockoutMinutes ?? typed.authLockoutMinutes,
+    authChallengeTtlSeconds: overrides.authChallengeTtlSeconds ?? typed.authChallengeTtlSeconds,
+    authMaxChallengeAttempts: overrides.authMaxChallengeAttempts ?? typed.authMaxChallengeAttempts,
     databaseUrl: overrides.databaseUrl ?? typed.databaseUrl,
     bootstrapPassword: overrides.bootstrapPassword ?? typed.bootstrapPassword,
     deepseekBaseUrl: overrides.deepseekBaseUrl ?? typed.deepseekBaseUrl,
@@ -153,7 +173,7 @@ function getConfig(overrides: Partial<ServerConfig> = {}): ServerConfig {
     workerOrganizationId: overrides.workerOrganizationId ?? typed.workerOrganizationId,
     secretProvider: overrides.secretProvider ?? typed.secretProvider
   });
-  return { nodeEnv: validated.nodeEnv, host: validated.host, port: validated.apiPort, webOrigin: validated.webOrigin, storageMode: validated.storageMode, demoMode: validated.demoMode, sessionTtlMinutes: validated.sessionTtlMinutes, databaseUrl: validated.databaseUrl, bootstrapPassword: validated.bootstrapPassword, deepseekBaseUrl: validated.deepseekBaseUrl, deepseekRuntimeEnabled: validated.deepseekRuntimeEnabled, deepseekExpectedEngineCommit: validated.deepseekExpectedEngineCommit, deepseekExpectedManifestVersion: validated.deepseekExpectedManifestVersion, deepseekBearerTokenRef: validated.deepseekBearerTokenRef, secretDir: validated.secretDir, workerOrganizationId: validated.workerOrganizationId, secretProvider: validated.secretProvider };
+  return { nodeEnv: validated.nodeEnv, host: validated.host, port: validated.apiPort, webOrigin: validated.webOrigin, storageMode: validated.storageMode, demoMode: validated.demoMode, sessionTtlMinutes: validated.sessionTtlMinutes, authMfaMode: validated.authMfaMode, passwordMinLength: validated.passwordMinLength, passwordMaxAgeDays: validated.passwordMaxAgeDays, authMaxFailedAttempts: validated.authMaxFailedAttempts, authLockoutMinutes: validated.authLockoutMinutes, authChallengeTtlSeconds: validated.authChallengeTtlSeconds, authMaxChallengeAttempts: validated.authMaxChallengeAttempts, databaseUrl: validated.databaseUrl, bootstrapPassword: validated.bootstrapPassword, deepseekBaseUrl: validated.deepseekBaseUrl, deepseekRuntimeEnabled: validated.deepseekRuntimeEnabled, deepseekExpectedEngineCommit: validated.deepseekExpectedEngineCommit, deepseekExpectedManifestVersion: validated.deepseekExpectedManifestVersion, deepseekBearerTokenRef: validated.deepseekBearerTokenRef, secretDir: validated.secretDir, workerOrganizationId: validated.workerOrganizationId, secretProvider: validated.secretProvider };
 }
 
 function tokenDigest(value: string): string {
@@ -297,6 +317,11 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const bearerTokenRef = config.deepseekBearerTokenRef;
     return new DeepSeekHarnessAdapter({ baseUrl: config.deepseekBaseUrl, expectedEngineCommit: config.deepseekExpectedEngineCommit, expectedManifestVersion: config.deepseekExpectedManifestVersion, expectedToolNames: TOOL_REGISTRY.map((tool) => tool.name), requestTimeoutMs: 5_000, allowInsecureHttp: config.nodeEnv !== "production", ...(bearerTokenRef ? { resolveBearerToken: () => secretProvider?.resolve?.(bearerTokenRef) ?? Promise.resolve(null) } : {}) });
   })();
+  const mfaSecretResolver: MfaSecretResolver | null = options.mfaSecretResolver ?? (secretProvider?.resolve ? { resolve: (reference: string) => secretProvider.resolve!(reference) } : null);
+  if (config.authMfaMode === "required" && !mfaSecretResolver) {
+    await persistence?.close();
+    throw new DomainError("CAPABILITY_DISABLED", "MFA é obrigatório, mas nenhum resolver de segredo foi configurado.", 503);
+  }
   const telemetry = options.telemetry ?? new OpsTelemetry();
   const integrations = new IntegrationGateway(secretProvider);
   const secretProviderStatus: SecretProviderStatus = secretProvider?.status() ?? (config.demoMode ? "DEGRADED" : "UNAVAILABLE");
@@ -426,6 +451,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     if (!raw) throw new DomainError("UNAUTHENTICATED", "É necessário iniciar uma sessão.", 401);
     const session = store.findSession(tokenDigest(raw));
     if (!session) throw new DomainError("UNAUTHENTICATED", "A sessão é inválida, expirada ou foi revogada.", 401);
+    store.touchSession(session);
     return session;
   };
 
@@ -497,6 +523,55 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     failedLogins.set(key, next);
   };
 
+  const passwordPolicy = {
+    minLength: config.passwordMinLength,
+    maxLength: 256,
+    requireUppercase: true,
+    requireLowercase: true,
+    requireNumber: true,
+    requireSymbol: true,
+    rejectIdentifier: true
+  } as const;
+  const sessionMetadata = (request: FastifyRequest) => {
+    const deviceId = header(request, "x-cvg-device-id");
+    const userAgent = header(request, "user-agent");
+    return {
+      deviceIdDigest: deviceId && /^[A-Za-z0-9._:-]{8,160}$/.test(deviceId) ? tokenDigest(deviceId) : null,
+      userAgentDigest: userAgent ? tokenDigest(userAgent.slice(0, 512)) : null,
+      ipDigest: request.ip ? tokenDigest(request.ip) : null
+    };
+  };
+  const passwordExpiry = (): string | null => config.passwordMaxAgeDays > 0 ? new Date(Date.now() + config.passwordMaxAgeDays * 86_400_000).toISOString() : null;
+  const setSessionCookies = (reply: FastifyReply, rawToken: string, csrfToken: string, secure: boolean): void => {
+    reply.setCookie(SESSION_COOKIE, rawToken, { httpOnly: true, sameSite: "strict", secure, path: "/", maxAge: config.sessionTtlMinutes * 60 });
+    reply.setCookie(CSRF_COOKIE, csrfToken, { httpOnly: false, sameSite: "strict", secure, path: "/", maxAge: config.sessionTtlMinutes * 60 });
+  };
+  const createAuthenticatedSession = (request: FastifyRequest, reply: FastifyReply, user: ReturnType<CvgStore["getUser"]>, mfaVerifiedAt: string | null = null) => {
+    const rawToken = generateOpaqueToken();
+    const csrfToken = randomBytes(24).toString("base64url");
+    const session = store.createSession(user.id, tokenDigest(rawToken), csrfToken, config.sessionTtlMinutes, { ...sessionMetadata(request), mfaVerifiedAt });
+    user.lastLoginAt = now();
+    store.clearLoginFailures(user);
+    setSessionCookies(reply, rawToken, csrfToken, config.nodeEnv === "production" || !isLoopbackHost(config.host));
+    telemetry.sessionOpened();
+    return session;
+  };
+  const authPayload = (user: ReturnType<CvgStore["getUser"]>, session: ReturnType<CvgStore["createSession"]>) => ({
+    user: publicUser(user),
+    contexts: store.contextOptions(user.id).map((option) => ({ organization: option.organization, unit: option.unit, workspace: option.workspace, roles: option.roles })),
+    csrfToken: session.csrfToken
+  });
+  const publicSession = (session: ReturnType<CvgStore["createSession"]>) => ({
+    id: session.id,
+    createdAt: session.createdAt,
+    expiresAt: session.expiresAt,
+    revokedAt: session.revokedAt,
+    lastSeenAt: session.lastSeenAt,
+    device: session.deviceIdDigest ? "registered" : "unidentified",
+    mfaVerified: session.mfaVerifiedAt !== null,
+    currentCredentialVersion: session.credentialVersion
+  });
+
   const audit = (context: CvgContext, action: string, resourceType: string, resourceId: OpaqueId | null, result: "ALLOWED" | "DENIED" | "ERROR" | "UNKNOWN", reason: string | null = null, metadata: Record<string, string | number | boolean | null> = {}) => {
     const record = store.recordAudit({ organizationId: context.organizationId, actorId: context.actorId, unitId: context.unitId, workspaceId: context.workspaceId, action, resourceType, resourceId, result, reason, correlationId: context.correlationId, metadata });
     const operation = commandOperationByAuditAction[action];
@@ -528,35 +603,135 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const input = parse(loginInputSchema, request.body);
     const attemptKey = checkLoginRate(request, input.login);
     const user = store.getUserByLogin(input.login);
+    if (user && store.isAccountLocked(user)) throw new DomainError("RATE_LIMITED", "Muitas tentativas de login; aguarde antes de tentar novamente.", 429, { retryAfterSeconds: Math.max(1, Math.ceil((Date.parse(user.security.lockedUntil!) - Date.now()) / 1_000)) });
     if (!user || user.status !== "ACTIVE" || !verifyPassword(input.password, user.passwordDigest) || store.healthStatus === "QUARANTINED") {
+      if (user && user.status === "ACTIVE" && store.healthStatus !== "QUARANTINED") {
+        store.recordLoginFailure(user.id, config.authMaxFailedAttempts, config.authLockoutMinutes);
+        store.recordAudit({ organizationId: user.organizationId, actorId: user.id, unitId: null, workspaceId: null, action: "auth.login", resourceType: "User", resourceId: user.id, result: "DENIED", reason: "AUTHENTICATION_FAILED", correlationId: correlationId(request), metadata: { failedAttempts: user.security.failedLoginAttempts } });
+      }
       noteLoginFailure(attemptKey);
-      throw new DomainError("UNAUTHENTICATED", "Login ou senha inválidos.", 401);
+      throw new DomainError("AUTHENTICATION_FAILED", "Login ou senha inválidos.", 401);
     }
     failedLogins.delete(attemptKey);
-    const rawToken = randomBytes(32).toString("base64url");
-    const csrfToken = randomBytes(24).toString("base64url");
-    const session = store.createSession(user.id, tokenDigest(rawToken), csrfToken, config.sessionTtlMinutes);
-    user.lastLoginAt = now();
     const corr = randomUUID();
-    store.recordAudit({ organizationId: user.organizationId, actorId: user.id, unitId: null, workspaceId: null, action: "auth.login", resourceType: "Session", resourceId: session.id, result: "ALLOWED", reason: null, correlationId: corr, metadata: { storageMode: store.storageMode } });
-    reply.setCookie(SESSION_COOKIE, rawToken, { httpOnly: true, sameSite: "strict", secure: config.host !== "127.0.0.1" && config.host !== "localhost", path: "/", maxAge: config.sessionTtlMinutes * 60 });
-    reply.setCookie(CSRF_COOKIE, csrfToken, { httpOnly: false, sameSite: "strict", secure: config.host !== "127.0.0.1" && config.host !== "localhost", path: "/", maxAge: config.sessionTtlMinutes * 60 });
-    telemetry.sessionOpened();
-    return response(reply, success({ user: publicUser(user), contexts: store.contextOptions(user.id).map((option) => ({ organization: option.organization, unit: option.unit, workspace: option.workspace, roles: option.roles })), csrfToken }, corr));
+    if (user.security.passwordExpiresAt && Date.parse(user.security.passwordExpiresAt) <= Date.now()) {
+      store.recordAudit({ organizationId: user.organizationId, actorId: user.id, unitId: null, workspaceId: null, action: "auth.login", resourceType: "User", resourceId: user.id, result: "DENIED", reason: "CREDENTIAL_EXPIRED", correlationId: corr, metadata: { storageMode: store.storageMode } });
+      throw new DomainError("CREDENTIAL_EXPIRED", "A senha expirou e precisa ser substituída por um fluxo de recuperação autorizado.", 401);
+    }
+    const requiresMfa = config.authMfaMode === "required" || user.security.mfaRequired;
+    if (requiresMfa) {
+      if (!mfaSecretResolver || !user.security.mfaSecretRef) throw new DomainError("CAPABILITY_DISABLED", "MFA obrigatório sem uma referência de segredo resolvível; o login foi bloqueado.", 503);
+      const rawChallenge = generateOpaqueToken();
+      const challenge = store.createAuthChallenge("MFA", user.id, tokenDigest(rawChallenge), config.authChallengeTtlSeconds, config.authMaxChallengeAttempts);
+      store.recordAudit({ organizationId: user.organizationId, actorId: user.id, unitId: null, workspaceId: null, action: "auth.mfa.challenge", resourceType: "AuthChallenge", resourceId: challenge.id, result: "ALLOWED", reason: null, correlationId: corr, metadata: { factor: "TOTP", expiresAt: challenge.expiresAt } });
+      return response(reply, success({ mfaRequired: true, challengeId: rawChallenge, expiresAt: challenge.expiresAt }, corr), 202);
+    }
+    const session = createAuthenticatedSession(request, reply, user);
+    store.recordAudit({ organizationId: user.organizationId, actorId: user.id, unitId: null, workspaceId: null, action: "auth.login", resourceType: "Session", resourceId: session.id, result: "ALLOWED", reason: null, correlationId: corr, metadata: { storageMode: store.storageMode, mfa: false } });
+    return response(reply, success(authPayload(user, session), corr));
   });
 
-  app.post("/api/v1/auth/demo", async (_request, reply) => {
+  app.post("/api/v1/auth/mfa/verify", async (request, reply) => {
+    const input = parse(mfaVerificationInputSchema, request.body);
+    const corr = correlationId(request);
+    const challenge = store.findAuthChallenge("MFA", tokenDigest(input.challengeId));
+    if (!challenge) throw new DomainError("MFA_INVALID", "O desafio de autenticação é inválido, expirou ou já foi consumido.", 401);
+    const user = store.getUser(challenge.userId);
+    const secretRef = user.security.mfaSecretRef;
+    if (!mfaSecretResolver || !secretRef) throw new DomainError("CAPABILITY_DISABLED", "O resolver de MFA não está disponível; nenhum login foi liberado.", 503);
+    const secret = await mfaSecretResolver.resolve(secretRef);
+    if (!secret || !verifyTotpCode(secret, input.code)) {
+      store.recordChallengeFailure(challenge);
+      store.recordAudit({ organizationId: user.organizationId, actorId: user.id, unitId: null, workspaceId: null, action: "auth.mfa.verify", resourceType: "AuthChallenge", resourceId: challenge.id, result: "DENIED", reason: challenge.status === "LOCKED" ? "MFA_CHALLENGE_LOCKED" : "MFA_INVALID", correlationId: corr, metadata: { attempts: challenge.attempts } });
+      throw new DomainError(challenge.status === "LOCKED" ? "ACCOUNT_LOCKED" : "MFA_INVALID", challenge.status === "LOCKED" ? "O desafio atingiu o limite de tentativas." : "O código MFA é inválido.", challenge.status === "LOCKED" ? 429 : 401);
+    }
+    store.consumeAuthChallenge(challenge);
+    const session = createAuthenticatedSession(request, reply, user, now());
+    store.recordAudit({ organizationId: user.organizationId, actorId: user.id, unitId: null, workspaceId: null, action: "auth.login", resourceType: "Session", resourceId: session.id, result: "ALLOWED", reason: "mfa_verified", correlationId: corr, metadata: { storageMode: store.storageMode, mfa: true } });
+    return response(reply, success(authPayload(user, session), corr));
+  });
+
+  app.post("/api/v1/auth/recovery/start", async (request, reply) => {
+    const input = parse(recoveryStartInputSchema, request.body);
+    const rawChallenge = generateOpaqueToken();
+    const user = store.getUserByLogin(input.login);
+    const expiresAt = new Date(Date.now() + config.authChallengeTtlSeconds * 1_000).toISOString();
+    const corr = correlationId(request);
+    if (user?.status === "ACTIVE" && store.healthStatus !== "QUARANTINED") {
+      const challenge = store.createAuthChallenge("RECOVERY", user.id, tokenDigest(rawChallenge), config.authChallengeTtlSeconds, config.authMaxChallengeAttempts);
+      store.recordAudit({ organizationId: user.organizationId, actorId: user.id, unitId: null, workspaceId: null, action: "auth.recovery.challenge", resourceType: "AuthChallenge", resourceId: challenge.id, result: "ALLOWED", reason: null, correlationId: corr, metadata: { expiresAt: challenge.expiresAt } });
+      return response(reply, success({ accepted: true, challengeId: rawChallenge, expiresAt: challenge.expiresAt }, corr), 202);
+    }
+    return response(reply, success({ accepted: true, challengeId: rawChallenge, expiresAt }, corr), 202);
+  });
+
+  app.post("/api/v1/auth/recovery/complete", async (request, reply) => {
+    const input = parse(recoveryCompleteInputSchema, request.body);
+    const issues = passwordPolicyIssues(input.newPassword, passwordPolicy);
+    if (issues.length) throw new DomainError("INVALID_INPUT", "A nova senha não atende à política de segurança.", 400, { issues });
+    const corr = correlationId(request);
+    const challenge = store.findAuthChallenge("RECOVERY", tokenDigest(input.challengeId));
+    if (!challenge) throw new DomainError("RECOVERY_INVALID", "A recuperação é inválida, expirou ou já foi consumida.", 401);
+    const user = store.getUser(challenge.userId);
+    const accountIssues = passwordPolicyIssues(input.newPassword, passwordPolicy, { identifier: user.login });
+    if (accountIssues.length) throw new DomainError("INVALID_INPUT", "A nova senha não atende à política de segurança.", 400, { issues: accountIssues });
+    if (!store.consumeRecoveryCode(user.id, input.recoveryCode)) {
+      store.recordChallengeFailure(challenge);
+      store.recordAudit({ organizationId: user.organizationId, actorId: user.id, unitId: null, workspaceId: null, action: "auth.recovery.complete", resourceType: "AuthChallenge", resourceId: challenge.id, result: "DENIED", reason: challenge.status === "LOCKED" ? "RECOVERY_CHALLENGE_LOCKED" : "RECOVERY_INVALID", correlationId: corr, metadata: { attempts: challenge.attempts } });
+      throw new DomainError(challenge.status === "LOCKED" ? "ACCOUNT_LOCKED" : "RECOVERY_INVALID", "O código de recuperação é inválido.", challenge.status === "LOCKED" ? 429 : 401);
+    }
+    store.consumeAuthChallenge(challenge);
+    store.rotatePassword(user.id, hashPassword(input.newPassword), passwordExpiry());
+    const session = createAuthenticatedSession(request, reply, user, now());
+    store.recordAudit({ organizationId: user.organizationId, actorId: user.id, unitId: null, workspaceId: null, action: "auth.recovery.complete", resourceType: "Session", resourceId: session.id, result: "ALLOWED", reason: "recovery_code_consumed", correlationId: corr, metadata: { sessionsRevoked: true } });
+    return response(reply, success({ ...authPayload(user, session), recovered: true }, corr));
+  });
+
+  app.post("/api/v1/auth/password/rotate", async (request, reply) => {
+    const { session, context } = requestContext(request, "identity.password.rotate", null, null, true);
+    requireCsrf(request, session);
+    const input = parse(passwordRotationInputSchema, request.body);
+    const user = store.getUser(session.userId);
+    if (!verifyPassword(input.currentPassword, user.passwordDigest)) throw new DomainError("AUTHENTICATION_FAILED", "A senha atual é inválida.", 401);
+    if (verifyPassword(input.newPassword, user.passwordDigest)) throw new DomainError("INVALID_INPUT", "A nova senha deve ser diferente da senha atual.", 400);
+    const issues = passwordPolicyIssues(input.newPassword, passwordPolicy, { identifier: user.login });
+    if (issues.length) throw new DomainError("INVALID_INPUT", "A nova senha não atende à política de segurança.", 400, { issues });
+    store.rotatePassword(user.id, hashPassword(input.newPassword), passwordExpiry());
+    const newSession = createAuthenticatedSession(request, reply, user, session.mfaVerifiedAt);
+    audit(context, "identity.password.rotate", "User", user.id, "ALLOWED", null, { sessionsRevoked: true });
+    return response(reply, success({ ...authPayload(user, newSession), rotated: true }, context.correlationId));
+  });
+
+  app.get("/api/v1/auth/sessions", async (request, reply) => {
+    const { session, context } = requestContext(request, "identity.sessions.read", null, null, true);
+    const items = [...store.sessions.values()].filter((candidate) => candidate.userId === session.userId).sort((left, right) => right.lastSeenAt.localeCompare(left.lastSeenAt)).map(publicSession);
+    audit(context, "identity.sessions.read", "Session", null, "ALLOWED", null, { count: items.length });
+    return response(reply, success({ items, currentSessionId: session.id }, context.correlationId));
+  });
+
+  app.post("/api/v1/auth/sessions/:id/revoke", async (request, reply) => {
+    const { session, context } = requestContext(request, "identity.sessions.revoke", null, null, true);
+    requireCsrf(request, session);
+    const sessionId = id(parse(idSchema, (request.params as { id: string }).id));
+    const target = store.sessions.get(sessionId);
+    if (!target || target.userId !== session.userId) throw new DomainError("NOT_FOUND", "Sessão não encontrada.", 404);
+    store.revokeSession(target);
+    audit(context, "identity.sessions.revoke", "Session", target.id, "ALLOWED", null, { current: target.id === session.id });
+    if (target.id === session.id) {
+      reply.clearCookie(SESSION_COOKIE, { path: "/" });
+      reply.clearCookie(CSRF_COOKIE, { path: "/" });
+      telemetry.sessionClosed();
+    }
+    return response(reply, success({ revoked: true, sessionId: target.id, current: target.id === session.id }, context.correlationId));
+  });
+
+  app.post("/api/v1/auth/demo", async (request, reply) => {
     if (!config.demoMode || config.storageMode !== "memory") throw new DomainError("CAPABILITY_DISABLED", "A demonstração sintética não está habilitada neste ambiente.", 403);
     const user = store.getUser(store.bootstrapCredentials.userId);
-    const rawToken = randomBytes(32).toString("base64url");
-    const csrfToken = randomBytes(24).toString("base64url");
-    const session = store.createSession(user.id, tokenDigest(rawToken), csrfToken, config.sessionTtlMinutes);
     const corr = randomUUID();
+    const session = createAuthenticatedSession(request, reply, user);
     store.recordAudit({ organizationId: user.organizationId, actorId: user.id, unitId: null, workspaceId: null, action: "auth.demo_session", resourceType: "Session", resourceId: session.id, result: "ALLOWED", reason: "local synthetic demo only", correlationId: corr, metadata: { demo: true } });
-    reply.setCookie(SESSION_COOKIE, rawToken, { httpOnly: true, sameSite: "strict", secure: false, path: "/", maxAge: config.sessionTtlMinutes * 60 });
-    reply.setCookie(CSRF_COOKIE, csrfToken, { httpOnly: false, sameSite: "strict", secure: false, path: "/", maxAge: config.sessionTtlMinutes * 60 });
-    telemetry.sessionOpened();
-    return response(reply, success({ user: publicUser(user), contexts: store.contextOptions(user.id), csrfToken, demo: true }, corr));
+    return response(reply, success({ ...authPayload(user, session), demo: true }, corr));
   });
 
   app.post("/api/v1/auth/logout", async (request, reply) => {
@@ -707,7 +882,9 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
 
   app.get("/api/v1/appointments", async (request, reply) => {
     const { context } = requestContext(request, "appointments.read");
-    const appointments = await readApplication.listAppointments(context);
+    const query = request.query as Record<string, unknown>;
+    const range = query.range === "week" ? "week" : "today";
+    const appointments = await readApplication.listAppointments(context, range);
     audit(context, "appointments.read", "Appointment", null, "ALLOWED", null, { count: appointments.length });
     return response(reply, success({ items: appointments }, context.correlationId));
   });

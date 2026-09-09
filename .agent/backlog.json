@@ -32,13 +32,13 @@
       "dependencies": [],
       "owner": "lead",
       "acceptance_summary": "Implementar e verificar a arquitetura, segurança, confiabilidade, AI governance, operações, DX, frontend, documentação e produção exigidas pelo prompt; AAA só é elegível com a barra v3 completa e autoridade humana para qualquer efeito externo.",
-      "evidence_refs": ["docs/architecture-audit-vNext.md", ".gauntlet/bar-v3.json", ".gauntlet/critique-v3-fresh.md", "docs/verification-vNext.md", "VER-CVG-031", "VER-CVG-033"],
+      "evidence_refs": ["docs/architecture-audit-vNext.md", ".gauntlet/bar-v3.json", ".gauntlet/critique-v3-fresh.md", "docs/verification-vNext.md", "VER-CVG-031", "VER-CVG-033", "VER-CVG-034"],
       "next_action": {
-        "id": "CVG-FULL-STATE-OF-THE-ART:EXTERNAL-EVIDENCE-AND-INDEPENDENT-REVIEW",
+        "id": "CVG-FULL-STATE-OF-THE-ART:PRODUCTION-LIKE-EVIDENCE",
         "kind": "VERIFY",
-        "summary": "Obter evidência autorizada production-like e repetir a barra sem liberar egress, dados ou provider por inferência",
-        "target": "PostgreSQL/Docker production-like; secret manager; DeepSeek/provider; fault/recovery; SLO/alertas; browsers/axe; CI remoto; aceite humano",
-        "completion_signal": "Todos os critérios obrigatórios têm evidência executável atual, blockers estão resolvidos por autoridade nomeada, críticos frescos aprovam e scorecard atinge >=95; até lá manter FAIL_WITH_LIMITATIONS"
+        "summary": "Obter e executar evidência autorizada de PostgreSQL/Docker, secret authority, provider, fault/recovery distribuído, carga/SLO e revisão independente",
+        "target": "ambiente production-like autorizado; .github/workflows/ci.yml; Docker/Compose; PostgreSQL; secret-provider; provider externo; observabilidade; docs/",
+        "completion_signal": "Cada critério aplicável tem execução atual, artefato, owner e aprovação; qualquer ausência permanece NOT_RUN e não há release sem autoridade humana"
       }
     }
   ]

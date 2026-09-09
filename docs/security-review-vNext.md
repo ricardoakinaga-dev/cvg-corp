@@ -11,14 +11,16 @@
 - Tool Gateway com catálogo, schema de entrada, timeout, idempotência, audit action, secret refs e egress deny-by-default.
 - PostgreSQL com migration aditiva de escopo nas projeções de IA; RLS é defesa adicional, não substituto do PDP.
 - Restore em quarentena e invalidação de autoridade são princípios mantidos no caminho sintético.
+- Boundary de autenticação local com política de senha, MFA/TOTP por referência, lockout, recuperação one-shot, rotação por versão de credencial, revogação de sessões e metadados de dispositivo redigidos; migration aditiva 020 e auditoria dos fluxos.
 
 ## Lacunas e testes não executados
 
-- Sessões ainda não constituem uma autoridade distribuída com MFA, recuperação e rotação operacional.
+- A boundary de sessão e os fluxos de MFA/recuperação/rotação passam em memória sintética; autoridade distribuída, rate limit compartilhado e rotação operacional ainda não foram executados.
 - Os providers `vault/aws/gcp/azure/kubernetes` possuem ponto de integração, não implementação conectada.
 - A execução do gateway ainda não é provada como caminho universal de todas as rotas e repositories.
 - Adversarial AI security, prompt exfiltration, tenant fuzzing, secret scanning completo e browser security tests não foram executados. O audit de dependências, SBOM e política de licenças locais passaram; o scan de imagem existe como gate Trivy no CI, mas não foi executado neste host.
 - Dados reais, break-glass, exportação, pagamentos e comunicação permanecem proibidos.
+- Resolver de TOTP, secret manager/KMS, canal de recuperação, TLS/HTTPS production-like e browsers/axe ainda são dependências externas não fornecidas.
 
 ## Veredito
 

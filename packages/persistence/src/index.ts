@@ -663,8 +663,8 @@ async function projectIdentity(client: PoolClient, snapshot: StoreSnapshot): Pro
   }
   for (const user of snapshot.users) {
     await client.query(
-      "insert into users(id, organization_id, login, display_name, email, status, password_digest, last_login_at, created_at) values ($1, $2, $3, $4, $5, $6, $7, $8, $9) on conflict (id) do update set organization_id = excluded.organization_id, login = excluded.login, display_name = excluded.display_name, email = excluded.email, status = excluded.status, password_digest = excluded.password_digest, last_login_at = excluded.last_login_at",
-      [user.id, user.organizationId, user.login, user.displayName, user.email, user.status, user.passwordDigest, user.lastLoginAt, user.createdAt]
+      "insert into users(id, organization_id, login, display_name, email, status, password_digest, last_login_at, password_changed_at, password_expires_at, credential_version, failed_login_attempts, locked_until, mfa_required, mfa_secret_ref, recovery_code_digests, recovery_codes_issued_at, created_at) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16::jsonb, $17, $18) on conflict (id) do update set organization_id = excluded.organization_id, login = excluded.login, display_name = excluded.display_name, email = excluded.email, status = excluded.status, password_digest = excluded.password_digest, last_login_at = excluded.last_login_at, password_changed_at = excluded.password_changed_at, password_expires_at = excluded.password_expires_at, credential_version = excluded.credential_version, failed_login_attempts = excluded.failed_login_attempts, locked_until = excluded.locked_until, mfa_required = excluded.mfa_required, mfa_secret_ref = excluded.mfa_secret_ref, recovery_code_digests = excluded.recovery_code_digests, recovery_codes_issued_at = excluded.recovery_codes_issued_at",
+      [user.id, user.organizationId, user.login, user.displayName, user.email, user.status, user.passwordDigest, user.lastLoginAt, user.security.passwordChangedAt, user.security.passwordExpiresAt, user.security.credentialVersion, user.security.failedLoginAttempts, user.security.lockedUntil, user.security.mfaRequired, user.security.mfaSecretRef, JSON.stringify(user.security.recoveryCodeDigests), user.security.recoveryCodesIssuedAt, user.createdAt]
     );
   }
   for (const assignment of snapshot.roleAssignments) {
@@ -675,8 +675,14 @@ async function projectIdentity(client: PoolClient, snapshot: StoreSnapshot): Pro
   }
   for (const session of snapshot.sessions) {
     await client.query(
-      "insert into sessions(id, organization_id, user_id, token_digest, csrf_token, expires_at, revoked_at, created_at) values ($1, $2, $3, $4, $5, $6, $7, $8) on conflict (id) do update set organization_id = excluded.organization_id, user_id = excluded.user_id, token_digest = excluded.token_digest, csrf_token = excluded.csrf_token, expires_at = excluded.expires_at, revoked_at = excluded.revoked_at",
-      [session.id, session.organizationId, session.userId, session.tokenDigest, session.csrfToken, session.expiresAt, session.revokedAt, session.createdAt]
+      "insert into sessions(id, organization_id, user_id, token_digest, csrf_token, expires_at, revoked_at, device_id_digest, user_agent_digest, ip_digest, last_seen_at, mfa_verified_at, credential_version, created_at) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) on conflict (id) do update set organization_id = excluded.organization_id, user_id = excluded.user_id, token_digest = excluded.token_digest, csrf_token = excluded.csrf_token, expires_at = excluded.expires_at, revoked_at = excluded.revoked_at, device_id_digest = excluded.device_id_digest, user_agent_digest = excluded.user_agent_digest, ip_digest = excluded.ip_digest, last_seen_at = excluded.last_seen_at, mfa_verified_at = excluded.mfa_verified_at, credential_version = excluded.credential_version",
+      [session.id, session.organizationId, session.userId, session.tokenDigest, session.csrfToken, session.expiresAt, session.revokedAt, session.deviceIdDigest, session.userAgentDigest, session.ipDigest, session.lastSeenAt, session.mfaVerifiedAt, session.credentialVersion, session.createdAt]
+    );
+  }
+  for (const challenge of snapshot.authChallenges) {
+    await client.query(
+      "insert into auth_challenges(id, organization_id, user_id, type, token_digest, credential_version, expires_at, attempts, max_attempts, status, consumed_at, created_at) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) on conflict (id) do update set organization_id = excluded.organization_id, user_id = excluded.user_id, type = excluded.type, token_digest = excluded.token_digest, credential_version = excluded.credential_version, expires_at = excluded.expires_at, attempts = excluded.attempts, max_attempts = excluded.max_attempts, status = excluded.status, consumed_at = excluded.consumed_at",
+      [challenge.id, challenge.organizationId, challenge.userId, challenge.type, challenge.tokenDigest, challenge.credentialVersion, challenge.expiresAt, challenge.attempts, challenge.maxAttempts, challenge.status, challenge.consumedAt, challenge.createdAt]
     );
   }
 }
@@ -1026,9 +1032,9 @@ export class PostgresPersistence {
 
   async assertSchema(): Promise<void> {
     try {
-      const result = await this.pool.query<{ snapshots: boolean; journal: boolean; audit: boolean; receipts: boolean; communications: boolean; outbox: boolean; usage_ledger: boolean; inbox: boolean; external_effects: boolean; runtime_scope_guards: boolean; ai_turn_scope: boolean; ai_draft_scope: boolean }>("select to_regclass('public.cvg_state_snapshots') is not null as snapshots, to_regclass('public.cvg_event_journal') is not null as journal, to_regclass('public.cvg_audit_ledger') is not null as audit, to_regclass('public.cvg_command_receipt_ledger') is not null as receipts, to_regclass('public.communication_messages') is not null as communications, to_regclass('public.outbox_records') is not null as outbox, to_regclass('public.ai_usage_ledger') is not null as usage_ledger, to_regclass('public.integration_inbox_records') is not null as inbox, to_regclass('public.external_effects') is not null as external_effects, exists (select 1 from schema_migrations where version = '019_runtime_scope_guards') as runtime_scope_guards, exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'ai_turns' and column_name in ('organization_id', 'unit_id', 'workspace_id') group by table_schema, table_name having count(*) = 3) as ai_turn_scope, exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'ai_drafts' and column_name in ('organization_id', 'unit_id', 'workspace_id') group by table_schema, table_name having count(*) = 3) as ai_draft_scope");
+      const result = await this.pool.query<{ snapshots: boolean; journal: boolean; audit: boolean; receipts: boolean; communications: boolean; outbox: boolean; usage_ledger: boolean; inbox: boolean; external_effects: boolean; runtime_scope_guards: boolean; auth_security: boolean; ai_turn_scope: boolean; ai_draft_scope: boolean }>("select to_regclass('public.cvg_state_snapshots') is not null as snapshots, to_regclass('public.cvg_event_journal') is not null as journal, to_regclass('public.cvg_audit_ledger') is not null as audit, to_regclass('public.cvg_command_receipt_ledger') is not null as receipts, to_regclass('public.communication_messages') is not null as communications, to_regclass('public.outbox_records') is not null as outbox, to_regclass('public.ai_usage_ledger') is not null as usage_ledger, to_regclass('public.integration_inbox_records') is not null as inbox, to_regclass('public.external_effects') is not null as external_effects, exists (select 1 from schema_migrations where version = '019_runtime_scope_guards') as runtime_scope_guards, exists (select 1 from schema_migrations where version = '020_auth_security_boundary') and to_regclass('public.auth_challenges') is not null and exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'users' and column_name = 'mfa_secret_ref') and exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'sessions' and column_name = 'device_id_digest') as auth_security, exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'ai_turns' and column_name in ('organization_id', 'unit_id', 'workspace_id') group by table_schema, table_name having count(*) = 3) as ai_turn_scope, exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'ai_drafts' and column_name in ('organization_id', 'unit_id', 'workspace_id') group by table_schema, table_name having count(*) = 3) as ai_draft_scope");
       const row = result.rows[0];
-      if (!row?.snapshots || !row.journal || !row.audit || !row.receipts || !row.communications || !row.outbox || !row.usage_ledger || !row.inbox || !row.external_effects || !row.runtime_scope_guards || !row.ai_turn_scope || !row.ai_draft_scope) throw new PersistenceUnavailableError("CVG persistence schema is missing the required migration 019 runtime guards; run npm run db:migrate");
+      if (!row?.snapshots || !row.journal || !row.audit || !row.receipts || !row.communications || !row.outbox || !row.usage_ledger || !row.inbox || !row.external_effects || !row.runtime_scope_guards || !row.auth_security || !row.ai_turn_scope || !row.ai_draft_scope) throw new PersistenceUnavailableError("CVG persistence schema is missing the required authentication security boundary; run npm run db:migrate");
     } catch (error) {
       if (error instanceof PersistenceUnavailableError) throw error;
       throw new PersistenceUnavailableError("CVG persistence schema could not be checked", error);
@@ -1253,8 +1259,12 @@ export class PostgresPersistence {
     });
   }
 
-  async listAppointments(context: CvgContext): Promise<NormalizedAppointmentRead[]> {
+  async listAppointments(context: CvgContext, range: "today" | "week" = "today"): Promise<NormalizedAppointmentRead[]> {
     return this.scopedRead(context, "appointments", async (client) => {
+      const start = new Date();
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(start);
+      end.setDate(end.getDate() + (range === "week" ? 7 : 1));
       const result = await client.query<{
         id: string;
         organization_id: string;
@@ -1273,8 +1283,8 @@ export class PostgresPersistence {
         patient_name: string | null;
         provider_name: string | null;
       }>(
-        "select a.id::text as id, a.organization_id::text as organization_id, a.unit_id::text as unit_id, a.workspace_id::text as workspace_id, a.patient_id::text as patient_id, a.provider_id::text as provider_id, a.resource_id::text as resource_id, a.service_id::text as service_id, a.starts_at, a.ends_at, a.purpose, a.status, a.version, a.created_at, p.name as patient_name, pr.display_name as provider_name from appointments a left join patients p on p.id = a.patient_id and p.organization_id = a.organization_id left join providers pr on pr.id = a.provider_id and pr.organization_id = a.organization_id where a.organization_id = cvg_request_organization() and ($1::uuid is null or a.unit_id = $1::uuid) and ($2::uuid is null or a.workspace_id = $2::uuid) order by a.starts_at, a.id",
-        [context.unitId, context.workspaceId]
+        "select a.id::text as id, a.organization_id::text as organization_id, a.unit_id::text as unit_id, a.workspace_id::text as workspace_id, a.patient_id::text as patient_id, a.provider_id::text as provider_id, a.resource_id::text as resource_id, a.service_id::text as service_id, a.starts_at, a.ends_at, a.purpose, a.status, a.version, a.created_at, p.name as patient_name, pr.display_name as provider_name from appointments a left join patients p on p.id = a.patient_id and p.organization_id = a.organization_id left join providers pr on pr.id = a.provider_id and pr.organization_id = a.organization_id where a.organization_id = cvg_request_organization() and ($1::uuid is null or a.unit_id = $1::uuid) and ($2::uuid is null or a.workspace_id = $2::uuid) and a.starts_at >= $3::timestamptz and a.starts_at < $4::timestamptz order by a.starts_at, a.id",
+        [context.unitId, context.workspaceId, start, end]
       );
       return result.rows.map((row) => ({
         id: sqlId(row.id, "appointment.id"),

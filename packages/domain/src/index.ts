@@ -5,6 +5,8 @@ import type {
   AiSession,
   AiTurn,
   AdministrationOccurrence,
+  AuthChallenge,
+  AuthSecurityState,
   AnimalPatient,
   Appointment,
   AuditRecord,
@@ -45,6 +47,7 @@ import type {
   User,
   Workspace
 } from "@cvg/contracts";
+import { digestRecoveryCode, generateRecoveryCodes } from "@cvg/auth";
 import { CAPABILITY_ROLES, evaluateCapability, isGrantableRole, sameRoleSet } from "./authorization.js";
 import { id } from "@cvg/contracts";
 import type {
@@ -78,6 +81,20 @@ export class DomainError extends Error {
 }
 
 export const now = (): string => new Date().toISOString();
+
+export function defaultAuthSecurityState(createdAt = now()): AuthSecurityState {
+  return {
+    passwordChangedAt: createdAt,
+    passwordExpiresAt: null,
+    credentialVersion: 1,
+    failedLoginAttempts: 0,
+    lockedUntil: null,
+    mfaRequired: false,
+    mfaSecretRef: null,
+    recoveryCodeDigests: [],
+    recoveryCodesIssuedAt: null
+  };
+}
 
 /** Exact resource boundary used by every scoped in-memory read. */
 export function isInContext(resource: { organizationId: OpaqueId; unitId?: OpaqueId | null; workspaceId?: OpaqueId | null }, context: CvgContext): boolean {
@@ -122,6 +139,13 @@ function clone<T>(value: T): T {
 export interface StoreOptions {
   bootstrapPassword?: string;
   seed?: boolean;
+}
+
+export interface SessionMetadata {
+  deviceIdDigest?: string | null;
+  userAgentDigest?: string | null;
+  ipDigest?: string | null;
+  mfaVerifiedAt?: string | null;
 }
 
 export interface BootstrapCredentials {
@@ -188,6 +212,7 @@ export interface StoreSnapshot {
   aiApprovals: AiApproval[];
   budgetReservations: BudgetReservation[];
   administrationOccurrences: AdministrationOccurrence[];
+  authChallenges: AuthChallenge[];
   quarantined: Array<{ id: OpaqueId; kind: string; reason: string; createdAt: string }>;
 }
 
@@ -232,6 +257,7 @@ export class CvgStore {
   public readonly aiApprovals = new Map<string, AiApproval>();
   public readonly budgetReservations = new Map<string, BudgetReservation>();
   public readonly administrationOccurrences = new Map<string, AdministrationOccurrence>();
+  public readonly authChallenges = new Map<string, AuthChallenge>();
   public readonly quarantined: Array<{ id: OpaqueId; kind: string; reason: string; createdAt: string }> = [];
   public readonly bootstrapCredentials: BootstrapCredentials;
   public storageMode: "memory" | "postgres" = "memory";
@@ -273,7 +299,7 @@ export class CvgStore {
       [operatorId, "ops@cvg.local", "Operação CVG", "operador", "Operador técnico"]
     ] as const;
     for (const [userId, login, displayName, role, emailLabel] of userSeed) {
-      const user: User = { id: userId, organizationId, login, displayName, email: login, status: "ACTIVE", passwordDigest: hashPassword(userId === adminId ? password : `${role}-synthetic-${userId.slice(-4)}`), lastLoginAt: null, createdAt };
+      const user: User = { id: userId, organizationId, login, displayName, email: login, status: "ACTIVE", passwordDigest: hashPassword(userId === adminId ? password : `${role}-synthetic-${userId.slice(-4)}`), lastLoginAt: null, security: defaultAuthSecurityState(createdAt), createdAt };
       this.users.set(userId, user);
       if (userId === adminId) this.addAssignment({ id: makeId(), organizationId, userId, role: "admin", scopeType: "ORGANIZATION", unitId: null, workspaceId: null, grantedAt: createdAt, revokedAt: null });
       const typedRole = role as Role;
@@ -332,12 +358,12 @@ export class CvgStore {
       this.clinicalAddenda, this.diagnosticRequests, this.specimens, this.diagnosticResults, this.hospitalEpisodes,
       this.beds, this.medicationOrders, this.dispensations, this.products, this.lots, this.stockLocations,
       this.stockMovements, this.charges, this.payments, this.ledgerEntries, this.messages, this.knowledgeDocuments,
-      this.aiSessions, this.aiTurns, this.aiDrafts, this.aiApprovals, this.budgetReservations, this.administrationOccurrences
+      this.aiSessions, this.aiTurns, this.aiDrafts, this.aiApprovals, this.budgetReservations, this.administrationOccurrences, this.authChallenges
     ];
     const values = maps.map((map) => [...map.values()].map(clone));
     return {
       healthStatus: this.healthStatus,
-      organizations: values[0] as Organization[], units: values[1] as Unit[], workspaces: values[2] as Workspace[], users: values[3] as User[], roleAssignments: values[4] as RoleAssignment[], sessions: values[5] as Session[], auditRecords: values[6] as AuditRecord[], commandReceipts: values[7] as CommandReceipt[], guardians: values[8] as Guardian[], patients: values[9] as AnimalPatient[], providers: values[10] as Provider[], services: values[11] as ServiceCatalogItem[], resources: values[12] as Resource[], appointments: values[13] as Appointment[], queueEntries: values[14] as QueueEntry[], encounters: values[15] as Encounter[], clinicalDocuments: values[16] as ClinicalDocument[], clinicalAddenda: values[17] as ClinicalAddendum[], diagnosticRequests: values[18] as DiagnosticRequest[], specimens: values[19] as Specimen[], diagnosticResults: values[20] as DiagnosticResult[], hospitalEpisodes: values[21] as HospitalEpisode[], beds: values[22] as Bed[], medicationOrders: values[23] as MedicationOrder[], dispensations: values[24] as Dispensation[], products: values[25] as Product[], lots: values[26] as Lot[], stockLocations: values[27] as StockLocation[], stockMovements: values[28] as StockMovement[], charges: values[29] as Charge[], payments: values[30] as Payment[], ledgerEntries: values[31] as LedgerEntry[], messages: values[32] as CommunicationMessage[], knowledgeDocuments: values[33] as KnowledgeDocument[], aiSessions: values[34] as AiSession[], aiTurns: values[35] as AiTurn[], aiDrafts: values[36] as AiDraft[], aiApprovals: values[37] as AiApproval[], budgetReservations: values[38] as BudgetReservation[], administrationOccurrences: values[39] as AdministrationOccurrence[], quarantined: clone(this.quarantined)
+      organizations: values[0] as Organization[], units: values[1] as Unit[], workspaces: values[2] as Workspace[], users: values[3] as User[], roleAssignments: values[4] as RoleAssignment[], sessions: values[5] as Session[], auditRecords: values[6] as AuditRecord[], commandReceipts: values[7] as CommandReceipt[], guardians: values[8] as Guardian[], patients: values[9] as AnimalPatient[], providers: values[10] as Provider[], services: values[11] as ServiceCatalogItem[], resources: values[12] as Resource[], appointments: values[13] as Appointment[], queueEntries: values[14] as QueueEntry[], encounters: values[15] as Encounter[], clinicalDocuments: values[16] as ClinicalDocument[], clinicalAddenda: values[17] as ClinicalAddendum[], diagnosticRequests: values[18] as DiagnosticRequest[], specimens: values[19] as Specimen[], diagnosticResults: values[20] as DiagnosticResult[], hospitalEpisodes: values[21] as HospitalEpisode[], beds: values[22] as Bed[], medicationOrders: values[23] as MedicationOrder[], dispensations: values[24] as Dispensation[], products: values[25] as Product[], lots: values[26] as Lot[], stockLocations: values[27] as StockLocation[], stockMovements: values[28] as StockMovement[], charges: values[29] as Charge[], payments: values[30] as Payment[], ledgerEntries: values[31] as LedgerEntry[], messages: values[32] as CommunicationMessage[], knowledgeDocuments: values[33] as KnowledgeDocument[], aiSessions: values[34] as AiSession[], aiTurns: values[35] as AiTurn[], aiDrafts: values[36] as AiDraft[], aiApprovals: values[37] as AiApproval[], budgetReservations: values[38] as BudgetReservation[], administrationOccurrences: values[39] as AdministrationOccurrence[], authChallenges: values[40] as AuthChallenge[], quarantined: clone(this.quarantined)
     };
   }
 
@@ -361,7 +387,7 @@ export class CvgStore {
 
   private loadSnapshot(snapshot: StoreSnapshot): void {
     const entries: Array<[Map<string, unknown>, unknown[]]> = [
-      [this.organizations, snapshot.organizations], [this.units, snapshot.units], [this.workspaces, snapshot.workspaces], [this.users, snapshot.users], [this.roleAssignments, snapshot.roleAssignments], [this.sessions, snapshot.sessions], [this.auditRecords, snapshot.auditRecords], [this.commandReceipts, snapshot.commandReceipts], [this.guardians, snapshot.guardians], [this.patients, snapshot.patients], [this.providers, snapshot.providers], [this.services, snapshot.services], [this.resources, snapshot.resources], [this.appointments, snapshot.appointments], [this.queueEntries, snapshot.queueEntries], [this.encounters, snapshot.encounters], [this.clinicalDocuments, snapshot.clinicalDocuments], [this.clinicalAddenda, snapshot.clinicalAddenda], [this.diagnosticRequests, snapshot.diagnosticRequests], [this.specimens, snapshot.specimens], [this.diagnosticResults, snapshot.diagnosticResults], [this.hospitalEpisodes, snapshot.hospitalEpisodes], [this.beds, snapshot.beds], [this.medicationOrders, snapshot.medicationOrders], [this.dispensations, snapshot.dispensations], [this.products, snapshot.products], [this.lots, snapshot.lots], [this.stockLocations, snapshot.stockLocations], [this.stockMovements, snapshot.stockMovements], [this.charges, snapshot.charges], [this.payments, snapshot.payments], [this.ledgerEntries, snapshot.ledgerEntries], [this.messages, snapshot.messages], [this.knowledgeDocuments, snapshot.knowledgeDocuments], [this.aiSessions, snapshot.aiSessions], [this.aiTurns, snapshot.aiTurns], [this.aiDrafts, snapshot.aiDrafts], [this.aiApprovals, snapshot.aiApprovals], [this.budgetReservations, snapshot.budgetReservations], [this.administrationOccurrences, snapshot.administrationOccurrences]
+      [this.organizations, snapshot.organizations], [this.units, snapshot.units], [this.workspaces, snapshot.workspaces], [this.users, snapshot.users], [this.roleAssignments, snapshot.roleAssignments], [this.sessions, snapshot.sessions], [this.auditRecords, snapshot.auditRecords], [this.commandReceipts, snapshot.commandReceipts], [this.guardians, snapshot.guardians], [this.patients, snapshot.patients], [this.providers, snapshot.providers], [this.services, snapshot.services], [this.resources, snapshot.resources], [this.appointments, snapshot.appointments], [this.queueEntries, snapshot.queueEntries], [this.encounters, snapshot.encounters], [this.clinicalDocuments, snapshot.clinicalDocuments], [this.clinicalAddenda, snapshot.clinicalAddenda], [this.diagnosticRequests, snapshot.diagnosticRequests], [this.specimens, snapshot.specimens], [this.diagnosticResults, snapshot.diagnosticResults], [this.hospitalEpisodes, snapshot.hospitalEpisodes], [this.beds, snapshot.beds], [this.medicationOrders, snapshot.medicationOrders], [this.dispensations, snapshot.dispensations], [this.products, snapshot.products], [this.lots, snapshot.lots], [this.stockLocations, snapshot.stockLocations], [this.stockMovements, snapshot.stockMovements], [this.charges, snapshot.charges], [this.payments, snapshot.payments], [this.ledgerEntries, snapshot.ledgerEntries], [this.messages, snapshot.messages], [this.knowledgeDocuments, snapshot.knowledgeDocuments], [this.aiSessions, snapshot.aiSessions], [this.aiTurns, snapshot.aiTurns], [this.aiDrafts, snapshot.aiDrafts], [this.aiApprovals, snapshot.aiApprovals], [this.budgetReservations, snapshot.budgetReservations], [this.administrationOccurrences, snapshot.administrationOccurrences], [this.authChallenges, snapshot.authChallenges]
     ];
     for (const [map, list] of entries) for (const value of list) {
       const resource = value as { id: OpaqueId; idempotencyLookup?: string };
@@ -372,7 +398,7 @@ export class CvgStore {
   }
 
   private clearData(): void {
-    for (const map of [this.organizations, this.units, this.workspaces, this.users, this.roleAssignments, this.sessions, this.auditRecords, this.commandReceipts, this.guardians, this.patients, this.providers, this.services, this.resources, this.appointments, this.queueEntries, this.encounters, this.clinicalDocuments, this.clinicalAddenda, this.diagnosticRequests, this.specimens, this.diagnosticResults, this.hospitalEpisodes, this.beds, this.medicationOrders, this.dispensations, this.products, this.lots, this.stockLocations, this.stockMovements, this.charges, this.payments, this.ledgerEntries, this.messages, this.knowledgeDocuments, this.aiSessions, this.aiTurns, this.aiDrafts, this.aiApprovals, this.budgetReservations, this.administrationOccurrences]) map.clear();
+    for (const map of [this.organizations, this.units, this.workspaces, this.users, this.roleAssignments, this.sessions, this.auditRecords, this.commandReceipts, this.guardians, this.patients, this.providers, this.services, this.resources, this.appointments, this.queueEntries, this.encounters, this.clinicalDocuments, this.clinicalAddenda, this.diagnosticRequests, this.specimens, this.diagnosticResults, this.hospitalEpisodes, this.beds, this.medicationOrders, this.dispensations, this.products, this.lots, this.stockLocations, this.stockMovements, this.charges, this.payments, this.ledgerEntries, this.messages, this.knowledgeDocuments, this.aiSessions, this.aiTurns, this.aiDrafts, this.aiApprovals, this.budgetReservations, this.administrationOccurrences, this.authChallenges]) map.clear();
   }
 
   getUserByLogin(login: string): User | undefined {
@@ -386,22 +412,120 @@ export class CvgStore {
     return user;
   }
 
-  createSession(userId: OpaqueId, tokenDigest: string, csrfToken: string, ttlMinutes: number): Session {
+  createSession(userId: OpaqueId, tokenDigest: string, csrfToken: string, ttlMinutes: number, metadata: SessionMetadata = {}): Session {
     const user = this.getUser(userId);
-    const session: Session = { id: makeId(), tokenDigest, userId, organizationId: user.organizationId, csrfToken, expiresAt: new Date(Date.now() + ttlMinutes * 60_000).toISOString(), revokedAt: null, createdAt: now() };
+    const createdAt = now();
+    const session: Session = { id: makeId(), tokenDigest, userId, organizationId: user.organizationId, csrfToken, expiresAt: new Date(Date.now() + ttlMinutes * 60_000).toISOString(), revokedAt: null, deviceIdDigest: metadata.deviceIdDigest ?? null, userAgentDigest: metadata.userAgentDigest ?? null, ipDigest: metadata.ipDigest ?? null, lastSeenAt: createdAt, mfaVerifiedAt: metadata.mfaVerifiedAt ?? null, credentialVersion: user.security.credentialVersion, createdAt };
     this.sessions.set(session.id, session);
     return session;
   }
 
   findSession(tokenDigest: string): Session | undefined {
     const session = [...this.sessions.values()].find((candidate) => candidate.tokenDigest === tokenDigest);
-    if (!session || session.revokedAt || Date.parse(session.expiresAt) <= Date.now()) return undefined;
+    const user = session ? this.users.get(session.userId) : undefined;
+    if (!session || !user || user.status !== "ACTIVE" || session.revokedAt || Date.parse(session.expiresAt) <= Date.now() || session.credentialVersion !== user.security.credentialVersion) return undefined;
     if (this.healthStatus === "QUARANTINED") return undefined;
     return session;
   }
 
+  touchSession(session: Session): void {
+    session.lastSeenAt = now();
+  }
+
   revokeSession(session: Session): void {
     session.revokedAt = now();
+  }
+
+  revokeAllSessions(userId: OpaqueId, exceptSessionId: OpaqueId | null = null): number {
+    let count = 0;
+    for (const session of this.sessions.values()) {
+      if (session.userId === userId && session.id !== exceptSessionId && session.revokedAt === null) {
+        session.revokedAt = now();
+        count += 1;
+      }
+    }
+    return count;
+  }
+
+  isAccountLocked(user: User): boolean {
+    return user.security.lockedUntil !== null && Date.parse(user.security.lockedUntil) > Date.now();
+  }
+
+  recordLoginFailure(userId: OpaqueId, maxAttempts: number, lockoutMinutes: number): User {
+    const user = this.getUser(userId);
+    const attempts = user.security.failedLoginAttempts + 1;
+    user.security.failedLoginAttempts = attempts;
+    if (attempts >= maxAttempts) user.security.lockedUntil = new Date(Date.now() + lockoutMinutes * 60_000).toISOString();
+    return user;
+  }
+
+  clearLoginFailures(user: User): void {
+    user.security.failedLoginAttempts = 0;
+    user.security.lockedUntil = null;
+  }
+
+  rotatePassword(userId: OpaqueId, passwordDigest: string, passwordExpiresAt: string | null): User {
+    const user = this.getUser(userId);
+    user.passwordDigest = passwordDigest;
+    user.security.passwordChangedAt = now();
+    user.security.passwordExpiresAt = passwordExpiresAt;
+    user.security.credentialVersion += 1;
+    this.clearLoginFailures(user);
+    this.revokeAllSessions(user.id);
+    return user;
+  }
+
+  issueRecoveryCodes(userId: OpaqueId, count = 8): string[] {
+    const user = this.getUser(userId);
+    const codes = generateRecoveryCodes(count);
+    user.security.recoveryCodeDigests = codes.map(digestRecoveryCode);
+    user.security.recoveryCodesIssuedAt = now();
+    return codes;
+  }
+
+  consumeRecoveryCode(userId: OpaqueId, code: string): boolean {
+    const user = this.getUser(userId);
+    const digest = digestRecoveryCode(code);
+    const index = user.security.recoveryCodeDigests.indexOf(digest);
+    if (index < 0) return false;
+    user.security.recoveryCodeDigests.splice(index, 1);
+    return true;
+  }
+
+  createAuthChallenge(type: AuthChallenge["type"], userId: OpaqueId, tokenDigest: string, ttlSeconds: number, maxAttempts: number): AuthChallenge {
+    const user = this.getUser(userId);
+    const challenge: AuthChallenge = { id: makeId(), type, tokenDigest, userId, organizationId: user.organizationId, credentialVersion: user.security.credentialVersion, expiresAt: new Date(Date.now() + ttlSeconds * 1_000).toISOString(), attempts: 0, maxAttempts, status: "PENDING", consumedAt: null, createdAt: now() };
+    this.authChallenges.set(challenge.id, challenge);
+    return challenge;
+  }
+
+  findAuthChallenge(type: AuthChallenge["type"], tokenDigest: string): AuthChallenge | undefined {
+    const challenge = [...this.authChallenges.values()].find((candidate) => candidate.type === type && candidate.tokenDigest === tokenDigest);
+    if (!challenge || challenge.status !== "PENDING") return undefined;
+    const user = this.users.get(challenge.userId);
+    if (!user || user.status !== "ACTIVE" || user.security.credentialVersion !== challenge.credentialVersion) {
+      challenge.status = "EXPIRED";
+      return undefined;
+    }
+    if (Date.parse(challenge.expiresAt) <= Date.now()) {
+      challenge.status = "EXPIRED";
+      return undefined;
+    }
+    return challenge;
+  }
+
+  recordChallengeFailure(challenge: AuthChallenge): void {
+    challenge.attempts += 1;
+    if (challenge.attempts >= challenge.maxAttempts) {
+      challenge.status = "LOCKED";
+      challenge.consumedAt = now();
+    }
+  }
+
+  consumeAuthChallenge(challenge: AuthChallenge): void {
+    if (challenge.status !== "PENDING") throw new DomainError("MFA_INVALID", "O desafio de autenticação não está disponível.", 401);
+    challenge.status = "CONSUMED";
+    challenge.consumedAt = now();
   }
 
   effectiveAssignments(userId: OpaqueId, organizationId: OpaqueId): RoleAssignment[] {
@@ -487,7 +611,7 @@ export class CvgStore {
     }
     if (context.sessionId !== null) {
       const session = this.sessions.get(context.sessionId);
-      if (!session || session.organizationId !== organization.id || session.userId !== context.actorId || session.revokedAt !== null || Date.parse(session.expiresAt) <= Date.now()) throw new DomainError("UNAUTHENTICATED", "A sessão vinculada ao contexto não está ativa.", 401);
+      if (!session || session.organizationId !== organization.id || session.userId !== context.actorId || session.revokedAt !== null || Date.parse(session.expiresAt) <= Date.now() || session.credentialVersion !== actor.security.credentialVersion) throw new DomainError("UNAUTHENTICATED", "A sessão vinculada ao contexto não está ativa.", 401);
     }
     if (!/^\d{1,18}$/.test(context.policyRevision)) {
       throw new DomainError("POLICY_STALE", "A versão da policy não pode ser validada.", 409);
@@ -680,9 +804,13 @@ export class CvgStore {
     return appointment;
   }
 
-  listAppointments(context: CvgContext): Appointment[] {
+  listAppointments(context: CvgContext, range: "today" | "week" = "today"): Appointment[] {
     this.requireRole(context, ["admin", "recepcao", "veterinario", "estoque", "financeiro"], "appointments:read");
-    return [...this.appointments.values()].filter((appointment) => appointment.organizationId === context.organizationId && (!context.unitId || appointment.unitId === context.unitId) && (!context.workspaceId || appointment.workspaceId === context.workspaceId)).sort((a, b) => a.startsAt.localeCompare(b.startsAt));
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start);
+    end.setDate(end.getDate() + (range === "week" ? 7 : 1));
+    return [...this.appointments.values()].filter((appointment) => appointment.organizationId === context.organizationId && (!context.unitId || appointment.unitId === context.unitId) && (!context.workspaceId || appointment.workspaceId === context.workspaceId) && new Date(appointment.startsAt) >= start && new Date(appointment.startsAt) < end).sort((a, b) => a.startsAt.localeCompare(b.startsAt));
   }
 
   listQueue(context: CvgContext): QueueEntry[] {
@@ -1020,13 +1148,35 @@ export async function idempotentAsync<T>(store: CvgStore, input: IdempotencyInpu
   }
 }
 
-export function publicUser(user: User): Omit<User, "passwordDigest"> {
-  const { passwordDigest: _passwordDigest, ...safe } = user;
+export function publicUser(user: User): Omit<User, "passwordDigest" | "security"> {
+  const { passwordDigest: _passwordDigest, security: _security, ...safe } = user;
   return safe;
 }
 
 export function serializeSnapshot(snapshot: StoreSnapshot): string {
   return JSON.stringify(snapshot, (_key, value) => typeof value === "bigint" ? `${value}` : value, 2);
+}
+
+function nullableString(value: unknown, fallback: string | null = null): string | null {
+  return value === null || typeof value === "string" ? value : fallback;
+}
+
+function normalizedAuthSecurity(value: unknown, createdAt: string): AuthSecurityState {
+  const raw = value && typeof value === "object" ? value as Record<string, unknown> : {};
+  const credentialVersion = typeof raw.credentialVersion === "number" && Number.isSafeInteger(raw.credentialVersion) && raw.credentialVersion > 0 ? raw.credentialVersion : 1;
+  const failedLoginAttempts = typeof raw.failedLoginAttempts === "number" && Number.isSafeInteger(raw.failedLoginAttempts) && raw.failedLoginAttempts >= 0 ? raw.failedLoginAttempts : 0;
+  const recoveryCodeDigests = Array.isArray(raw.recoveryCodeDigests) ? raw.recoveryCodeDigests.filter((code): code is string => typeof code === "string" && /^[a-f0-9]{64}$/.test(code)) : [];
+  return {
+    passwordChangedAt: nullableString(raw.passwordChangedAt, createdAt),
+    passwordExpiresAt: nullableString(raw.passwordExpiresAt),
+    credentialVersion,
+    failedLoginAttempts,
+    lockedUntil: nullableString(raw.lockedUntil),
+    mfaRequired: raw.mfaRequired === true,
+    mfaSecretRef: nullableString(raw.mfaSecretRef),
+    recoveryCodeDigests,
+    recoveryCodesIssuedAt: nullableString(raw.recoveryCodesIssuedAt)
+  };
 }
 
 export function parseSnapshot(raw: string): StoreSnapshot {
@@ -1047,6 +1197,22 @@ export function parseSnapshot(raw: string): StoreSnapshot {
     const value = record[field];
     if (!Array.isArray(value) || value.some((item) => !item || typeof item !== "object" || typeof (item as { id?: unknown }).id !== "string")) throw new DomainError("INVALID_INPUT", `Snapshot inválido: ${field} deve ser uma lista de recursos identificados.`, 400);
   }
+  const rawAuthChallenges = record.authChallenges ?? [];
+  if (!Array.isArray(rawAuthChallenges) || rawAuthChallenges.some((item) => !item || typeof item !== "object" || typeof (item as { id?: unknown }).id !== "string")) throw new DomainError("INVALID_INPUT", "Snapshot inválido: authChallenges deve ser uma lista de recursos identificados.", 400);
+  const users = (record.users as Array<Record<string, unknown>>).map((user) => {
+    const createdAt = typeof user.createdAt === "string" ? user.createdAt : now();
+    return { ...user, security: normalizedAuthSecurity(user.security, createdAt) };
+  });
+  const userVersions = new Map(users.map((user) => {
+    const userId = (user as unknown as { id?: unknown }).id;
+    return [typeof userId === "string" ? userId : "", (user.security as AuthSecurityState).credentialVersion] as const;
+  }));
+  const sessions = (record.sessions as Array<Record<string, unknown>>).map((session) => {
+    const createdAt = typeof session.createdAt === "string" ? session.createdAt : now();
+    const userId = typeof session.userId === "string" ? session.userId : "";
+    const credentialVersion = typeof session.credentialVersion === "number" && Number.isSafeInteger(session.credentialVersion) && session.credentialVersion > 0 ? session.credentialVersion : userVersions.get(userId) ?? 1;
+    return { ...session, deviceIdDigest: nullableString(session.deviceIdDigest), userAgentDigest: nullableString(session.userAgentDigest), ipDigest: nullableString(session.ipDigest), lastSeenAt: typeof session.lastSeenAt === "string" ? session.lastSeenAt : createdAt, mfaVerifiedAt: nullableString(session.mfaVerifiedAt), credentialVersion };
+  });
   const organizations = (record.organizations as Array<Record<string, unknown>>).map((organization) => {
     const revision = organization.authorizationRevision;
     try {
@@ -1112,5 +1278,5 @@ export function parseSnapshot(raw: string): StoreSnapshot {
       workspaceId: inferred?.workspaceId ?? existingWorkspaceId
     };
   });
-  return { ...record, healthStatus, organizations, auditRecords: scopedAuditRecords, commandReceipts, guardians: scopedPeople("guardians"), patients: scopedPeople("patients"), messages: scoped("messages"), knowledgeDocuments: scoped("knowledgeDocuments"), aiSessions: scoped("aiSessions") } as unknown as StoreSnapshot;
+  return { ...record, healthStatus, organizations, users, sessions, authChallenges: rawAuthChallenges, auditRecords: scopedAuditRecords, commandReceipts, guardians: scopedPeople("guardians"), patients: scopedPeople("patients"), messages: scoped("messages"), knowledgeDocuments: scoped("knowledgeDocuments"), aiSessions: scoped("aiSessions") } as unknown as StoreSnapshot;
 }

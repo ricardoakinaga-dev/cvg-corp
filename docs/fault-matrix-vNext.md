@@ -14,7 +14,10 @@ Esta matriz separa o que foi exercitado no runtime sintético do que depende de 
 | database reconnect | PostgreSQL local opcional | NOT_RUN nesta fotografia | bloquear e revalidar readiness |
 | provider timeout | deadline do Tool Gateway | PASS sintético | abortar/quarentenar, não repetir cegamente |
 | duplicate provider callback | inbox idempotente | PASS sintético | devolver receipt original |
-| corrupted restore | AES-GCM/tamper test | PASS sintético | manter destino em quarentena |
-| partial restore | stores externos/objects ausentes | NOT_RUN | não liberar leitura ou egress |
+| corrupted restore | AES-GCM/tamper test + manifesto/watermark/ledger digests | PASS sintético | manter destino em quarentena |
+| partial recovery bundle | `tests/integration/persistence.test.ts` remove ledger do bundle | PASS sintético | rejeitar antes de restaurar |
+| stale recovery bundle | validação de idade e watermark mínimo | PASS sintético | não restaurar bundle abaixo do watermark/prazo |
+| migration mismatch | fingerprint de `schema_migrations` divergente | PASS sintético | bloquear restore até o schema compatível |
+| partial external-store restore | stores externos/objects ausentes | NOT_RUN | não liberar leitura ou egress |
 
-Os testes existentes em `tests/integration/persistence.test.ts`, `tests/unit/integrations.test.ts`, `tests/integration/faults.test.ts` e `tests/unit/vnext.test.ts` são a evidência executável local. A ausência de serviço, provider, workload ou stores externos permanece explícita. O teste do processo separado em `tests/unit/worker.test.ts` cobre health, quarentena, ausência de sink e lifecycle de encerramento; não substitui container smoke ou inspeção de imagem.
+Os testes existentes em `tests/integration/persistence.test.ts`, `tests/unit/integrations.test.ts`, `tests/integration/faults.test.ts` e `tests/unit/vnext.test.ts` são a evidência executável local. O recovery bundle agora só é emitido com manifesto versionado, tenant, watermark, fingerprint de migrações e digests dos quatro ledgers; isso não equivale a backup gerenciado nem a um restore distribuído. A ausência de serviço, provider, workload ou stores externos permanece explícita. O teste do processo separado em `tests/unit/worker.test.ts` cobre health, quarentena, ausência de sink e lifecycle de encerramento; não substitui container smoke ou inspeção de imagem.

@@ -81,7 +81,7 @@ Outbox/inbox/effect ledger têm lease/fencing, retry bounded, backoff, quarantin
 
 <!-- engineering-framework: active_action_id=CVG-FULL-STATE-OF-THE-ART:PRODUCTION-LIKE-EVIDENCE -->
 
-1. `CVG-FULL-STATE-OF-THE-ART:PRODUCTION-LIKE-EVIDENCE` — executar PostgreSQL/Docker, CI remoto, imagem/container smoke, provider/secret authority, fault/recovery distribuído, carga/SLO e matriz de browsers/acessibilidade somente quando o ambiente e a aprovação correspondentes existirem.
+1. `CVG-FULL-STATE-OF-THE-ART:PRODUCTION-LIKE-EVIDENCE` — executar somente as evidências production-like que tenham ambiente e autoridade correspondentes; manter os gaps externos como `NOT_RUN` e continuar a evolução local nos maiores gaps reproduzíveis.
 
 ### Onda A — fundamento seguro
 
@@ -149,6 +149,28 @@ Resultado: os entrypoints compartilham `CvgWorkerApplication`, o sink padrão co
 - Fazer `npm run verify:production` executar os gates locais e validar o Compose com valores sintéticos sem iniciar serviços; manter `--production` fail-closed sem configuração real.
 
 Resultado: `npm run verify:production` passou com lint, typecheck, testes, build, static (30 artefatos/101 fontes), E2E Chromium, auditorias, SBOM, benchmark, diff check e Compose estrutural. O workflow está versionado, mas CI remoto, PostgreSQL do serviço, build/scan de imagens e startup integrado permanecem `NOT_RUN` nesta máquina.
+
+### Ação concluída — manifesto de recovery e fault coverage
+
+- Adicionar manifesto versionado ao backup com tenant, watermark, fingerprint de migrações, timestamp e digests dos ledgers outbox/usage/inbox/external-effects.
+- Validar o bundle antes da criptografia e depois da descriptografia; rejeitar bundle parcial, digest divergente, tenant divergente, schema incompatível, stale e fingerprint de migração incompatível.
+- Cobrir bundle completo, ciphertext adulterado, chave errada, bundle parcial, stale e migration mismatch com testes determinísticos; integrar a validação ao drill PostgreSQL quando o daemon existir.
+
+Resultado: `DurableRecoveryBundle` agora carrega manifesto versionado com tenant, watermark, timestamp, fingerprint de `schema_migrations` e digests dos ledgers outbox/usage/inbox/external-effects. Export, criptografia, descriptografia e restore validam a integridade; os testes locais cobrem bundle completo, ciphertext adulterado, chave errada, partial, stale por revisão/idade, migration mismatch e watermark divergente. O drill PostgreSQL incorpora a mesma validação para source/target, mas permanece `NOT_RUN` sem serviço autorizado.
+
+Evidência: `VER-CVG-040`; 66/66 testes, 9/9 testes database, 5/5 fault/worker, typecheck, lint, static (30/101), build, `verify:production` e diff check passaram. O modo `--production` continua fail-closed por ausência de configuração real.
+
+### Ação concluída — PDP target-bound do detalhe de paciente
+
+- Vincular `sessionId`, operação/capability registrada, `resourceId`, finalidade, classe de dados, unidade e workspace ao decision point; ausência ou divergência deve negar sem revelar o recurso.
+- Fazer `GET /api/v1/patients/:id` passar o alvo ao contexto, obter a projeção pelo PatientApplicationService e revalidar o escopo persistido antes de serializar.
+- Cobrir policy conhecida-bom/ruim e API com sessão ausente/divergente, role não permitida, alvo inexistente/fora do contexto e representação minimizada; manter RLS como backstop separado.
+
+Critério de saída: a rota de detalhe não usa `store.findPatient` diretamente, o PDP recebe e valida o alvo real e nenhum contexto, role ou capability forjado permite retorno de dados.
+
+Resultado: `GET /api/v1/patients/:id` carrega o alvo no contexto autenticado, consulta `PatientApplicationService`, retorna projeção mínima e revalida sessão, operação/capability, `resourceId`, classe de dados, unidade e workspace antes da serialização. O repository de memória não revela paciente fora do escopo; a leitura PostgreSQL permanece escopada e RLS é backstop. Testes conhecidos-bons e conhecidos-ruins cobrem sessão ausente/divergente, capability incompatível, alvo ausente/divergente, role/contexto fora do escopo e representação mínima. A fatia não prova uso universal do PDP/Tool Gateway.
+
+Evidência: `VER-CVG-041`; 67/67 testes, 9/9 testes database, 5/5 fault/worker, typecheck, lint, static (30/101), `verify:production` e diff check passaram. O modo `--production` saiu 1 por configuração real ausente, fail-closed esperado.
 
 ### Ação corrente — evidência production-like
 
@@ -226,3 +248,15 @@ Após `EVT-CVG-20260909-CORRECTION-044`, o control plane foi revalidado e os pon
 ## Current checkpoint — 2026-09-09 00:48
 
 `VER-CVG-038` reexecuta o gate agregado após endurecer `verify-production` para conferir também os quatro comandos dedicados do workflow (`test:contract`, `test:security`, `test:database` e `test:fault`); o resultado foi código 0. A verificação `--production` novamente saiu código 1 por configuração real ausente, e `git diff --check` passou. O resultado permanece `FAIL_WITH_LIMITATIONS`, sem promoção a AAA.
+
+## Current checkpoint — 2026-09-09 01:12
+
+`VER-CVG-039` registra a conclusão local da ação `CVG-FULL-STATE-OF-THE-ART:RECOVERY-MANIFEST-FAULT-COVERAGE`. O recovery bundle agora tem manifesto verificável com tenant, watermark, fingerprint de migrações, timestamp e digests dos quatro ledgers; export e restore PostgreSQL usam a mesma validação. A suíte passou com 66/66 testes, incluindo rejeição de bundle parcial, stale, migration mismatch, watermark divergente, ciphertext adulterado e chave errada. `verify:production` passou e `--production` permaneceu fail-closed; o próximo pointer é `CVG-FULL-STATE-OF-THE-ART:PRODUCTION-LIKE-EVIDENCE`, ainda com resultado `FAIL_WITH_LIMITATIONS` e sem elegibilidade AAA.
+
+## Current checkpoint — 2026-09-09 01:17
+
+Após a validação adicional no próprio `exportRecoveryBundle`, `VER-CVG-040` reexecutou os gates sem regressão: 66/66 testes, database 9/9, fault/worker 5/5, lint, typecheck, static 30/101, build, `verify:production` e diff check. O modo production permaneceu fail-closed por configuração real ausente. O pointer continua `CVG-FULL-STATE-OF-THE-ART:PRODUCTION-LIKE-EVIDENCE`; a barra integral segue `FAIL_WITH_LIMITATIONS`.
+
+## Current checkpoint — 2026-09-09 01:38
+
+`VER-CVG-041` registra a conclusão local da fatia PDP target-bound do detalhe de paciente: sessão autenticada, capability/operation registrada, `resourceId`, escopo persistido, projeção por application service e revalidação antes da serialização. A suíte passou 67/67, database 9/9, fault/worker 5/5, typecheck, lint, static 30/101, `verify:production` e diff check; `--production` permaneceu fail-closed por configuração real ausente. O pointer retorna a `CVG-FULL-STATE-OF-THE-ART:PRODUCTION-LIKE-EVIDENCE`; o uso universal do PDP, evidência production-like, provider/secret authority, recovery distribuído, SLOs e crítica independente fresca continuam pendentes, e o resultado não é AAA-eligible.

@@ -1,6 +1,6 @@
 # Verification vNext
 
-**Data:** 2026-09-09 — fotografia local mais recente após os gates de CI/release, boundary de autenticação, UI e fault harness
+**Data:** 2026-09-09 — fotografia local mais recente após os gates de CI/release, boundary de autenticação, PDP target-bound, UI e fault harness
 
 ## Passe local atual
 
@@ -12,9 +12,11 @@
 | `npm run test:security` | PASS | Auth, policy, gateway e fault-deny |
 | `npm run test:database` | PASS | Persistência/recovery sintéticos |
 | `npm run test:fault` | PASS | Worker e fault harness local |
-| `npm test` | PASS — 65/65 | Unitário + integração, incluindo MFA, lockout, rotação, recuperação, worker e fault harness |
+| `npm test` | PASS — 67/67 | Unitário + integração, incluindo MFA, lockout, rotação, recovery manifest, worker, fault harness e PDP target-bound |
 | `npm run build` | PASS | Vite web + typecheck |
 | `npm run verify:static` | PASS | 30 artefatos e 101 arquivos-fonte |
+| recovery bundle manifest | PASS — bundle completo + 5 rejeições | watermark, tenant, digests de ledgers, partial, stale, migration mismatch, ciphertext adulterado e chave errada |
+| application PDP / patient detail | PASS — fatia target-bound | Sessão autenticada, capability/operation registrada, resourceId, escopo persistido, projeção pelo `PatientApplicationService` e testes negativos de API/policy |
 | `npm run test:e2e` | PASS — 22/22 executados | Chromium; mobile 375, tablet 768, desktop 1440; dois skips intencionais |
 | `npm run audit:contrast` | PASS — 7/7 | pares WCAG de texto, banner, CTA e indicador de foco |
 | `npm run audit:tokens -- --strict` | PASS | zero high/critical; 72 sinais medium heurísticos |
@@ -30,8 +32,8 @@
 
 ## Não executado / bloqueado
 
-PostgreSQL limpo e produção-like nesta fotografia, execução remota do CI, Docker image build/startup Compose, scan de imagens, DeepSeek real, secret manager/KMS, provider de TOTP/recuperação, providers externos, fault injection distribuído, restore operacional gerenciado, carga/benchmark production-like, collector/alertas/SLO, Firefox/WebKit, axe/leitor de tela e aceite independente. O workflow agora declara gates bloqueantes para PostgreSQL efêmero, migrations, restore, E2E, segurança, visual, SBOM e containers, mas ele ainda não foi executado por um runner remoto nesta máquina. O fault harness local cobre somente transições determinísticas sem serviço externo. O histórico de drills PostgreSQL sintéticos permanece documentado em `docs/12-estado-da-implementacao.md`; ele não substitui o ambiente-alvo.
+PostgreSQL limpo e produção-like nesta fotografia, execução remota do CI, Docker image build/startup Compose, scan de imagens, DeepSeek real, secret manager/KMS, provider de TOTP/recuperação, providers externos, fault injection distribuído, restore operacional gerenciado, carga/benchmark production-like, collector/alertas/SLO, Firefox/WebKit, axe/leitor de tela e aceite independente. O PDP target-bound foi provado somente na rota de detalhe de paciente; a aplicação inteira ainda não possui prova de uso universal do PDP/Tool Gateway. O workflow agora declara gates bloqueantes para PostgreSQL efêmero, migrations, restore, E2E, segurança, visual, SBOM e containers, mas ele ainda não foi executado por um runner remoto nesta máquina. O fault harness local e o recovery manifest cobrem somente transições e validações determinísticas sem serviço externo; o manifesto não prova backup gerenciado, RTO/RPO ou restore de stores parciais. O histórico de drills PostgreSQL sintéticos permanece documentado em `docs/12-estado-da-implementacao.md`; ele não substitui o ambiente-alvo.
 
 ## Interpretação
 
-O passe demonstra uma base compilável, testável e com controles locais de supply chain, além de um workflow explícito para os gates que dependem de runner e serviço. Não demonstra disponibilidade, segurança, durabilidade, desempenho ou entrega externa em produção. A classificação correta continua `FAIL_WITH_LIMITATIONS`.
+O passe demonstra uma base compilável, testável e com controles locais de supply chain, além de uma fatia de autorização target-bound verificável e um workflow explícito para os gates que dependem de runner e serviço. Não demonstra disponibilidade, segurança, durabilidade, desempenho ou entrega externa em produção. A classificação correta continua `FAIL_WITH_LIMITATIONS`.

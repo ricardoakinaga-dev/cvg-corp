@@ -6,10 +6,10 @@
   "round": 2,
   "phase": "VERIFY",
   "status": "IN_PROGRESS",
-  "largest_gap": "evidência production-like autorizada, CI remoto/containers, provider/secret authority, recovery distribuído, SLOs, matriz de browsers e revisão independente continuam ausentes",
+  "largest_gap": "A fatia de detalhe de paciente agora é target-bound, mas o uso universal do PDP/Tool Gateway, evidência production-like autorizada, CI remoto/containers, provider/secret authority, recovery distribuído e stores parciais, SLOs, matriz de browsers e revisão independente continuam ausentes",
   "next_action": "CVG-FULL-STATE-OF-THE-ART:PRODUCTION-LIKE-EVIDENCE",
   "limitations": ["a auditoria arquitetural e os gates locais autorizam apenas desenvolvimento controlado", "o artifact é uma base local sintética; evidência local não satisfaz automaticamente critérios de produção", "o bridge DeepSeek CVG /v1 não prova protocolo nativo nem integração com processo externo", "dados reais, egress, provider, break-glass, homologação, piloto e release permanecem bloqueados"],
   "critique_ref": ".gauntlet/critique-v3-fresh.md",
   "supersedes": ".gauntlet/state-v2-round4.json",
-  "updated_at": "2026-09-09T00:48:25-03:00"
+  "updated_at": "2026-09-09T01:42:54-03:00"
 }

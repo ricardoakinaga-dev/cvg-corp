@@ -110,8 +110,20 @@ export class StaticPolicyDecisionPoint implements PolicyDecisionPoint {
 
   evaluate(request: PolicyRequest): PolicyDecision {
     const { context, resource } = request;
+    if (typeof request.operation !== "string" || !request.operation.trim() || typeof request.capability !== "string" || !/^[a-z][a-z0-9._:-]{1,119}$/.test(request.capability)) return deny(this.revision, "A operação e a capability precisam ser identificadas por uma policy válida.");
+    if (request.sessionId === null || context.sessionId === null || request.sessionId !== context.sessionId) return deny(this.revision, "A sessão da solicitação não corresponde ao contexto autenticado.");
+    if (!request.constraints || typeof request.constraints !== "object" || Array.isArray(request.constraints)) return deny(this.revision, "As constraints da policy são inválidas.");
+    const registeredRule = applicationPolicyFor(request.operation);
+    if (registeredRule && registeredRule.capability !== request.capability) return deny(this.revision, "A capability não corresponde à operação registrada.");
+    if (resource.resourceId !== null && typeof resource.resourceId !== "string") return deny(this.revision, "O recurso-alvo da policy é inválido.");
+    if (request.constraints.resourceRequired === true && resource.resourceId === null) return deny(this.revision, "A operação exige um recurso-alvo explícito.");
+    if (request.operation === "patients.read" && context.patientId !== null && resource.resourceId !== context.patientId) return deny(this.revision, "O paciente-alvo não corresponde ao contexto revalidado.");
+    const notBefore = request.constraints.notBefore;
+    if (notBefore !== undefined && (typeof notBefore !== "string" || !Number.isFinite(Date.parse(notBefore)) || Date.parse(notBefore) > Date.now())) return deny(this.revision, "A janela temporal da policy ainda não começou.");
+    const expiresAt = request.constraints.expiresAt;
+    if (expiresAt !== undefined && (typeof expiresAt !== "string" || !Number.isFinite(Date.parse(expiresAt)) || Date.parse(expiresAt) <= Date.now())) return deny(this.revision, "A janela temporal da policy expirou.");
     if (context.organizationId !== resource.organizationId) return deny(this.revision, "O recurso pertence a outra organização.");
-    if (!request.operation.trim() || !request.purpose.trim() || request.purpose !== context.purpose) return deny(this.revision, "A operação precisa estar vinculada à finalidade do contexto.");
+    if (!request.purpose.trim() || request.purpose !== context.purpose) return deny(this.revision, "A operação precisa estar vinculada à finalidade do contexto.");
     if (!context.actorRoleSnapshot.some((role) => request.allowedRoles.includes(role))) return deny(this.revision, "O ator não possui uma role permitida para esta capability.");
     if (!request.acceptedDataClasses.includes(resource.dataClass)) return deny(this.revision, "A classe de dados não é aceita por esta capability.");
     if (resource.unitId !== null && context.unitId !== resource.unitId) return deny(this.revision, "A unidade do recurso não corresponde ao contexto selecionado.");
@@ -148,6 +160,15 @@ export interface ApplicationPolicyRule {
   risk: PolicyRisk;
   approvalMode: PolicyApprovalMode;
   requiresApproval: boolean;
+}
+
+export interface ApplicationPolicyAuthorizationOptions {
+  resourceId?: OpaqueId | null;
+  dataClass?: DataClass;
+  requestDigest?: string;
+  resourceUnitId?: OpaqueId | null;
+  resourceWorkspaceId?: OpaqueId | null;
+  resourceRequired?: boolean;
 }
 
 const allApplicationRoles: readonly Role[] = ["admin", "veterinario", "recepcao", "operador", "financeiro", "estoque", "workspace_manager"];
@@ -244,7 +265,8 @@ export function applicationPolicyFor(operation: string): ApplicationPolicyRule |
   return applicationPolicyByOperation.get(operation) ?? null;
 }
 
-export function authorizeApplicationRequest(context: CvgContext, operation: string, options: { resourceId?: OpaqueId | null; dataClass?: DataClass; requestDigest?: string } = {}): PolicyDecision {
+export function authorizeApplicationRequest(context: CvgContext, operation: string, options: ApplicationPolicyAuthorizationOptions = {}): PolicyDecision {
+  if (!context.sessionId) return deny(context.policyRevision, "A sessão autenticada é obrigatória para a policy de aplicação.");
   const rule = applicationPolicyFor(operation);
   if (!rule) return deny(context.policyRevision, `A operação ${operation} não possui uma policy de aplicação registrada.`);
   const dataClass = options.dataClass ?? rule.acceptedDataClasses[0] ?? "D0";
@@ -259,8 +281,8 @@ export function authorizeApplicationRequest(context: CvgContext, operation: stri
     approvalMode: rule.approvalMode,
     allowedRoles: rule.allowedRoles,
     acceptedDataClasses: rule.acceptedDataClasses,
-    resource: { organizationId: context.organizationId, unitId: context.unitId, workspaceId: context.workspaceId, resourceId: options.resourceId ?? null, dataClass },
+    resource: { organizationId: context.organizationId, unitId: options.resourceUnitId === undefined ? context.unitId : options.resourceUnitId, workspaceId: options.resourceWorkspaceId === undefined ? context.workspaceId : options.resourceWorkspaceId, resourceId: options.resourceId ?? null, dataClass },
     requestDigest: options.requestDigest ?? context.correlationId,
-    constraints: { source: "api-application-boundary" }
+    constraints: { source: "api-application-boundary", resourceRequired: options.resourceRequired ?? (options.resourceId !== undefined && options.resourceId !== null) }
   });
 }

@@ -132,6 +132,7 @@ test("API exposes the core clinical, treatment, finance and knowledge boundaries
   await vet.login("ana.vet@cvg.local", "veterinario-synthetic-0002");
   const patients = await vet.request("/patients"); assert.equal(patients.statusCode, 200);
   const patientId = (patients.body.data as { items: Array<{ id: string }> }).items[0]!.id;
+  const patientDetail = await vet.request(`/patients/${patientId}`); assert.equal(patientDetail.statusCode, 200); assert.equal((patientDetail.body.data as { id: string }).id, patientId);
   const appointments = await vet.request("/appointments"); assert.equal(appointments.statusCode, 200);
   const appointmentId = (appointments.body.data as { items: Array<{ id: string }> }).items[0]!.id;
   const checkedIn = await vet.request(`/appointments/${appointmentId}/check-in`, { method: "POST", headers: { "idempotency-key": "api-clinical-checkin-1" } }); assert.equal(checkedIn.statusCode, 201);

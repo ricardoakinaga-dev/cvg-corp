@@ -5,7 +5,7 @@ import type { Pool, PoolClient } from "pg";
 import { CvgStore, digest, idempotent, serializeSnapshot } from "@cvg/domain";
 import { GovernedHarness } from "@cvg/harness";
 import { createRuntime } from "@cvg/api";
-import { decryptRecoveryBundle, encryptRecoveryBundle, PersistenceConflictError, PersistenceCorruptionError, PersistenceUnavailableError, PostgresPersistence } from "@cvg/persistence";
+import { createRecoveryBundleManifest, decryptRecoveryBundle, encryptRecoveryBundle, PersistenceConflictError, PersistenceCorruptionError, PersistenceStateError, PersistenceUnavailableError, PostgresPersistence, validateRecoveryBundle, type DurableRecoveryBundle } from "@cvg/persistence";
 
 type QueryResult = { rows: Array<Record<string, unknown>> };
 
@@ -156,7 +156,7 @@ test("Postgres persistence preserves corruption signals instead of downgrading t
 test("recovery bundle encryption round-trips BigInt state and rejects tampering", () => {
   const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
   const snapshot = store.snapshot();
-  const bundle = {
+  const recoveryData = {
     revision: 7n,
     snapshot,
     snapshotDigest: digest(JSON.parse(serializeSnapshot(snapshot))),
@@ -166,6 +166,10 @@ test("recovery bundle encryption round-trips BigInt state and rejects tampering"
     inboxRecords: [],
     externalEffects: []
   };
+  const bundle: DurableRecoveryBundle = {
+    ...recoveryData,
+    manifest: createRecoveryBundleManifest({ organizationId: store.bootstrapCredentials.organizationId, ...recoveryData, migrationFingerprint: digest([{ version: "020_auth_security_boundary", checksum: "synthetic-checksum" }]) })
+  };
   const key = randomBytes(32);
   const encrypted = encryptRecoveryBundle(bundle, key, "synthetic-kms-key");
   assert.equal(encrypted.algorithm, "AES-256-GCM");
@@ -173,6 +177,8 @@ test("recovery bundle encryption round-trips BigInt state and rejects tampering"
   const restored = decryptRecoveryBundle(encrypted, key);
   assert.equal(restored.revision, 7n);
   assert.equal(restored.eventId, bundle.eventId);
+  assert.equal(restored.manifest.watermark.revision, "7");
+  assert.equal(restored.manifest.organizationId, store.bootstrapCredentials.organizationId);
   assert.equal(serializeSnapshot(restored.snapshot), serializeSnapshot(snapshot));
 
   const ciphertext = Buffer.from(encrypted.ciphertext, "base64");
@@ -180,6 +186,36 @@ test("recovery bundle encryption round-trips BigInt state and rejects tampering"
   assert.throws(() => decryptRecoveryBundle({ ...encrypted, ciphertext: ciphertext.toString("base64") }, key), (error: unknown) => error instanceof PersistenceCorruptionError);
   assert.throws(() => decryptRecoveryBundle(encrypted, randomBytes(32)), (error: unknown) => error instanceof PersistenceCorruptionError);
   assert.throws(() => encryptRecoveryBundle(bundle, randomBytes(31), "synthetic-kms-key"), (error: unknown) => error instanceof Error && error.name === "PersistenceStateError");
+});
+
+test("recovery manifest rejects partial, stale, and migration-incompatible restores", () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const snapshot = store.snapshot();
+  const recoveryData = {
+    revision: 7n,
+    snapshot,
+    snapshotDigest: digest(JSON.parse(serializeSnapshot(snapshot))),
+    eventId: randomUUID(),
+    outboxRecords: [],
+    usageRecords: [],
+    inboxRecords: [],
+    externalEffects: []
+  };
+  const migrationFingerprint = digest([{ version: "020_auth_security_boundary", checksum: "synthetic-checksum" }]);
+  const bundle: DurableRecoveryBundle = {
+    ...recoveryData,
+    manifest: createRecoveryBundleManifest({ organizationId: store.bootstrapCredentials.organizationId, ...recoveryData, migrationFingerprint, createdAt: "2026-09-09T00:00:00.000Z" })
+  };
+  assert.doesNotThrow(() => validateRecoveryBundle(bundle, { expectedMigrationFingerprint: migrationFingerprint, minimumRevision: 7n, maxAgeMs: 86_400_000, now: "2026-09-09T12:00:00.000Z" }));
+
+  const partial = { ...bundle, inboxRecords: undefined } as unknown as DurableRecoveryBundle;
+  assert.throws(() => validateRecoveryBundle(partial), (error: unknown) => error instanceof PersistenceCorruptionError);
+  assert.throws(() => validateRecoveryBundle(bundle, { minimumRevision: 8n }), (error: unknown) => error instanceof PersistenceStateError && error.message.includes("stale"));
+  assert.throws(() => validateRecoveryBundle(bundle, { maxAgeMs: 60_000, now: "2026-09-09T12:00:00.000Z" }), (error: unknown) => error instanceof PersistenceStateError && error.message.includes("stale"));
+  assert.throws(() => validateRecoveryBundle(bundle, { expectedMigrationFingerprint: digest([{ version: "021_future", checksum: "different" }]) }), (error: unknown) => error instanceof PersistenceStateError && error.message.includes("migration fingerprint"));
+
+  const mismatchedWatermark = { ...bundle, manifest: { ...bundle.manifest, watermark: { ...bundle.manifest.watermark, revision: "6" } } };
+  assert.throws(() => validateRecoveryBundle(mismatchedWatermark), (error: unknown) => error instanceof PersistenceCorruptionError && error.message.includes("watermark"));
 });
 
 test("PostgreSQL runtime wires bootstrap and HTTP mutations through the durable boundary", async () => {

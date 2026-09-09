@@ -45,6 +45,7 @@ import {
   type ApprovalInput,
   type ApiResponse,
   type CvgContext,
+  type DataClass,
   type ErrorCode,
   type OpaqueId,
   type Role
@@ -462,10 +463,10 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     if (!csrf || csrf !== session.csrfToken || request.cookies[CSRF_COOKIE] !== session.csrfToken) throw new DomainError("CSRF_INVALID", "Token de proteção inválido.", 403);
   };
 
-  const enforceApplicationPolicy = (request: FastifyRequest, context: CvgContext, purpose: string, resourceId: OpaqueId | null = null): void => {
+  const enforceApplicationPolicy = (request: FastifyRequest, context: CvgContext, purpose: string, resourceId: OpaqueId | null = null, resourceFacts: { dataClass?: DataClass } = {}): void => {
     const rule = applicationPolicyFor(purpose);
     if (!rule) throw new DomainError("CAPABILITY_DISABLED", "A operação não possui uma policy de aplicação registrada; o runtime falhou fechado.", 503);
-    const decision = authorizeApplicationRequest(context, purpose, { resourceId, dataClass: rule.acceptedDataClasses[0] ?? "D0", requestDigest: tokenDigest(`${request.method}:${request.url}:${context.correlationId}`) });
+    const decision = authorizeApplicationRequest(context, purpose, { resourceId, dataClass: resourceFacts.dataClass ?? rule.acceptedDataClasses[0] ?? "D0", requestDigest: tokenDigest(`${request.method}:${request.url}:${context.correlationId}`) });
     try {
       assertPolicyAllowed(decision);
     } catch (error) {
@@ -474,7 +475,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     }
   };
 
-  const requestContext = (request: FastifyRequest, purpose: string, patientId: OpaqueId | null = null, encounterId: OpaqueId | null = null, allowImplicitContext = false): { session: ReturnType<typeof requireSession>; context: CvgContext } => {
+  const requestContext = (request: FastifyRequest, purpose: string, patientId: OpaqueId | null = null, encounterId: OpaqueId | null = null, allowImplicitContext = false, validatePatient = true): { session: ReturnType<typeof requireSession>; context: CvgContext } => {
     const session = requireSession(request);
     const unitHeader = header(request, "x-cvg-unit-id");
     const workspaceHeader = header(request, "x-cvg-workspace-id");
@@ -492,7 +493,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     }
     const context = store.resolveContext(session.userId, { unitId, workspaceId }, purpose, correlationId(request), patientId, encounterId, session.id);
     enforceApplicationPolicy(request, context, purpose, encounterId ?? patientId);
-    if (patientId) store.findPatient(context, patientId);
+    if (patientId && validatePatient) store.findPatient(context, patientId);
     if (encounterId) {
       const encounter = store.encounters.get(encounterId);
       if (!encounter || encounter.organizationId !== context.organizationId || (context.unitId && encounter.unitId !== context.unitId) || (context.workspaceId && encounter.workspaceId !== context.workspaceId) || (patientId && encounter.patientId !== patientId)) throw new DomainError("NOT_FOUND", "Atendimento não encontrado.", 404);
@@ -841,11 +842,13 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
   });
 
   app.get("/api/v1/patients/:id", async (request, reply) => {
-    const { context } = requestContext(request, "patients.read");
     const patientId = id(parse(idSchema, (request.params as { id: string }).id));
-    const patient = store.findPatient(context, patientId);
+    const { context } = requestContext(request, "patients.read", patientId, null, false, false);
+    const patient = await patientApplication.get(context, patientId);
+    if (!patient) throw new DomainError("NOT_FOUND", "Recurso não encontrado.", 404);
+    enforceApplicationPolicy(request, context, "patients.read", patient.id, { dataClass: patient.dataClass });
     audit(context, "patients.read", "AnimalPatient", patient.id, "ALLOWED");
-    return response(reply, success(publicPatient(store, patient.id, context.actorRoleSnapshot), context.correlationId));
+    return response(reply, success(publicPatientRecord(patient, patient.guardian, context.actorRoleSnapshot), context.correlationId));
   });
 
   app.post("/api/v1/patients", async (request, reply) => {

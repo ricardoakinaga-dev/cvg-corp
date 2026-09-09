@@ -2,7 +2,7 @@ import { createCipheriv, createDecipheriv, randomBytes, randomUUID } from "node:
 import { Pool, type PoolClient, type PoolConfig } from "pg";
 import type { AnimalPatient, Appointment, AuditRecord, CommandReceipt, CvgContext, Guardian, OpaqueId } from "@cvg/contracts";
 import { id } from "@cvg/contracts";
-import { digest, parseSnapshot, serializeSnapshot, type StoreSnapshot } from "@cvg/domain";
+import { digest, now, parseSnapshot, serializeSnapshot, type StoreSnapshot } from "@cvg/domain";
 
 const LOCK_KEY = "cvg-corp:canonical-state:v1";
 
@@ -206,7 +206,50 @@ export interface DurableExternalReconciliationEvidence {
   queryDigest: string;
 }
 
+export interface RecoveryBundleManifest {
+  format: "CVG-RECOVERY-MANIFEST";
+  version: 1;
+  organizationId: OpaqueId;
+  snapshotSchemaVersion: 1;
+  createdAt: string;
+  migrationFingerprint: string;
+  watermark: {
+    revision: string;
+    eventId: string;
+    snapshotDigest: string;
+  };
+  ledgerDigests: {
+    outbox: string;
+    usage: string;
+    inbox: string;
+    externalEffects: string;
+  };
+}
+
+export interface RecoveryBundleManifestInput {
+  organizationId: OpaqueId;
+  revision: bigint;
+  snapshotDigest: string;
+  eventId: string;
+  migrationFingerprint: string;
+  outboxRecords: readonly DurableOutboxRecord[];
+  usageRecords: readonly DurableUsageRecord[];
+  inboxRecords: readonly DurableInboxRecord[];
+  externalEffects: readonly DurableExternalEffectRecord[];
+  createdAt?: string;
+  snapshotSchemaVersion?: number;
+}
+
+export interface RecoveryBundleValidationOptions {
+  expectedMigrationFingerprint?: string;
+  expectedSnapshotSchemaVersion?: number;
+  minimumRevision?: bigint;
+  maxAgeMs?: number;
+  now?: string;
+}
+
 export interface DurableRecoveryBundle extends DurableSnapshot {
+  manifest: RecoveryBundleManifest;
   outboxRecords: DurableOutboxRecord[];
   usageRecords: DurableUsageRecord[];
   inboxRecords: DurableInboxRecord[];
@@ -227,6 +270,9 @@ export interface EncryptedRecoveryBundle {
 const RECOVERY_BUNDLE_FORMAT = "CVG-RECOVERY-BUNDLE" as const;
 const RECOVERY_BUNDLE_VERSION = 1 as const;
 const RECOVERY_BUNDLE_ALGORITHM = "AES-256-GCM" as const;
+const RECOVERY_MANIFEST_FORMAT = "CVG-RECOVERY-MANIFEST" as const;
+const RECOVERY_MANIFEST_VERSION = 1 as const;
+const RECOVERY_SNAPSHOT_SCHEMA_VERSION = 1 as const;
 
 function recoveryKey(key: Uint8Array): Buffer {
   if (!(key instanceof Uint8Array) || key.byteLength !== 32) throw new PersistenceStateError("recovery encryption key must be exactly 32 bytes");
@@ -275,6 +321,151 @@ function recoveryBigInt(value: unknown, field: string): bigint {
   }
 }
 
+function recoveryCanonical(value: unknown): unknown {
+  return JSON.parse(JSON.stringify(value, (_key, nested) => typeof nested === "bigint" ? nested.toString() : nested));
+}
+
+function recoveryLedgerDigest(values: readonly unknown[]): string {
+  const ordered = values.map((value, index) => ({ value, index })).sort((left, right) => {
+    const leftRecord = left.value && typeof left.value === "object" && !Array.isArray(left.value) ? left.value as Record<string, unknown> : {};
+    const rightRecord = right.value && typeof right.value === "object" && !Array.isArray(right.value) ? right.value as Record<string, unknown> : {};
+    const leftKey = typeof leftRecord.id === "string" ? leftRecord.id : JSON.stringify(recoveryCanonical(left.value));
+    const rightKey = typeof rightRecord.id === "string" ? rightRecord.id : JSON.stringify(recoveryCanonical(right.value));
+    return leftKey.localeCompare(rightKey) || left.index - right.index;
+  });
+  return digest(ordered.map(({ value }) => recoveryCanonical(value)));
+}
+
+function recoveryDigestString(value: unknown, field: string): string {
+  const text = recoveryString(value, field);
+  if (!/^[a-f0-9]{64}$/.test(text)) throw new PersistenceCorruptionError(`encrypted recovery bundle ${field} is not a SHA-256 digest`);
+  return text;
+}
+
+function recoveryTimestamp(value: unknown, field: string): string {
+  const timestamp = recoveryString(value, field);
+  if (!Number.isFinite(Date.parse(timestamp))) throw new PersistenceCorruptionError(`encrypted recovery bundle ${field} is not a valid timestamp`);
+  return timestamp;
+}
+
+function recoveryCreationTimestamp(value: string | undefined): string {
+  const timestamp = value ?? now();
+  if (typeof timestamp !== "string" || !timestamp || !Number.isFinite(Date.parse(timestamp))) throw new PersistenceStateError("recovery manifest createdAt must be a valid timestamp");
+  return timestamp;
+}
+
+export function createRecoveryBundleManifest(input: RecoveryBundleManifestInput): RecoveryBundleManifest {
+  if (typeof input.organizationId !== "string" || !input.organizationId.trim()) throw new PersistenceStateError("recovery manifest organization scope is required");
+  if (typeof input.revision !== "bigint" || input.revision < 0n) throw new PersistenceStateError("recovery manifest revision is invalid");
+  if (typeof input.eventId !== "string" || !input.eventId.trim()) throw new PersistenceStateError("recovery manifest event id is required");
+  if (typeof input.snapshotDigest !== "string" || !/^[a-f0-9]{64}$/.test(input.snapshotDigest)) throw new PersistenceStateError("recovery manifest snapshot digest is invalid");
+  if (typeof input.migrationFingerprint !== "string" || !/^[a-f0-9]{64}$/.test(input.migrationFingerprint)) throw new PersistenceStateError("recovery manifest migration fingerprint is invalid");
+  const snapshotSchemaVersion = input.snapshotSchemaVersion ?? RECOVERY_SNAPSHOT_SCHEMA_VERSION;
+  if (snapshotSchemaVersion !== RECOVERY_SNAPSHOT_SCHEMA_VERSION) throw new PersistenceStateError(`recovery manifest snapshot schema version ${snapshotSchemaVersion} is unsupported`);
+  const createdAt = recoveryCreationTimestamp(input.createdAt);
+  return {
+    format: RECOVERY_MANIFEST_FORMAT,
+    version: RECOVERY_MANIFEST_VERSION,
+    organizationId: input.organizationId,
+    snapshotSchemaVersion: RECOVERY_SNAPSHOT_SCHEMA_VERSION,
+    createdAt,
+    migrationFingerprint: input.migrationFingerprint,
+    watermark: {
+      revision: input.revision.toString(),
+      eventId: input.eventId,
+      snapshotDigest: input.snapshotDigest
+    },
+    ledgerDigests: {
+      outbox: recoveryLedgerDigest(input.outboxRecords),
+      usage: recoveryLedgerDigest(input.usageRecords),
+      inbox: recoveryLedgerDigest(input.inboxRecords),
+      externalEffects: recoveryLedgerDigest(input.externalEffects)
+    }
+  };
+}
+
+function parseRecoveryManifest(value: unknown): RecoveryBundleManifest {
+  const manifest = recoveryRecord(value, "manifest");
+  if (manifest.format !== RECOVERY_MANIFEST_FORMAT || manifest.version !== RECOVERY_MANIFEST_VERSION) throw new PersistenceCorruptionError("encrypted recovery bundle manifest format is unsupported");
+  const organizationId = recoveryString(manifest.organizationId, "manifest.organizationId") as OpaqueId;
+  if (manifest.snapshotSchemaVersion !== RECOVERY_SNAPSHOT_SCHEMA_VERSION) throw new PersistenceCorruptionError(`encrypted recovery bundle snapshot schema version ${String(manifest.snapshotSchemaVersion)} is unsupported`);
+  const createdAt = recoveryTimestamp(manifest.createdAt, "manifest.createdAt");
+  const migrationFingerprint = recoveryDigestString(manifest.migrationFingerprint, "manifest.migrationFingerprint");
+  const watermark = recoveryRecord(manifest.watermark, "manifest.watermark");
+  const revision = recoveryBigInt(watermark.revision, "manifest.watermark.revision");
+  const eventId = recoveryString(watermark.eventId, "manifest.watermark.eventId");
+  const snapshotDigest = recoveryDigestString(watermark.snapshotDigest, "manifest.watermark.snapshotDigest");
+  const ledgerDigests = recoveryRecord(manifest.ledgerDigests, "manifest.ledgerDigests");
+  return {
+    format: RECOVERY_MANIFEST_FORMAT,
+    version: RECOVERY_MANIFEST_VERSION,
+    organizationId,
+    snapshotSchemaVersion: RECOVERY_SNAPSHOT_SCHEMA_VERSION,
+    createdAt,
+    migrationFingerprint,
+    watermark: { revision: revision.toString(), eventId, snapshotDigest },
+    ledgerDigests: {
+      outbox: recoveryDigestString(ledgerDigests.outbox, "manifest.ledgerDigests.outbox"),
+      usage: recoveryDigestString(ledgerDigests.usage, "manifest.ledgerDigests.usage"),
+      inbox: recoveryDigestString(ledgerDigests.inbox, "manifest.ledgerDigests.inbox"),
+      externalEffects: recoveryDigestString(ledgerDigests.externalEffects, "manifest.ledgerDigests.externalEffects")
+    }
+  };
+}
+
+function recoveryLedgerRecords(value: unknown, field: string, organizationId: OpaqueId, digestField: "recordDigest" | "requestDigest"): unknown[] {
+  const records = recoveryRecords(value, field);
+  return records.map((record, index) => {
+    if (typeof record.id !== "string" || !record.id) throw new PersistenceCorruptionError(`encrypted recovery bundle ${field}[${index}].id is invalid`);
+    if (record.organizationId !== organizationId) throw new PersistenceCorruptionError(`encrypted recovery bundle ${field}[${index}] has a different organization scope`);
+    recoveryDigestString(record[digestField], `${field}[${index}].${digestField}`);
+    return record;
+  });
+}
+
+export function validateRecoveryBundle(bundle: DurableRecoveryBundle, options: RecoveryBundleValidationOptions = {}): void {
+  const raw = recoveryRecord(bundle, "bundle");
+  const manifest = parseRecoveryManifest(raw.manifest);
+  if (typeof bundle.revision !== "bigint" || bundle.revision < 0n) throw new PersistenceCorruptionError("encrypted recovery bundle revision is invalid");
+  const eventId = recoveryString(bundle.eventId, "eventId");
+  const snapshotDigest = recoveryDigestString(bundle.snapshotDigest, "snapshotDigest");
+  if (manifest.watermark.revision !== bundle.revision.toString() || manifest.watermark.eventId !== eventId || manifest.watermark.snapshotDigest !== snapshotDigest) throw new PersistenceCorruptionError("encrypted recovery bundle watermark does not match durable state");
+
+  let snapshot: StoreSnapshot;
+  try {
+    snapshot = parseSnapshot(serializeSnapshot(bundle.snapshot));
+  } catch (error) {
+    throw new PersistenceCorruptionError(`encrypted recovery bundle snapshot failed validation: ${error instanceof Error ? error.message : String(error)}`);
+  }
+  if (digest(canonicalSnapshot(snapshot)) !== snapshotDigest) throw new PersistenceCorruptionError("encrypted recovery bundle snapshot digest mismatch");
+  if (!snapshot.organizations.some((organization) => organization.id === manifest.organizationId)) throw new PersistenceCorruptionError(`encrypted recovery bundle manifest has no matching organization ${manifest.organizationId}`);
+
+  const outboxRecords = recoveryLedgerRecords(raw.outboxRecords, "outboxRecords", manifest.organizationId, "recordDigest");
+  const usageRecords = recoveryLedgerRecords(raw.usageRecords, "usageRecords", manifest.organizationId, "recordDigest");
+  const inboxRecords = recoveryLedgerRecords(raw.inboxRecords, "inboxRecords", manifest.organizationId, "recordDigest");
+  const externalEffects = recoveryLedgerRecords(raw.externalEffects, "externalEffects", manifest.organizationId, "requestDigest");
+  if (manifest.ledgerDigests.outbox !== recoveryLedgerDigest(outboxRecords) || manifest.ledgerDigests.usage !== recoveryLedgerDigest(usageRecords) || manifest.ledgerDigests.inbox !== recoveryLedgerDigest(inboxRecords) || manifest.ledgerDigests.externalEffects !== recoveryLedgerDigest(externalEffects)) throw new PersistenceCorruptionError("encrypted recovery bundle ledger digest mismatch");
+
+  const expectedSnapshotSchemaVersion = options.expectedSnapshotSchemaVersion ?? RECOVERY_SNAPSHOT_SCHEMA_VERSION;
+  if (!Number.isSafeInteger(expectedSnapshotSchemaVersion) || expectedSnapshotSchemaVersion !== manifest.snapshotSchemaVersion) throw new PersistenceStateError(`recovery bundle snapshot schema version ${manifest.snapshotSchemaVersion} does not match expected ${expectedSnapshotSchemaVersion}`);
+  if (options.expectedMigrationFingerprint !== undefined) {
+    if (!/^[a-f0-9]{64}$/.test(options.expectedMigrationFingerprint)) throw new PersistenceStateError("expected recovery migration fingerprint is invalid");
+    if (manifest.migrationFingerprint !== options.expectedMigrationFingerprint) throw new PersistenceStateError("recovery bundle migration fingerprint does not match the target schema");
+  }
+  if (options.minimumRevision !== undefined) {
+    if (typeof options.minimumRevision !== "bigint" || options.minimumRevision < 0n) throw new PersistenceStateError("minimum recovery revision is invalid");
+    if (bundle.revision < options.minimumRevision) throw new PersistenceStateError(`recovery bundle revision ${bundle.revision.toString()} is stale; minimum is ${options.minimumRevision.toString()}`);
+  }
+  if (options.maxAgeMs !== undefined) {
+    if (!Number.isSafeInteger(options.maxAgeMs) || options.maxAgeMs < 0) throw new PersistenceStateError("maximum recovery bundle age is invalid");
+    const referenceTimestamp = options.now ?? now();
+    if (!Number.isFinite(Date.parse(referenceTimestamp))) throw new PersistenceStateError("recovery validation reference time is invalid");
+    const ageMs = Date.parse(referenceTimestamp) - Date.parse(manifest.createdAt);
+    if (ageMs < 0) throw new PersistenceStateError("recovery bundle was created in the future");
+    if (ageMs > options.maxAgeMs) throw new PersistenceStateError(`recovery bundle is stale; age ${ageMs}ms exceeds ${options.maxAgeMs}ms`);
+  }
+}
+
 function parseEncryptedRecoveryBundle(value: unknown): EncryptedRecoveryBundle {
   const envelope = recoveryRecord(value, "envelope");
   if (envelope.format !== RECOVERY_BUNDLE_FORMAT || envelope.version !== RECOVERY_BUNDLE_VERSION || envelope.algorithm !== RECOVERY_BUNDLE_ALGORITHM) throw new PersistenceCorruptionError("encrypted recovery bundle format is unsupported");
@@ -301,13 +492,14 @@ function hydrateRecoveryBundle(raw: unknown): DurableRecoveryBundle {
   } catch (error) {
     throw new PersistenceCorruptionError(`encrypted recovery bundle snapshot failed validation: ${error instanceof Error ? error.message : String(error)}`);
   }
-  const snapshotDigest = recoveryString(bundle.snapshotDigest, "snapshotDigest");
+  const snapshotDigest = recoveryDigestString(bundle.snapshotDigest, "snapshotDigest");
   if (digest(canonicalSnapshot(snapshot)) !== snapshotDigest) throw new PersistenceCorruptionError("encrypted recovery bundle snapshot digest mismatch");
   const outboxRecords = recoveryRecords(bundle.outboxRecords, "outboxRecords").map((record) => ({ ...record, fenceToken: recoveryBigInt(record.fenceToken, "outboxRecords.fenceToken") }) as unknown as DurableOutboxRecord);
   const usageRecords = recoveryRecords(bundle.usageRecords, "usageRecords") as unknown as DurableUsageRecord[];
   const inboxRecords = recoveryRecords(bundle.inboxRecords, "inboxRecords") as unknown as DurableInboxRecord[];
   const externalEffects = recoveryRecords(bundle.externalEffects, "externalEffects").map((record) => ({ ...record, fenceToken: recoveryBigInt(record.fenceToken, "externalEffects.fenceToken") }) as unknown as DurableExternalEffectRecord);
-  return {
+  const hydrated: DurableRecoveryBundle = {
+    manifest: parseRecoveryManifest(bundle.manifest),
     revision: recoveryBigInt(bundle.revision, "revision"),
     snapshot,
     snapshotDigest,
@@ -317,11 +509,14 @@ function hydrateRecoveryBundle(raw: unknown): DurableRecoveryBundle {
     inboxRecords,
     externalEffects
   };
+  validateRecoveryBundle(hydrated);
+  return hydrated;
 }
 
 export function encryptRecoveryBundle(bundle: DurableRecoveryBundle, key: Uint8Array, keyRef: string): EncryptedRecoveryBundle {
   const safeKey = recoveryKey(key);
   const safeKeyRef = recoveryKeyRef(keyRef);
+  validateRecoveryBundle(bundle);
   const plaintext = Buffer.from(recoveryPlaintext(bundle), "utf8");
   const payloadDigest = digest(JSON.parse(plaintext.toString("utf8")));
   const nonce = randomBytes(12);
@@ -356,13 +551,18 @@ export function decryptRecoveryBundle(encrypted: unknown, key: Uint8Array): Dura
     if (digest(parsed) !== envelope.payloadDigest) throw new PersistenceCorruptionError("encrypted recovery bundle payload digest mismatch");
     return hydrateRecoveryBundle(parsed);
   } catch (error) {
-    if (error instanceof PersistenceCorruptionError) throw error;
+    if (error instanceof PersistenceCorruptionError || error instanceof PersistenceStateError) throw error;
     throw new PersistenceCorruptionError("encrypted recovery bundle authentication failed");
   }
 }
 
 interface RevisionRow {
   revision: string;
+}
+
+interface MigrationRow {
+  version: string;
+  checksum: string;
 }
 
 interface SnapshotRow extends RevisionRow {
@@ -1087,16 +1287,26 @@ export class PostgresPersistence {
       const usageResult = await client.query<UsageRow>("select id::text as id, organization_id::text as organization_id, reservation_id::text as reservation_id, provider_request_id, idempotency_key, usage_kind, reserved_units, consumed_units, status, record, record_digest, created_at from ai_usage_ledger where organization_id = cvg_request_organization() order by created_at, id");
       const inboxResult = await client.query<InboxRow>("select id::text as id, organization_id::text as organization_id, consumer, provider, external_event_id, event_type, schema_version, signature_algorithm, signature_key_ref, signature, payload, record_digest, status, conflict_digest, last_error, received_at, processed_at, last_seen_at from integration_inbox_records where organization_id = cvg_request_organization() order by received_at, id");
       const effectsResult = await client.query<ExternalEffectRow>("select id::text as id, organization_id::text as organization_id, outbox_id::text as outbox_id, integration_id, idempotency_key, request, request_digest, status, attempts, claimed_by, lease_until, fence_token::text as fence_token, provider_request_id, response, last_error, outcome_digest, reconciliation_source, reconciled_at, created_at, updated_at from external_effects where organization_id = cvg_request_organization() order by created_at, id");
-      return {
-        revision: revisionOf(row.revision),
+      const migrationsResult = await client.query<MigrationRow>("select version, checksum from schema_migrations order by version");
+      const migrationFingerprint = digest(migrationsResult.rows.map(({ version, checksum }) => ({ version, checksum })));
+      const revision = revisionOf(row.revision);
+      const outboxRecords = outboxResult.rows.map(mapOutboxRow);
+      const usageRecords = usageResult.rows.map(mapUsageRow);
+      const inboxRecords = inboxResult.rows.map(mapInboxRow);
+      const externalEffects = effectsResult.rows.map(mapExternalEffectRow);
+      const bundle: DurableRecoveryBundle = {
+        manifest: createRecoveryBundleManifest({ organizationId, revision, snapshotDigest: row.snapshot_digest, eventId: row.event_id, migrationFingerprint, outboxRecords, usageRecords, inboxRecords, externalEffects }),
+        revision,
         snapshot,
         snapshotDigest: row.snapshot_digest,
         eventId: row.event_id,
-        outboxRecords: outboxResult.rows.map(mapOutboxRow),
-        usageRecords: usageResult.rows.map(mapUsageRow),
-        inboxRecords: inboxResult.rows.map(mapInboxRow),
-        externalEffects: effectsResult.rows.map(mapExternalEffectRow)
+        outboxRecords,
+        usageRecords,
+        inboxRecords,
+        externalEffects
       };
+      validateRecoveryBundle(bundle);
+      return bundle;
     }, true);
   }
 

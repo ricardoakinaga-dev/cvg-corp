@@ -2,9 +2,9 @@ import { randomBytes, randomUUID } from "node:crypto";
 import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
 import pg from "pg";
-import { CvgStore } from "@cvg/domain";
+import { CvgStore, digest } from "@cvg/domain";
 import { createRuntime } from "@cvg/api";
-import { decryptRecoveryBundle, encryptRecoveryBundle, PersistenceCorruptionError, PostgresPersistence } from "@cvg/persistence";
+import { decryptRecoveryBundle, encryptRecoveryBundle, PersistenceCorruptionError, PostgresPersistence, validateRecoveryBundle } from "@cvg/persistence";
 
 const { Client } = pg;
 const sourceUrl = process.env.DATABASE_URL;
@@ -57,6 +57,17 @@ async function migrate(connectionString: string): Promise<void> {
   }
 }
 
+async function readMigrationFingerprint(connectionString: string): Promise<string> {
+  const client = new Client({ connectionString, connectionTimeoutMillis: 2_500 });
+  await client.connect();
+  try {
+    const result = await client.query<{ version: string; checksum: string }>("select version, checksum from schema_migrations order by version");
+    return digest(result.rows.map(({ version, checksum }) => ({ version, checksum })));
+  } finally {
+    await client.end().catch(() => undefined);
+  }
+}
+
 const sourcePersistence = new PostgresPersistence({ connectionString: sourceUrl });
 const sourceOrganizationId = new CvgStore({ bootstrapPassword }).bootstrapCredentials.organizationId;
 const admin = new Client({ connectionString: maintenanceUrl(sourceUrl), connectionTimeoutMillis: 2_500 });
@@ -72,9 +83,12 @@ try {
   const sourceBefore = await sourcePersistence.exportRecoveryBundle(sourceOrganizationId);
   if (!sourceBefore) throw new Error("source database has no recovery bundle to restore");
   if (sourceBefore.revision !== sourceCandidate.revision || sourceBefore.eventId !== sourceCandidate.eventId) throw new Error("source recovery bundle changed while it was being exported");
+  const sourceMigrationFingerprint = await readMigrationFingerprint(sourceUrl);
+  validateRecoveryBundle(sourceBefore, { expectedMigrationFingerprint: sourceMigrationFingerprint });
   const backupKey = randomBytes(32);
   const encryptedBackup = encryptRecoveryBundle(sourceBefore, backupKey, "synthetic-kms-key");
   const restoredBundle = decryptRecoveryBundle(encryptedBackup, backupKey);
+  validateRecoveryBundle(restoredBundle, { expectedMigrationFingerprint: sourceMigrationFingerprint });
   if (restoredBundle.revision !== sourceBefore.revision || restoredBundle.eventId !== sourceBefore.eventId || restoredBundle.snapshotDigest !== sourceBefore.snapshotDigest || restoredBundle.outboxRecords.length !== sourceBefore.outboxRecords.length || restoredBundle.usageRecords.length !== sourceBefore.usageRecords.length || restoredBundle.inboxRecords.length !== sourceBefore.inboxRecords.length || restoredBundle.externalEffects.length !== sourceBefore.externalEffects.length) throw new Error("encrypted recovery bundle round-trip changed durable recovery state");
   const tamperedCiphertext = Buffer.from(encryptedBackup.ciphertext, "base64");
   tamperedCiphertext[0] = (tamperedCiphertext[0] ?? 0) ^ 1;
@@ -85,6 +99,27 @@ try {
     tamperRejected = error instanceof PersistenceCorruptionError;
   }
   if (!tamperRejected) throw new Error("encrypted recovery bundle accepted tampered ciphertext");
+  let partialRejected = false;
+  try {
+    validateRecoveryBundle({ ...restoredBundle, inboxRecords: undefined } as unknown as typeof restoredBundle, { expectedMigrationFingerprint: sourceMigrationFingerprint });
+  } catch {
+    partialRejected = true;
+  }
+  if (!partialRejected) throw new Error("partial recovery bundle was accepted");
+  let staleRejected = false;
+  try {
+    validateRecoveryBundle(restoredBundle, { minimumRevision: restoredBundle.revision + 1n });
+  } catch {
+    staleRejected = true;
+  }
+  if (!staleRejected) throw new Error("stale recovery bundle was accepted");
+  let migrationMismatchRejected = false;
+  try {
+    validateRecoveryBundle(restoredBundle, { expectedMigrationFingerprint: digest([{ version: "synthetic-mismatch", checksum: "synthetic-mismatch" }]) });
+  } catch {
+    migrationMismatchRejected = true;
+  }
+  if (!migrationMismatchRejected) throw new Error("recovery bundle with a migration mismatch was accepted");
   await admin.connect();
   adminConnected = true;
   await admin.query(`create database ${quoteIdentifier(restoreDatabase)}`);
@@ -92,6 +127,8 @@ try {
 
   const targetUrl = withDatabase(sourceUrl, restoreDatabase);
   await migrate(targetUrl);
+  const targetMigrationFingerprint = await readMigrationFingerprint(targetUrl);
+  validateRecoveryBundle(restoredBundle, { expectedMigrationFingerprint: targetMigrationFingerprint });
 
   const restoredStore = new CvgStore({ bootstrapPassword });
   restoredStore.restore(restoredBundle.snapshot);
@@ -122,6 +159,7 @@ try {
   if (!targetLatest || targetLatest.snapshot.healthStatus !== "QUARANTINED") throw new Error("quarantined restore was not durable");
   const targetBundle = await targetPersistence.exportRecoveryBundle(sourceOrganizationId);
   if (!targetBundle) throw new Error("quarantined restore has no recovery bundle");
+  validateRecoveryBundle(targetBundle, { expectedMigrationFingerprint: targetMigrationFingerprint });
   const sortedDigests = (values: Array<{ recordDigest: string }>): string[] => values.map((value) => value.recordDigest).sort();
   if (JSON.stringify(sortedDigests(targetBundle.outboxRecords)) !== JSON.stringify(sortedDigests(sourceBefore.outboxRecords))) throw new Error("restore did not preserve the outbox recovery ledger");
   if (JSON.stringify(sortedDigests(targetBundle.usageRecords)) !== JSON.stringify(sortedDigests(sourceBefore.usageRecords))) throw new Error("restore did not preserve the usage recovery ledger");
@@ -137,7 +175,7 @@ try {
   const sourceAfter = await sourcePersistence.exportRecoveryBundle(sourceOrganizationId);
   if (!sourceAfter || sourceAfter.revision !== sourceBefore.revision || sourceAfter.eventId !== sourceBefore.eventId) throw new Error("restore drill changed the source database");
   if (JSON.stringify(sortedDigests(sourceAfter.outboxRecords)) !== JSON.stringify(sortedDigests(sourceBefore.outboxRecords)) || JSON.stringify(sortedDigests(sourceAfter.usageRecords)) !== JSON.stringify(sortedDigests(sourceBefore.usageRecords)) || JSON.stringify(sourceAfter.inboxRecords.map((record) => record.recordDigest).sort()) !== JSON.stringify(sourceBefore.inboxRecords.map((record) => record.recordDigest).sort()) || JSON.stringify(sourceAfter.externalEffects.map((record) => record.requestDigest).sort()) !== JSON.stringify(sourceBefore.externalEffects.map((record) => record.requestDigest).sort())) throw new Error("restore drill changed the source recovery ledgers");
-  console.log(JSON.stringify({ restore: "PASS", encryptedBackup: true, backupAlgorithm: encryptedBackup.algorithm, tamperRejected, sourceRevision: sourceBefore.revision.toString(), targetDatabase: restoreDatabase, targetRevision: targetLatest.revision.toString(), targetStatus: targetLatest.snapshot.healthStatus, recoveredOutbox: targetBundle.outboxRecords.length, recoveredUsage: targetBundle.usageRecords.length, recoveredInbox: targetBundle.inboxRecords.length, recoveredExternalEffects: targetBundle.externalEffects.length, loginBlocked: true, readinessBlocked: true, sourceUnchanged: true }, null, 2));
+  console.log(JSON.stringify({ restore: "PASS", encryptedBackup: true, backupAlgorithm: encryptedBackup.algorithm, tamperRejected, partialRejected, staleRejected, migrationMismatchRejected, sourceRevision: sourceBefore.revision.toString(), targetDatabase: restoreDatabase, targetRevision: targetLatest.revision.toString(), targetStatus: targetLatest.snapshot.healthStatus, recoveredOutbox: targetBundle.outboxRecords.length, recoveredUsage: targetBundle.usageRecords.length, recoveredInbox: targetBundle.inboxRecords.length, recoveredExternalEffects: targetBundle.externalEffects.length, loginBlocked: true, readinessBlocked: true, sourceUnchanged: true }, null, 2));
 } finally {
   if (runtime) await runtime.app.close().catch(() => undefined);
   await targetPersistence?.close().catch(() => undefined);

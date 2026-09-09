@@ -4,7 +4,7 @@
 
 **Escopo:** implementação existente no baseline `7b49bd22ec32c72d9aff8fb39bfb6be7fb6bd295`, a especificação preservada em `docs/prompt-state-of-the-art-triplo-aaa.md` e o artifact vNext corrente no working tree.
 
-**Conclusão:** o repositório contém uma demonstração local-first executável e uma fatia PostgreSQL sintética verificada, mas não um produto State of the Art / Triplo AAA pronto para dados reais, provider externo, homologação, piloto ou produção.
+**Conclusão:** o repositório contém uma demonstração local-first executável, uma fatia PostgreSQL sintética verificada e uma rota de detalhe com PDP target-bound localmente provada, mas não um produto State of the Art / Triplo AAA pronto para dados reais, provider externo, homologação, piloto ou produção.
 
 ## 1. Evidência e limites
 
@@ -40,7 +40,7 @@ Não existe autoridade registrada para dados reais, credenciais externas, deploy
 | Domínio | `packages/domain/src/index.ts` e `authorization.ts` | Invariantes e store sintético cobrem muitos contextos; o PDP ainda está embutido no domínio/BFF e não é um serviço ABAC separado. |
 | Runtime de agentes | `packages/harness/src/index.ts`, 239 linhas, `GovernedHarness` determinístico | Há budget, policy, aprovação, quarentena, provenance e replay locais; a interface Agent Runtime pedida ainda não está separada do engine concreto e não há adapter DeepSeek executável. |
 | Tools/integrations | `packages/integrations/src/index.ts`, 318 linhas | Gateway e outbox sintéticos existem; providers reais permanecem desabilitados, credenciais não são obtidas por secret manager e não há vertical externa completa com receipt real. |
-| Persistência | `packages/persistence/src/index.ts`, 1.512 linhas, PostgreSQL e snapshot JSONB | Há transação, CAS, journal, ledgers, RLS, leituras selecionadas, outbox, inbox, efeitos e restore sintético; repositories completos, replay pós-watermark, stores externos e backup operacional gerenciado faltam. |
+| Persistência | `packages/persistence/src/index.ts`, PostgreSQL, snapshot JSONB e recovery manifest | Há transação, CAS, journal, ledgers, RLS, leituras selecionadas, outbox, inbox, efeitos, manifesto com watermark/fingerprint/digests e restore sintético; repositories completos, replay pós-watermark, stores externos e backup operacional gerenciado faltam. |
 | Worker | `OutboxWorker` vive em `packages/integrations`; não há `apps/worker/` | O worker é útil para prova local, mas não é um processo operacional separado com privilégios, ciclo de vida, métricas e jobs de manutenção. |
 | Operação | `packages/ops/src/index.ts`, health/readiness/metrics/log redaction | Telemetria é memória local e best-effort; faltam OTel/collector, dashboards, alertas, SLO/error budget medidos e runbooks executáveis. |
 | Dados | Migrations 001–018, `FORCE RLS` e FKs organizacionais sintéticas | O isolamento estrutural foi exercitado em PostgreSQL local; faltam PDP ABAC completo, políticas de retenção, exportação governada, backup externo e prova em ambiente semelhante à produção. |
@@ -109,7 +109,7 @@ O ciclo anterior possui evidência local de typecheck, testes, build, static, E2
 | Prioridade | Gap | Consequência | Estado |
 |---|---|---|---|
 | P0 | Falta uma interface Agent Runtime com adapter Mock e DeepSeek separados | O BFF conhece o engine local e não consegue trocar runtime/provider com lifecycle, cancelamento, budget e provenance uniformes | `OPEN` |
-| P0 | Tool Gateway universal e PDP ABAC ainda não são módulos independentes | Aprovação, escopo, risco, classe de dados, egress e decisão de autorização podem divergir por rota | `OPEN` |
+| P0 | Tool Gateway/PDP ainda não têm prova de uso universal em todas as rotas | A fatia de detalhe de paciente valida sessão, capability, alvo e escopo, mas aprovação, escopo, risco, classe de dados, egress e decisão ainda podem divergir por rotas não migradas | `OPEN` |
 | P0 | `server.ts` concentra toda a aplicação | Aumento de acoplamento, teste difícil, ownership difuso e risco de bypass no próximo contexto | `OPEN` |
 | P0 | Provider real, secret provider e consulta externa não estão disponíveis | Não é possível provar a primeira vertical real, receipt externo, settlement, callback ou reconciliação | `BLOCKED_BY_AUTHORITY/DEPENDENCY` |
 | P0 | Backup, restore e fault injection são sintéticos e parciais | Não há RTO/RPO, watermark completo, replay seguro ou prova operacional | `OPEN` |
@@ -211,14 +211,22 @@ A Fase 0 autorizou a fundação; a implementação subsequente já adicionou os 
 | Componente | Evidência atual | Limite que continua aberto |
 |---|---|---|
 | Runtime de agentes | `packages/agent-runtime` + `packages/harness-adapters`, lifecycle, health, replay, promoção e contrato DeepSeek fail-closed | processo/protocolo DeepSeek real, cancelamento distribuído e provider externo não executados |
-| PDP e Tool Gateway | `packages/agent-policy` + `packages/agent-tools`, catálogo de seis tools, risco, aprovação independente, timeout, idempotência e digest | nem toda rota/repository usa o gateway/PDP universalmente; execução externa está bloqueada |
-| API/application layer | `apps/api/src/server.ts` virou entrypoint pequeno; health, agent e patient services/routes foram extraídos | `apps/api/src/app.ts` ainda é grande e o grafo completo de use cases não foi fechado |
+| PDP e Tool Gateway | `packages/agent-policy` + `packages/agent-tools`, catálogo de seis tools, risco, aprovação independente, timeout, idempotência e digest; detalhe de paciente com sessão/capability/resource target-bound | nem toda rota/repository usa o gateway/PDP universalmente; execução externa está bloqueada |
+| API/application layer | `apps/api/src/server.ts` virou entrypoint pequeno; health, agent e patient services/routes foram extraídos; detalhe usa `PatientApplicationService` | `apps/api/src/app.ts` ainda é grande e o grafo completo de use cases não foi fechado |
 | Persistência | migration aditiva `019_runtime_scope_guards.sql`, escopo obrigatório nas projeções de IA, hydrate latest e asserção de schema | PostgreSQL limpo/multi-instância/RLS completo e restore operacional não foram executados nesta fotografia |
 | Worker | `apps/worker` e `docker/worker.ts` separados, health e quarentena | não existe sink/provider aprovado; o worker não declara entrega externa |
 | Web | shell, rotas, features, hooks, cliente API e estados `ONLINE`, `OFFLINE_READ_ONLY`, `DEGRADED`, `CONTEXT_INVALID`, `REAUTH_REQUIRED` | matriz de browsers, acessibilidade profunda, cache autorizado, lease e purge não foram executados |
 | Release | Dockerfiles, Compose, proxy, CI, Dependabot, política de licenças, verify-production e runbooks | daemon Docker, imagens, startup integrado, scan de imagem e promoção não foram executados; SBOM local passou |
 
-Os gates locais reproduzidos na fotografia inicial são preservados como histórico. Na fotografia corrente, `npm run lint`, `npm run typecheck`, `npm test` (65/65), `npm run build`, `npm run verify:static` (30 artefatos/101 fontes), os testes dedicados de contrato/segurança/banco/fault, `npm run audit:licenses`, `npm run audit:contrast`, `npm run audit:tokens`, `npm run test:e2e` (22/22 executados), `npm audit --omit=dev`, `npm sbom --sbom-format cyclonedx`, `npm run benchmark:local`, `npm run verify:production` e `git diff --check` compõem os gates locais. O verificador de release valida estrutura e Compose sem iniciar serviços. O veredito permanece `FAIL_WITH_LIMITATIONS`; nenhuma linha acima é evidência de produção ou de elegibilidade Triplo AAA.
+Os gates locais reproduzidos na fotografia inicial são preservados como histórico. Na fotografia corrente, `npm run lint`, `npm run typecheck`, `npm test` (67/67), `npm run build`, `npm run verify:static` (30 artefatos/101 fontes), os testes dedicados de contrato/segurança/banco/fault, `npm run audit:licenses`, `npm run audit:contrast`, `npm run audit:tokens`, `npm run test:e2e` (22/22 executados), `npm audit --omit=dev`, `npm sbom --sbom-format cyclonedx`, `npm run benchmark:local`, `npm run verify:production` e `git diff --check` compõem os gates locais. A rota de detalhe de paciente também foi revalidada com PDP target-bound e projeção por application service. O verificador de release valida estrutura e Compose sem iniciar serviços. O veredito permanece `FAIL_WITH_LIMITATIONS`; nenhuma linha acima é evidência de produção ou de elegibilidade Triplo AAA.
+
+## 15. Revalidação do artifact corrente — PDP target-bound do detalhe
+
+A rota `GET /api/v1/patients/:id` agora carrega o paciente-alvo no contexto autenticado, passa por `PatientApplicationService`, obtém uma projeção mínima e revalida a policy com sessão, operação/capability registrada, `resourceId`, classe de dados, unidade e workspace antes de serializar. O repositório de memória trata alvo fora do escopo como ausência sem revelar o recurso; a leitura PostgreSQL permanece escopada pela consulta repository-owned e RLS é o backstop.
+
+Os testes cobrem conhecido-bom e conhecido-ruim para sessão ausente/divergente, capability incompatível, alvo ausente/divergente, role/contexto fora do escopo e representação pública mínima. Após a mudança, `npm test` passou 67/67, `npm run test:database` 9/9, `npm run test:fault` 5/5, typecheck, lint, static 30/101, `verify:production` e diff check passaram; `--production` saiu 1 por configuração real ausente, fail-closed esperado.
+
+Esta é uma fatia local delimitada: não fecha o critério de PDP/Tool Gateway universal, nem prova PostgreSQL production-like, CI remoto, provider, secret manager, fault distribuído, SLO, browsers adicionais ou revisão independente fresca.
 
 ## 14. Revalidação do artifact corrente — gates de CI e release
 

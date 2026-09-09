@@ -7,7 +7,8 @@ import { id } from "@cvg/contracts";
 function context(store: CvgStore, userId = store.bootstrapCredentials.userId) {
   const option = store.contextOptions(userId)[0];
   assert.ok(option);
-  return store.resolveContext(userId, { unitId: option.unit.id, workspaceId: option.workspace.id }, "test", "test-correlation");
+  const session = store.createSession(userId, "synthetic-test-token", "synthetic-test-csrf", 60);
+  return store.resolveContext(userId, { unitId: option.unit.id, workspaceId: option.workspace.id }, "test", "test-correlation", null, null, session.id);
 }
 
 test("password fixture is valid only for the generated admin secret", async () => {

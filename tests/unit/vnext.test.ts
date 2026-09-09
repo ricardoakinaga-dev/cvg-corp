@@ -14,7 +14,8 @@ import { canRenderContextData, isWriteAllowed, RUNTIME_STATES, runtimeStateReduc
 function contextFor(store: CvgStore, purpose: string) {
   const option = store.contextOptions(store.bootstrapCredentials.userId)[0];
   assert.ok(option);
-  return store.resolveContext(store.bootstrapCredentials.userId, { unitId: option.unit.id, workspaceId: option.workspace.id }, purpose, "vnext-test");
+  const session = store.createSession(store.bootstrapCredentials.userId, `synthetic-${purpose}`, "synthetic-csrf", 60);
+  return store.resolveContext(store.bootstrapCredentials.userId, { unitId: option.unit.id, workspaceId: option.workspace.id }, purpose, "vnext-test", null, null, session.id);
 }
 
 test("vNext PDP rejects foreign scope and requires independent approval", async () => {
@@ -82,12 +83,42 @@ test("application policy catalog denies an unlisted role before a durable read",
   assert.ok(operator);
   const option = store.contextOptions(operator.id)[0];
   assert.ok(option);
-  const context = store.resolveContext(operator.id, { unitId: option.unit.id, workspaceId: option.workspace.id }, "guardians.read", "application-policy-test", null, null, [...store.sessions.values()].find((session) => session.userId === operator.id)?.id ?? null);
+  const session = store.createSession(operator.id, "synthetic-application-policy", "synthetic-csrf", 60);
+  const context = store.resolveContext(operator.id, { unitId: option.unit.id, workspaceId: option.workspace.id }, "guardians.read", "application-policy-test", null, null, session.id);
   const rule = applicationPolicyFor("guardians.read");
   assert.ok(rule);
   const decision = authorizeApplicationRequest(context, "guardians.read", { dataClass: "D2" });
   assert.equal(decision.status, "DENY");
   assert.match(decision.reason, /role/i);
+});
+
+test("application PDP binds the authenticated session, registered capability and patient target", () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const patient = [...store.patients.values()][0];
+  assert.ok(patient);
+  const context = contextFor(store, "patients.read");
+  const targetContext = store.resolveContext(context.actorId, { unitId: context.unitId, workspaceId: context.workspaceId }, "patients.read", "patient-pdp-test", patient.id, null, context.sessionId);
+  const policy = new StaticPolicyDecisionPoint(targetContext.policyRevision);
+  const request = {
+    context: targetContext,
+    operation: "patients.read",
+    sessionId: targetContext.sessionId,
+    purpose: targetContext.purpose,
+    capability: "patients:read",
+    risk: "LOW" as const,
+    requiresApproval: false,
+    approvalMode: "NONE" as const,
+    allowedRoles: ["admin", "veterinario", "recepcao", "financeiro", "estoque"] as const,
+    acceptedDataClasses: ["D3"] as const,
+    resource: { organizationId: targetContext.organizationId, unitId: targetContext.unitId, workspaceId: targetContext.workspaceId, resourceId: patient.id, dataClass: "D3" as const },
+    requestDigest: "a".repeat(64),
+    constraints: { resourceRequired: true }
+  };
+  assert.equal(policy.evaluate(request).status, "ALLOW");
+  assert.equal(policy.evaluate({ ...request, sessionId: null }).status, "DENY");
+  assert.equal(policy.evaluate({ ...request, capability: "patients:write" }).status, "DENY");
+  assert.equal(policy.evaluate({ ...request, resource: { ...request.resource, resourceId: null } }).status, "DENY");
+  assert.equal(policy.evaluate({ ...request, context: { ...targetContext, patientId: id("00000000-0000-4000-8000-000000009999") } }).status, "DENY");
 });
 
 test("tool registry digest excludes parser functions and remains deterministic", () => {

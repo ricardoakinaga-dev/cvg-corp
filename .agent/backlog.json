@@ -32,13 +32,13 @@
       "dependencies": [],
       "owner": "lead",
       "acceptance_summary": "Implementar e verificar a arquitetura, segurança, confiabilidade, AI governance, operações, DX, frontend, documentação e produção exigidas pelo prompt; AAA só é elegível com a barra v3 completa e autoridade humana para qualquer efeito externo.",
-      "evidence_refs": ["docs/architecture-audit-vNext.md", ".gauntlet/bar-v3.json", ".gauntlet/critique-v3-fresh.md", "docs/verification-vNext.md", "VER-CVG-031", "VER-CVG-033", "VER-CVG-034", "VER-CVG-035", "VER-CVG-036", "VER-CVG-037"],
+      "evidence_refs": ["docs/architecture-audit-vNext.md", ".gauntlet/bar-v3.json", ".gauntlet/critique-v3-fresh.md", "docs/verification-vNext.md", "VER-CVG-031", "VER-CVG-033", "VER-CVG-034", "VER-CVG-035", "VER-CVG-036", "VER-CVG-037", "VER-CVG-038", "VER-CVG-039", "VER-CVG-040", "VER-CVG-041"],
       "next_action": {
         "id": "CVG-FULL-STATE-OF-THE-ART:PRODUCTION-LIKE-EVIDENCE",
         "kind": "VERIFY",
-        "summary": "Executar evidência PostgreSQL/Docker production-like, CI remoto, smoke/scan de containers, fault/recovery distribuído, carga/SLO, matriz de browsers e revisão independente quando houver ambiente e autoridade",
-        "target": ".github/workflows/ci.yml; docker-compose.yml; docs/verification-vNext.md; .gauntlet/critique-v3-fresh.md; ambiente autorizado",
-        "completion_signal": "Todos os critérios obrigatórios têm evidência atual de ambiente-alvo, críticos frescos sem blocker e scorecard >=95 por dimensão; ou falhas permanecem registradas sem elevar o status"
+        "summary": "Executar evidência PostgreSQL/Docker/CI/provider/secret/recovery/SLO/browser somente com ambiente e autoridade correspondentes; manter ausências como NOT_RUN",
+        "target": ".github/workflows/ci.yml; docker-compose.yml; scripts/verify-production.ts; docs/verification-vNext.md; docs/state-of-the-art-scorecard.md",
+        "completion_signal": "Cada critério production-like executado tem artifact reproduzível e autoridade registrada; cada ausência permanece NOT_RUN, sem provider, dado real, egress, deploy ou release implícito"
       }
     }
   ]

@@ -6,10 +6,10 @@
   "round": 3,
   "phase": "VERDICT",
   "status": "FAIL_WITH_LIMITATIONS",
-  "largest_gap": "O bridge CVG /v1, provider/PDP/worker, auth/MFA/break-glass e exporter OTLP têm evidência local, mas nenhum adapter nativo/LLM DeepSeek, provider/staging/secret authority, Collector/SLO, recovery/load, browsers/acessibilidade ou aceite foi provado externamente",
+  "largest_gap": "O bridge CVG /v1, provider/PDP/worker, auth/MFA/break-glass, exporter OTLP e Chromium/Firefox + axe têm evidência local, mas nenhum adapter nativo/LLM DeepSeek, provider/staging/secret authority, Collector/SLO, recovery/load, WebKit/assistive tech ou aceite foi provado externamente",
   "next_action": "CVG-FULL-STATE-OF-THE-ART:PRODUCTION-LIKE-EVIDENCE",
-  "limitations": ["a auditoria arquitetural e os gates locais autorizam apenas desenvolvimento controlado", "o artifact é uma base local sintética; evidência local não satisfaz automaticamente critérios de produção", "o bridge DeepSeek CVG /v1 não prova protocolo nativo nem integração com processo externo", "Docker daemon, staging, provider, secret authority, egress, collector/SLO, carga, recovery distribuído, browsers adicionais e aceite humano permanecem bloqueados ou não executados", "Bacon e Hubble produziram críticas frescas read-only negativas; não existe base para promoção AAA"],
+  "limitations": ["a auditoria arquitetural e os gates locais autorizam apenas desenvolvimento controlado", "o artifact é uma base local sintética; evidência local não satisfaz automaticamente critérios de produção", "o bridge DeepSeek CVG /v1 não prova protocolo nativo nem integração com processo externo", "Docker daemon, staging, provider, secret authority, egress, collector/SLO, carga, recovery distribuído, WebKit/assistive tech e aceite humano permanecem bloqueados ou não executados", "Bacon e Hubble produziram críticas frescas read-only negativas; não existe base para promoção AAA"],
   "critique_ref": ".gauntlet/critique-v3-fresh.md",
   "supersedes": ".gauntlet/state-v2-round4.json",
-  "updated_at": "2026-09-09T18:50:03-03:00"
+  "updated_at": "2026-09-09T19:12:19-03:00"
 }

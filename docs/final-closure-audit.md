@@ -1,7 +1,7 @@
 # Auditoria de fechamento — CVG-Corp State of the Art / Triplo AAA
 
 **Auditoria:** F0-2026-09-09-v2
-**Revisão do CVG:** `8b00ff53fc3dfef6acbb3836cabeff4a35315731`
+**Revisão do CVG:** `fdfd408a8f91f2c7e4b84f850e6bb783aa172959`
 **Revisão observada do DeepSeek Harness:** `5dda764ed3aa172535a7967b06ff95d9cbfe536a`
 **Prompt normativo:** [prompt v2](prompt-state-of-the-art-triplo-aaa-2026-09-09-v2.txt), SHA-256 `34e886f59adacf8fda46d8d54bdede259705adc6e1521590cd3c281509b0e0d9`
 **Ambiente:** workspace local, Node 24.20.0, npm 11.19.0; Docker CLI/Compose presentes, daemon sem permissão; sem URL de staging, credencial, secret authority, provider, dados reais ou autorização de release.

@@ -1,0 +1,10 @@
+apiVersion: 1
+providers:
+  - name: CVG operational dashboards
+    orgId: 1
+    folder: CVG
+    type: file
+    disableDeletion: true
+    editable: false
+    options:
+      path: /etc/grafana/dashboards

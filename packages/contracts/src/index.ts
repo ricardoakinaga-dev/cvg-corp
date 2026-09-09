@@ -114,6 +114,18 @@ export const mfaVerificationInputSchema = z.object({
 }).strict();
 export type MfaVerificationInput = z.infer<typeof mfaVerificationInputSchema>;
 
+export const mfaEnrollmentInputSchema = z.object({
+  currentPassword: z.string().min(8).max(256),
+  secretRef: z.string().trim().regex(/^[A-Za-z0-9._:-]{1,160}$/),
+  code: z.string().trim().regex(/^\d{6}$/, "MFA code must contain six digits")
+}).strict();
+export type MfaEnrollmentInput = z.infer<typeof mfaEnrollmentInputSchema>;
+
+export const mfaFactorRevokeInputSchema = z.object({
+  currentPassword: z.string().min(8).max(256)
+}).strict();
+export type MfaFactorRevokeInput = z.infer<typeof mfaFactorRevokeInputSchema>;
+
 export const recoveryStartInputSchema = z.object({
   login: z.string().trim().min(3).max(160)
 }).strict();
@@ -990,7 +1002,7 @@ export interface CvgMetrics {
     quarantined: number;
   };
   queues: { outboxDepth: number; oldestAgeMs: number; poisonMessages: number; reconciliationLag: number };
-  telemetry: { mode: "REDACTED_BEST_EFFORT"; logsStored: number; dropped: number; duplicates: number };
+  telemetry: { mode: "REDACTED_BEST_EFFORT" | "OTEL_OTLP_REDACTED"; logsStored: number; dropped: number; duplicates: number };
 }
 
 export interface ApiSuccess<T> {

@@ -30,6 +30,8 @@ import {
   isApiError,
   knowledgeDocumentInputSchema,
   loginInputSchema,
+  mfaEnrollmentInputSchema,
+  mfaFactorRevokeInputSchema,
   mfaVerificationInputSchema,
   medicationOrderInputSchema,
   patientInputSchema,
@@ -71,8 +73,8 @@ import { GovernedHarness, TOOL_REGISTRY } from "@cvg/harness";
 import type { AgentRuntime } from "@cvg/agent-runtime";
 import { DeepSeekHarnessAdapter, MockHarnessAdapter } from "@cvg/harness-adapters";
 import { AgentRuntimeUnavailableError } from "@cvg/agent-runtime";
-import { configuredSecretProvider, IntegrationGateway, inboxEventToOutbox, integrationContracts, OutboxWorker, reconcileUnknownExternalEffect, verifyMessagingCallback, type ExternalEffectQueryAdapter, type OutboxSink, type OutboxWorkerResult, type SecretProvider, type SecretProviderStatus } from "@cvg/integrations";
-import { OpsTelemetry } from "@cvg/ops";
+import { configuredSecretProvider, IntegrationGateway, inboxEventToOutbox, integrationContracts, isSecretReferenceUsable, OutboxWorker, reconcileUnknownExternalEffect, verifyMessagingCallback, type ExternalEffectQueryAdapter, type OutboxSink, type OutboxWorkerResult, type SecretProvider, type SecretProviderStatus } from "@cvg/integrations";
+import { createOpenTelemetryRuntime, OpsTelemetry, type OpenTelemetryRuntime } from "@cvg/ops";
 import { PersistenceConflictError, PersistenceCorruptionError, PersistenceSignatureError, PersistenceStateError, PersistenceUnavailableError, PostgresPersistence, type DurableExternalEffectRecord, type InboxSignatureVerifier } from "@cvg/persistence";
 import { registerHealthRoutes } from "./routes/health.ts";
 import { AgentApplicationService } from "./application/agent-service.ts";
@@ -341,6 +343,8 @@ function publicGuardian(guardian: { id: OpaqueId; displayName: string; phone: st
 }
 
 const commandOperationByAuditAction: Record<string, string> = {
+  "identity.mfa.enroll": "identity.mfa.enroll",
+  "identity.mfa.revoke": "identity.mfa.revoke",
   "role.grant": "role.grant",
   "role.revoke": "role.revoke",
   "guardians.create": "guardians.create",
@@ -420,6 +424,35 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     throw new DomainError("CAPABILITY_DISABLED", `A persistência PostgreSQL não está pronta: ${error instanceof Error ? error.message : String(error)}`, 503);
   }
   store.storageMode = config.storageMode;
+  let otelRuntime: OpenTelemetryRuntime | null = null;
+  const closeBeforeRuntimeFailure = async (message: string): Promise<never> => {
+    await persistence?.close();
+    if (ownsRateLimiter) await rateLimiter.close?.();
+    await otelRuntime?.shutdown();
+    throw new DomainError("CAPABILITY_DISABLED", message, 503);
+  };
+  const mfaSecretResolver: MfaSecretResolver | null = options.mfaSecretResolver ?? (secretProvider?.resolve ? { resolve: (reference: string) => secretProvider.resolve!(reference) } : null);
+  const mfaUsers = [...store.users.values()].filter((user) => config.authMfaMode === "required" || user.security.mfaRequired);
+  const resolveMfaReference = async (reference: string | null): Promise<boolean> => {
+    if (!mfaSecretResolver || !reference || !/^[A-Za-z0-9._:-]{1,160}$/.test(reference)) return false;
+    try {
+      const value = await mfaSecretResolver.resolve(reference);
+      return typeof value === "string" && value.trim().length > 0;
+    } catch {
+      return false;
+    }
+  };
+  const authMfaStatus: "READY" | "UNAVAILABLE" | "NOT_REQUIRED" = mfaUsers.length === 0
+    ? "NOT_REQUIRED"
+    : mfaSecretResolver && (await Promise.all(mfaUsers.map((user) => resolveMfaReference(user.security.mfaSecretRef)))).every(Boolean)
+      ? "READY"
+      : "UNAVAILABLE";
+  if (config.authMfaMode === "required" && !mfaSecretResolver) await closeBeforeRuntimeFailure("MFA é obrigatório, mas nenhum resolver de segredo foi configurado.");
+  if (config.nodeEnv === "production" && authMfaStatus !== "READY") await closeBeforeRuntimeFailure("Produção exige uma referência de MFA resolvível para cada usuário ativo; o runtime foi mantido bloqueado.");
+  const deepseekBearerTokenStatus: "READY" | "UNAVAILABLE" | "NOT_REQUIRED" = !config.deepseekRuntimeEnabled || !config.deepseekBearerTokenRef
+    ? "NOT_REQUIRED"
+    : await isSecretReferenceUsable(secretProvider, config.deepseekBearerTokenRef) ? "READY" : "UNAVAILABLE";
+  if (config.nodeEnv === "production" && config.deepseekRuntimeEnabled && deepseekBearerTokenStatus !== "READY") await closeBeforeRuntimeFailure("Produção exige que a referência do bearer token DeepSeek seja resolvível; o runtime foi mantido bloqueado.");
   const harness = options.harness ?? new GovernedHarness(store);
   const agentRuntime = options.agentRuntime ?? (() => {
     if (!config.deepseekRuntimeEnabled) return new MockHarnessAdapter(harness);
@@ -427,12 +460,19 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const bearerTokenRef = config.deepseekBearerTokenRef;
     return new DeepSeekHarnessAdapter({ baseUrl: config.deepseekBaseUrl, expectedEngineCommit: config.deepseekExpectedEngineCommit, expectedManifestVersion: config.deepseekExpectedManifestVersion, expectedToolNames: TOOL_REGISTRY.map((tool) => tool.name), requestTimeoutMs: 5_000, allowInsecureHttp: config.nodeEnv !== "production", ...(bearerTokenRef ? { resolveBearerToken: () => secretProvider?.resolve?.(bearerTokenRef) ?? Promise.resolve(null) } : {}) });
   })();
-  const mfaSecretResolver: MfaSecretResolver | null = options.mfaSecretResolver ?? (secretProvider?.resolve ? { resolve: (reference: string) => secretProvider.resolve!(reference) } : null);
-  if (config.authMfaMode === "required" && !mfaSecretResolver) {
-    await persistence?.close();
-    throw new DomainError("CAPABILITY_DISABLED", "MFA é obrigatório, mas nenhum resolver de segredo foi configurado.", 503);
+  try {
+    otelRuntime = createOpenTelemetryRuntime({ serviceName: "cvg-api", requireTls: config.nodeEnv === "production" });
+  } catch {
+    await closeBeforeRuntimeFailure("A configuração OpenTelemetry/OTLP é inválida; nenhum runtime foi iniciado.");
   }
-  const telemetry = options.telemetry ?? new OpsTelemetry();
+  if (!otelRuntime) await closeBeforeRuntimeFailure("O runtime OpenTelemetry não pôde ser inicializado; nenhum serviço foi iniciado.");
+  const activeOtelRuntime = otelRuntime as OpenTelemetryRuntime;
+  if (config.nodeEnv === "production" && activeOtelRuntime.status !== "READY") await closeBeforeRuntimeFailure("Produção exige exportação OTLP OpenTelemetry pronta; o runtime foi mantido bloqueado.");
+  if (config.nodeEnv === "production" && options.telemetry) await closeBeforeRuntimeFailure("Produção não aceita telemetry injetada fora do exportador OTLP aprovado.");
+  const telemetry = options.telemetry ?? new OpsTelemetry({
+    ...(activeOtelRuntime.exporter ? { exporter: activeOtelRuntime.exporter } : {}),
+    telemetryMode: activeOtelRuntime.status === "READY" ? "OTEL_OTLP_REDACTED" : "REDACTED_BEST_EFFORT"
+  });
   const integrations = new IntegrationGateway(secretProvider);
   const secretProviderStatus: SecretProviderStatus = secretProvider?.status() ?? (config.demoMode ? "DEGRADED" : "UNAVAILABLE");
   const agentApplication = new AgentApplicationService(store, agentRuntime);
@@ -441,6 +481,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
   const domainCommands = new DomainCommandService(store);
   const app = Fastify({ logger: false, bodyLimit: 256 * 1024, requestIdHeader: "x-request-id", trustProxy: config.trustProxy });
   app.addHook("onClose", async () => { await agentRuntime.shutdown(); });
+  app.addHook("onClose", async () => { await otelRuntime?.shutdown(); });
   if (ownsRateLimiter) app.addHook("onClose", async () => { await rateLimiter.close?.(); });
 
   const rawRequestBodies = new WeakMap<object, string>();
@@ -572,7 +613,16 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     if (request.url.startsWith("/api/v1/")) reply.header("cache-control", "no-store");
   });
 
-  await registerHealthRoutes(app, { store, persistence, agentRuntime, secretProviderStatus, config });
+  await registerHealthRoutes(app, {
+    store,
+    persistence,
+    agentRuntime,
+    secretProviderStatus,
+    authMfaStatus,
+    deepseekBearerTokenStatus,
+    secretProviderRequired: config.nodeEnv === "production" || config.deepseekRuntimeEnabled,
+    config
+  });
 
   const startedAt = new WeakMap<object, { startedAt: number; span: ReturnType<OpsTelemetry["startSpan"]> }>();
   app.addHook("onRequest", async (request) => {
@@ -773,6 +823,57 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const session = createAuthenticatedSession(request, reply, user, now());
     store.recordAudit({ organizationId: user.organizationId, actorId: user.id, unitId: null, workspaceId: null, action: "auth.login", resourceType: "Session", resourceId: session.id, result: "ALLOWED", reason: "mfa_verified", correlationId: corr, metadata: { storageMode: store.storageMode, mfa: true } });
     return response(reply, success(authPayload(user, session), corr));
+  });
+
+  app.post("/api/v1/auth/mfa/enroll", async (request, reply) => {
+    const { session, context } = requestContext(request, "identity.mfa.enroll", null, null, true);
+    requireCsrf(request, session);
+    const input = parse(mfaEnrollmentInputSchema, request.body);
+    const user = store.getUser(session.userId);
+    if (!verifyPassword(input.currentPassword, user.passwordDigest)) {
+      audit(context, "identity.mfa.enroll", "User", user.id, "DENIED", "AUTHENTICATION_FAILED");
+      throw new DomainError("AUTHENTICATION_FAILED", "A senha atual é inválida.", 401);
+    }
+    if (!mfaSecretResolver) throw new DomainError("CAPABILITY_DISABLED", "O resolver de MFA não está disponível; nenhum fator foi cadastrado.", 503);
+    let secret: string | null = null;
+    try { secret = await mfaSecretResolver.resolve(input.secretRef); } catch { secret = null; }
+    if (!secret || !verifyTotpCode(secret, input.code)) {
+      audit(context, "identity.mfa.enroll", "User", user.id, "DENIED", "MFA_INVALID");
+      throw new DomainError("MFA_INVALID", "O fator MFA não pôde ser validado.", 401);
+    }
+    const key = requireIdempotencyKey(request);
+    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, sessionId: context.sessionId, operation: "identity.mfa.enroll", key, resourceId: user.id, unitId: context.unitId, workspaceId: context.workspaceId, body: { secretRef: input.secretRef, codeDigest: tokenDigest(input.code) } }, () => {
+      store.configureMfaFactor(user.id, input.secretRef);
+      const sessionsRevoked = store.revokeAllSessions(user.id, session.id);
+      session.mfaVerifiedAt = now();
+      return { enrolled: true, method: "TOTP" as const, sessionsRevoked };
+    });
+    audit(context, "identity.mfa.enroll", "User", user.id, "ALLOWED", null, { method: "TOTP", replay: result.replayed, sessionsRevoked: result.value.sessionsRevoked });
+    return response(reply, success({ ...result.value, receiptId: result.receipt.id }, context.correlationId), result.replayed ? 200 : 201);
+  });
+
+  app.post("/api/v1/auth/mfa/revoke", async (request, reply) => {
+    const { session, context } = requestContext(request, "identity.mfa.revoke", null, null, true);
+    requireCsrf(request, session);
+    const input = parse(mfaFactorRevokeInputSchema, request.body);
+    const user = store.getUser(session.userId);
+    if (config.authMfaMode === "required") throw new DomainError("CAPABILITY_DISABLED", "O MFA obrigatório não pode ser revogado nesta configuração.", 409);
+    if (!verifyPassword(input.currentPassword, user.passwordDigest)) {
+      audit(context, "identity.mfa.revoke", "User", user.id, "DENIED", "AUTHENTICATION_FAILED");
+      throw new DomainError("AUTHENTICATION_FAILED", "A senha atual é inválida.", 401);
+    }
+    const key = requireIdempotencyKey(request);
+    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, sessionId: context.sessionId, operation: "identity.mfa.revoke", key, resourceId: user.id, unitId: context.unitId, workspaceId: context.workspaceId, body: { currentPasswordDigest: tokenDigest(input.currentPassword) } }, () => {
+      const hadFactor = user.security.mfaSecretRef !== null;
+      store.revokeMfaFactor(user.id);
+      const sessionsRevoked = store.revokeAllSessions(user.id);
+      return { revoked: hadFactor, method: "TOTP" as const, sessionsRevoked };
+    });
+    audit(context, "identity.mfa.revoke", "User", user.id, "ALLOWED", null, { method: "TOTP", replay: result.replayed, sessionsRevoked: result.value.sessionsRevoked });
+    reply.clearCookie(SESSION_COOKIE, { path: "/" });
+    reply.clearCookie(CSRF_COOKIE, { path: "/" });
+    telemetry.sessionClosed();
+    return response(reply, success({ ...result.value, receiptId: result.receipt.id }, context.correlationId));
   });
 
   app.post("/api/v1/auth/recovery/start", async (request, reply) => {

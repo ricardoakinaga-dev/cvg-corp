@@ -1,0 +1,16 @@
+{
+  "uid": "cvg-runtime",
+  "title": "CVG Runtime",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "15s",
+  "timezone": "utc",
+  "panels": [
+    {"id": 1, "type": "timeseries", "title": "API latency p95", "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}, "targets": [{"expr": "histogram_quantile(0.95, sum(rate(cvg_http_server_request_duration_seconds_bucket[5m])) by (le))", "refId": "A"}]},
+    {"id": 2, "type": "timeseries", "title": "API errors", "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}, "targets": [{"expr": "sum(rate(cvg_http_server_request_count{http_response_status_code=~\"5..\"}[5m]))", "refId": "A"}]},
+    {"id": 3, "type": "timeseries", "title": "Outbox depth", "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}, "targets": [{"expr": "cvg_outbox_depth", "refId": "A"}]},
+    {"id": 4, "type": "timeseries", "title": "Worker heartbeat age", "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8}, "targets": [{"expr": "cvg_worker_heartbeat_age_seconds", "refId": "A"}]},
+    {"id": 5, "type": "timeseries", "title": "Provider unknown outcomes", "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16}, "targets": [{"expr": "sum(rate(cvg_external_effect_outcome_unknown_total[5m]))", "refId": "A"}]},
+    {"id": 6, "type": "timeseries", "title": "DeepSeek availability", "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16}, "targets": [{"expr": "cvg_agent_runtime_ready", "refId": "A"}]}
+  ]
+}

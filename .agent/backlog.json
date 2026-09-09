@@ -32,13 +32,13 @@
       "dependencies": [],
       "owner": "lead",
       "acceptance_summary": "Implementar e verificar a arquitetura, segurança, confiabilidade, AI governance, operações, DX, frontend, documentação e produção exigidas pelo prompt; AAA só é elegível com a barra v3 completa e autoridade humana para qualquer efeito externo.",
-      "evidence_refs": ["docs/final-closure-audit.md", "docs/prompt-state-of-the-art-triplo-aaa-2026-09-09-v2.txt", "docs/architecture-audit-vNext.md", ".gauntlet/bar-v3.json", ".gauntlet/critique-v3-fresh.md", "docs/verification-vNext.md", "VER-CVG-031", "VER-CVG-033", "VER-CVG-034", "VER-CVG-035", "VER-CVG-036", "VER-CVG-037", "VER-CVG-038", "VER-CVG-039", "VER-CVG-040", "VER-CVG-041", "VER-CVG-042", "VER-CVG-043", "VER-CVG-044", "VER-CVG-045"],
+      "evidence_refs": ["docs/final-closure-audit.md", "docs/prompt-state-of-the-art-triplo-aaa-2026-09-09-v2.txt", "docs/architecture-audit-vNext.md", ".gauntlet/bar-v3.json", ".gauntlet/critique-v3-fresh.md", "docs/verification-vNext.md", "VER-CVG-031", "VER-CVG-033", "VER-CVG-034", "VER-CVG-035", "VER-CVG-036", "VER-CVG-037", "VER-CVG-038", "VER-CVG-039", "VER-CVG-040", "VER-CVG-041", "VER-CVG-042", "VER-CVG-043", "VER-CVG-044", "VER-CVG-045", "VER-CVG-046", "VER-CVG-047"],
       "next_action": {
-        "id": "CVG-FULL-STATE-OF-THE-ART:SECRETS-AUTH-MFA",
+        "id": "CVG-FULL-STATE-OF-THE-ART:PRODUCTION-LIKE-EVIDENCE",
         "kind": "IMPLEMENT",
-        "summary": "Endurecer secret references/Docker seam, MFA/WebAuthn/break-glass fail-closed e readiness sem habilitar autoridade real",
-        "target": "packages/config/; packages/integrations/; packages/auth/; apps/api/; apps/worker/; db/migrations/; tests/unit/; tests/integration/; docs/observability-production.md; docs/staging.md",
-        "completion_signal": "secret reference obrigatória, readiness, rotação/revogação e MFA/override possuem contratos e testes locais verificáveis; Docker/Vault/cloud reais continuam BLOCKED até autoridade"
+        "summary": "Executar a evidência production-like autorizada para DeepSeek/provider/secret authority/OTel Collector/TLS/browser/load/chaos/recovery e critics finais; manter fail-closed sem autoridade",
+        "target": "staging/; docker-compose.observability.yml; docs/; scripts/verify-staging.ts; .github/workflows/ci.yml",
+        "completion_signal": "URL, credenciais/referências, janela, owner e aprovação humana fornecem artefatos rastreáveis; até lá manter BLOCKED/NOT_RUN e sem egress"
       }
     }
   ]

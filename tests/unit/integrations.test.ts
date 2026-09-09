@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { createHmac } from "node:crypto";
 import { id } from "@cvg/contracts";
 import { DomainError } from "@cvg/domain";
-import { createMessagingExternalEffectQueryAdapter, DockerSecretProvider, HttpMessagingProvider, inboxEventToOutbox, IntegrationGateway, MessagingCircuitBreaker, MessagingOutboxSink, MessagingProviderError, MessagingRateLimiter, OutboxWorker, reconcileUnknownExternalEffect, redactMessagingError, StaticSecretProvider, SyntheticMessagingProvider, verifyMessagingCallback, type ExternalEffectLedger } from "@cvg/integrations";
+import { createMessagingExternalEffectQueryAdapter, DockerSecretProvider, EnvironmentSecretProvider, HttpMessagingProvider, inboxEventToOutbox, IntegrationGateway, isSecretReferenceUsable, MessagingCircuitBreaker, MessagingOutboxSink, MessagingProviderError, MessagingRateLimiter, OutboxWorker, reconcileUnknownExternalEffect, redactMessagingError, StaticSecretProvider, SyntheticMessagingProvider, verifyMessagingCallback, type ExternalEffectLedger } from "@cvg/integrations";
 import type { DurableExternalEffectRecord, DurableExternalReconciliationEvidence, DurableInboxInput, DurableOutboxRecord } from "@cvg/persistence";
 
 const organizationId = id("00000000-0000-4000-0000-000000000010");
@@ -227,6 +227,13 @@ test("integration gateway exposes secret-provider health without exposing secret
   const docker = new DockerSecretProvider(process.cwd());
   assert.equal(docker.status(), "READY");
   assert.equal(docker.has("missing-synthetic-secret"), false);
+});
+
+test("secret readiness validates the approved reference without returning its value", async () => {
+  const provider = new EnvironmentSecretProvider({ CVG_SECRET_MFA_ADMIN: "synthetic-secret-value" });
+  assert.equal(await isSecretReferenceUsable(provider, "mfa.admin"), true);
+  assert.equal(await isSecretReferenceUsable(provider, "missing.reference"), false);
+  assert.equal(await isSecretReferenceUsable(new StaticSecretProvider(["mfa.admin"]), "mfa.admin"), false);
 });
 
 test("synthetic messaging preserves idempotency and reconciles an unknown outcome", async () => {

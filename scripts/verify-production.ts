@@ -14,6 +14,15 @@ const requiredFiles = [
   "Dockerfile.api",
   "Dockerfile.web",
   "docker-compose.yml",
+  "docker-compose.observability.yml",
+  "docker/observability/otel-collector.yml",
+  "docker/observability/tempo.yml",
+  "docker/observability/prometheus.yml",
+  "docker/observability/alerts.yml",
+  "docker/observability/alertmanager.yml",
+  "docker/observability/grafana/provisioning/datasources/datasource.yml",
+  "docker/observability/grafana/provisioning/dashboards/dashboards.yml",
+  "docker/observability/grafana/dashboards/cvg-runtime.json",
   "docker/.env.example",
   "docker/nginx/web.conf",
   "docker/nginx/proxy.conf",
@@ -22,6 +31,7 @@ const requiredFiles = [
   "apps/api/src/server.ts",
   "apps/worker/src/main.ts",
   "apps/worker/src/worker.ts",
+  "packages/ops/src/otel.ts",
   "packages/config/src/index.ts",
   "packages/agent-runtime/src/index.ts",
   "packages/agent-policy/src/index.ts",
@@ -142,6 +152,16 @@ function inspectStaticContracts(): void {
   requireText("docker-compose.yml", "internal: true");
   requireText("docker-compose.yml", "CVG_WORKER_SINK_MODE");
   requireText("docker-compose.yml", "CVG_RATE_LIMIT_BACKEND");
+  requireText("docker-compose.yml", "OTEL_EXPORTER_OTLP_ENDPOINT");
+  for (const service of ["otel-collector", "tempo", "prometheus", "alertmanager", "grafana"]) {
+    if (!new RegExp(`^  ${service}:`, "m").test(readArtifacts.get("docker-compose.observability.yml") ?? "")) failures.push(`docker-compose.observability.yml: service ${service} is missing`);
+  }
+  requireText("docker-compose.observability.yml", "internal: true");
+  requireText("docker-compose.observability.yml", "GRAFANA_ADMIN_PASSWORD");
+  requireText("docker/observability/otel-collector.yml", "attributes/redact");
+  requireText("docker/observability/prometheus.yml", "rule_files:");
+  requireText("docker/observability/alerts.yml", "runbook:");
+  requireText("docker/observability/grafana/dashboards/cvg-runtime.json", "Outbox depth");
   requireText("docker/nginx/proxy.conf", "Content-Security-Policy");
   requireText("docker/nginx/web.conf", "Content-Security-Policy");
   requireText("docker/worker.ts", "CvgWorkerApplication");
@@ -154,6 +174,8 @@ function inspectStaticContracts(): void {
   requireText("packages/config/src/index.ts", "distributed rate-limit backend");
   requireText("apps/api/src/app.ts", "content-security-policy");
   requireText("apps/api/src/app.ts", "MemoryRateLimiter");
+  requireText("packages/ops/src/otel.ts", "OTLPTraceExporter");
+  requireText("packages/ops/src/otel.ts", "Production OTLP export requires HTTPS/TLS");
   requireText("packages/auth/src/index.ts", "validateWebAuthnAssertion");
   requireText("packages/auth/src/index.ts", "evaluateBreakGlass");
   requireText("packages/agent-tools/src/index.ts", "OUTCOME_UNKNOWN");
@@ -246,7 +268,9 @@ function syntheticComposeEnvironment(): NodeJS.ProcessEnv {
     CVG_POSTGRES_PORT: "5440",
     CVG_API_IMAGE: "cvg-corp/api:verify",
     CVG_WEB_IMAGE: "cvg-corp/web:verify",
-    CVG_WORKER_SINK_MODE: "quarantine"
+    CVG_WORKER_SINK_MODE: "quarantine",
+    GRAFANA_ADMIN_USER: "verify-grafana-admin",
+    GRAFANA_ADMIN_PASSWORD: "verify-local-only-grafana-password"
   };
 }
 
@@ -265,6 +289,33 @@ function runComposeConfig(): { available: boolean; config: ComposeConfig | null 
     failures.push("docker-compose.yml: docker compose config did not return JSON");
     return { available: true, config: null };
   }
+}
+
+function runObservabilityComposeConfig(): { available: boolean; config: ComposeConfig | null } {
+  const environment = { ...syntheticComposeEnvironment(), OTEL_COLLECTOR_IMAGE: "otel/opentelemetry-collector-contrib:verify", TEMPO_IMAGE: "grafana/tempo:verify", PROMETHEUS_IMAGE: "prom/prometheus:verify", ALERTMANAGER_IMAGE: "prom/alertmanager:verify", GRAFANA_IMAGE: "grafana/grafana:verify" };
+  const version = spawnSync("docker", ["compose", "version"], { cwd: root, env: environment, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+  if (commandNotFound(version.error) || version.status !== 0) return { available: false, config: null };
+  const result = spawnSync("docker", ["compose", "-f", "docker-compose.observability.yml", "config", "--format", "json"], { cwd: root, env: environment, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+  if (commandNotFound(result.error)) return { available: false, config: null };
+  if (result.status !== 0 || !result.stdout.trim()) {
+    failures.push("docker-compose.observability.yml: docker compose config failed");
+    return { available: true, config: null };
+  }
+  try {
+    return { available: true, config: JSON.parse(result.stdout) as ComposeConfig };
+  } catch {
+    failures.push("docker-compose.observability.yml: docker compose config did not return JSON");
+    return { available: true, config: null };
+  }
+}
+
+function inspectObservabilityComposeConfig(config: ComposeConfig): void {
+  const services = config.services ?? {};
+  for (const name of ["otel-collector", "tempo", "prometheus", "alertmanager", "grafana"]) {
+    if (!services[name]) failures.push(`docker-compose.observability.yml: rendered service ${name} is missing`);
+    if (name !== "grafana" && services[name]?.ports && services[name]?.ports.length) failures.push(`docker-compose.observability.yml: ${name} must not publish a host port`);
+  }
+  if (config.networks?.observability?.internal !== true) failures.push("docker-compose.observability.yml: observability network must be internal");
 }
 
 function inspectComposeConfig(config: ComposeConfig): void {
@@ -306,6 +357,7 @@ function inspectProductionEnvironment(): void {
   const environment = process.env;
   const requiredNames = ["DATABASE_URL", "CVG_BOOTSTRAP_PASSWORD", "CVG_WEB_ORIGIN", "CVG_TRUST_PROXY", "CVG_DEEPSEEK_BASE_URL", "CVG_DEEPSEEK_EXPECTED_ENGINE_COMMIT", "CVG_DEEPSEEK_EXPECTED_MANIFEST_VERSION", "CVG_DEEPSEEK_BEARER_TOKEN_REF"];
   for (const name of requiredNames) if (!environment[name]?.trim()) failures.push(`production configuration: ${name} is required`);
+  if (!environment.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT?.trim() && !environment.OTEL_EXPORTER_OTLP_ENDPOINT?.trim()) failures.push("production configuration: OTEL_EXPORTER_OTLP_ENDPOINT or OTEL_EXPORTER_OTLP_TRACES_ENDPOINT is required");
   if (environment.NODE_ENV !== "production") failures.push("production configuration: NODE_ENV must be production");
   if (environment.CVG_STORAGE !== "postgres") failures.push("production configuration: CVG_STORAGE must be postgres");
   if (environment.CVG_TRUST_PROXY !== "true") failures.push("production configuration: CVG_TRUST_PROXY must be true behind the TLS edge");
@@ -314,6 +366,8 @@ function inspectProductionEnvironment(): void {
   if (environment.CVG_DEEPSEEK_RUNTIME_ENABLED !== "true") failures.push("production configuration: the mock runtime must be disabled");
   if (environment.CVG_WEB_ORIGIN && !environment.CVG_WEB_ORIGIN.startsWith("https://")) failures.push("production configuration: CVG_WEB_ORIGIN must use HTTPS");
   if (environment.CVG_DEEPSEEK_BASE_URL && !environment.CVG_DEEPSEEK_BASE_URL.startsWith("https://")) failures.push("production configuration: DeepSeek bridge must use HTTPS");
+  const otelEndpoint = environment.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT ?? environment.OTEL_EXPORTER_OTLP_ENDPOINT;
+  if (otelEndpoint && !otelEndpoint.startsWith("https://")) failures.push("production configuration: OTLP export must use HTTPS");
   if (environment.CVG_DEEPSEEK_EXPECTED_ENGINE_COMMIT && !/^[a-f0-9]{40}$/.test(environment.CVG_DEEPSEEK_EXPECTED_ENGINE_COMMIT)) failures.push("production configuration: expected engine commit must be a 40-character hex value");
   if (environment.CVG_BOOTSTRAP_PASSWORD && /replace|local-only|synthetic|verify/i.test(environment.CVG_BOOTSTRAP_PASSWORD)) failures.push("production configuration: placeholder bootstrap password is forbidden");
   if (environment.DATABASE_URL && /@(?:localhost|127(?:\.\d+){3}|\[::1\]|postgres)(?::|\/)/i.test(environment.DATABASE_URL)) failures.push("production configuration: database must not point at the local Compose host");
@@ -364,6 +418,13 @@ if (failures.length === 0) {
     observations.push("docker compose config validated with synthetic non-secret values; no service was started");
   } else if (!rendered.available) {
     observations.push("Docker Compose unavailable; only artifact/static checks were executed");
+  }
+  const observability = runObservabilityComposeConfig();
+  if (observability.config) {
+    inspectObservabilityComposeConfig(observability.config);
+    observations.push("observability Compose config validated with synthetic non-secret values; no collector, dashboard or alert service was started");
+  } else if (!observability.available) {
+    observations.push("Docker Compose unavailable for observability; only observability artifact/static checks were executed");
   }
 }
 

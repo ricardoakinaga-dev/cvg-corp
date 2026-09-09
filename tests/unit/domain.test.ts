@@ -32,6 +32,26 @@ test("password fixture is valid only for the generated admin secret", async () =
   assert.equal(verifyPassword("wrong-password", user.passwordDigest), false);
 });
 
+test("authentication challenges expire, cannot replay and lock after the bounded attempt budget", () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const userId = store.bootstrapCredentials.userId;
+  const expired = store.createAuthChallenge("MFA", userId, "expired-token-digest", 300, 3);
+  expired.expiresAt = "2020-01-01T00:00:00.000Z";
+  assert.equal(store.findAuthChallenge("MFA", "expired-token-digest"), undefined);
+  assert.equal(expired.status, "EXPIRED");
+
+  const replay = store.createAuthChallenge("MFA", userId, "replay-token-digest", 300, 3);
+  store.consumeAuthChallenge(replay);
+  assert.equal(store.findAuthChallenge("MFA", "replay-token-digest"), undefined);
+
+  const bruteForce = store.createAuthChallenge("MFA", userId, "brute-force-token-digest", 300, 3);
+  store.recordChallengeFailure(bruteForce);
+  store.recordChallengeFailure(bruteForce);
+  store.recordChallengeFailure(bruteForce);
+  assert.equal(bruteForce.status, "LOCKED");
+  assert.equal(store.findAuthChallenge("MFA", "brute-force-token-digest"), undefined);
+});
+
 test("appointment invariant rejects provider overlap", () => {
   const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
   const ctx = context(store);

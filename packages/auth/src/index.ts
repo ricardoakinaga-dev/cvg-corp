@@ -181,3 +181,92 @@ export function evaluateBreakGlass(request: BreakGlassRequest, atMs = Date.now()
   if (!Number.isFinite(issuedAt) || !Number.isFinite(expiresAt) || issuedAt > atMs || expiresAt <= atMs || expiresAt - issuedAt > maxWindowMs) return { status: "DENY", reason: "invalid_window" };
   return { status: "ALLOW", reason: "approved" };
 }
+
+export type BreakGlassGrantStatus = "ACTIVE" | "EXPIRED" | "REVOKED" | "REVIEWED";
+
+export interface BreakGlassGrant extends BreakGlassRequest {
+  grantId: string;
+  organizationId: string;
+  status: BreakGlassGrantStatus;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  reviewNote: string | null;
+  revokedAt: string | null;
+}
+
+export class BreakGlassError extends Error {
+  readonly code: "DENIED" | "NOT_FOUND" | "INVALID_STATE";
+
+  constructor(code: BreakGlassError["code"], message: string) {
+    super(message);
+    this.name = "BreakGlassError";
+    this.code = code;
+  }
+}
+
+/**
+ * Provider-neutral emergency-access lifecycle. It owns no authorization or
+ * persistence authority; callers must persist the grant and its audit trail.
+ * Expiry is lazy and deterministic so a request can never use an expired grant.
+ */
+export class BreakGlassRegistry {
+  private readonly grants = new Map<string, BreakGlassGrant>();
+
+  activate(organizationId: string, request: BreakGlassRequest, atMs = Date.now()): BreakGlassGrant {
+    const decision = evaluateBreakGlass(request, atMs);
+    if (decision.status !== "ALLOW") throw new BreakGlassError("DENIED", `Break-glass activation denied: ${decision.reason}`);
+    const grant: BreakGlassGrant = {
+      ...request,
+      grantId: generateOpaqueToken(24),
+      organizationId,
+      status: "ACTIVE",
+      reviewedBy: null,
+      reviewedAt: null,
+      reviewNote: null,
+      revokedAt: null
+    };
+    this.grants.set(grant.grantId, grant);
+    return { ...grant };
+  }
+
+  get(grantId: string, atMs = Date.now()): BreakGlassGrant | null {
+    const grant = this.grants.get(grantId);
+    if (!grant) return null;
+    if (grant.status === "ACTIVE" && Date.parse(grant.expiresAt) <= atMs) grant.status = "EXPIRED";
+    return { ...grant };
+  }
+
+  assertActive(grantId: string, atMs = Date.now()): BreakGlassGrant {
+    const grant = this.get(grantId, atMs);
+    if (!grant) throw new BreakGlassError("NOT_FOUND", "Break-glass grant not found.");
+    if (grant.status !== "ACTIVE") throw new BreakGlassError("INVALID_STATE", "Break-glass grant is no longer active.");
+    return grant;
+  }
+
+  revoke(grantId: string, atMs = Date.now()): BreakGlassGrant {
+    const grant = this.get(grantId, atMs);
+    if (!grant) throw new BreakGlassError("NOT_FOUND", "Break-glass grant not found.");
+    if (grant.status !== "ACTIVE") throw new BreakGlassError("INVALID_STATE", "Only an active break-glass grant can be revoked.");
+    const stored = this.grants.get(grantId)!;
+    stored.status = "REVOKED";
+    stored.revokedAt = new Date(atMs).toISOString();
+    return { ...stored };
+  }
+
+  review(grantId: string, reviewerId: string, note: string, atMs = Date.now()): BreakGlassGrant {
+    const grant = this.get(grantId, atMs);
+    if (!grant) throw new BreakGlassError("NOT_FOUND", "Break-glass grant not found.");
+    if (grant.status === "ACTIVE") throw new BreakGlassError("INVALID_STATE", "An active break-glass grant cannot be reviewed yet.");
+    if (!reviewerId || reviewerId === grant.actorId || note.trim().length < 10 || note.length > 2_000) throw new BreakGlassError("DENIED", "Break-glass review requires an independent reviewer and a bounded note.");
+    const stored = this.grants.get(grantId)!;
+    stored.status = "REVIEWED";
+    stored.reviewedBy = reviewerId;
+    stored.reviewedAt = new Date(atMs).toISOString();
+    stored.reviewNote = note.trim();
+    return { ...stored };
+  }
+
+  list(atMs = Date.now()): BreakGlassGrant[] {
+    return [...this.grants.keys()].map((grantId) => this.get(grantId, atMs)).filter((grant): grant is BreakGlassGrant => grant !== null);
+  }
+}

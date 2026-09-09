@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createHmac } from "node:crypto";
-import { digestRecoveryCode, evaluateBreakGlass, generateRecoveryCodes, isPasswordCompliant, passwordPolicyIssues, validateWebAuthnAssertion, verifyTotpCode, type WebAuthnChallenge, type WebAuthnAssertionEnvelope } from "@cvg/auth";
+import { BreakGlassError, BreakGlassRegistry, digestRecoveryCode, evaluateBreakGlass, generateRecoveryCodes, isPasswordCompliant, passwordPolicyIssues, validateWebAuthnAssertion, verifyTotpCode, type WebAuthnChallenge, type WebAuthnAssertionEnvelope } from "@cvg/auth";
 
 function totpCode(secret: string, atMs: number): string {
   let buffer = 0;
@@ -52,4 +52,18 @@ test("WebAuthn and break-glass boundaries fail closed before provider cryptograp
   assert.throws(() => validateWebAuthnAssertion({ ...challenge, status: "CONSUMED" }, assertion, Date.parse("2026-01-01T00:00:00.000Z")));
   assert.equal(evaluateBreakGlass({ actorId: "actor-1", approverId: "actor-2", reason: "incidente", target: "patient-1", mfaMethod: "WEBAUTHN", issuedAt: "2026-01-01T00:00:00.000Z", expiresAt: "2026-01-01T00:10:00.000Z" }, Date.parse("2026-01-01T00:01:00.000Z")).status, "ALLOW");
   assert.equal(evaluateBreakGlass({ actorId: "actor-1", approverId: "actor-1", reason: "incidente", target: "patient-1", mfaMethod: "TOTP", issuedAt: "2026-01-01T00:00:00.000Z", expiresAt: "2026-01-01T00:10:00.000Z" }, Date.parse("2026-01-01T00:01:00.000Z")).status, "DENY");
+});
+
+test("break-glass lifecycle requires explicit activation, expires automatically and records independent review", () => {
+  const registry = new BreakGlassRegistry();
+  const issuedAt = Date.parse("2026-01-01T00:00:00.000Z");
+  const request = { actorId: "actor-1", approverId: "actor-2", reason: "incidente clínico grave", target: "patient-1", mfaMethod: "WEBAUTHN" as const, issuedAt: new Date(issuedAt).toISOString(), expiresAt: new Date(issuedAt + 5 * 60_000).toISOString() };
+  const grant = registry.activate("org-1", request, issuedAt + 1_000);
+  assert.equal(registry.assertActive(grant.grantId, issuedAt + 60_000).status, "ACTIVE");
+  assert.equal(registry.get(grant.grantId, issuedAt + 6 * 60_000)?.status, "EXPIRED");
+  assert.throws(() => registry.assertActive(grant.grantId, issuedAt + 6 * 60_000), (error: unknown) => error instanceof BreakGlassError && error.code === "INVALID_STATE");
+  const reviewed = registry.review(grant.grantId, "reviewer-3", "Revisão pós-evento concluída com evidências.", issuedAt + 7 * 60_000);
+  assert.equal(reviewed.status, "REVIEWED");
+  assert.equal(reviewed.reviewedBy, "reviewer-3");
+  assert.throws(() => registry.activate("org-1", { ...request, approverId: "actor-1" }, issuedAt + 1_000), (error: unknown) => error instanceof BreakGlassError && error.code === "DENIED");
 });

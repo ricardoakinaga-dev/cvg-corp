@@ -17,12 +17,14 @@ import {
   type DeepSeekNativeHarnessPort
 } from "@cvg/deepseek-bridge";
 import type { CvgContext, OpaqueId } from "@cvg/contracts";
+import { createOpenTelemetryRuntime, OpsTelemetry } from "@cvg/ops";
 
 const correlationPattern = /^[A-Za-z0-9._-]{1,80}$/;
 const defaultMaxBodyBytes = 1_048_576;
 
 export interface DeepSeekBridgeServerOptions {
   bridge?: DeepSeekBridge;
+  telemetry?: OpsTelemetry;
   nativePort?: DeepSeekNativeHarnessPort;
   host?: string;
   port?: number;
@@ -32,6 +34,7 @@ export interface DeepSeekBridgeServerOptions {
 export interface DeepSeekBridgeServer {
   server: Server;
   bridge: DeepSeekBridge;
+  telemetry: OpsTelemetry;
 }
 
 function environmentValue(environment: NodeJS.ProcessEnv, key: string, fallback: string): string {
@@ -226,15 +229,28 @@ async function dispatch(
 export function createDeepSeekBridgeServer(options: DeepSeekBridgeServerOptions = {}): DeepSeekBridgeServer {
   const bridge = options.bridge ?? new DeepSeekBridge(bridgeConfigFromEnvironment(process.env, options.nativePort));
   const maxBodyBytes = options.maxBodyBytes ?? defaultMaxBodyBytes;
+  const otelRuntime = options.telemetry ? null : createOpenTelemetryRuntime({ serviceName: "cvg-deepseek-bridge", requireTls: process.env.NODE_ENV === "production" });
+  const telemetry = options.telemetry ?? new OpsTelemetry({
+    ...(otelRuntime?.exporter ? { exporter: otelRuntime.exporter } : {}),
+    telemetryMode: otelRuntime?.status === "READY" ? "OTEL_OTLP_REDACTED" : "REDACTED_BEST_EFFORT"
+  });
   const server = createServer((request, response) => {
     const controller = new AbortController();
     request.once("aborted", () => controller.abort());
-    void dispatch(request, response, bridge, maxBodyBytes, controller.signal).catch((error: unknown) => {
-      const correlationId = correlationFromRequest(request);
-      writeJson(response, statusForError(error), correlationId, toErrorEnvelope(error, correlationId));
+    const requestCorrelationId = correlationFromRequest(request);
+    const url = new URL(request.url ?? "/", "http://deepseek-bridge.local");
+    const span = telemetry.startSpan("cvg.deepseek_bridge.request", { method: request.method ?? "UNKNOWN", route: url.pathname, correlationId: requestCorrelationId });
+    void dispatch(request, response, bridge, maxBodyBytes, controller.signal).then(() => {
+      telemetry.finishSpan(span, response.statusCode || 200);
+    }).catch((error: unknown) => {
+      const status = statusForError(error);
+      telemetry.finishSpan(span, status);
+      writeJson(response, status, requestCorrelationId, toErrorEnvelope(error, requestCorrelationId));
     });
   });
-  return { server, bridge };
+  if (process.env.NODE_ENV === "production" && otelRuntime?.status !== "READY") throw new Error("Produção exige exportação OTLP OpenTelemetry pronta para o bridge.");
+  server.once("close", () => { void otelRuntime?.shutdown(); });
+  return { server, bridge, telemetry };
 }
 
 export async function startDeepSeekBridgeServer(options: DeepSeekBridgeServerOptions = {}): Promise<DeepSeekBridgeServer> {

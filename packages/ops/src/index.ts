@@ -28,13 +28,20 @@ export interface OtelSpan {
   attributes: Record<string, TelemetryAttribute>;
 }
 
+export type OtelSpanStart = Omit<OtelSpan, "finishedAt" | "statusCode">;
+
 export interface TelemetryExporter {
   export(span: OtelSpan): void | Promise<void>;
+  /** Optional hook for exporters that can preserve the real provider IDs. */
+  startSpan?(span: OtelSpanStart): { traceId: string; spanId: string } | void;
+  /** Optional hook for exporters that own the span lifecycle. */
+  finishSpan?(span: OtelSpan): void;
 }
 
 export interface OpsTelemetryOptions {
   exporter?: TelemetryExporter;
   maxSpans?: number;
+  telemetryMode?: CvgMetrics["telemetry"]["mode"];
 }
 
 export class OpsTelemetry {
@@ -49,11 +56,13 @@ export class OpsTelemetry {
   readonly spans: OtelSpan[] = [];
   private readonly exporter: TelemetryExporter | null;
   private readonly maxSpans: number;
+  private readonly telemetryMode: CvgMetrics["telemetry"]["mode"];
   private droppedSpans = 0;
 
   constructor(options: OpsTelemetryOptions = {}) {
     this.exporter = options.exporter ?? null;
     this.maxSpans = Math.max(1, Math.min(options.maxSpans ?? 500, 10_000));
+    this.telemetryMode = options.telemetryMode ?? "REDACTED_BEST_EFFORT";
   }
 
   requestStarted(): number {
@@ -79,7 +88,19 @@ export class OpsTelemetry {
   }
 
   startSpan(name: string, attributes: Record<string, TelemetryAttribute> = {}): { traceId: string; spanId: string; name: string; startedAt: number; attributes: Record<string, TelemetryAttribute> } {
-    return { traceId: randomUUID(), spanId: randomUUID(), name, startedAt: Date.now(), attributes: this.redactAttributes(attributes) };
+    const started: OtelSpanStart = { traceId: randomUUID(), spanId: randomUUID(), name, startedAt: Date.now(), attributes: this.redactAttributes(attributes) };
+    if (this.exporter?.startSpan) {
+      try {
+        const externalIds = this.exporter.startSpan(started);
+        if (externalIds) {
+          started.traceId = externalIds.traceId;
+          started.spanId = externalIds.spanId;
+        }
+      } catch {
+        this.droppedSpans += 1;
+      }
+    }
+    return started;
   }
 
   finishSpan(span: { traceId: string; spanId: string; name: string; startedAt: number; attributes: Record<string, TelemetryAttribute> }, statusCode: number): void {
@@ -91,8 +112,12 @@ export class OpsTelemetry {
     this.spans.push(finished);
     if (this.exporter) {
       try {
-        const result = this.exporter.export(finished);
-        if (result instanceof Promise) void result.catch(() => { this.droppedSpans += 1; });
+        if (this.exporter.finishSpan) {
+          this.exporter.finishSpan(finished);
+        } else {
+          const result = this.exporter.export(finished);
+          if (result instanceof Promise) void result.catch(() => { this.droppedSpans += 1; });
+        }
       } catch {
         this.droppedSpans += 1;
       }
@@ -135,7 +160,7 @@ export class OpsTelemetry {
       dependencies,
       domain,
       queues,
-      telemetry: { mode: "REDACTED_BEST_EFFORT", logsStored: this.logs.length, dropped: this.droppedSpans, duplicates: 0 }
+      telemetry: { mode: this.telemetryMode, logsStored: this.logs.length, dropped: this.droppedSpans, duplicates: 0 }
     };
   }
 }
@@ -180,6 +205,9 @@ export const PROPOSED_SLO_DEFINITIONS = [
   { id: "RESTORE_RTO", name: "Restore recovery time objective", target: 3_600_000, direction: "MAX", unit: "milliseconds", errorBudgetModel: "NOT_DERIVED", status: "PROPOSED", source: "docs/06-operacao-qualidade-e-recuperacao.md#targets-iniciais-propostos/REL-02", runbook: "docs/runbooks/restore.md" },
   { id: "RESTORE_RPO", name: "Restore recovery point objective", target: 300_000, direction: "MAX", unit: "milliseconds", errorBudgetModel: "NOT_DERIVED", status: "PROPOSED", source: "docs/06-operacao-qualidade-e-recuperacao.md#targets-iniciais-propostos/REL-02", runbook: "docs/runbooks/restore.md" }
 ] as const satisfies readonly SloDefinition[];
+
+export { createOpenTelemetryRuntime, OpenTelemetryConfigurationError, OpenTelemetryTelemetryExporter } from "./otel.ts";
+export type { OpenTelemetryRuntime, OpenTelemetryRuntimeOptions } from "./otel.ts";
 
 export type SloEvidenceStatus = "MEASURED" | "NOT_RUN";
 

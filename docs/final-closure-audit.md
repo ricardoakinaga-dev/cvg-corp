@@ -1,11 +1,11 @@
 # Auditoria de fechamento — CVG-Corp State of the Art / Triplo AAA
 
 **Auditoria:** F0-2026-09-09-v2
-**Revisão do CVG:** `586479c845337c7a4f952987234ff5c6eab2503e`
+**Revisão do CVG:** `8eb4b240716cdf12702d7bf11bb484870b2567d0`
 **Revisão observada do DeepSeek Harness:** `5dda764ed3aa172535a7967b06ff95d9cbfe536a`
 **Prompt normativo:** [prompt v2](prompt-state-of-the-art-triplo-aaa-2026-09-09-v2.txt), SHA-256 `34e886f59adacf8fda46d8d54bdede259705adc6e1521590cd3c281509b0e0d9`
 **Ambiente:** workspace local, Node 24.20.0, npm 11.19.0; Docker CLI/Compose presentes, daemon sem permissão; sem URL de staging, credencial, secret authority, provider, dados reais ou autorização de release.
-**Estado da auditoria:** a fotografia F0 foi revalidada durante o worktree atual; além da cópia v2, o bridge/contrato local e seus testes foram implementados sem credencial, egress, dado real ou release.
+**Estado da auditoria:** a fotografia F0 foi revalidada durante o worktree atual; além da cópia v2, o bridge/contrato local, a boundary de secrets/auth/MFA/break-glass e o exporter OTLP protobuf foram implementados/testados sem credencial, egress, dado real ou release.
 
 ## 1. Escopo, método e veredito
 
@@ -72,7 +72,7 @@ Existe `SyntheticMessagingProvider`, `HttpMessagingProvider`, HMAC de callback, 
 
 ### 2.4 Caminho operacional
 
-API e worker são processos separados. O worker nomeia seis lanes (`outbox`, `jobs`, `schedule`, `reconciliation`, `notifications`, `maintenance`) e bloqueia lanes sem runner/sink. Compose tem read-only, non-root/privilege restrictions, cap drop, healthchecks e limites CPU/memória. CI tem PostgreSQL efêmero, migrations, restore, E2E, SBOM e scan declarados, mas execução remota deste commit ainda não foi observada.
+API e worker são processos separados. O worker nomeia seis lanes (`outbox`, `jobs`, `schedule`, `reconciliation`, `notifications`, `maintenance`) e bloqueia lanes sem runner/sink. API, worker e bridge possuem exporter OTLP protobuf real e redaction antes da exportação; o Compose de observabilidade declara Collector, Tempo, Prometheus, Grafana e Alertmanager, mas nenhum serviço de staging foi iniciado. Compose tem read-only, non-root/privilege restrictions, cap drop, healthchecks e limites CPU/memória. CI tem PostgreSQL efêmero, migrations, restore, E2E, SBOM e scan declarados, mas execução remota deste commit ainda não foi observada.
 
 ### 2.5 Caminho visual
 
@@ -105,14 +105,14 @@ API e worker são processos separados. O worker nomeia seis lanes (`outbox`, `jo
 | 7 PDP universal | **PARTIAL/LOCAL-GUARDED** | `npm run verify:pdp`: 62 operações, 64 regras, 12 domínios; PDP target-bound e negative tests de patient detail/tool | jobs/repositories/export e cobertura universal de mutation ainda precisam de prova; guard não substitui teste de runtime |
 | 8 Repositories normalizados | **PARTIAL** | leituras normalizadas de alguns contextos | repositories tipados para guardian/patient/appointment/encounter/clinical/diagnostic/hospitalization/medication/stock/finance/communication/audit |
 | 9 Worker AAA | **PARTIAL/LOCAL-GUARDED** | seis lanes, lease/fencing, budgets, concorrência limitada, backpressure antes do claim, poison metrics, heartbeat e shutdown cooperativo; testes unitários locais | execução em container/worker real, dead-letter operacional, métricas/heartbeat observados e SLO de backlog |
-| 10 Secrets | **PARTIAL/LOCAL-GUARDED** | providers de ambiente/diretório/Docker, refs aprovadas, health e fail-closed; teste local não expõe material | Docker secret em container, Vault/cloud authority, rotação real e prova operacional de não exposição |
-| 11 Auth | **PARTIAL/SYNTHETIC_ONLY** | password, aging config, lockout, sessions, recovery e audit local | sessões distribuídas e operação production-like |
-| 12 MFA | **PARTIAL/SYNTHETIC_ONLY** | TOTP, recovery e limites; WebAuthn seam | enrollment/challenge/revoke/recovery em ambiente real e WebAuthn/passkey |
-| 13 Break-glass | **NOT_RUN/BLOCKED** | runbook e bloqueio de produção | decisão humana, TTL, revisão pós-evento e teste autorizado |
+| 10 Secrets | **PARTIAL/LOCAL-GUARDED** | providers de ambiente/diretório/Docker, refs aprovadas, verificação sem material, readiness fail-closed para provider degradado e token DeepSeek | Docker secret em container, Vault/cloud authority, rotação real e prova operacional de não exposição |
+| 11 Auth | **PARTIAL/SYNTHETIC_ONLY** | password, aging config, lockout, sessions, recovery, enrollment/revogação TOTP e audit local | sessões distribuídas e operação production-like |
+| 12 MFA | **PARTIAL/SYNTHETIC_ONLY** | TOTP, enrollment por referência, expiração/replay/bloqueio de challenge, recovery e limites; WebAuthn seam | enrollment/challenge/revoke/recovery em ambiente real e WebAuthn/passkey |
+| 13 Break-glass | **PARTIAL/LOCAL-GUARDED** | registry provider-neutral com ativação explícita, aprovação independente, TTL, expiração, revogação, revisão e testes | provider WebAuthn real, persistência autorizada, decisão humana e exercício pós-evento |
 | 14 Rate limit distribuído | **PARTIAL** | PostgreSQL-safe schema/API limiter | execução multi-instância e métricas de login/MFA/AI/export/callback/high-impact |
 | 15 Circuit breaker | **SYNTHETIC_ONLY** | provider breaker e failure tests | DeepSeek/provider real, métricas e half-open observado |
-| 16 Observability real | **PARTIAL/SYNTHETIC_ONLY** | redaction, span seam, SLO/alert contracts | OTel SDK/collector e traces/metrics/logs correlacionados |
-| 17 Observability stack | **NOT_RUN** | não há compose operacional de collector/Prometheus/Grafana/Alertmanager | criar stack e dashboards/alerts executáveis em staging |
+| 16 Observability real | **PARTIAL/LOCAL-EVIDENCED** | redaction, SDK/exporter OTLP protobuf real, teste local de envio e SLO/alert contracts | collector/staging executado e traces/metrics/logs correlacionados |
+| 17 Observability stack | **PARTIAL/NOT_RUN** | Compose versionado, Collector/Tempo/Prometheus/Grafana/Alertmanager, dashboards/alerts e `verify:production` estrutural | executar stack e dashboards/alerts em staging |
 | 18 SLOs reais | **PROPOSED/SYNTHETIC_ONLY** | catálogo e evaluator local | workload staging medido, p95/availability/backlog/RTO/RPO aprovados |
 | 19 Alertas reais | **PROPOSED/SYNTHETIC_ONLY** | regras tipadas e runbooks | dispatch/alertmanager real e exercícios de breach |
 | 20 Staging | **BLOCKED** | `verify:staging` fail-closed sem URL | PostgreSQL, DeepSeek, provider sandbox, secret, TLS, worker e telemetry autorizados |
@@ -165,7 +165,7 @@ API e worker são processos separados. O worker nomeia seis lanes (`outbox`, `jo
 2. **DeepSeek bridge:** concluído localmente como boundary thin; o port nativo, modelo real e egress continuam bloqueados até contrato/autoridade externos.
 3. **PDP/repositories:** inventariar rotas, commands, tool registry e export; adicionar guard estático/contract test e repositories explícitos onde faltam, sem substituir o domínio por snapshot.
 4. **Worker/ledger:** concluído o recorte local de budgets/backpressure/concorrência/poison/metrics/heartbeat e cadeia de auditoria; falta executar container, dead-letter operacional e métricas em staging, mantendo provider externo bloqueado até autoridade.
-5. **Observability:** adicionar stack opcional OTel Collector/Prometheus/Grafana/Alertmanager, dashboards e alert rules sem afirmar execução; ligar correlação em HTTP/PDP/tools/DB/worker/provider/DeepSeek.
+5. **Observability:** concluído o recorte local do SDK/exporter OTLP protobuf, redaction e pontos API/worker/bridge; falta executar Collector/Prometheus/Grafana/Alertmanager, ligar métricas/logs correlacionados e provar SLO/alerts em staging.
 6. **Staging gate:** preparar configuração reproduzível com TLS, secret provider, PostgreSQL, worker e provider sandbox; não inserir credenciais nem iniciar egress sem autoridade.
 7. **Browser/accessibility/load/chaos/recovery:** ampliar scripts e evidência; executar somente no staging autorizado e manter `NOT_RUN` quando indisponível.
 8. **Final Gauntlet:** rodar critics frescos read-only por domínio, verificar sentinel de mutação, reparar findings reproduzíveis, executar regressão e recalcular scorecard.

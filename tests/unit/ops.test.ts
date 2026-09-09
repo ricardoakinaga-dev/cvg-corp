@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { evaluateSlo, evaluateSloAlerts, OpsTelemetry, PROPOSED_SLO_ALERT_RULES, PROPOSED_SLO_DEFINITIONS } from "@cvg/ops";
+import { createServer } from "node:http";
+import { createOpenTelemetryRuntime, evaluateSlo, evaluateSloAlerts, OpsTelemetry, PROPOSED_SLO_ALERT_RULES, PROPOSED_SLO_DEFINITIONS } from "@cvg/ops";
 
 test("redacted telemetry preserves safe diagnostics and removes sensitive metadata", () => {
   const telemetry = new OpsTelemetry();
@@ -25,6 +26,39 @@ test("telemetry exposes an OpenTelemetry-compatible span seam without sensitive 
   assert.deepEqual(exported, ["GET /patients"]);
   const metrics = telemetry.metrics("memory");
   assert.equal(metrics.telemetry.dropped, 0);
+});
+
+test("OTLP runtime exports a real protobuf span only after redaction", async () => {
+  const received: Array<{ url: string | undefined; contentType: string | undefined; body: Buffer }> = [];
+  const server = createServer((request, response) => {
+    const chunks: Buffer[] = [];
+    request.on("data", (chunk: Buffer) => chunks.push(chunk));
+    request.on("end", () => {
+      received.push({ url: request.url, contentType: typeof request.headers["content-type"] === "string" ? request.headers["content-type"] : undefined, body: Buffer.concat(chunks) });
+      response.statusCode = 200;
+      response.end();
+    });
+  });
+  await new Promise<void>((resolve, reject) => { server.once("error", reject); server.listen(0, "127.0.0.1", resolve); });
+  const address = server.address();
+  assert.ok(address && typeof address !== "string");
+  const runtime = createOpenTelemetryRuntime({ serviceName: "cvg-otel-test", environment: { OTEL_EXPORTER_OTLP_ENDPOINT: `http://127.0.0.1:${address.port}` } });
+  try {
+    assert.equal(runtime.status, "READY");
+    assert.ok(runtime.exporter);
+    const telemetry = new OpsTelemetry({ exporter: runtime.exporter });
+    const span = telemetry.startSpan("test.redacted", { prompt: "clinical text", requestId: "req-otel" });
+    telemetry.finishSpan(span, 200);
+    await runtime.shutdown();
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+  const request = received[0];
+  assert.ok(request);
+  assert.equal(request.url, "/v1/traces");
+  assert.equal(request.contentType, "application/x-protobuf");
+  assert.ok(request.body.byteLength > 0);
+  assert.equal(request.body.includes("clinical text"), false);
 });
 
 test("SLO catalog preserves proposed targets and evaluates a measured synthetic observation", () => {

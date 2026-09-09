@@ -6,11 +6,16 @@ import type { AgentRuntime } from "@cvg/agent-runtime";
 import type { PostgresPersistence } from "@cvg/persistence";
 import type { SecretProviderStatus } from "@cvg/integrations";
 
+export type HealthDependencyStatus = SecretProviderStatus | "NOT_REQUIRED";
+
 export interface HealthRouteDependencies {
   store: CvgStore;
   persistence: PostgresPersistence | null;
   agentRuntime: AgentRuntime;
   secretProviderStatus: SecretProviderStatus;
+  authMfaStatus: HealthDependencyStatus;
+  deepseekBearerTokenStatus: HealthDependencyStatus;
+  secretProviderRequired: boolean;
   config: { demoMode: boolean; storageMode: "memory" | "postgres" };
 }
 
@@ -36,8 +41,21 @@ export async function registerHealthRoutes(app: FastifyInstance, dependencies: H
       try { await dependencies.persistence.check(); } catch { database = "UNAVAILABLE"; }
     }
     const agentHealth = await dependencies.agentRuntime.health();
-    const checks = { database, policyStore: "READY" as const, secretProvider: dependencies.secretProviderStatus, agentRuntime: agentHealth.status, outbox: "NOT_CONFIGURED" as const, auditLedger: dependencies.persistence ? "READY" as const : "DEGRADED" as const };
-    const ready = dependencies.store.healthStatus === "READY" && database !== "UNAVAILABLE" && checks.secretProvider !== "UNAVAILABLE" && checks.agentRuntime === "READY";
+    const checks = {
+      database,
+      policyStore: "READY" as const,
+      secretProvider: dependencies.secretProviderStatus,
+      secretReferences: { deepseekBearerToken: dependencies.deepseekBearerTokenStatus },
+      authMfa: dependencies.authMfaStatus,
+      agentRuntime: agentHealth.status,
+      outbox: "NOT_CONFIGURED" as const,
+      auditLedger: dependencies.persistence ? "READY" as const : "DEGRADED" as const
+    };
+    const demoOnly = dependencies.config.demoMode && dependencies.config.storageMode === "memory";
+    const providerReady = !dependencies.secretProviderRequired || checks.secretProvider === "READY" || demoOnly;
+    const referencesReady = Object.values(checks.secretReferences).every((status) => status === "READY" || status === "NOT_REQUIRED");
+    const mfaReady = checks.authMfa === "READY" || checks.authMfa === "NOT_REQUIRED";
+    const ready = dependencies.store.healthStatus === "READY" && database !== "UNAVAILABLE" && providerReady && referencesReady && mfaReady && checks.agentRuntime === "READY";
     return send(reply, success({ ready, status: dependencies.store.healthStatus, checks }, randomUUID()), ready ? 200 : 503);
   });
 }

@@ -489,6 +489,21 @@ export class CvgStore {
     return codes;
   }
 
+  configureMfaFactor(userId: OpaqueId, secretRef: string): User {
+    if (!/^[A-Za-z0-9._:-]{1,160}$/.test(secretRef)) throw new DomainError("INVALID_INPUT", "A referência do fator MFA é inválida.", 400);
+    const user = this.getUser(userId);
+    user.security.mfaSecretRef = secretRef;
+    user.security.mfaRequired = true;
+    return user;
+  }
+
+  revokeMfaFactor(userId: OpaqueId): User {
+    const user = this.getUser(userId);
+    user.security.mfaSecretRef = null;
+    user.security.mfaRequired = false;
+    return user;
+  }
+
   consumeRecoveryCode(userId: OpaqueId, code: string): boolean {
     const user = this.getUser(userId);
     const digest = digestRecoveryCode(code);

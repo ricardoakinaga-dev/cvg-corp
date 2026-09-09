@@ -37,6 +37,24 @@ export interface SecretProvider {
   resolve?(reference: string): Promise<string | null>;
 }
 
+const secretReferencePattern = /^[A-Za-z0-9._:-]{1,160}$/;
+
+/**
+ * Checks a reference at the same boundary used by real dispatches. The value
+ * is deliberately reduced to a boolean so health/readiness cannot disclose
+ * secret material or provider-specific errors.
+ */
+export async function isSecretReferenceUsable(provider: SecretProvider | null, reference: string | null): Promise<boolean> {
+  if (!provider || provider.status() !== "READY" || !reference || !secretReferencePattern.test(reference) || !provider.resolve) return false;
+  try {
+    if (!provider.has(reference)) return false;
+    const value = await provider.resolve(reference);
+    return typeof value === "string" && value.trim().length > 0;
+  } catch {
+    return false;
+  }
+}
+
 /** Synthetic-only reference registry for tests and local wiring. */
 export class StaticSecretProvider implements SecretProvider {
   private readonly references: ReadonlySet<string>;
@@ -106,7 +124,7 @@ export class FileSecretProvider implements SecretProvider {
   }
 
   private file(reference: string): string | null {
-    if (!/^[A-Za-z0-9._:-]{1,160}$/.test(reference)) return null;
+    if (!secretReferencePattern.test(reference)) return null;
     const file = resolve(join(this.root, reference));
     return file === this.root || file.startsWith(`${this.root}${sep}`) ? file : null;
   }

@@ -56,7 +56,7 @@ Este diretório contém a documentação da arquitetura-alvo de um programa de g
 36. [`deepseek-integration-vNext.md`](deepseek-integration-vNext.md), [`provider-integration-vNext.md`](provider-integration-vNext.md) — boundaries históricos de runtime e provider com fail-closed.
 37. [`observability-vNext.md`](observability-vNext.md), [`staging-vNext.md`](staging-vNext.md), [`recovery-vNext.md`](recovery-vNext.md), [`performance-vNext.md`](performance-vNext.md) — evidência, execução e limites operacionais históricos.
 
-Os procedimentos operacionais estão em [`runbooks/`](runbooks/), incluindo deploy, rollback, backup/restore, incidentes de banco e segurança, indisponibilidade de provider/DeepSeek, rotação de credenciais, backlog do worker, quarentena e o break-glass ainda bloqueado.
+Os procedimentos operacionais estão em [`runbooks/`](runbooks/), incluindo deploy, rollback, backup/restore, incidentes de banco e segurança, indisponibilidade de provider/DeepSeek, rotação de credenciais, backlog do worker, quarentena e o break-glass ainda bloqueado. O SDK/exporter OTLP está conectado em API, worker e bridge; o stack declarado de observabilidade está em [`docker-compose.observability.yml`](../docker-compose.observability.yml) e permanece `NOT_RUN` fora da prova local do exporter.
 
 As decisões técnicas vNext estão em [`adr/`](adr/), com boundaries de runtime, PDP, tools, persistência, worker, secrets, release, DeepSeek, RLS, approval, fonte de verdade da IA, restore e o contrato do bridge em [`ADR-015`](adr/015-deepseek-bridge-contract.md).
 

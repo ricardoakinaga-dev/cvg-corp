@@ -11,6 +11,7 @@
     "@cvg/contracts": "*",
     "@cvg/domain": "*",
     "@cvg/integrations": "*",
+    "@cvg/ops": "*",
     "@cvg/persistence": "*"
   }
 }

@@ -11,9 +11,9 @@ Resultado: `FAIL_WITH_LIMITATIONS`; Triplo AAA não provado. A escala abaixo (0�
 | 5 | Provider externo | 3 | vertical sintética outbox → provider → unknown → reconciliação, contratos e outbox | `docs/provider-production-integration.md`; `tests/unit/integrations.test.ts` | sandbox/callback/receipt reais não executados | duplicidade/unknown em produção |
 | 6 | Idempotência e efeitos | 3 | CAS/ledger/reconciliation fixtures | `packages/persistence/` | prova completa de restart ausente | efeito duplicado |
 | 7 | PDP universal | 3 | policy/tool/API tests | `docs/pdp-universal-coverage.md` | matriz 100% route/domain pendente | bypass de autorização |
-| 8 | Secrets, MFA e break-glass | 2 | auth/config tests | `packages/auth/`, `packages/config/` | authority/WebAuthn operacional ausentes | credencial/override |
+| 8 | Secrets, MFA e break-glass | 3 | secret reference/readiness tests, TOTP enrollment/revocation/challenge tests e BreakGlassRegistry lifecycle tests | `packages/auth/`, `packages/config/`, `packages/integrations/`, `apps/api/` | authority/WebAuthn/persistência operacional ausentes | credencial/override |
 | 9 | Worker e concorrência | 3 | fault/worker tests, budgets, concorrência limitada, backpressure e heartbeat/shutdown local | `apps/worker/`; `tests/unit/worker.test.ts` | execução/carga/backpressure production-like ausentes | backlog/lease |
-| 10 | Observabilidade | 2 | contratos de sinais/redaction | `docs/observability-production.md` | OTel stack não executado | incidente sem detecção |
+| 10 | Observabilidade | 3 | redaction, SDK/exporter OTLP protobuf, teste de envio local e contratos de sinais | `packages/ops/src/otel.ts`; `tests/unit/ops.test.ts`; `docs/observability-production.md` | collector/staging, métricas/logs correlacionados, alert dispatch e SLO reais não executados | incidente sem detecção operacional |
 | 11 | SLO e alertas | 2 | regras propostas/runbooks | `docs/runbooks/slo-breach.md` | sem amostra/dispatch real | budget desconhecido |
 | 12 | Staging e TLS | 1 | verificador fail-closed | `docs/staging.md` | sem URL/evidência | configuração insegura |
 | 13 | Frontend states | 3 | E2E Chromium e visual local | `apps/web/` | estados de dependência e browsers faltam | UX ambígua |

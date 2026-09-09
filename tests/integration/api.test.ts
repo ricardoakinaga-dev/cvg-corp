@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import { createHmac } from "node:crypto";
 import { createRuntime } from "@cvg/api";
 import { CvgStore, DomainError } from "@cvg/domain";
+import { GovernedHarness } from "@cvg/harness";
+import { MockHarnessAdapter } from "@cvg/harness-adapters";
 
 let runtime: Awaited<ReturnType<typeof createRuntime>>;
 let cookies = "";
@@ -84,6 +86,33 @@ test("health, readiness and metrics distinguish live process from dependencies",
   assert.equal(metricData.dependencies.auditLedger, "DEGRADED");
   assert.equal(metricData.telemetry.mode, "REDACTED_BEST_EFFORT");
   assert.equal(typeof metricData.domain.unlinkedReceipts, "number");
+});
+
+test("readiness does not promote a degraded secret provider for an enabled DeepSeek runtime", async () => {
+  const blockedStore = new CvgStore({ bootstrapPassword: password });
+  const blockedRuntime = await createRuntime({
+    store: blockedStore,
+    config: {
+      nodeEnv: "test",
+      storageMode: "memory",
+      demoMode: false,
+      deepseekRuntimeEnabled: true,
+      deepseekBaseUrl: "http://127.0.0.1:4311",
+      deepseekExpectedEngineCommit: "0000000000000000000000000000000000000000",
+      deepseekExpectedManifestVersion: "synthetic-profile"
+    },
+    secretProvider: { status: () => "DEGRADED" as const, has: () => false, resolve: async () => null },
+    agentRuntime: new MockHarnessAdapter(new GovernedHarness(blockedStore))
+  });
+  try {
+    const ready = await blockedRuntime.app.inject({ method: "GET", url: "/api/v1/ready" });
+    assert.equal(ready.statusCode, 503);
+    const body = ready.json<{ data: { ready: boolean; checks: { secretProvider: string } } }>();
+    assert.equal(body.data.ready, false);
+    assert.equal(body.data.checks.secretProvider, "DEGRADED");
+  } finally {
+    await blockedRuntime.app.close();
+  }
 });
 
 test("the v1 envelope is versioned and unknown input fields are rejected", async () => {
@@ -318,6 +347,55 @@ test("production-auth boundary requires MFA, tracks redacted sessions, rotates c
     const replay = await request("/auth/recovery/complete", { method: "POST", payload: { challengeId: replayChallenge.body.data?.challengeId, recoveryCode: recoveryCodes[0], newPassword: "Another-Password-321!" } });
     assert.equal(replay.statusCode, 401);
     assert.equal(replay.body.error?.code, "RECOVERY_INVALID");
+  } finally {
+    await mfaRuntime.app.close();
+  }
+});
+
+test("TOTP enrollment validates an external secret reference and revocation kills sessions", async () => {
+  const secret = "JBSWY3DPEHPK3PXP";
+  const store = new CvgStore({ bootstrapPassword: password });
+  const mfaRuntime = await createRuntime({
+    store,
+    config: { storageMode: "memory", demoMode: false, authMfaMode: "optional", webOrigin: "http://127.0.0.1:5173" },
+    mfaSecretResolver: { resolve: (reference) => reference === "mfa.admin" ? secret : null }
+  });
+  let cookieJar = "";
+  let csrfToken = "";
+  const saveLocalCookies = (value: unknown): void => {
+    const values = Array.isArray(value) ? value : value ? [value] : [];
+    const map = new Map<string, string>();
+    for (const pair of cookieJar.split("; ").filter(Boolean)) { const separator = pair.indexOf("="); if (separator > 0) map.set(pair.slice(0, separator), pair.slice(separator + 1)); }
+    for (const item of values) {
+      if (typeof item !== "string") continue;
+      const pair = item.split(";")[0] ?? "";
+      const separator = pair.indexOf("=");
+      if (separator > 0) map.set(pair.slice(0, separator), pair.slice(separator + 1));
+    }
+    cookieJar = [...map.entries()].map(([key, value]) => `${key}=${value}`).join("; ");
+    csrfToken = decodeURIComponent(map.get("cvg_csrf") ?? "");
+  };
+  const request = async (path: string, method: "GET" | "POST", payload?: unknown, headers: Record<string, string> = {}) => {
+    const requestHeaders: Record<string, string> = { cookie: cookieJar, ...(payload ? { "content-type": "application/json" } : {}), ...headers };
+    if (method !== "GET" && path !== "/auth/login") requestHeaders["x-csrf-token"] = csrfToken;
+    const result = await mfaRuntime.app.inject({ method, url: `/api/v1${path}`, headers: requestHeaders, ...(payload ? { payload: JSON.stringify(payload) } : {}) });
+    saveLocalCookies(result.headers["set-cookie"]);
+    return { statusCode: result.statusCode, body: result.json<{ data?: Record<string, unknown>; error?: { code: string } }>() };
+  };
+  try {
+    const login = await request("/auth/login", "POST", { login: "admin@cvg.local", password });
+    assert.equal(login.statusCode, 200);
+    const enrolled = await request("/auth/mfa/enroll", "POST", { currentPassword: password, secretRef: "mfa.admin", code: fixtureTotpCode(secret) }, { "idempotency-key": "mfa-enroll-1" });
+    assert.equal(enrolled.statusCode, 201);
+    assert.equal(store.getUser(store.bootstrapCredentials.userId).security.mfaSecretRef, "mfa.admin");
+    assert.equal(store.getUser(store.bootstrapCredentials.userId).security.mfaRequired, true);
+    const replay = await request("/auth/mfa/enroll", "POST", { currentPassword: password, secretRef: "mfa.admin", code: fixtureTotpCode(secret) }, { "idempotency-key": "mfa-enroll-1" });
+    assert.equal(replay.statusCode, 200);
+    const revoked = await request("/auth/mfa/revoke", "POST", { currentPassword: password }, { "idempotency-key": "mfa-revoke-1" });
+    assert.equal(revoked.statusCode, 200);
+    assert.equal((revoked.body.data as { revoked: boolean }).revoked, true);
+    assert.equal(store.getUser(store.bootstrapCredentials.userId).security.mfaSecretRef, null);
+    assert.equal([...store.sessions.values()].filter((session) => session.revokedAt === null).length, 0);
   } finally {
     await mfaRuntime.app.close();
   }

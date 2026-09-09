@@ -197,6 +197,8 @@ export const APPLICATION_POLICY_REGISTRY: readonly ApplicationPolicyRule[] = [
   applicationRule("identity.sessions.read", "identity:sessions:read", allApplicationRoles, d0),
   applicationRule("identity.sessions.revoke", "identity:sessions:revoke", allApplicationRoles, d0, "MEDIUM"),
   applicationRule("identity.password.rotate", "identity:password:rotate", allApplicationRoles, d0, "MEDIUM"),
+  applicationRule("identity.mfa.enroll", "identity:mfa:enroll", allApplicationRoles, d0, "MEDIUM"),
+  applicationRule("identity.mfa.revoke", "identity:mfa:revoke", allApplicationRoles, d0, "MEDIUM"),
   applicationRule("contexts.read", "contexts:read", allApplicationRoles, d0),
   applicationRule("context.select", "context:select", allApplicationRoles, d0),
   applicationRule("users.read", "users:read", ["admin"], d4),

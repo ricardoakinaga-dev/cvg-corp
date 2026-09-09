@@ -1,0 +1,35 @@
+groups:
+  - name: cvg-runtime
+    rules:
+      - alert: CvgApiUnavailable
+        expr: up{job="cvg-api"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          runbook: docs/runbooks/database-incident.md
+        annotations:
+          summary: CVG API is unavailable
+      - alert: CvgWorkerHeartbeatStale
+        expr: cvg_worker_heartbeat_age_seconds > 60
+        for: 2m
+        labels:
+          severity: critical
+          runbook: docs/runbooks/worker-backlog.md
+        annotations:
+          summary: CVG worker heartbeat is stale
+      - alert: CvgOutboxBacklog
+        expr: cvg_outbox_depth > 1000
+        for: 5m
+        labels:
+          severity: warning
+          runbook: docs/runbooks/worker-backlog.md
+        annotations:
+          summary: CVG outbox backlog is above the proposed threshold
+      - alert: CvgDeepSeekUnavailable
+        expr: cvg_agent_runtime_ready == 0
+        for: 2m
+        labels:
+          severity: critical
+          runbook: docs/runbooks/deepseek-bridge-outage.md
+        annotations:
+          summary: DeepSeek runtime is unavailable

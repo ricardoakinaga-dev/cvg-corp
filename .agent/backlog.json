@@ -32,7 +32,7 @@
       "dependencies": [],
       "owner": "lead",
       "acceptance_summary": "Implementar e verificar a arquitetura, segurança, confiabilidade, AI governance, operações, DX, frontend, documentação e produção exigidas pelo prompt; AAA só é elegível com a barra v3 completa e autoridade humana para qualquer efeito externo.",
-      "evidence_refs": ["docs/final-closure-audit.md", "docs/prompt-state-of-the-art-triplo-aaa-2026-09-09-v2.txt", "docs/architecture-audit-vNext.md", ".gauntlet/bar-v3.json", ".gauntlet/critique-v3-fresh.md", "docs/verification-vNext.md", "VER-CVG-031", "VER-CVG-033", "VER-CVG-034", "VER-CVG-035", "VER-CVG-036", "VER-CVG-037", "VER-CVG-038", "VER-CVG-039", "VER-CVG-040", "VER-CVG-041", "VER-CVG-042", "VER-CVG-043", "VER-CVG-044", "VER-CVG-045", "VER-CVG-046", "VER-CVG-047", "VER-CVG-048"],
+      "evidence_refs": ["docs/final-closure-audit.md", "docs/prompt-state-of-the-art-triplo-aaa-2026-09-09-v2.txt", "docs/architecture-audit-vNext.md", ".gauntlet/bar-v3.json", ".gauntlet/critique-v3-fresh.md", "docs/verification-vNext.md", "VER-CVG-031", "VER-CVG-033", "VER-CVG-034", "VER-CVG-035", "VER-CVG-036", "VER-CVG-037", "VER-CVG-038", "VER-CVG-039", "VER-CVG-040", "VER-CVG-041", "VER-CVG-042", "VER-CVG-043", "VER-CVG-044", "VER-CVG-045", "VER-CVG-046", "VER-CVG-047", "VER-CVG-048", "VER-CVG-049"],
       "next_action": {
         "id": "CVG-FULL-STATE-OF-THE-ART:PRODUCTION-LIKE-EVIDENCE",
         "kind": "IMPLEMENT",

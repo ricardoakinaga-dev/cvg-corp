@@ -76,7 +76,7 @@ API e worker são processos separados. O worker nomeia seis lanes (`outbox`, `jo
 
 ### 2.5 Caminho visual
 
-`apps/web` tem shell, rotas, features, máquina de estado offline/revalidação, tokens e E2E Chromium/Firefox em 375/768/1440. O render local foi inspecionado em screenshots reais e não apresentou overflow conhecido; axe passou em login, dashboard e administração nos seis runs executáveis. WebKit foi baixado, mas não iniciou porque o host não possui bibliotecas nativas e sudo exige senha. Leitor de tela, DPR/touch, reduced-motion dedicado, zoom/reflow de 200% e comparação visual por baseline ainda não têm evidência corrente.
+`apps/web` tem shell, rotas, features, máquina de estado offline/revalidação, tokens e E2E Chromium/Firefox em 375/768/1440, além de um projeto stress em 320 CSS px, DPR 2, touch e reduced-motion. O render local foi inspecionado em screenshots reais e não apresentou overflow conhecido; axe passou em login, dashboard e administração com 8/8 estados auditados. WebKit foi baixado, mas não iniciou porque o host não possui bibliotecas nativas e sudo exige senha. Leitor de tela, zoom real de 200% e comparação visual por baseline ainda não têm evidência corrente.
 
 ## 3. Forças observadas
 
@@ -89,7 +89,7 @@ API e worker são processos separados. O worker nomeia seis lanes (`outbox`, `jo
 | Dados | migrations 001–025, RLS, CAS, locks, runtime role, restore manifest/quarantine | volume, mixed-version, backup gerenciado e restore operacional ausentes |
 | Identidade | password policy, lockout, TOTP, recuperação, rotação e revogação local | secret authority, WebAuthn real e sessão distribuída ausentes |
 | Supply chain | actions pinadas, SBOM, licença, npm audit e Compose estrutural | execução remota e imagem/Trivy reais não observadas |
-| UI | shell modular, estados offline, E2E Chromium/Firefox, axe e screenshots reais | WebKit/assistive tech/zoom/reduced-motion dedicados ausentes |
+| UI | shell modular, estados offline, E2E Chromium/Firefox, projeto stress de reflow/DPR/touch/reduced-motion, axe e screenshots reais | WebKit/assistive tech/zoom real/baseline visual ausentes |
 
 ## 4. Matriz de fechamento por fase do prompt v2
 
@@ -117,8 +117,8 @@ API e worker são processos separados. O worker nomeia seis lanes (`outbox`, `jo
 | 19 Alertas reais | **PROPOSED/SYNTHETIC_ONLY** | regras tipadas e runbooks | dispatch/alertmanager real e exercícios de breach |
 | 20 Staging | **BLOCKED** | `verify:staging` fail-closed sem URL | PostgreSQL, DeepSeek, provider sandbox, secret, TLS, worker e telemetry autorizados |
 | 21 TLS/edge | **PARTIAL** | proxy, headers, CSP/HSTS em config | endpoint HTTPS real, cookies/redirect/TLS policy observado |
-| 22 Browser matrix | **PARTIAL** | Chromium + Firefox × 375/768/1440; WebKit declarado e bloqueado por dependências nativas do host | WebKit executável e diferenças cross-engine ainda sem prova |
-| 23 Accessibility | **PARTIAL/LOCAL-EVIDENCED** | axe login/dashboard/admin 6/6; contraste computado; keyboard/focus/dialogs cobertos por E2E | leitor de tela, DPR/touch, reduced motion dedicado e 200% zoom/reflow |
+| 22 Browser matrix | **PARTIAL** | Chromium + Firefox × 375/768/1440; projeto stress Chromium em 320 CSS px/DPR 2/touch/reduced-motion; WebKit declarado e bloqueado por dependências nativas do host | WebKit executável e diferenças cross-engine ainda sem prova |
+| 23 Accessibility | **PARTIAL/LOCAL-EVIDENCED** | axe login/dashboard/admin 8/8; contraste computado; keyboard/focus/dialogs, reflow estreito, DPR/touch e reduced-motion cobertos por E2E | leitor de tela, baseline visual e zoom real de 200% |
 | 24 Load | **NOT_RUN** | benchmark local explicitamente sintético | k6/autocannon/pgbench em staging com workload, tails e recursos |
 | 25 Chaos | **SYNTHETIC_ONLY/PARTIAL** | fault harness local | kill/restart/partition/secret/provider/DeepSeek/restore em ambiente real |
 | 26 Recovery | **PARTIAL/SYNTHETIC_ONLY** | bundle manifest, encryption, quarantine e restore tests | RPO/RTO e restore/replay real com ledgers preservados |
@@ -150,7 +150,7 @@ API e worker são processos separados. O worker nomeia seis lanes (`outbox`, `jo
 
 1. PDP/Tool Gateway e repositories não têm cobertura automática universal provada em todas as operações críticas.
 2. Worker tem ciclo e contratos locais; reconciliação usa claim atômico/lease/fence e o scheduler possui budgets, concorrência limitada, backpressure, poison metrics, heartbeat e shutdown cooperativo, mas dead-letter, execução production-like e métricas operacionais ainda não foram executados.
-3. Browser/accessibility melhoraram localmente, mas WebKit, assistive tech, zoom/reflow e reduced-motion dedicado permanecem sem prova.
+3. Browser/accessibility melhoraram localmente, mas WebKit, assistive tech, baseline visual e zoom real de 200% permanecem sem prova.
 4. Cadeia de audit tamper-evidence e export governado não estão demonstradas como operações de produção.
 
 ### Médio
@@ -211,7 +211,7 @@ git diff --check
 - Bridge/Harness/DeepSeek: health/readiness, commit/manifest/tool digest, session/turn/approval/cancel/replay/provenance e failures da matriz.
 - Provider sandbox: stage → approval → outbox → worker → request → receipt/callback → inbox → effect ledger → reconciliation.
 - Observability: collector, traces, metrics, logs redigidos, dashboards, alerts, SLO/error budget e runbooks acionados.
-- Browser/accessibility: Chromium/Firefox/WebKit × 375/768/1440, keyboard/focus/axe/zoom/reduced motion.
+- Browser/accessibility: Chromium/Firefox/WebKit × 375/768/1440, projeto stress de reflow/DPR/touch/reduced-motion, keyboard/focus/axe e zoom real.
 - Load/chaos/recovery: workload aprovado, p95/p99, saturation, kill/restart/partition, backup/restore/replay, RPO/RTO.
 - CI remoto: SHA exato, jobs obrigatórios verdes, image build/scan, SBOM e artifact manifest.
 

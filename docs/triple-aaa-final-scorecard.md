@@ -17,7 +17,7 @@ Resultado: `FAIL_WITH_LIMITATIONS`; Triplo AAA não provado. A escala abaixo (0�
 | 11 | SLO e alertas | 2 | regras propostas/runbooks | `docs/runbooks/slo-breach.md` | sem amostra/dispatch real | budget desconhecido |
 | 12 | Staging e TLS | 1 | verificador fail-closed | `docs/staging.md` | sem URL/evidência | configuração insegura |
 | 13 | Frontend states | 3 | E2E Chromium/Firefox, screenshots reais e estados offline/revalidação | `apps/web/` | WebKit e estados externos continuam sem prova | UX ambígua sob engine/dep externa |
-| 14 | Acessibilidade/browser matrix | 3 | axe login/dashboard/admin 6/6; Chromium/Firefox × 375/768/1440; contraste computado | `docs/visual-qa-vNext.md` | WebKit bloqueado por dependências do host; leitor de tela/zoom/reduced-motion dedicados ausentes | regressão cross-engine/assistiva |
+| 14 | Acessibilidade/browser matrix | 3 | axe login/dashboard/admin 8/8; Chromium/Firefox × 375/768/1440; stress em 320 CSS px, DPR 2, touch e reduced-motion; contraste computado | `docs/visual-qa-vNext.md` | WebKit bloqueado por dependências do host; leitor de tela, baseline visual e zoom real de 200% ausentes | regressão cross-engine/assistiva |
 | 15 | Carga/performance | 2 | benchmark sintético | `docs/load-and-chaos.md` | sem carga production-like | saturação |
 | 16 | Chaos/resiliência | 2 | fault fixtures | `tests/integration/faults.test.ts` | sem infra/provider chaos | recuperação desconhecida |
 | 17 | Backup/recovery | 3 | restore sintético autenticado | `docs/recovery-proof.md` | backup gerenciado/RTO/RPO ausentes | perda prolongada |

@@ -79,10 +79,11 @@ Outbox/inbox/effect ledger têm lease/fencing, retry bounded, backoff, quarantin
 
 ## Concrete Steps
 
-<!-- engineering-framework: active_action_id=CVG-FULL-STATE-OF-THE-ART:PRODUCTION-LIKE-EVIDENCE -->
+<!-- engineering-framework: active_action_id=CVG-FULL-STATE-OF-THE-ART:TOOL-GATEWAY-BOUNDARY -->
 
-1. `CVG-FULL-STATE-OF-THE-ART:PRODUCTION-LIKE-EVIDENCE` — executar somente as evidências production-like que tenham ambiente e autoridade correspondentes; manter os gaps externos como `NOT_RUN` e continuar a evolução local nos maiores gaps reproduzíveis.
-2. `CVG-FULL-STATE-OF-THE-ART:SLO-CONTRACTS-ALERTS` — concluída localmente: tipar targets SLO propostos, avaliar observações somente com amostra explícita e testar alertas/runbooks em harness sintético; não promover medição local a evidência de produção.
+1. `CVG-FULL-STATE-OF-THE-ART:TOOL-GATEWAY-BOUNDARY` — exigir sessão autenticada, alvo/escopo declarados, idempotência e metadata compatíveis antes da autorização; cobrir known-good/known-bad sem egress.
+2. `CVG-FULL-STATE-OF-THE-ART:PRODUCTION-LIKE-EVIDENCE` — executar somente as evidências production-like que tenham ambiente e autoridade correspondentes; manter os gaps externos como `NOT_RUN` e continuar a evolução local nos maiores gaps reproduzíveis.
+3. `CVG-FULL-STATE-OF-THE-ART:SLO-CONTRACTS-ALERTS` — concluída localmente: tipar targets SLO propostos, avaliar observações somente com amostra explícita e testar alertas/runbooks em harness sintético; não promover medição local a evidência de produção.
 
 ### Onda A — fundamento seguro
 
@@ -195,6 +196,14 @@ Evidência: `VER-CVG-042`; 70/70 testes, 8/8 fault/worker, 9/9 database, typeche
 Resultado: `@cvg/ops` expõe oito definições SLO tipadas, quatro regras de alerta e avaliação fail-closed. Targets não aprovados permanecem `PROPOSED`/`TBD`; amostra ausente, target sem número ou evidência `NOT_RUN` não podem gerar `PASS`/`ALERT`. O runbook `docs/runbooks/slo-breach.md` liga as classificações a procedimentos sem disparar efeitos.
 
 Evidência: `VER-CVG-043`; 73/73 testes, typecheck, lint (99 fontes), static (30/101), `verify:production`, hash byte-a-byte do prompt, validação dos ponteiros JSON/JSONL e diff check passaram. O modo `--production` saiu 1 por configuração real ausente, fail-closed esperado. Collector, carga, SLO medido, alerta operacional, provider, segredo, egress, Docker runtime, CI remoto e release continuam `NOT_RUN`.
+
+### Ação controlada — boundary universal do Tool Gateway
+
+- Escopo: `packages/agent-tools`, `packages/harness`, testes de runtime/policy e auditoria estática.
+- Tornar `sessionId` obrigatório e igual ao contexto autenticado, incluir a sessão no digest e rejeitar idempotency keys inválidas antes do executor.
+- Fazer o gateway exigir `resourceRequired`, escopo mínimo (`UNIT`/`WORKSPACE`), organização correspondente e metadata de egress/segredo coerentes.
+- Cobrir known-good e known-bad com executor que não realiza egress; nenhuma tool externa, provider, segredo ou dado real será usado.
+- Ao concluir, registrar a evidência local e retornar o pointer ao gate `PRODUCTION-LIKE-EVIDENCE`; a universalidade em todos os ambientes externos continuará limitada ao que foi executado.
 
 ### Ação corrente — evidência production-like
 

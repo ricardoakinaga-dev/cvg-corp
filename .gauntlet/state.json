@@ -4,12 +4,12 @@
   "goal": "CVG-Corp State of the Art / Triplo AAA conforme prompt preservado",
   "scope_ref": "CVG-FULL-STATE-OF-THE-ART",
   "round": 2,
-  "phase": "VERIFY",
+  "phase": "BUILD",
   "status": "IN_PROGRESS",
-  "largest_gap": "Os SLOs agora têm contrato local fail-closed, mas não baseline real nem alertas executados; jobs/stores/adapter reais, PDP/Tool Gateway universal, CI remoto/containers, provider/secret authority, recovery distribuído, browsers e revisão independente continuam ausentes",
-  "next_action": "CVG-FULL-STATE-OF-THE-ART:PRODUCTION-LIKE-EVIDENCE",
+  "largest_gap": "O Tool Gateway ainda não exige universalmente sessão, alvo e escopo declarados antes da autorização; contratos locais serão endurecidos agora, enquanto o uso universal do PDP, CI remoto/containers, provider/secret authority, recovery distribuído, SLOs medidos, browsers e revisão independente continuam ausentes",
+  "next_action": "CVG-FULL-STATE-OF-THE-ART:TOOL-GATEWAY-BOUNDARY",
   "limitations": ["a auditoria arquitetural e os gates locais autorizam apenas desenvolvimento controlado", "o artifact é uma base local sintética; evidência local não satisfaz automaticamente critérios de produção", "o bridge DeepSeek CVG /v1 não prova protocolo nativo nem integração com processo externo", "dados reais, egress, provider, break-glass, homologação, piloto e release permanecem bloqueados"],
   "critique_ref": ".gauntlet/critique-v3-fresh.md",
   "supersedes": ".gauntlet/state-v2-round4.json",
-  "updated_at": "2026-09-09T02:14:57-03:00"
+  "updated_at": "2026-09-09T02:21:50-03:00"
 }

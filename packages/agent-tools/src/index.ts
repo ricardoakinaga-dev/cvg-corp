@@ -15,6 +15,7 @@ export interface ToolDescriptor<TInput = unknown> {
   allowedRoles: readonly Role[];
   acceptedDataClasses: readonly DataClass[];
   scope: "ORGANIZATION" | "UNIT" | "WORKSPACE";
+  resourceRequired: boolean;
   requiresApproval: boolean;
   idempotency: "REQUIRED" | "OPTIONAL";
   auditAction: string;
@@ -26,7 +27,7 @@ export interface ToolDescriptor<TInput = unknown> {
 
 export interface ToolExecutionRequest {
   context: CvgContext;
-  sessionId?: OpaqueId | null;
+  sessionId: OpaqueId;
   resource: PolicyResource;
   input: unknown;
   idempotencyKey: string;
@@ -70,7 +71,7 @@ function stableSerialize(value: unknown): string {
 }
 
 function requestDigest(tool: ToolDescriptor, request: ToolExecutionRequest, parsedInput: unknown): string {
-  return createHash("sha256").update(stableSerialize({ version: 1, tool: tool.name, operation: request.context.purpose, actorId: request.context.actorId, organizationId: request.context.organizationId, unitId: request.context.unitId, workspaceId: request.context.workspaceId, resourceId: request.resource.resourceId, dataClass: request.resource.dataClass, input: parsedInput, idempotencyKey: request.idempotencyKey })).digest("hex");
+  return createHash("sha256").update(stableSerialize({ version: 2, tool: tool.name, toolVersion: tool.version, operation: tool.operation, sessionId: request.sessionId, actorId: request.context.actorId, organizationId: request.context.organizationId, unitId: request.context.unitId, workspaceId: request.context.workspaceId, resourceId: request.resource.resourceId, dataClass: request.resource.dataClass, input: parsedInput, idempotencyKey: request.idempotencyKey })).digest("hex");
 }
 
 export interface AuthorizedToolExecution {
@@ -93,6 +94,7 @@ export class ToolGateway {
 
   register<TInput>(descriptor: ToolDescriptor<TInput>): void {
     if (!/^[a-z][a-z0-9._:-]{2,119}$/.test(descriptor.name) || !/^\d+\.\d+\.\d+$/.test(descriptor.version) || !descriptor.operation.trim() || descriptor.timeoutMs < 100 || descriptor.timeoutMs > 120_000) throw new ToolGatewayError("INVALID_INPUT", "Tool descriptor inválido.");
+    if (descriptor.allowedRoles.length === 0 || descriptor.acceptedDataClasses.length === 0 || (descriptor.egress === "NONE" && descriptor.secretRefs.length > 0) || (descriptor.egress === "EXTERNAL_PROVIDER" && descriptor.secretRefs.length === 0)) throw new ToolGatewayError("INVALID_INPUT", "A metadata de role, classe de dados, segredo e egress da tool é inválida.", { name: descriptor.name });
     if ((descriptor.requiresApproval && descriptor.approvalMode === "NONE") || (!descriptor.requiresApproval && descriptor.approvalMode !== "NONE") || ((descriptor.risk === "HIGH" || descriptor.risk === "CRITICAL") && descriptor.approvalMode !== "INDEPENDENT")) throw new ToolGatewayError("INVALID_INPUT", "A combinação de risco e aprovação da tool é inválida.", { name: descriptor.name });
     if (descriptor.idempotency === "REQUIRED" && !descriptor.auditAction.trim()) throw new ToolGatewayError("INVALID_INPUT", "Tool com idempotência obrigatória precisa de auditAction.", { name: descriptor.name });
     if (this.descriptors.has(descriptor.name)) throw new ToolGatewayError("INVALID_INPUT", "Tool já registrada.", { name: descriptor.name });
@@ -110,11 +112,17 @@ export class ToolGateway {
   authorize(name: string, request: ToolExecutionRequest): AuthorizedToolExecution {
     const descriptor = this.descriptors.get(name);
     if (!descriptor) throw new ToolGatewayError("CAPABILITY_DISABLED", "A tool não está registrada.", { name });
+    if (request.sessionId !== request.context.sessionId || !request.context.sessionId) throw new ToolGatewayError("POLICY_DENIED", "A tool exige uma sessão autenticada vinculada ao contexto.");
+    if (!/^[A-Za-z0-9._:-]{1,160}$/.test(request.idempotencyKey)) throw new ToolGatewayError("INVALID_INPUT", "A chave de idempotência da tool é inválida.");
+    if (request.resource.organizationId !== request.context.organizationId) throw new ToolGatewayError("POLICY_DENIED", "O recurso da tool pertence a outra organização.");
+    if (descriptor.resourceRequired && request.resource.resourceId === null) throw new ToolGatewayError("POLICY_DENIED", "A tool exige um recurso-alvo explícito.");
+    if (descriptor.scope === "UNIT" && request.resource.unitId === null) throw new ToolGatewayError("POLICY_DENIED", "A tool exige um alvo de unidade.");
+    if (descriptor.scope === "WORKSPACE" && (request.resource.unitId === null || request.resource.workspaceId === null)) throw new ToolGatewayError("POLICY_DENIED", "A tool exige um alvo de unidade e workspace.");
     const parsedInput = (() => {
       try { return descriptor.parseInput(request.input); } catch (error) { throw new ToolGatewayError("INVALID_INPUT", "A entrada da tool não atende ao schema.", { cause: error instanceof Error ? error.message : String(error) }); }
     })();
     const digest = request.requestDigest ?? requestDigest(descriptor, request, parsedInput);
-    const decision = this.policy.evaluate({ context: request.context, operation: descriptor.operation, sessionId: request.context.sessionId, purpose: request.context.purpose, capability: descriptor.capability, risk: descriptor.risk, requiresApproval: descriptor.requiresApproval, approvalMode: descriptor.approvalMode, allowedRoles: descriptor.allowedRoles, acceptedDataClasses: descriptor.acceptedDataClasses, resource: request.resource, requestDigest: digest, constraints: {}, ...(request.approval ? { approval: { ...request.approval } } : {}) });
+    const decision = this.policy.evaluate({ context: request.context, operation: descriptor.operation, sessionId: request.sessionId, purpose: request.context.purpose, capability: descriptor.capability, risk: descriptor.risk, requiresApproval: descriptor.requiresApproval, approvalMode: descriptor.approvalMode, allowedRoles: descriptor.allowedRoles, acceptedDataClasses: descriptor.acceptedDataClasses, resource: request.resource, requestDigest: digest, constraints: { resourceRequired: descriptor.resourceRequired, scope: descriptor.scope, egress: descriptor.egress }, ...(request.approval ? { approval: { ...request.approval } } : {}) });
     try { assertPolicyAllowed(decision); } catch (error) {
       if (error instanceof Error && "code" in error && (error as { code?: unknown }).code === "APPROVAL_REQUIRED") throw new ToolGatewayError("APPROVAL_REQUIRED", decision.reason, { requestDigest: digest, policyRevision: decision.policyRevision });
       throw new ToolGatewayError("POLICY_DENIED", decision.reason, { requestDigest: digest, policyRevision: decision.policyRevision });

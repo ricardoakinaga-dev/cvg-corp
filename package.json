@@ -40,6 +40,7 @@
     "verify:all": "npm run verify:m1 && npm run test:e2e",
     "verify:postgres": "tsx scripts/verify-postgres.ts",
     "verify:postgres:restore": "tsx scripts/verify-postgres-restore.ts",
+    "verify:deepseek-acp": "tsx scripts/verify-deepseek-acp.ts",
     "verify:triplo-aaa": "tsx scripts/verify-triplo-aaa.ts",
     "verify:staging": "tsx scripts/verify-staging.ts",
     "db:migrate": "tsx scripts/db.ts migrate",
@@ -50,6 +51,7 @@
     "audit:contrast": "tsx scripts/check-contrast.ts"
   },
   "dependencies": {
+    "@agentclientprotocol/sdk": "1.4.0",
     "@fastify/cookie": "^11.0.2",
     "@fastify/cors": "^11.0.1",
     "fastify": "^5.5.0",

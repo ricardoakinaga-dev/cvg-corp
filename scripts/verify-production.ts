@@ -37,6 +37,7 @@ const requiredFiles = [
   "packages/agent-policy/src/index.ts",
   "packages/agent-tools/src/index.ts",
   "packages/deepseek-bridge/src/index.ts",
+  "packages/deepseek-bridge/src/acp.ts",
   "apps/deepseek-bridge/src/server.ts",
   "packages/auth/src/index.ts",
   "db/migrations/019_runtime_scope_guards.sql",
@@ -99,7 +100,9 @@ const requiredFiles = [
   "scripts/verify-production.ts",
   "scripts/verify-triplo-aaa.ts",
   "scripts/verify-pdp-coverage.ts",
-  "scripts/verify-staging.ts"
+  "scripts/verify-staging.ts",
+  "scripts/verify-deepseek-acp.ts",
+  "docs/deepseek-acp-bridge.md"
 ];
 
 const readArtifacts = new Map<string, string>();
@@ -176,6 +179,9 @@ function inspectStaticContracts(): void {
   requireText("apps/api/src/app.ts", "MemoryRateLimiter");
   requireText("packages/ops/src/otel.ts", "OTLPTraceExporter");
   requireText("packages/ops/src/otel.ts", "Production OTLP export requires HTTPS/TLS");
+  requireText("packages/deepseek-bridge/src/acp.ts", "methods.client.session.requestPermission");
+  requireText("packages/deepseek-bridge/src/acp.ts", "rev-parse");
+  requireText("packages/deepseek-bridge/src/acp.ts", "read-only");
   requireText("packages/auth/src/index.ts", "validateWebAuthnAssertion");
   requireText("packages/auth/src/index.ts", "evaluateBreakGlass");
   requireText("packages/agent-tools/src/index.ts", "OUTCOME_UNKNOWN");
@@ -213,6 +219,7 @@ function inspectStaticContracts(): void {
   requireText("package.json", "tsx scripts/check-contrast.ts");
   requireText("package.json", "tsx scripts/verify-triplo-aaa.ts");
   requireText("package.json", "tsx scripts/verify-staging.ts");
+  requireText("package.json", "tsx scripts/verify-deepseek-acp.ts");
   requireText(".github/workflows/ci.yml", "docker build --file Dockerfile.api");
   rejectText(".github/workflows/ci.yml", /docker compose up|docker push|npm publish/, "CI must not deploy or publish");
   for (const relative of ["docs/runbooks/deploy.md", "docs/runbooks/rollback.md", "docs/runbooks/backup-incidente.md"]) {

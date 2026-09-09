@@ -3,6 +3,7 @@
 **Auditoria:** F0-2026-09-09-v2
 **Revisão do CVG:** `fdfd408a8f91f2c7e4b84f850e6bb783aa172959`
 **Revisão observada do DeepSeek Harness:** `5dda764ed3aa172535a7967b06ff95d9cbfe536a`
+**Probe ACP local:** `READY`; `initialize` + `session/new` passaram pelo processo real via stdio; turno de modelo deliberadamente não executado sem API key.
 **Prompt normativo:** [prompt v2](prompt-state-of-the-art-triplo-aaa-2026-09-09-v2.txt), SHA-256 `34e886f59adacf8fda46d8d54bdede259705adc6e1521590cd3c281509b0e0d9`
 **Ambiente:** workspace local, Node 24.20.0, npm 11.19.0; Docker CLI/Compose presentes, daemon sem permissão; sem URL de staging, credencial, secret authority, provider, dados reais ou autorização de release.
 **Estado da auditoria:** a fotografia F0 foi revalidada durante o worktree atual; além da cópia v2, o bridge/contrato local, a boundary de secrets/auth/MFA/break-glass e o exporter OTLP protobuf foram implementados/testados sem credencial, egress, dado real ou release.
@@ -51,7 +52,7 @@ CVG Domain
 
 O Harness local não recebe acesso direto ao banco do CVG. O adapter DeepSeek valida health, commit, manifest, catálogo de tools, sessão, turno, approval, replay, timeout, cancelamento e proveniência, e não faz fallback automático para Mock.
 
-O ponto que não está provado é o último salto: a revisão observada de `/home/ricardo/deepseek-harness` documenta um harness plugin-based com perfis `dsh`, sessões, tools, approvals, replay e providers, mas não fornece um endpoint CVG `/v1/health`, `/v1/sessions` ou o contrato exato consumido pelo adapter. O worktree agora contém `apps/deepseek-bridge` e `packages/deepseek-bridge`, com port nativo explícito, health `UNAVAILABLE` por default, envelopes estruturados e testes known-good/known-bad; nenhum adapter nativo real foi conectado. Portanto a integração é **PARTIAL/SYNTHETIC_ONLY**, não real.
+O salto `/v1` customizado continua separado do processo Harness: a revisão observada de `/home/ricardo/deepseek-harness` não fornece endpoints CVG `/v1/health`, `/v1/sessions` ou o contrato exato consumido pelo adapter HTTP. Nesta continuação foi conectado um port ACP nativo opcional (`packages/deepseek-bridge/src/acp.ts`) que inicia o comando explicitamente, valida o `git HEAD`, o digest exato do manifesto e o agente esperado, então prova `initialize` e `session/new` contra o processo real. O probe observou commit `5dda764ed3aa172535a7967b06ff95d9cbfe536a` e profile digest `sha256:c64e05758755f57c3552263964fa2488bf910c022f2f8fe539d1b63904bad1ea`. Ainda não houve prompt/turno de modelo, provider externo, catálogo de tools CVG, approval/replay ou staging; portanto a integração é **PARTIAL/REAL-BOUNDARY**, não uma integração DeepSeek completa nem AAA.
 
 ### 2.3 Caminho de efeitos externos
 
@@ -96,8 +97,8 @@ API e worker são processos separados. O worker nomeia seis lanes (`outbox`, `jo
 | Fase | Status | Evidência conectada | Gap obrigatório / próxima prova |
 |---|---|---|---|
 | 0 Reaudit | **VERIFIED local / FAIL overall** | este documento, HEAD, control plane, código, CI, migrations e testes inspecionados | manter auditoria sincronizada após cada onda |
-| 1 DeepSeek Harness real | **BLOCKED/PARTIAL** | bridge thin `/v1` implementado, port nativo explícito e ausência do contrato externo documentada | executar processo real/health/version/capabilities com adapter autorizado |
-| 2 Contract matrix DeepSeek | **SYNTHETIC_ONLY** | `tests/unit/deepseek-bridge.test.ts`: unavailable, known-good HTTP, schema, timeout, cancel, approval/replay/provenance e mismatch | executar a mesma matrix contra bridge/Harness real, incluindo refusal/partial/model failure |
+| 1 DeepSeek Harness real | **PARTIAL/REAL-BOUNDARY** | port ACP explícito, attestation de commit/manifesto/agente e probe real `initialize` + `session/new` (`npm run verify:deepseek-acp`) | prompt/turno real, provider, secret authority, catálogo de tools CVG e staging autorizados |
+| 2 Contract matrix DeepSeek | **PARTIAL/SYNTHETIC_ONLY** | testes HTTP/port known-good/known-bad, timeout/cancel/approval/replay/provenance/mismatch + ACP real sem modelo | executar refusal/partial/model failure e a matriz completa contra Harness com credencial autorizada |
 | 3 Vertical provider | **SYNTHETIC_ONLY** | `tests/unit/integrations.test.ts` fecha outbox → effect ledger → provider → `OUTCOME_UNKNOWN` → reconciliação/receipt sem resend cego | provider sandbox autorizado, callback externo e settlement observados |
 | 4 Provider contract | **SYNTHETIC_ONLY** | interfaces e HTTP provider com fake fetch | contrato externo real, idempotency, status e assinatura |
 | 5 Unknown outcome | **SYNTHETIC_ONLY** | timeout/query/claim e vertical sintética preservam `providerRequestId`, consultam e finalizam o efeito | prova externa de timeout após efeito e query autoritativa |
@@ -141,7 +142,7 @@ API e worker são processos separados. O worker nomeia seis lanes (`outbox`, `jo
 
 ### Crítico
 
-1. **Integração DeepSeek real inexistente:** o bridge local agora torna o contrato explícito, mas o Harness externo observado não prova um adapter nativo compatível nem execução de modelo. Risco: declarar integração sem autoridade, perder proveniência ou aceitar resposta incompatível.
+1. **Turno DeepSeek real ainda não executado:** o boundary ACP real e `session/new` foram provados localmente com attestation, mas não há prompt/LLM/provider nem execução de tools. Risco: declarar integração completa sem provar resposta, refusal, usage, proveniência e falhas de modelo.
 2. **Staging/provider/secret authority não disponíveis:** sem esses recursos não há prova de egress seguro, receipt, callback, reconciliação, TLS, rotação ou dados operacionais.
 3. **Recovery/load/observability remotos não executados:** não há RTO/RPO, capacidade, error budget, collector ou diagnóstico operacional medidos.
 4. **Critics independentes finais negativos/ausentes:** os pareceres I1 rejeitam AAA; os I2 tentados nesta onda expiraram sem relatório. Não existe aprovação independente para promoção AAA.
@@ -162,7 +163,7 @@ API e worker são processos separados. O worker nomeia seis lanes (`outbox`, `jo
 ## 6. Plano de implementação por dependência
 
 1. **Contrato e evidência:** concluído localmente nesta revisão; deliverables canônicos, README/ADR/runbook e matriz PDP foram adicionados, sem promover gaps externos.
-2. **DeepSeek bridge:** concluído localmente como boundary thin; o port nativo, modelo real e egress continuam bloqueados até contrato/autoridade externos.
+2. **DeepSeek bridge:** boundary ACP real local concluído com default-deny, attestation, cancelamento e session binding; turno de modelo, tools, approvals, replay e egress continuam bloqueados até contrato/autoridade externos.
 3. **PDP/repositories:** inventariar rotas, commands, tool registry e export; adicionar guard estático/contract test e repositories explícitos onde faltam, sem substituir o domínio por snapshot.
 4. **Worker/ledger:** concluído o recorte local de budgets/backpressure/concorrência/poison/metrics/heartbeat e cadeia de auditoria; falta executar container, dead-letter operacional e métricas em staging, mantendo provider externo bloqueado até autoridade.
 5. **Observability:** concluído o recorte local do SDK/exporter OTLP protobuf, redaction e pontos API/worker/bridge; falta executar Collector/Prometheus/Grafana/Alertmanager, ligar métricas/logs correlacionados e provar SLO/alerts em staging.
@@ -173,7 +174,7 @@ API e worker são processos separados. O worker nomeia seis lanes (`outbox`, `jo
 ## 7. Rollback e contenção
 
 - Migrations existentes são append-only; qualquer alteração de schema usa migration nova, checksum e procedimento forward-fix.
-- Bridge, provider, collector e novas lanes entram desabilitados por padrão; configuração ausente retorna `BLOCKED`/capability unavailable.
+- Bridge ACP, provider, collector e novas lanes entram desabilitados por padrão; configuração incompleta, attestation divergente ou permission mode diferente de `read-only` retorna `BLOCKED`/capability unavailable.
 - Em falha de integração, manter Mock somente em ambiente local/teste, sink externo em quarentena e nenhum fallback para egress.
 - Em timeout externo, preservar `OUTCOME_UNKNOWN`, consultar/reconciliar por idempotency key e nunca reenviar cegamente.
 - Em restore, usar destino temporário quarentenado, invalidar sessões/autoridade e preservar outbox/effect/audit ledgers.
@@ -208,7 +209,7 @@ git diff --check
 ### Production-like, somente com autoridade
 
 - Compose/PostgreSQL real: migrations, RLS, runtime role, pool/timeout, concurrent CAS, worker e restore.
-- Bridge/Harness/DeepSeek: health/readiness, commit/manifest/tool digest, session/turn/approval/cancel/replay/provenance e failures da matriz.
+- Bridge/Harness/DeepSeek: health/readiness, commit/manifest/agente, ACP `initialize`/`session/new`, e depois session/turn/approval/cancel/replay/provenance e failures da matriz.
 - Provider sandbox: stage → approval → outbox → worker → request → receipt/callback → inbox → effect ledger → reconciliation.
 - Observability: collector, traces, metrics, logs redigidos, dashboards, alerts, SLO/error budget e runbooks acionados.
 - Browser/accessibility: Chromium/Firefox/WebKit × 375/768/1440, projeto stress de reflow/DPR/touch/reduced-motion, keyboard/focus/axe e zoom real.

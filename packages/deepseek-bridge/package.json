@@ -4,5 +4,5 @@
   "private": true,
   "type": "module",
   "exports": {".": "./src/index.ts"},
-  "dependencies": {"@cvg/agent-runtime": "*", "@cvg/contracts": "*", "zod": "^4.1.5"}
+  "dependencies": {"@agentclientprotocol/sdk": "1.4.0", "@cvg/agent-runtime": "*", "@cvg/contracts": "*", "zod": "^4.1.5"}
 }

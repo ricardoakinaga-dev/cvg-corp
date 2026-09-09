@@ -16,12 +16,13 @@
   "verification_state": "PARTIAL",
   "repository_state": "BROWNFIELD; prompt v2/F0 audit and canonical deliverables added; modular runtime/policy/tools/API/web/worker/release controls, application PDP/domain-command boundary, durable Tool Gateway ledger, provider/reconciliation fail-closed path with atomic claim/lease/fence, Docker secret seam, auth/MFA/break-glass boundary, distributed rate-limit schema, bounded six-lane worker with budgets/concurrency/backpressure/heartbeat/shutdown, explicit CI/release gates, resource limits, typed proposed SLO/alert contracts, local DeepSeek bridge contract, real OTLP protobuf exporter with redacted local proof, versioned observability Compose and Chromium/Firefox accessibility plus stress reflow/DPR/touch/reduced-motion evidence remain evidenced; native DeepSeek/provider/staging/collector/SLO/load/recovery/release and WebKit/assistive-tech/real-zoom evidence remain blocked",
   "instruction_scope_refs": ["docs/prompt-state-of-the-art-triplo-aaa.md", "docs/prompt-state-of-the-art-triplo-aaa-2026-09-09-v2.txt", "docs/final-closure-audit.md", "docs/architecture-audit-vNext.md", "docs/00-quality-bar-v1.md", "docs/01-prd-cvg.md", "docs/02-arquitetura-alvo.md", "docs/03-dominio-dados-contratos.md", "docs/04-motor-deepseek-e-plugins.md", "docs/05-seguranca-privacidade.md", "docs/06-operacao-qualidade-e-recuperacao.md", "docs/07-plano-execucao.md", "docs/08-rastreabilidade-e-decisoes.md", "docs/10-preparacao-m1.md", "docs/11-transicao-para-producao.md", "docs/12-estado-da-implementacao.md", ".gauntlet/bar-v3.json", "/home/ricardo/deepseek-harness/AGENTS.md", "/home/ricardo/deepseek-harness/docs/architecture.md"],
-  "last_gate_record": "VER-CVG-049",
-  "last_event_id": "EVT-CVG-20260909-VERIFY-075",
-  "state_revision": 67,
+  "last_gate_record": "VER-CVG-052",
+  "last_event_id": "EVT-CVG-20260909-VERIFY-080",
+  "state_revision": 70,
+  "latest_evidence_note": "Final ACP stdio boundary recheck passed through server wiring: initialize/session/new, exact engine HEAD and profile digest; typed ACP configuration, child-environment allowlist and fail-closed outcome mapping pass regression; no model turn/provider/staging claim.",
   "next_gate": "V3-AAA-001",
   "active_action_id": "CVG-FULL-STATE-OF-THE-ART:PRODUCTION-LIKE-EVIDENCE",
-  "blocked_by": ["Docker daemon permission denied on /var/run/docker.sock", "no authorized staging URL or external provider/secret authority", "external collector/observability/SLO, load/recovery, WebKit/assistive-tech/real-zoom and production-like browser evidence not executed", "fresh I2 critics timed out and were not available for approval; prior critics retain FAIL_WITH_LIMITATIONS"],
+  "blocked_by": ["Docker daemon permission denied on /var/run/docker.sock", "no authorized staging URL or external provider/secret authority; ACP model turn/provider remains unexecuted", "external collector/observability/SLO, load/recovery, WebKit/assistive-tech/real-zoom and production-like browser evidence not executed", "fresh I2 critics timed out and were not available for approval; prior critics retain FAIL_WITH_LIMITATIONS"],
   "human_approval_required": ["production release, real data, real provider, credential handling, break-glass, retention/residency, RTO/RPO/SLO and residual high/critical risk"],
-  "updated_at": "2026-09-09T19:25:18-03:00"
+  "updated_at": "2026-09-09T20:02:06-03:00"
 }

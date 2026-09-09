@@ -29,6 +29,22 @@ export const cvgConfigSchema = z.object({
   deepseekRuntimeEnabled: z.boolean().default(false),
   deepseekExpectedEngineCommit: z.string().regex(/^[a-f0-9]{40}$/).nullable().default(null),
   deepseekExpectedManifestVersion: z.string().trim().min(1).max(120).nullable().default(null),
+  deepseekExpectedToolNames: z.array(z.string().trim().min(1).max(160)).max(256).default([]),
+  deepseekBridgeTimeoutMs: z.number().int().min(100).max(120_000).default(5_000),
+  deepseekBridgeHost: z.string().trim().min(1).max(255).default("127.0.0.1"),
+  deepseekBridgePort: z.number().int().min(1).max(65_535).default(4_320),
+  deepseekAcpCommand: z.string().trim().min(1).max(512).nullable().default(null),
+  deepseekAcpArgsJson: z.string().trim().max(16_000).nullable().default(null),
+  deepseekAcpEngineRoot: z.string().trim().min(1).max(2_000).nullable().default(null),
+  deepseekAcpWorkspaceRoot: z.string().trim().min(1).max(2_000).nullable().default(null),
+  deepseekAcpManifestPath: z.string().trim().min(1).max(2_000).nullable().default(null),
+  deepseekAcpDshHome: z.string().trim().min(1).max(2_000).nullable().default(null),
+  deepseekAcpExpectedAgentName: z.string().trim().min(1).max(200).default("deepseek-harness-acp"),
+  deepseekAcpExpectedAgentVersion: z.string().trim().min(1).max(120).nullable().default(null),
+  deepseekAcpModel: z.string().trim().min(1).max(200).default("deepseek-acp"),
+  deepseekAcpPermissionMode: z.literal("read-only").default("read-only"),
+  deepseekAcpStartupTimeoutMs: z.number().int().min(100).max(120_000).default(15_000),
+  deepseekAcpShutdownTimeoutMs: z.number().int().min(100).max(30_000).default(2_000),
   deepseekBearerTokenRef: z.string().trim().regex(/^[A-Za-z0-9._:-]{1,160}$/).nullable().default(null),
   secretDir: z.string().trim().min(1).max(1_024).default("/run/secrets/cvg"),
   workerOrganizationId: z.string().trim().min(1).max(200).nullable().default(null),
@@ -87,7 +103,7 @@ export function validateCvgConfig(value: unknown): CvgConfig {
   return parsed.data;
 }
 
-const knownEnvironmentKeys = new Set(["NODE_ENV", "SESSION_TTL_MINUTES", "CVG_AUTH_MFA_MODE", "CVG_PASSWORD_MIN_LENGTH", "CVG_PASSWORD_MAX_AGE_DAYS", "CVG_AUTH_MAX_FAILED_ATTEMPTS", "CVG_AUTH_LOCKOUT_MINUTES", "CVG_AUTH_CHALLENGE_TTL_SECONDS", "CVG_AUTH_MAX_CHALLENGE_ATTEMPTS", "DATABASE_URL", "CVG_HOST", "CVG_API_PORT", "CVG_WEB_ORIGIN", "CVG_TRUST_PROXY", "CVG_STORAGE", "CVG_DEMO_MODE", "CVG_BOOTSTRAP_PASSWORD", "CVG_DEEPSEEK_BASE_URL", "CVG_DEEPSEEK_RUNTIME_ENABLED", "CVG_DEEPSEEK_EXPECTED_ENGINE_COMMIT", "CVG_DEEPSEEK_EXPECTED_MANIFEST_VERSION", "CVG_DEEPSEEK_BEARER_TOKEN_REF", "CVG_SECRET_DIR", "CVG_WORKER_ORGANIZATION_ID", "CVG_WORKER_ID", "CVG_WORKER_INTERVAL_MS", "CVG_WORKER_MAX_OUTSTANDING", "CVG_WORKER_SINK_MODE", "CVG_WORKER_HEARTBEAT_FILE", "CVG_SECRET_PROVIDER", "CVG_MESSAGING_PROVIDER_ENDPOINT", "CVG_MESSAGING_PROVIDER_ALLOWED_HOSTS", "CVG_MESSAGING_CREDENTIAL_REF", "CVG_MESSAGING_SEND_PATH", "CVG_MESSAGING_QUERY_PATH", "CVG_RATE_LIMIT_BACKEND", "CVG_RATE_LIMIT_REQUESTS_PER_WINDOW", "CVG_RATE_LIMIT_WINDOW_SECONDS"]);
+const knownEnvironmentKeys = new Set(["NODE_ENV", "SESSION_TTL_MINUTES", "CVG_AUTH_MFA_MODE", "CVG_PASSWORD_MIN_LENGTH", "CVG_PASSWORD_MAX_AGE_DAYS", "CVG_AUTH_MAX_FAILED_ATTEMPTS", "CVG_AUTH_LOCKOUT_MINUTES", "CVG_AUTH_CHALLENGE_TTL_SECONDS", "CVG_AUTH_MAX_CHALLENGE_ATTEMPTS", "DATABASE_URL", "CVG_HOST", "CVG_API_PORT", "CVG_WEB_ORIGIN", "CVG_TRUST_PROXY", "CVG_STORAGE", "CVG_DEMO_MODE", "CVG_BOOTSTRAP_PASSWORD", "CVG_DEEPSEEK_BASE_URL", "CVG_DEEPSEEK_RUNTIME_ENABLED", "CVG_DEEPSEEK_EXPECTED_ENGINE_COMMIT", "CVG_DEEPSEEK_EXPECTED_MANIFEST_VERSION", "CVG_DEEPSEEK_EXPECTED_TOOL_NAMES", "CVG_DEEPSEEK_BRIDGE_TIMEOUT_MS", "CVG_DEEPSEEK_BRIDGE_HOST", "CVG_DEEPSEEK_BRIDGE_PORT", "CVG_DEEPSEEK_ACP_COMMAND", "CVG_DEEPSEEK_ACP_ARGS_JSON", "CVG_DEEPSEEK_ACP_ENGINE_ROOT", "CVG_DEEPSEEK_ACP_WORKSPACE_ROOT", "CVG_DEEPSEEK_ACP_MANIFEST_PATH", "CVG_DEEPSEEK_ACP_DSH_HOME", "CVG_DEEPSEEK_ACP_EXPECTED_AGENT_NAME", "CVG_DEEPSEEK_ACP_EXPECTED_AGENT_VERSION", "CVG_DEEPSEEK_ACP_MODEL", "CVG_DEEPSEEK_ACP_PERMISSION_MODE", "CVG_DEEPSEEK_ACP_STARTUP_TIMEOUT_MS", "CVG_DEEPSEEK_ACP_SHUTDOWN_TIMEOUT_MS", "CVG_DEEPSEEK_BEARER_TOKEN_REF", "CVG_SECRET_DIR", "CVG_WORKER_ORGANIZATION_ID", "CVG_WORKER_ID", "CVG_WORKER_INTERVAL_MS", "CVG_WORKER_MAX_OUTSTANDING", "CVG_WORKER_SINK_MODE", "CVG_WORKER_HEARTBEAT_FILE", "CVG_SECRET_PROVIDER", "CVG_MESSAGING_PROVIDER_ENDPOINT", "CVG_MESSAGING_PROVIDER_ALLOWED_HOSTS", "CVG_MESSAGING_CREDENTIAL_REF", "CVG_MESSAGING_SEND_PATH", "CVG_MESSAGING_QUERY_PATH", "CVG_RATE_LIMIT_BACKEND", "CVG_RATE_LIMIT_REQUESTS_PER_WINDOW", "CVG_RATE_LIMIT_WINDOW_SECONDS"]);
 
 function parseEnvironmentValue(value: string | undefined, parser: (value: string) => unknown): unknown {
   return value === undefined ? undefined : parser(value);
@@ -119,6 +135,22 @@ export function loadCvgConfig(environment: NodeJS.ProcessEnv = process.env): Cvg
     ...(environment.CVG_DEEPSEEK_RUNTIME_ENABLED === undefined ? {} : { deepseekRuntimeEnabled: parseEnvironmentValue(environment.CVG_DEEPSEEK_RUNTIME_ENABLED, (value) => booleanFromEnv.parse(value)) }),
     ...(environment.CVG_DEEPSEEK_EXPECTED_ENGINE_COMMIT === undefined ? {} : { deepseekExpectedEngineCommit: environment.CVG_DEEPSEEK_EXPECTED_ENGINE_COMMIT }),
     ...(environment.CVG_DEEPSEEK_EXPECTED_MANIFEST_VERSION === undefined ? {} : { deepseekExpectedManifestVersion: environment.CVG_DEEPSEEK_EXPECTED_MANIFEST_VERSION }),
+    ...(environment.CVG_DEEPSEEK_EXPECTED_TOOL_NAMES === undefined ? {} : { deepseekExpectedToolNames: environment.CVG_DEEPSEEK_EXPECTED_TOOL_NAMES.split(",").map((value) => value.trim()).filter(Boolean) }),
+    ...(environment.CVG_DEEPSEEK_BRIDGE_TIMEOUT_MS === undefined ? {} : { deepseekBridgeTimeoutMs: Number(environment.CVG_DEEPSEEK_BRIDGE_TIMEOUT_MS) }),
+    ...(environment.CVG_DEEPSEEK_BRIDGE_HOST === undefined ? {} : { deepseekBridgeHost: environment.CVG_DEEPSEEK_BRIDGE_HOST }),
+    ...(environment.CVG_DEEPSEEK_BRIDGE_PORT === undefined ? {} : { deepseekBridgePort: Number(environment.CVG_DEEPSEEK_BRIDGE_PORT) }),
+    ...(environment.CVG_DEEPSEEK_ACP_COMMAND === undefined ? {} : { deepseekAcpCommand: environment.CVG_DEEPSEEK_ACP_COMMAND }),
+    ...(environment.CVG_DEEPSEEK_ACP_ARGS_JSON === undefined ? {} : { deepseekAcpArgsJson: environment.CVG_DEEPSEEK_ACP_ARGS_JSON }),
+    ...(environment.CVG_DEEPSEEK_ACP_ENGINE_ROOT === undefined ? {} : { deepseekAcpEngineRoot: environment.CVG_DEEPSEEK_ACP_ENGINE_ROOT }),
+    ...(environment.CVG_DEEPSEEK_ACP_WORKSPACE_ROOT === undefined ? {} : { deepseekAcpWorkspaceRoot: environment.CVG_DEEPSEEK_ACP_WORKSPACE_ROOT }),
+    ...(environment.CVG_DEEPSEEK_ACP_MANIFEST_PATH === undefined ? {} : { deepseekAcpManifestPath: environment.CVG_DEEPSEEK_ACP_MANIFEST_PATH }),
+    ...(environment.CVG_DEEPSEEK_ACP_DSH_HOME === undefined ? {} : { deepseekAcpDshHome: environment.CVG_DEEPSEEK_ACP_DSH_HOME }),
+    ...(environment.CVG_DEEPSEEK_ACP_EXPECTED_AGENT_NAME === undefined ? {} : { deepseekAcpExpectedAgentName: environment.CVG_DEEPSEEK_ACP_EXPECTED_AGENT_NAME }),
+    ...(environment.CVG_DEEPSEEK_ACP_EXPECTED_AGENT_VERSION === undefined ? {} : { deepseekAcpExpectedAgentVersion: environment.CVG_DEEPSEEK_ACP_EXPECTED_AGENT_VERSION }),
+    ...(environment.CVG_DEEPSEEK_ACP_MODEL === undefined ? {} : { deepseekAcpModel: environment.CVG_DEEPSEEK_ACP_MODEL }),
+    ...(environment.CVG_DEEPSEEK_ACP_PERMISSION_MODE === undefined ? {} : { deepseekAcpPermissionMode: environment.CVG_DEEPSEEK_ACP_PERMISSION_MODE }),
+    ...(environment.CVG_DEEPSEEK_ACP_STARTUP_TIMEOUT_MS === undefined ? {} : { deepseekAcpStartupTimeoutMs: Number(environment.CVG_DEEPSEEK_ACP_STARTUP_TIMEOUT_MS) }),
+    ...(environment.CVG_DEEPSEEK_ACP_SHUTDOWN_TIMEOUT_MS === undefined ? {} : { deepseekAcpShutdownTimeoutMs: Number(environment.CVG_DEEPSEEK_ACP_SHUTDOWN_TIMEOUT_MS) }),
     ...(environment.CVG_DEEPSEEK_BEARER_TOKEN_REF === undefined ? {} : { deepseekBearerTokenRef: environment.CVG_DEEPSEEK_BEARER_TOKEN_REF }),
     ...(environment.CVG_SECRET_DIR === undefined ? {} : { secretDir: environment.CVG_SECRET_DIR }),
     ...(environment.CVG_WORKER_ORGANIZATION_ID === undefined ? {} : { workerOrganizationId: environment.CVG_WORKER_ORGANIZATION_ID }),

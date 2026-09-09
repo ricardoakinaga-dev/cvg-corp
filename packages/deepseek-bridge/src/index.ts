@@ -512,3 +512,5 @@ export const deepSeekBridgeSchemas = {
   replay: replayWireSchema,
   promotion: promotionWireSchema
 } as const;
+
+export * from "./acp.ts";

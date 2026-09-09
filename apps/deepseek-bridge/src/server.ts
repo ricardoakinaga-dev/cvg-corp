@@ -13,6 +13,7 @@ import {
   parseBridgeSessionInput,
   parseBridgeTurnInput,
   toErrorEnvelope,
+  createAcpNativeHarnessPortFromEnvironment,
   type DeepSeekBridgeConfig,
   type DeepSeekNativeHarnessPort
 } from "@cvg/deepseek-bridge";
@@ -227,7 +228,8 @@ async function dispatch(
 }
 
 export function createDeepSeekBridgeServer(options: DeepSeekBridgeServerOptions = {}): DeepSeekBridgeServer {
-  const bridge = options.bridge ?? new DeepSeekBridge(bridgeConfigFromEnvironment(process.env, options.nativePort));
+  const nativePort = options.nativePort ?? (options.bridge ? undefined : createAcpNativeHarnessPortFromEnvironment(process.env));
+  const bridge = options.bridge ?? new DeepSeekBridge(bridgeConfigFromEnvironment(process.env, nativePort));
   const maxBodyBytes = options.maxBodyBytes ?? defaultMaxBodyBytes;
   const otelRuntime = options.telemetry ? null : createOpenTelemetryRuntime({ serviceName: "cvg-deepseek-bridge", requireTls: process.env.NODE_ENV === "production" });
   const telemetry = options.telemetry ?? new OpsTelemetry({
@@ -249,7 +251,10 @@ export function createDeepSeekBridgeServer(options: DeepSeekBridgeServerOptions 
     });
   });
   if (process.env.NODE_ENV === "production" && otelRuntime?.status !== "READY") throw new Error("Produção exige exportação OTLP OpenTelemetry pronta para o bridge.");
-  server.once("close", () => { void otelRuntime?.shutdown(); });
+  server.once("close", () => {
+    void bridge.shutdown().catch(() => undefined);
+    void otelRuntime?.shutdown();
+  });
   return { server, bridge, telemetry };
 }
 

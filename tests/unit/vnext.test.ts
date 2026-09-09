@@ -190,6 +190,24 @@ test("typed configuration rejects unknown CVG keys and insecure production", () 
   assert.throws(() => loadCvgConfig({ NODE_ENV: "production", CVG_DEMO_MODE: "false", CVG_WEB_ORIGIN: "https://example.test", CVG_STORAGE: "memory", CVG_SECRET_PROVIDER: "none", CVG_DEEPSEEK_RUNTIME_ENABLED: "false" }), (error: unknown) => error instanceof ConfigError);
 });
 
+test("typed configuration accepts the explicit ACP boundary without enabling it implicitly", () => {
+  const config = loadCvgConfig({
+    NODE_ENV: "test",
+    CVG_DEEPSEEK_ACP_COMMAND: "node",
+    CVG_DEEPSEEK_ACP_ARGS_JSON: '["--version"]',
+    CVG_DEEPSEEK_ACP_ENGINE_ROOT: "/srv/deepseek-harness",
+    CVG_DEEPSEEK_ACP_WORKSPACE_ROOT: "/srv/cvg-workspace",
+    CVG_DEEPSEEK_ACP_MANIFEST_PATH: "/srv/dsh-home/profiles/acp/package.json",
+    CVG_DEEPSEEK_EXPECTED_ENGINE_COMMIT: "0000000000000000000000000000000000000000",
+    CVG_DEEPSEEK_EXPECTED_MANIFEST_VERSION: "sha256:approved",
+    CVG_DEEPSEEK_ACP_PERMISSION_MODE: "read-only"
+  });
+  assert.equal(config.deepseekAcpCommand, "node");
+  assert.equal(config.deepseekAcpPermissionMode, "read-only");
+  assert.equal(config.deepseekRuntimeEnabled, false);
+  assert.throws(() => loadCvgConfig({ CVG_DEEPSEEK_ACP_PERMISSION_MODE: "workspace-write" }), (error: unknown) => error instanceof ConfigError);
+});
+
 test("local rate limiting is bounded and production requires a distributed seam", async () => {
   const limiter = new MemoryRateLimiter(2);
   assert.equal((await limiter.consume({ key: "route:test", limit: 2, windowMs: 60_000 })).allowed, true);

@@ -7,7 +7,7 @@ Resultado: `FAIL_WITH_LIMITATIONS`; Triplo AAA não provado. A escala abaixo (0�
 | 1 | Arquitetura e boundaries | 4 | typecheck, static, audit F0 | `docs/final-closure-audit.md` | produção não executada | drift de composição |
 | 2 | Domínio e fonte de verdade | 3 | testes de domínio/API | `packages/domain/` | repositories universais incompletos | inconsistência de projeção |
 | 3 | Dados, RLS e migrações | 4 | migrations/RLS sintéticos | `db/migrations/` | staging PostgreSQL ausente | isolamento operacional não medido |
-| 4 | DeepSeek bridge | 3 | 7 testes de contrato HTTP/port | `packages/deepseek-bridge/` | adapter nativo real ausente | engine/modelo indisponível |
+| 4 | DeepSeek bridge | 3 | testes HTTP/port + probe real ACP `initialize`/`session/new` com attestation de commit e manifesto | `packages/deepseek-bridge/`; `scripts/verify-deepseek-acp.ts` | turno de modelo, tools CVG, approval/replay, provider e staging não executados | resposta/usage/proveniência e falhas do engine não observadas |
 | 5 | Provider externo | 3 | vertical sintética outbox → provider → unknown → reconciliação, contratos e outbox | `docs/provider-production-integration.md`; `tests/unit/integrations.test.ts` | sandbox/callback/receipt reais não executados | duplicidade/unknown em produção |
 | 6 | Idempotência e efeitos | 3 | CAS/ledger/reconciliation fixtures | `packages/persistence/` | prova completa de restart ausente | efeito duplicado |
 | 7 | PDP universal | 3 | policy/tool/API tests | `docs/pdp-universal-coverage.md` | matriz 100% route/domain pendente | bypass de autorização |
@@ -27,4 +27,4 @@ Resultado: `FAIL_WITH_LIMITATIONS`; Triplo AAA não provado. A escala abaixo (0�
 
 ## Veredito
 
-Os pontos fortes locais são reais e reproduzíveis. Os bloqueadores críticos são o adapter nativo DeepSeek, provider/secret/staging reais, observabilidade, WebKit/assistive tech, carga/chaos, recovery operacional e CI remoto. O próximo gate só pode mudar o veredito com evidência correspondente ao mesmo commit, não com documentação adicional isolada.
+Os pontos fortes locais são reais e reproduzíveis. O boundary ACP nativo agora tem prova local, mas os bloqueadores críticos continuam sendo turno DeepSeek/provider/secret/staging reais, observabilidade, WebKit/assistive tech, carga/chaos, recovery operacional e CI remoto. O próximo gate só pode mudar o veredito com evidência correspondente ao mesmo commit, não com documentação adicional isolada.

@@ -334,8 +334,23 @@ Checkpoint de recovery: o pointer antigo `PRODUCTION-LIKE-EVIDENCE` foi reconcil
 
 O gate local permanece PASS_WITH_LIMITATIONS: typecheck, 100/100 testes, lint 113, static 39/115, PDP 64/66/12, build, verify:production estrutural, npm audit e diff check passaram. `verify:triplo-aaa` continua `AAA_NOT_PROVEN`/exit 2 e `verify:staging` continua `STAGING_EVIDENCE_INCOMPLETE`/exit 2 sem rede. O pointer corrente permanece `CVG-FULL-STATE-OF-THE-ART:PRODUCTION-LIKE-EVIDENCE`; nenhuma integração externa, credencial, dado real, egress ou release foi acionada. A cópia canônica do prompt mantém SHA-256 34e886f59adacf8fda46d8d54bdede259705adc6e1521590cd3c281509b0e0d9; o anexo temporário não está presente para nova comparação.
 
+## Current checkpoint — 2026-09-09 19:46
+
+`EVT-CVG-20260909-IMPLEMENT-076`, `EVT-CVG-20260909-VERIFY-077` e `VER-CVG-050` fecham a lane de integração ACP nativa opcional. `@agentclientprotocol/sdk` foi adicionado ao bridge; `DeepSeekAcpNativeHarnessPort` inicia o processo configurado sem shell, drena stderr sem exposição, responde permissions com `cancelled`, propaga cancelamento, faz attestation de `git HEAD` e do manifesto ACP, vincula `session/new` ao contexto CVG e protege idempotência por chave durante o processo. A fábrica permanece desabilitada com configuração incompleta ou permission mode diferente de `read-only`.
+
+O verificador executado contra `/home/ricardo/deepseek-harness` confirmou pelo caminho de criação do servidor `READY`, `initialize` e `session/new`, com commit `5dda764ed3aa172535a7967b06ff95d9cbfe536a` e digest `sha256:c64e05758755f57c3552263964fa2488bf910c022f2f8fe539d1b63904bad1ea`. O turno LLM não foi executado sem API key; isso não prova provider, tools CVG, approvals, replay, staging ou AAA. A regressão passou 103 testes (1 skip condicional), typecheck, lint 115, build, static, licenses e diff check. O pointer continua `CVG-FULL-STATE-OF-THE-ART:PRODUCTION-LIKE-EVIDENCE` e o veredito `FAIL_WITH_LIMITATIONS`.
+
 ## Current checkpoint — 2026-09-09 19:25
 
 `EVT-CVG-20260909-IMPLEMENT-074`, `EVT-CVG-20260909-VERIFY-075` e `VER-CVG-049` fecham a lane local de reflow/accessibility stress. O Playwright agora executa 56 casos nos seis projetos Chromium/Firefox e no projeto Chromium stress: 52 pass, 4 skips intencionais; o stress prova 320 CSS px, DPR 2, touch, `prefers-reduced-motion`, foco e ausência de overflow, e axe totaliza 8/8 estados. Typecheck, 100/100 testes, lint 113, static 39/115, PDP 64/66/12, build, produção estrutural, contraste 7/7, tokens 0 high/critical + 73 medium, licenses 206, npm audit 0 e diff check passaram.
 
 `verify:triplo-aaa` continua `AAA_NOT_PROVEN`/exit 2 por registry bloqueado e evidência externa ausente; `verify:staging` continua `STAGING_EVIDENCE_INCOMPLETE`/exit 2 sem URL e sem request de rede. WebKit, leitor de tela, zoom real de 200%, baseline visual, CI remoto, DeepSeek/provider/secret authority, Collector/SLO, load/chaos/recovery e critics aprovadores permanecem BLOCKED/NOT_RUN. O veredito segue `FAIL_WITH_LIMITATIONS`, sem promoção AAA e sem integração externa, credencial, dado real, egress ou release.
+
+## Current checkpoint — 2026-09-09 19:57
+
+`EVT-CVG-20260909-IMPLEMENT-078`, `EVT-CVG-20260909-VERIFY-079` e `VER-CVG-051` fecham o endurecimento do contrato ACP: as variáveis `CVG_DEEPSEEK_ACP_*` agora pertencem ao config typed sem habilitação implícita, o subprocesso recebe apenas o ambiente mínimo permitido e o gate estrutural exige o adapter/verificador reais. A regressão passou 104 testes (103/1 skip), typecheck, lint 115, build, static 39/117, PDP 64/66/12, verify:production estrutural, licenses 207, npm audit 0 e diff check; o probe ACP real segue `READY` até `initialize/session/new`.
+
+`verify:triplo-aaa` permanece `AAA_NOT_PROVEN`/exit 2 e `verify:staging` `STAGING_EVIDENCE_INCOMPLETE`/exit 2 sem URL, sem request de rede. Não houve turno LLM por ausência de API key, nem provider, secret authority, collector/SLO, load/recovery, WebKit/assistive/zoom real, CI remoto ou critics aprovadores. O pointer continua `CVG-FULL-STATE-OF-THE-ART:PRODUCTION-LIKE-EVIDENCE`.
+## Current checkpoint — 2026-09-09 20:02
+
+`EVT-CVG-20260909-VERIFY-080` e `VER-CVG-052` reexecutam o probe pelo `createDeepSeekBridgeServer` contra o Harness ACP real após o endurecimento do mapeamento de resultados. O gate passou: `READY`, `initialize`, `session/new`, attestation de commit/manifesto, binding de contexto e capacidades fail-closed; `modelTurn` permanece `NOT_RUN_NO_API_KEY`. A evidência segue `REAL-BOUNDARY/PARTIAL`, sem promoção a AAA. O pointer continua `CVG-FULL-STATE-OF-THE-ART:PRODUCTION-LIKE-EVIDENCE`.

@@ -37,3 +37,7 @@ Três novos workers read-only (`Arendt` `01a083c9-4675-7ea3-bad6-f0829aea7345`, 
 # Registro de tentativa de crítica fresca — round 2 — 2026-09-09
 
 Após as mudanças de autenticação, UI, worker e fault harness, foi aberta uma crítica ampla read-only (`Zeno`, `01a08418-696a-7d61-b0fc-eb459aa519e5`) e, em seguida, três críticas estreitas independentes (`Carver`, `Aquinas`, `Hilbert`) para auth, frontend e operations. Nenhum relatório retornou após as janelas de espera; todos foram encerrados sem escrita. Esta tentativa é `NOT_RUN_TIMEOUT`, não aprovação. Os pareceres efetivamente disponíveis abaixo continuam sendo a evidência negativa/limitada da rodada anterior.
+
+## Tentativa posterior — gates de CI/release — 2026-09-09
+
+Dois workers read-only em contexto fresco (`Kant`, `01a08434-0f2c-79e1-bab9-efe9428a7a6e`, backend/segurança/reliability; `Halley`, `01a08434-0f8d-75c2-8d05-ccb9a50194a0`, frontend/runtime/operação) foram iniciados para revisar a barra corrente após os gates de CI/release. Após janelas de espera e pedido de encerramento conciso, ambos foram encerrados ainda em `running`, sem parecer entregue e sem escrita no workspace. Esta tentativa é `NOT_RUN_TIMEOUT`, não aprovação. A crítica negativa/limitada anterior permanece vigente e a revisão independente final continua requisito para qualquer decisão AAA.

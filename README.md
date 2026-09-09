@@ -12,13 +12,18 @@ npm run dev
 
 Abra `http://127.0.0.1:5173`. A demonstração sintética pode ser acessada pelo botão próprio da tela inicial. Para login convencional, use as credenciais geradas em `.local/bootstrap-credentials.json`.
 
-O modo padrão usa memória descartável para permanecer executável sem dependências externas. O adapter PostgreSQL implementa bootstrap, `BEGIN`/`COMMIT`/`ROLLBACK`, lock advisory, CAS de revisão, snapshot JSONB, journal independente com escopo organizacional, ledgers duráveis de auditoria/receipts, leituras normalizadas de guardians/patients/appointments com escopo de transação, outbox com claim/lease/fencing, ledger idempotente de uso, inbox atômico com assinatura/verificação configurável, ledger de efeitos externos com recibo obrigatório, reconciliação explícita, `ENABLE/FORCE RLS` nas 54 tabelas de domínio e FKs cross-table com proveniência organizacional. As migrations `001_initial.sql`–`019_runtime_scope_guards.sql` são aplicadas em ordem e migrations já aplicadas não devem ser editadas. O drill de restore exporta e verifica snapshot + outbox + usage + inbox + efeitos externos por digest, encapsula o bundle em AES-256-GCM com `keyRef`, rejeita adulteração e restaura em destino temporário quarentenado; inclui um cenário sintético de crash após marcador de dispatch sem reenvio cego. Ele exige migrations aplicadas e conexão acessível. O JSONB ainda é a fonte agregada de reconstrução em transição; PDP universal em todas as rotas/repositories, provider real e consulta externa de reconciliação ainda não foram promovidos. Sem PostgreSQL disponível, `CVG_STORAGE=postgres` falha fechado para não simular durabilidade. Nenhum banco existente é removido por scripts do projeto.
+O modo padrão usa memória descartável para permanecer executável sem dependências externas. O adapter PostgreSQL implementa bootstrap, `BEGIN`/`COMMIT`/`ROLLBACK`, lock advisory, CAS de revisão, snapshot JSONB, journal independente com escopo organizacional, ledgers duráveis de auditoria/receipts, leituras normalizadas de guardians/patients/appointments com escopo de transação, outbox com claim/lease/fencing, ledger idempotente de uso, inbox atômico com assinatura/verificação configurável, ledger de efeitos externos com recibo obrigatório, reconciliação explícita, `ENABLE/FORCE RLS` nas 54 tabelas de domínio e FKs cross-table com proveniência organizacional. As migrations `001_initial.sql`–`020_auth_security_boundary.sql` são aplicadas em ordem e migrations já aplicadas não devem ser editadas. O drill de restore exporta e verifica snapshot + outbox + usage + inbox + efeitos externos por digest, encapsula o bundle em AES-256-GCM com `keyRef`, rejeita adulteração e restaura em destino temporário quarentenado; inclui um cenário sintético de crash após marcador de dispatch sem reenvio cego. Ele exige migrations aplicadas e conexão acessível. O JSONB ainda é a fonte agregada de reconstrução em transição; PDP universal em todas as rotas/repositories, provider real e consulta externa de reconciliação ainda não foram promovidos. Sem PostgreSQL disponível, `CVG_STORAGE=postgres` falha fechado para não simular durabilidade. Nenhum banco existente é removido por scripts do projeto.
 
 ## Verificação
 
 ```bash
 npm run typecheck
+npm run lint
 npm test
+npm run test:contract
+npm run test:security
+npm run test:database
+npm run test:fault
 npm run build
 npm run verify:static
 npm run test:e2e
@@ -62,4 +67,4 @@ O caminho de IA usa a interface `AgentRuntime`, um adapter Mock determinístico 
 
 ## Estado de qualidade
 
-Os gates locais determinísticos passam atualmente: typecheck, 56 testes unitários/integração, build Vite, 15 E2E em 375/768/1440, verificação estática, política de licenças, contraste, tokens, benchmark sintético, audit de dependências, SBOM, Compose estrutural e diff check. A barra v3 permanece `FAIL_WITH_LIMITATIONS`: produção, dados reais, secret manager real, provider externo, entrega efetiva, scan de imagem remoto, carga production-like, browsers adicionais, SLO/alertas e aprovação independente ainda não foram provados. O sistema não deve ser apresentado como Triplo AAA ou release pronto.
+Os gates locais determinísticos passam atualmente: lint repository-owned, typecheck, 65 testes unitários/integração, build Vite, 22 E2E executados em 375/768/1440, verificação estática, testes de contrato/segurança/banco/fault, política de licenças, contraste, tokens, benchmark sintético, audit de dependências, SBOM, Compose estrutural e diff check. O workflow CI também declara E2E, PostgreSQL efêmero, migrations, restore e scan de imagens como gates bloqueantes. A barra v3 permanece `FAIL_WITH_LIMITATIONS`: produção, dados reais, secret manager real, provider externo, entrega efetiva, scan de imagem remoto, carga production-like, browsers adicionais, SLO/alertas e aprovação independente ainda não foram provados. O sistema não deve ser apresentado como Triplo AAA ou release pronto.

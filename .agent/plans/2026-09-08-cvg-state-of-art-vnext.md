@@ -81,7 +81,7 @@ Outbox/inbox/effect ledger têm lease/fencing, retry bounded, backoff, quarantin
 
 <!-- engineering-framework: active_action_id=CVG-FULL-STATE-OF-THE-ART:PRODUCTION-LIKE-EVIDENCE -->
 
-1. `CVG-FULL-STATE-OF-THE-ART:PRODUCTION-LIKE-EVIDENCE` — obter e executar, somente em ambiente autorizado, a evidência production-like que ainda impede o gate integral; manter a ausência de autoridade como `NOT_RUN`.
+1. `CVG-FULL-STATE-OF-THE-ART:PRODUCTION-LIKE-EVIDENCE` — executar PostgreSQL/Docker, CI remoto, imagem/container smoke, provider/secret authority, fault/recovery distribuído, carga/SLO e matriz de browsers/acessibilidade somente quando o ambiente e a aprovação correspondentes existirem.
 
 ### Onda A — fundamento seguro
 
@@ -141,6 +141,14 @@ Resultado: migration `020_auth_security_boundary.sql`, package `@cvg/auth`, MFA/
 - Atualizar a matriz de falhas e executar novamente os gates completos antes de registrar o checkpoint.
 
 Resultado: os entrypoints compartilham `CvgWorkerApplication`, o sink padrão continua em quarentena, e `tests/unit/worker.test.ts`/`tests/integration/faults.test.ts` passaram. O worker ainda não executa provider externo ou os loops de jobs/reconciliation/notifications/maintenance em ambiente real.
+
+### Ação concluída — gates de CI e release
+
+- Adicionar lint repository-owned e comandos separados para contrato, segurança, banco/recovery e fault/worker.
+- Tornar o workflow explícito e bloqueante para instalação do Chromium, PostgreSQL efêmero, migrations, verificação PostgreSQL/RLS, restore, auditorias visuais, E2E, SBOM e build/scan de imagens.
+- Fazer `npm run verify:production` executar os gates locais e validar o Compose com valores sintéticos sem iniciar serviços; manter `--production` fail-closed sem configuração real.
+
+Resultado: `npm run verify:production` passou com lint, typecheck, testes, build, static (30 artefatos/101 fontes), E2E Chromium, auditorias, SBOM, benchmark, diff check e Compose estrutural. O workflow está versionado, mas CI remoto, PostgreSQL do serviço, build/scan de imagens e startup integrado permanecem `NOT_RUN` nesta máquina.
 
 ### Ação corrente — evidência production-like
 
@@ -210,3 +218,11 @@ Após `EVT-CVG-20260909-CORRECTION-044`, o control plane foi revalidado e os pon
 ## Current checkpoint — 2026-09-09 00:22
 
 `VER-CVG-036` registra nova execução verde de `npm run verify:all` e `git diff --check`. O pointer de recuperação não mudou: `CVG-FULL-STATE-OF-THE-ART:PRODUCTION-LIKE-EVIDENCE`. O núcleo local permanece verificável, enquanto a barra integral segue `FAIL_WITH_LIMITATIONS` até a evidência externa e a revisão independente exigidas.
+
+## Current checkpoint — 2026-09-09 00:42
+
+`VER-CVG-037` registra a execução do novo gate agregado: lint repository-owned, typecheck, contratos, segurança, banco/recovery, fault/worker, suíte unitária/integração, build, static (30/101), E2E Chromium, contraste, tokens, dependências, licenças, SBOM, benchmark e `git diff --check`. O Compose foi validado estruturalmente com valores sintéticos e nenhum serviço foi iniciado. A verificação `--production` falhou fechado por ausência de configuração real. O workflow agora declara gates remotos de PostgreSQL/migrations/restore, browser, visual, SBOM e containers, mas esses gates continuam `NOT_RUN` nesta máquina. O artifact segue `IN_PROGRESS`/`FAIL_WITH_LIMITATIONS`, não AAA-eligible; a próxima ação é `CVG-FULL-STATE-OF-THE-ART:PRODUCTION-LIKE-EVIDENCE`.
+
+## Current checkpoint — 2026-09-09 00:48
+
+`VER-CVG-038` reexecuta o gate agregado após endurecer `verify-production` para conferir também os quatro comandos dedicados do workflow (`test:contract`, `test:security`, `test:database` e `test:fault`); o resultado foi código 0. A verificação `--production` novamente saiu código 1 por configuração real ausente, e `git diff --check` passou. O resultado permanece `FAIL_WITH_LIMITATIONS`, sem promoção a AAA.

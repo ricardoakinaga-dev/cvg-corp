@@ -32,13 +32,13 @@
       "dependencies": [],
       "owner": "lead",
       "acceptance_summary": "Implementar e verificar a arquitetura, segurança, confiabilidade, AI governance, operações, DX, frontend, documentação e produção exigidas pelo prompt; AAA só é elegível com a barra v3 completa e autoridade humana para qualquer efeito externo.",
-      "evidence_refs": ["docs/architecture-audit-vNext.md", ".gauntlet/bar-v3.json", ".gauntlet/critique-v3-fresh.md", "docs/verification-vNext.md", "VER-CVG-031", "VER-CVG-033", "VER-CVG-034", "VER-CVG-035", "VER-CVG-036"],
+      "evidence_refs": ["docs/architecture-audit-vNext.md", ".gauntlet/bar-v3.json", ".gauntlet/critique-v3-fresh.md", "docs/verification-vNext.md", "VER-CVG-031", "VER-CVG-033", "VER-CVG-034", "VER-CVG-035", "VER-CVG-036", "VER-CVG-037"],
       "next_action": {
         "id": "CVG-FULL-STATE-OF-THE-ART:PRODUCTION-LIKE-EVIDENCE",
         "kind": "VERIFY",
-        "summary": "Obter e executar evidência autorizada de PostgreSQL/Docker, secret authority, provider, fault/recovery distribuído, carga/SLO e revisão independente",
-        "target": "ambiente production-like autorizado; .github/workflows/ci.yml; Docker/Compose; PostgreSQL; secret-provider; provider externo; observabilidade; docs/",
-        "completion_signal": "Cada critério aplicável tem execução atual, artefato, owner e aprovação; qualquer ausência permanece NOT_RUN e não há release sem autoridade humana"
+        "summary": "Executar evidência PostgreSQL/Docker production-like, CI remoto, smoke/scan de containers, fault/recovery distribuído, carga/SLO, matriz de browsers e revisão independente quando houver ambiente e autoridade",
+        "target": ".github/workflows/ci.yml; docker-compose.yml; docs/verification-vNext.md; .gauntlet/critique-v3-fresh.md; ambiente autorizado",
+        "completion_signal": "Todos os critérios obrigatórios têm evidência atual de ambiente-alvo, críticos frescos sem blocker e scorecard >=95 por dimensão; ou falhas permanecem registradas sem elevar o status"
       }
     }
   ]

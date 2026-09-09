@@ -18,6 +18,20 @@ jobs:
     name: Typecheck, tests and release artifacts
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:18.0-bookworm
+        env:
+          POSTGRES_DB: cvg_ci
+          POSTGRES_USER: cvg_app
+          POSTGRES_PASSWORD: cvg_ci_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U cvg_app -d cvg_ci"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -31,8 +45,26 @@ jobs:
       - name: Install dependencies
         run: npm ci --ignore-scripts
 
+      - name: Install Chromium for E2E
+        run: npx playwright install --with-deps chromium
+
+      - name: Repository lint
+        run: npm run lint
+
       - name: Typecheck
         run: npm run typecheck
+
+      - name: Contract tests
+        run: npm run test:contract
+
+      - name: Security and authorization tests
+        run: npm run test:security
+
+      - name: Database and recovery tests
+        run: npm run test:database
+
+      - name: Fault and worker tests
+        run: npm run test:fault
 
       - name: Unit and integration tests
         run: npm test
@@ -49,8 +81,35 @@ jobs:
       - name: Static verification
         run: npm run verify:static
 
+      - name: Contrast audit
+        run: npm run audit:contrast
+
+      - name: Design token audit
+        run: npm run audit:tokens
+
+      - name: Browser E2E
+        run: npm run test:e2e
+
+      - name: Apply migrations in ephemeral PostgreSQL
+        env:
+          DATABASE_URL: postgresql://cvg_app:cvg_ci_password@localhost:5432/cvg_ci
+        run: npm run db:migrate
+
+      - name: PostgreSQL integration and RLS gate
+        env:
+          DATABASE_URL: postgresql://cvg_app:cvg_ci_password@localhost:5432/cvg_ci
+          CVG_STORAGE: postgres
+          CVG_BOOTSTRAP_PASSWORD: cvg-ci-bootstrap-password
+        run: npm run verify:postgres
+
+      - name: PostgreSQL restore gate
+        env:
+          DATABASE_URL: postgresql://cvg_app:cvg_ci_password@localhost:5432/cvg_ci
+          CVG_BOOTSTRAP_PASSWORD: cvg-ci-bootstrap-password
+        run: npm run verify:postgres:restore
+
       - name: Verify release and Compose configuration
-        run: node --import tsx scripts/verify-production.ts
+        run: npm run verify:production
 
       - name: Synthetic performance baseline
         run: mkdir -p artifacts && npm run benchmark:local > artifacts/benchmark-local.json

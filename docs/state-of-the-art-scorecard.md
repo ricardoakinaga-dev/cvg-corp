@@ -3,7 +3,7 @@
 **Barra:** `.gauntlet/bar-v3.json` — congelada, 2026-09-08.
 **Resultado:** `FAIL_WITH_LIMITATIONS`; não elegível para `AAA`.
 
-**Fotografia de evidência local:** typecheck, build e static PASS; 65/65 testes unitários/integração; static com 29 artefatos e 100 fontes; E2E Chromium com 22/22 casos executados PASS em 375/768/1440 e dois skips intencionais; contraste 7/7, dependency audit sem vulnerabilidades, SBOM CycloneDX, política de licenças para 193 dependências e fault/worker harness local PASS. O workflow declara Dependabot e scan Trivy de imagens; imagens não foram construídas neste host sem daemon Docker.
+**Fotografia de evidência local:** lint, typecheck, build e static PASS; 65/65 testes unitários/integração; static com 30 artefatos e 101 fontes; E2E Chromium com 22/22 casos executados PASS em 375/768/1440 e dois skips intencionais; contraste 7/7, dependency audit sem vulnerabilidades, SBOM CycloneDX, política de licenças para 193 dependências e fault/worker harness local PASS. `verify:production` validou os gates locais e o Compose estrutural com valores sintéticos, sem iniciar serviços. O workflow declara PostgreSQL/migrations/restore, E2E, segurança/visual, Dependabot, SBOM e scan Trivy de imagens; CI remoto, imagens e scan não foram executados neste host.
 
 ## Dimensões
 

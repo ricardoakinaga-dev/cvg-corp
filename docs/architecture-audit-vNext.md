@@ -1,8 +1,8 @@
 # CVG-Corp — Auditoria arquitetural vNext
 
-**Estado:** CURRENT / BUILD; auditoria da Fase 0 concluída em 2026-09-08.
+**Estado:** CURRENT / VERIFY; a auditoria da Fase 0 abaixo é preservada como baseline e suas revalidações correntes estão na seção 14.
 
-**Escopo:** implementação existente no commit `7b49bd22ec32c72d9aff8fb39bfb6be7fb6bd295`, mais a especificação preservada em `docs/prompt-state-of-the-art-triplo-aaa.md`, e o working tree vNext produzido depois da auditoria.
+**Escopo:** implementação existente no baseline `7b49bd22ec32c72d9aff8fb39bfb6be7fb6bd295`, a especificação preservada em `docs/prompt-state-of-the-art-triplo-aaa.md` e o artifact vNext corrente no working tree.
 
 **Conclusão:** o repositório contém uma demonstração local-first executável e uma fatia PostgreSQL sintética verificada, mas não um produto State of the Art / Triplo AAA pronto para dados reais, provider externo, homologação, piloto ou produção.
 
@@ -218,4 +218,12 @@ A Fase 0 autorizou a fundação; a implementação subsequente já adicionou os 
 | Web | shell, rotas, features, hooks, cliente API e estados `ONLINE`, `OFFLINE_READ_ONLY`, `DEGRADED`, `CONTEXT_INVALID`, `REAUTH_REQUIRED` | matriz de browsers, acessibilidade profunda, cache autorizado, lease e purge não foram executados |
 | Release | Dockerfiles, Compose, proxy, CI, Dependabot, política de licenças, verify-production e runbooks | daemon Docker, imagens, startup integrado, scan de imagem e promoção não foram executados; SBOM local passou |
 
-Os gates locais reproduzidos nesta fotografia são `npm run typecheck`, `npm test` (56/56), `npm run build`, `npm run verify:static` (23 artefatos/97 fontes), `npm run audit:licenses`, `npm run audit:contrast`, `npm run audit:tokens -- --strict`, `npm run test:e2e` (15/15), `npm audit --omit=dev`, `npm sbom --sbom-format cyclonedx`, `npm run benchmark:local`, `node --import tsx scripts/verify-production.ts` e `git diff --check`. O verificador de release valida estrutura e Compose sem iniciar serviços. O veredito permanece `FAIL_WITH_LIMITATIONS`; nenhuma linha acima é evidência de produção ou de elegibilidade Triplo AAA.
+Os gates locais reproduzidos na fotografia inicial são preservados como histórico. Na fotografia corrente, `npm run lint`, `npm run typecheck`, `npm test` (65/65), `npm run build`, `npm run verify:static` (30 artefatos/101 fontes), os testes dedicados de contrato/segurança/banco/fault, `npm run audit:licenses`, `npm run audit:contrast`, `npm run audit:tokens`, `npm run test:e2e` (22/22 executados), `npm audit --omit=dev`, `npm sbom --sbom-format cyclonedx`, `npm run benchmark:local`, `npm run verify:production` e `git diff --check` compõem os gates locais. O verificador de release valida estrutura e Compose sem iniciar serviços. O veredito permanece `FAIL_WITH_LIMITATIONS`; nenhuma linha acima é evidência de produção ou de elegibilidade Triplo AAA.
+
+## 14. Revalidação do artifact corrente — gates de CI e release
+
+Depois da baseline, o artifact ganhou lint repository-owned, comandos separados para contrato, segurança, banco e fault/recovery, e um workflow que instala Chromium, inicia PostgreSQL efêmero, aplica migrations, executa verificação PostgreSQL/RLS e restore, e mantém build/scan de imagens bloqueantes. `scripts/verify-production.ts` exige esses controles no workflow e inclui os gates locais no comando único.
+
+Na execução local corrente, `npm run verify:production` saiu com código 0 após completar esses gates locais e validar `docker compose config` com valores sintéticos; nenhum serviço foi iniciado. A execução `node --import tsx scripts/verify-production.ts --production` saiu com código 1 porque a configuração real obrigatória não existe no workspace, comportamento fail-closed esperado.
+
+Esta seção não transforma a execução local em evidência de CI remoto: o serviço PostgreSQL do workflow, o runner GitHub, o build/scan de imagens e qualquer promoção continuam `NOT_RUN` nesta máquina. O maior gap corrente permanece a evidência production-like autorizada e a revisão independente final.

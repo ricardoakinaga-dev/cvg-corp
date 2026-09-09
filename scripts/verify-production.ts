@@ -51,6 +51,7 @@ const requiredFiles = [
   "docs/error-taxonomy-vNext.md",
   "docs/state-of-the-art-scorecard.md",
   "scripts/verify-licenses.ts",
+  "scripts/lint.ts",
   "scripts/audit-design-tokens.ts",
   "scripts/check-contrast.ts",
   "tests/unit/worker.test.ts",
@@ -115,6 +116,18 @@ function inspectStaticContracts(): void {
   requireText("packages/agent-tools/src/index.ts", "OUTCOME_UNKNOWN");
   requireText(".gauntlet/bar-v3.json", "V3-AAA-001");
   requireText(".github/workflows/ci.yml", "npm ci --ignore-scripts");
+  requireText(".github/workflows/ci.yml", "npx playwright install --with-deps chromium");
+  requireText(".github/workflows/ci.yml", "npm run lint");
+  requireText(".github/workflows/ci.yml", "npm run test:contract");
+  requireText(".github/workflows/ci.yml", "npm run test:security");
+  requireText(".github/workflows/ci.yml", "npm run test:database");
+  requireText(".github/workflows/ci.yml", "npm run test:fault");
+  requireText(".github/workflows/ci.yml", "npm run test:e2e");
+  requireText(".github/workflows/ci.yml", "npm run db:migrate");
+  requireText(".github/workflows/ci.yml", "npm run verify:postgres");
+  requireText(".github/workflows/ci.yml", "npm run verify:postgres:restore");
+  requireText(".github/workflows/ci.yml", "npm run audit:contrast");
+  requireText(".github/workflows/ci.yml", "npm run audit:tokens");
   requireText(".github/workflows/ci.yml", "npm run audit:licenses");
   requireText(".github/workflows/ci.yml", "aquasecurity/trivy-action@0.28.0");
   requireText(".github/dependabot.yml", "package-ecosystem: npm");
@@ -254,12 +267,20 @@ function runLocalGate(label: string, command: string, args: string[]): void {
 }
 
 function runLocalGates(): void {
+  runLocalGate("repository lint", "npm", ["run", "lint"]);
   runLocalGate("typecheck", "npm", ["run", "typecheck"]);
+  runLocalGate("contract tests", "npm", ["run", "test:contract"]);
+  runLocalGate("security tests", "npm", ["run", "test:security"]);
+  runLocalGate("database/recovery tests", "npm", ["run", "test:database"]);
+  runLocalGate("fault/worker tests", "npm", ["run", "test:fault"]);
   runLocalGate("unit/integration tests", "npm", ["test"]);
   runLocalGate("web build", "npm", ["run", "build"]);
   runLocalGate("static verification", "npm", ["run", "verify:static"]);
   runLocalGate("browser E2E", "npm", ["run", "test:e2e"]);
+  runLocalGate("contrast audit", "npm", ["run", "audit:contrast"]);
+  runLocalGate("design token audit", "npm", ["run", "audit:tokens"]);
   runLocalGate("dependency audit", "npm", ["audit", "--omit=dev"]);
+  runLocalGate("license policy", "npm", ["run", "audit:licenses"]);
   runLocalGate("CycloneDX SBOM", "npm", ["sbom", "--sbom-format", "cyclonedx"]);
   runLocalGate("synthetic benchmark", "npm", ["run", "benchmark:local"]);
   runLocalGate("diff whitespace", "git", ["diff", "--check"]);

@@ -33,13 +33,15 @@ function persistence(overrides: Partial<{
   claimOutbox: () => Promise<DurableOutboxRecord[]>;
   completeOutbox: () => Promise<void>;
   failOutbox: () => Promise<"PENDING" | "QUARANTINED">;
+  outboxStats: () => Promise<{ depth: number; oldestAgeMs: number; poisonMessages: number }>;
 }> = {}) {
   return {
     check: overrides.check ?? (async () => ({ database: "synthetic", serverVersion: "synthetic" })),
     assertSchema: overrides.assertSchema ?? (async () => undefined),
     claimOutbox: overrides.claimOutbox ?? (async () => [record()]),
     completeOutbox: overrides.completeOutbox ?? (async () => undefined),
-    failOutbox: overrides.failOutbox ?? (async () => "QUARANTINED" as const)
+    failOutbox: overrides.failOutbox ?? (async () => "QUARANTINED" as const),
+    ...(overrides.outboxStats ? { outboxStats: overrides.outboxStats } : {})
   };
 }
 
@@ -148,4 +150,46 @@ test("worker cycle contains a lane failure and keeps the failure visible", async
   assert.equal(result.lanes.jobs.status, "FAILED");
   assert.equal(result.lanes.jobs.reason, "lane runner failed closed");
   assert.ok(observedSignal);
+});
+
+test("worker applies outbox backpressure before claiming and exposes poison metrics", async () => {
+  let claims = 0;
+  const worker = new CvgWorkerApplication({
+    persistence: persistence({ claimOutbox: async () => { claims += 1; return [record()]; }, outboxStats: async () => ({ depth: 11, oldestAgeMs: 900_000, poisonMessages: 3 }) }),
+    sink: { deliver: async () => "DELIVERED" },
+    sinkMode: "enabled",
+    maxOutstandingOutbox: 10,
+    lanes: { jobs: async () => 0, schedule: async () => 0, reconciliation: async () => 0, notifications: async () => 0, maintenance: async () => 0 }
+  });
+  const result = await worker.runCycle(organizationId, "worker-backpressure");
+  assert.equal(result.lanes.outbox.status, "BLOCKED");
+  assert.equal(result.backpressure.active, true);
+  assert.equal(result.metrics.backpressureEvents, 1);
+  assert.equal(result.metrics.poisonMessages, 3);
+  assert.equal(claims, 0);
+});
+
+test("worker enforces lane budgets and bounded concurrency", async () => {
+  let active = 0;
+  let maximumActive = 0;
+  const lane = async () => {
+    active += 1;
+    maximumActive = Math.max(maximumActive, active);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    active -= 1;
+    return 1;
+  };
+  const worker = new CvgWorkerApplication({
+    persistence: persistence(),
+    sink: { deliver: async () => "DELIVERED" },
+    sinkMode: "enabled",
+    lanes: { jobs: lane, schedule: lane, reconciliation: async () => 0, notifications: async () => 0, maintenance: async () => 0 }
+  });
+  const concurrent = await worker.runCycle(organizationId, "worker-concurrency", { laneConcurrency: 2 });
+  assert.equal(maximumActive, 2);
+  assert.equal(concurrent.status, "COMPLETED");
+
+  const budgeted = await worker.runCycle(organizationId, "worker-budget", { laneBudgets: { jobs: { maxProcessed: 0 } } });
+  assert.equal(budgeted.lanes.jobs.status, "FAILED");
+  assert.equal(budgeted.metrics.budgetExceeded, 1);
 });

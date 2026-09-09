@@ -28,9 +28,24 @@ export interface WorkerCycleResult extends OutboxWorkerResult {
   startedAt: string;
   durationMs: number;
   lanes: Record<WorkerLane, WorkerLaneResult>;
+  backpressure: { active: boolean; depth: number | null; limit: number | null };
+  metrics: { laneRuns: number; laneFailures: number; budgetExceeded: number; backpressureEvents: number; poisonMessages: number };
 }
 
 export type WorkerLaneRunner = (context: WorkerLaneContext) => Promise<number>;
+
+export interface WorkerLaneBudget {
+  maxProcessed?: number;
+  maxDurationMs?: number;
+}
+
+export interface WorkerCycleOptions {
+  limit?: number;
+  leaseSeconds?: number;
+  maxAttempts?: number;
+  laneConcurrency?: number;
+  laneBudgets?: Partial<Record<Exclude<WorkerLane, "outbox">, WorkerLaneBudget>>;
+}
 
 export interface WorkerHealth {
   status: "READY" | "DEGRADED" | "UNAVAILABLE";
@@ -43,12 +58,13 @@ export interface WorkerHealth {
 }
 
 export interface WorkerDependencies {
-  persistence: Pick<PostgresPersistence, "check" | "assertSchema" | "claimOutbox" | "completeOutbox" | "failOutbox"> & Partial<Pick<PostgresPersistence, "listExternalEffects" | "reconcileExternalEffect">>;
+  persistence: Pick<PostgresPersistence, "check" | "assertSchema" | "claimOutbox" | "completeOutbox" | "failOutbox"> & Partial<Pick<PostgresPersistence, "listExternalEffects" | "reconcileExternalEffect" | "claimExternalEffectForReconciliation" | "outboxStats">>;
   effects?: ExternalEffectLedger | null;
   sink?: OutboxSink;
   sinkMode?: "quarantine" | "enabled";
   reconciliationAdapter?: ExternalEffectQueryAdapter;
   lanes?: Partial<Record<Exclude<WorkerLane, "outbox">, WorkerLaneRunner>>;
+  maxOutstandingOutbox?: number;
 }
 
 /** Separate process boundary for leases, outbox delivery and reconciliation. */
@@ -75,53 +91,108 @@ export class CvgWorkerApplication {
     return { status: "READY", process: "READY", lifecycle: this.stopped ? "STOPPED" : "RUNNING", persistence: "READY", dispatch: "READY", lanes, reason: null };
   }
 
-  async runOnce(organizationId: OpaqueId, workerId: string, options: { limit?: number; leaseSeconds?: number; maxAttempts?: number } = {}): Promise<OutboxWorkerResult> {
+  async runOnce(organizationId: OpaqueId, workerId: string, options: WorkerCycleOptions = {}): Promise<OutboxWorkerResult> {
     if (this.stopped) throw new DomainError("INVALID_STATE", "O worker já foi encerrado.", 409);
     if (!this.dependencies.sink || this.dependencies.sinkMode === "quarantine") throw new DomainError("CAPABILITY_DISABLED", "Nenhum sink governado foi configurado; nenhum dispatch foi realizado.", 503);
     return this.relay.runOnce(organizationId, workerId, this.dependencies.sink, options);
   }
 
-  async runCycle(organizationId: OpaqueId, workerId: string, options: { limit?: number; leaseSeconds?: number; maxAttempts?: number } = {}): Promise<WorkerCycleResult> {
+  async runCycle(organizationId: OpaqueId, workerId: string, options: WorkerCycleOptions = {}): Promise<WorkerCycleResult> {
     if (this.stopped) throw new DomainError("INVALID_STATE", "O worker já foi encerrado.", 409);
     const cycleId = makeId();
     const startedAt = now();
     const controller = new AbortController();
     this.activeCycles.add(controller);
     const lanes = {} as Record<WorkerLane, WorkerLaneResult>;
+    const metrics = { laneRuns: 0, laneFailures: 0, budgetExceeded: 0, backpressureEvents: 0, poisonMessages: 0 };
+    const laneConcurrency = Math.min(WORKER_LANES.length - 1, Math.max(1, Math.trunc(options.laneConcurrency ?? 1)));
+    const backpressureLimit = this.dependencies.maxOutstandingOutbox ?? 1_000;
+    let backpressure: WorkerCycleResult["backpressure"] = { active: false, depth: null, limit: this.dependencies.persistence.outboxStats ? backpressureLimit : null };
     try {
       let outbox: OutboxWorkerResult = { claimed: 0, delivered: 0, retried: 0, quarantined: 0, outcomeUnknown: 0 };
+      let outboxBlockedReason: string | null = null;
+      if (this.dependencies.persistence.outboxStats) {
+        try {
+          const stats = await this.dependencies.persistence.outboxStats(organizationId);
+          backpressure = { active: stats.depth >= backpressureLimit, depth: stats.depth, limit: backpressureLimit };
+          metrics.poisonMessages = stats.poisonMessages;
+          if (backpressure.active) {
+            metrics.backpressureEvents += 1;
+            outboxBlockedReason = `outbox backpressure active at depth ${stats.depth}; limit ${backpressureLimit}`;
+          }
+        } catch {
+          outboxBlockedReason = "outbox pressure could not be measured; no work was claimed";
+        }
+      }
       if (!this.dependencies.sink || this.dependencies.sinkMode === "quarantine") {
         lanes.outbox = { status: "BLOCKED", processed: 0, durationMs: 0, reason: "outbox sink is not enabled; no records were claimed" };
+      } else if (outboxBlockedReason) {
+        lanes.outbox = { status: "BLOCKED", processed: 0, durationMs: 0, reason: outboxBlockedReason };
       } else {
         const laneStarted = Date.now();
         try {
+          metrics.laneRuns += 1;
           outbox = await this.runOnce(organizationId, workerId, options);
+          metrics.poisonMessages = Math.max(metrics.poisonMessages, outbox.quarantined);
           lanes.outbox = { status: "EXECUTED", processed: outbox.claimed, durationMs: Date.now() - laneStarted, reason: null };
         } catch (_error) {
+          metrics.laneFailures += 1;
           lanes.outbox = { status: "FAILED", processed: 0, durationMs: Date.now() - laneStarted, reason: "outbox lane failed closed" };
         }
       }
-      for (const lane of WORKER_LANES) {
-        if (lane === "outbox") continue;
+      const runLane = async (lane: Exclude<WorkerLane, "outbox">): Promise<void> => {
         const runner = lane === "reconciliation" ? this.dependencies.lanes?.reconciliation ?? this.defaultReconciliationRunner() : this.dependencies.lanes?.[lane];
         if (!runner) {
           lanes[lane] = { status: "BLOCKED", processed: 0, durationMs: 0, reason: "lane runner is not configured; no work was claimed" };
-          continue;
+          return;
         }
         const laneStarted = Date.now();
         try {
-          const processed = await runner({ cycleId, organizationId, workerId, signal: controller.signal, startedAt });
+          metrics.laneRuns += 1;
+          const processed = await this.runBoundedLane(runner, { cycleId, organizationId, workerId, signal: controller.signal, startedAt }, options.laneBudgets?.[lane], metrics);
           if (!Number.isSafeInteger(processed) || processed < 0) throw new Error("lane runner returned an invalid count");
           lanes[lane] = { status: "EXECUTED", processed, durationMs: Date.now() - laneStarted, reason: null };
         } catch (_error) {
+          metrics.laneFailures += 1;
           lanes[lane] = { status: "FAILED", processed: 0, durationMs: Date.now() - laneStarted, reason: "lane runner failed closed" };
         }
+      };
+      const nonOutboxLanes = WORKER_LANES.filter((lane): lane is Exclude<WorkerLane, "outbox"> => lane !== "outbox");
+      for (let offset = 0; offset < nonOutboxLanes.length; offset += laneConcurrency) {
+        await Promise.all(nonOutboxLanes.slice(offset, offset + laneConcurrency).map((lane) => runLane(lane)));
       }
       const laneStatuses = Object.values(lanes).map((lane) => lane.status);
       const status = laneStatuses.includes("FAILED") ? "FAILED" : laneStatuses.includes("BLOCKED") ? "DEGRADED" : "COMPLETED";
-      return { ...outbox, cycleId, status, startedAt, durationMs: Date.now() - Date.parse(startedAt), lanes };
+      return { ...outbox, cycleId, status, startedAt, durationMs: Date.now() - Date.parse(startedAt), lanes, backpressure, metrics };
     } finally {
       this.activeCycles.delete(controller);
+    }
+  }
+
+  private async runBoundedLane(runner: WorkerLaneRunner, context: WorkerLaneContext, budget: WorkerLaneBudget | undefined, metrics: { budgetExceeded: number }): Promise<number> {
+    const maxProcessed = budget?.maxProcessed === undefined ? null : Math.max(0, Math.trunc(budget.maxProcessed));
+    const maxDurationMs = budget?.maxDurationMs === undefined ? null : Math.max(1, Math.trunc(budget.maxDurationMs));
+    const laneController = new AbortController();
+    const onParentAbort = () => laneController.abort();
+    context.signal.addEventListener("abort", onParentAbort, { once: true });
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let budgetExceeded = false;
+    const execution = runner({ ...context, signal: laneController.signal });
+    execution.catch(() => undefined);
+    try {
+      const bounded = maxDurationMs === null ? execution : Promise.race([execution, new Promise<never>((_, reject) => { timer = setTimeout(() => { budgetExceeded = true; laneController.abort(); reject(new DomainError("BUDGET_EXCEEDED", "A lane do worker excedeu seu budget de tempo.", 503)); }, maxDurationMs); })]);
+      const processed = await bounded;
+      if (maxProcessed !== null && processed > maxProcessed) {
+        budgetExceeded = true;
+        throw new DomainError("BUDGET_EXCEEDED", "A lane do worker excedeu seu budget de itens.", 503);
+      }
+      return processed;
+    } catch (error) {
+      if (budgetExceeded) metrics.budgetExceeded += 1;
+      throw error;
+    } finally {
+      if (timer) clearTimeout(timer);
+      context.signal.removeEventListener("abort", onParentAbort);
     }
   }
 
@@ -154,12 +225,13 @@ export class CvgWorkerApplication {
     return async (context) => {
       const listExternalEffects = this.dependencies.persistence.listExternalEffects!;
       const reconcileExternalEffect = this.dependencies.persistence.reconcileExternalEffect!;
+      const claimExternalEffectForReconciliation = this.dependencies.persistence.claimExternalEffectForReconciliation;
       const effects = await listExternalEffects(context.organizationId);
       let processed = 0;
       for (const effect of effects.filter((candidate) => candidate.status === "OUTCOME_UNKNOWN" || candidate.status === "RECONCILIATION_REQUIRED" || candidate.status === "RECONCILING").slice(0, 10)) {
         if (context.signal.aborted) break;
         try {
-          await reconcileUnknownExternalEffect({ listExternalEffects, reconcileExternalEffect }, context.organizationId, effect.id, this.dependencies.reconciliationAdapter!, { timeoutMs: 3_000 });
+          await reconcileUnknownExternalEffect({ listExternalEffects, reconcileExternalEffect, ...(claimExternalEffectForReconciliation ? { claimExternalEffectForReconciliation } : {}) }, context.organizationId, effect.id, this.dependencies.reconciliationAdapter!, { timeoutMs: 3_000, workerId: context.workerId, leaseSeconds: 30 });
           processed += 1;
         } catch (error) {
           if (error instanceof DomainError && error.code === "DEPENDENCY_UNAVAILABLE") continue;

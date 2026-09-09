@@ -112,10 +112,35 @@ export class FileSecretProvider implements SecretProvider {
   }
 }
 
-export function configuredSecretProvider(kind: "none" | "env" | "file" | "vault" | "aws" | "gcp" | "azure" | "kubernetes", environment: NodeJS.ProcessEnv = process.env, fileRoot = environment.CVG_SECRET_DIR ?? "/run/secrets/cvg"): SecretProvider | null {
+/** Reads Docker/OCI secrets from a dedicated mounted directory. Availability of
+ * the provider is separate from availability of each named secret. */
+export class DockerSecretProvider implements SecretProvider {
+  private readonly root: string;
+  private readonly files: FileSecretProvider;
+
+  constructor(rootDirectory = "/run/secrets/cvg") {
+    this.root = resolve(rootDirectory);
+    this.files = new FileSecretProvider(this.root);
+  }
+
+  status(): SecretProviderStatus {
+    return existsSync(this.root) ? "READY" : "NOT_CONFIGURED";
+  }
+
+  has(reference: string): boolean {
+    return this.files.has(reference);
+  }
+
+  resolve(reference: string): Promise<string | null> {
+    return this.files.resolve(reference);
+  }
+}
+
+export function configuredSecretProvider(kind: "none" | "env" | "file" | "docker" | "vault" | "aws" | "gcp" | "azure" | "kubernetes", environment: NodeJS.ProcessEnv = process.env, fileRoot = environment.CVG_SECRET_DIR ?? "/run/secrets/cvg"): SecretProvider | null {
   if (kind === "none") return null;
   if (kind === "env") return new EnvironmentSecretProvider(environment);
   if (kind === "file") return new FileSecretProvider(fileRoot);
+  if (kind === "docker") return new DockerSecretProvider(fileRoot);
   return new StaticSecretProvider([]);
 }
 
@@ -900,6 +925,18 @@ export interface ExternalEffectQueryAdapter {
   query(effect: ExternalEffectQueryContext): Promise<ExternalEffectQueryResult>;
 }
 
+export interface ExternalEffectReconciliationClaim {
+  workerId: string;
+  fenceToken: bigint;
+}
+
+export interface ExternalEffectReconciliationPersistence {
+  listExternalEffects(organizationId: OpaqueId): Promise<DurableExternalEffectRecord[]>;
+  reconcileExternalEffect(organizationId: OpaqueId, effectId: OpaqueId, evidence: DurableExternalReconciliationEvidence, claim?: ExternalEffectReconciliationClaim): Promise<DurableExternalEffectRecord>;
+  /** Production persistence atomically moves an eligible effect to RECONCILING. */
+  claimExternalEffectForReconciliation?(organizationId: OpaqueId, effectId: OpaqueId, workerId: string, leaseSeconds?: number): Promise<DurableExternalEffectRecord | null>;
+}
+
 /** Maps the provider-neutral messaging query to a durable final observation. */
 export function createMessagingExternalEffectQueryAdapter(provider: Pick<MessagingProvider, "queryStatus">): ExternalEffectQueryAdapter {
   return {
@@ -992,7 +1029,7 @@ export class OutboxWorker {
             ? { status: "FAILED_RETRYABLE", error: reason }
             : decision === "QUARANTINE"
               ? { status: "QUARANTINED", error: reason }
-              : { status: "OUTCOME_UNKNOWN", error: reason };
+              : { status: "OUTCOME_UNKNOWN", providerRequestId, response: providerReceipt, error: reason };
         await this.effects.recordExternalEffectOutcome(organizationId, effect.id, workerId, record.fenceToken, outcome);
       }
       if (decision === "DELIVERED") {
@@ -1016,14 +1053,24 @@ export class OutboxWorker {
  * effect and computes the digest before persistence accepts the transition.
  */
 export async function reconcileUnknownExternalEffect(
-  persistence: Pick<PostgresPersistence, "listExternalEffects" | "reconcileExternalEffect">,
+  persistence: ExternalEffectReconciliationPersistence,
   organizationId: OpaqueId,
   effectId: OpaqueId,
   adapter: ExternalEffectQueryAdapter,
-  options: { timeoutMs?: number } = {}
+  options: { timeoutMs?: number; workerId?: string; leaseSeconds?: number } = {}
 ): Promise<DurableExternalEffectRecord> {
-  const effect = (await persistence.listExternalEffects(organizationId)).find((candidate) => candidate.id === effectId);
+  const listedEffect = (await persistence.listExternalEffects(organizationId)).find((candidate) => candidate.id === effectId);
+  let effect = listedEffect;
+  let claim: ExternalEffectReconciliationClaim | undefined;
   if (!effect) throw new DomainError("NOT_FOUND", "Efeito externo não encontrado nesta organização.", 404);
+  if (effect.status !== "OUTCOME_UNKNOWN" && effect.status !== "RECONCILIATION_REQUIRED" && effect.status !== "RECONCILING") throw new DomainError("INVALID_STATE", "Somente efeitos sem resultado confirmado podem ser reconciliados.", 409);
+  if (persistence.claimExternalEffectForReconciliation) {
+    const workerId = options.workerId?.trim() || "reconciliation-worker";
+    const claimed = await persistence.claimExternalEffectForReconciliation(organizationId, effectId, workerId, options.leaseSeconds ?? 30);
+    if (!claimed) throw new DomainError("ADMISSION_IN_PROGRESS", "O efeito já está sendo reconciliado ou não está elegível; nenhuma query concorrente foi iniciada.", 409);
+    effect = claimed;
+    claim = { workerId, fenceToken: claimed.fenceToken };
+  }
   if (effect.status !== "OUTCOME_UNKNOWN" && effect.status !== "RECONCILIATION_REQUIRED" && effect.status !== "RECONCILING") throw new DomainError("INVALID_STATE", "Somente efeitos sem resultado confirmado podem ser reconciliados.", 409);
   if (!adapter.integrationIds.includes(effect.integrationId)) throw new DomainError("CAPABILITY_DISABLED", "Não há query adapter autorizado para esta integração.", 503);
   const timeoutMs = Math.min(30_000, Math.max(100, Math.trunc(options.timeoutMs ?? 3_000)));
@@ -1055,7 +1102,7 @@ export async function reconcileUnknownExternalEffect(
     observedAt,
     queryDigest: digest({ effectId: effect.id, status: result.status, providerRequestId: result.providerRequestId, response: result.response, observedAt })
   };
-  return persistence.reconcileExternalEffect(organizationId, effect.id, evidence);
+  return persistence.reconcileExternalEffect(organizationId, effect.id, evidence, claim);
 }
 
 export const integrationContracts: IntegrationContract[] = [

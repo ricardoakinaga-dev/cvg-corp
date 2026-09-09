@@ -29,6 +29,7 @@
       "@cvg/agent-tools": ["packages/agent-tools/src/index.ts"],
       "@cvg/agent-runtime": ["packages/agent-runtime/src/index.ts"],
       "@cvg/harness-adapters": ["packages/harness-adapters/src/index.ts"],
+      "@cvg/deepseek-bridge": ["packages/deepseek-bridge/src/index.ts"],
       "@cvg/config": ["packages/config/src/index.ts"],
       "@cvg/auth": ["packages/auth/src/index.ts"]
     }

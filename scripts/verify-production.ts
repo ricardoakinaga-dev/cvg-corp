@@ -26,6 +26,8 @@ const requiredFiles = [
   "packages/agent-runtime/src/index.ts",
   "packages/agent-policy/src/index.ts",
   "packages/agent-tools/src/index.ts",
+  "packages/deepseek-bridge/src/index.ts",
+  "apps/deepseek-bridge/src/server.ts",
   "packages/auth/src/index.ts",
   "db/migrations/019_runtime_scope_guards.sql",
   "db/migrations/020_auth_security_boundary.sql",
@@ -34,6 +36,7 @@ const requiredFiles = [
   "db/migrations/023_distributed_rate_limit.sql",
   "db/migrations/024_external_effect_reconciliation_states.sql",
   "db/migrations/025_communication_approval_provenance.sql",
+  "db/migrations/026_audit_tamper_evident_chain.sql",
   "docs/runbooks/deploy.md",
   "docs/runbooks/deployment.md",
   "docs/runbooks/rollback.md",
@@ -64,6 +67,17 @@ const requiredFiles = [
   "docs/staging-vNext.md",
   "docs/recovery-vNext.md",
   "docs/performance-vNext.md",
+  "docs/final-closure-audit.md",
+  "docs/deepseek-production-integration.md",
+  "docs/provider-production-integration.md",
+  "docs/pdp-universal-coverage.md",
+  "docs/observability-production.md",
+  "docs/staging.md",
+  "docs/load-and-chaos.md",
+  "docs/recovery-proof.md",
+  "docs/triple-aaa-final-scorecard.md",
+  "docs/adr/015-deepseek-bridge-contract.md",
+  "docs/runbooks/deepseek-bridge-outage.md",
   "scripts/verify-licenses.ts",
   "scripts/lint.ts",
   "scripts/audit-design-tokens.ts",
@@ -74,6 +88,7 @@ const requiredFiles = [
   ".gauntlet/critique-v3-fresh.md",
   "scripts/verify-production.ts",
   "scripts/verify-triplo-aaa.ts",
+  "scripts/verify-pdp-coverage.ts",
   "scripts/verify-staging.ts"
 ];
 
@@ -147,6 +162,7 @@ function inspectStaticContracts(): void {
   requireText("db/migrations/023_distributed_rate_limit.sql", "cvg_rate_limit_buckets");
   requireText("db/migrations/024_external_effect_reconciliation_states.sql", "FAILED_FINAL");
   requireText("db/migrations/025_communication_approval_provenance.sql", "approved_by");
+  requireText("db/migrations/026_audit_tamper_evident_chain.sql", "previous_hash");
   requireText(".gauntlet/bar-v3.json", "V3-AAA-001");
   requireText(".github/workflows/ci.yml", "npm ci --ignore-scripts");
   requireText(".github/workflows/ci.yml", "npx playwright install --with-deps chromium");

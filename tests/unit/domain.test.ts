@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { CvgStore, DomainError, idempotent, idempotencyLookup } from "@cvg/domain";
+import { auditRecordHash, CvgStore, DomainError, idempotent, idempotencyLookup } from "@cvg/domain";
 import { GovernedHarness } from "@cvg/harness";
 import { id } from "@cvg/contracts";
 
@@ -10,6 +10,18 @@ function context(store: CvgStore, userId = store.bootstrapCredentials.userId) {
   const session = store.createSession(userId, "synthetic-test-token", "synthetic-test-csrf", 60);
   return store.resolveContext(userId, { unitId: option.unit.id, workspaceId: option.workspace.id }, "test", "test-correlation", null, null, session.id);
 }
+
+test("audit records form a tamper-evident per-organization hash chain", () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const first = store.recordAudit({ organizationId: store.bootstrapCredentials.organizationId, actorId: store.bootstrapCredentials.userId, unitId: null, workspaceId: null, action: "audit.chain.first", resourceType: "Fixture", resourceId: null, result: "ALLOWED", reason: null, correlationId: "audit-chain", metadata: {} });
+  const second = store.recordAudit({ organizationId: store.bootstrapCredentials.organizationId, actorId: store.bootstrapCredentials.userId, unitId: null, workspaceId: null, action: "audit.chain.second", resourceType: "Fixture", resourceId: null, result: "ALLOWED", reason: null, correlationId: "audit-chain", metadata: {} });
+  assert.equal(first.chainVersion, 2);
+  assert.equal(first.previousHash, null);
+  assert.equal(first.recordHash, auditRecordHash(first));
+  assert.equal(second.previousHash, first.recordHash);
+  assert.equal(second.recordHash, auditRecordHash(second));
+  assert.notEqual(second.recordHash, auditRecordHash({ ...second, action: "tampered" }));
+});
 
 test("password fixture is valid only for the generated admin secret", async () => {
   const { verifyPassword } = await import("@cvg/domain");

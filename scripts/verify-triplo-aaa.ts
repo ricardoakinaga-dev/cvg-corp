@@ -147,6 +147,8 @@ async function main(): Promise<void> {
   runNpmScript(manifest, "lint", "lint", "LOCAL_EXECUTION_ONLY");
   runNpmScript(manifest, "typecheck", "typecheck", "LOCAL_EXECUTION_ONLY");
   runNpmScript(manifest, "test", "test", "LOCAL_EXECUTION_ONLY");
+  runCommand("deepseek-bridge-contract", process.execPath, ["--import", "tsx", "--test", "tests/unit/deepseek-bridge.test.ts"], "SYNTHETIC_ONLY");
+  runNpmScript(manifest, "pdp", "verify:pdp", "LOCAL_EXECUTION_ONLY");
   runNpmScript(manifest, "build", "build", "LOCAL_EXECUTION_ONLY");
   runNpmScript(manifest, "static", "verify:static", "LOCAL_EXECUTION_ONLY");
   runNpmScript(manifest, "contract", "test:contract", "LOCAL_EXECUTION_ONLY");

@@ -9,7 +9,7 @@ if (!config.workerOrganizationId) throw new Error("CVG_WORKER_ORGANIZATION_ID is
 
 const persistence = new PostgresPersistence({ connectionString: config.databaseUrl });
 const configuredSink = createConfiguredWorkerSink(config);
-const worker = new CvgWorkerApplication({ persistence, sink: configuredSink.sink, sinkMode: configuredSink.sinkMode, ...(configuredSink.queryAdapter ? { reconciliationAdapter: configuredSink.queryAdapter } : {}) });
+const worker = new CvgWorkerApplication({ persistence, sink: configuredSink.sink, sinkMode: configuredSink.sinkMode, maxOutstandingOutbox: config.workerMaxOutstandingOutbox, ...(configuredSink.queryAdapter ? { reconciliationAdapter: configuredSink.queryAdapter } : {}) });
 let stopping = false;
 const stop = (): void => { stopping = true; worker.stop(); };
 process.on("SIGINT", stop);

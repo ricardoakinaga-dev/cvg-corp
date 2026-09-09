@@ -2,7 +2,7 @@ import { createCipheriv, createDecipheriv, randomBytes, randomUUID } from "node:
 import { Pool, type PoolClient, type PoolConfig } from "pg";
 import type { AnimalPatient, Appointment, AuditRecord, CommandReceipt, CvgContext, Guardian, OpaqueId } from "@cvg/contracts";
 import { id } from "@cvg/contracts";
-import { digest, now, parseSnapshot, serializeSnapshot, type StoreSnapshot } from "@cvg/domain";
+import { auditRecordHash, digest, now, parseSnapshot, serializeSnapshot, type StoreSnapshot } from "@cvg/domain";
 
 const LOCK_KEY = "cvg-corp:canonical-state:v1";
 
@@ -1340,16 +1340,20 @@ export class PostgresPersistence {
         "insert into cvg_event_journal(event_id, event_type, organization_id, actor_id, correlation_id, operation, aggregate_type, aggregate_id, payload, snapshot_digest) values ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10)",
         [eventId, input.eventType, organizationId, input.actorId, input.correlationId, input.operation, input.aggregateType, input.aggregateId, JSON.stringify(input.payload), snapshotDigest]
       );
+      const auditTail = await client.query<{ record_hash: string | null }>("select record_hash from cvg_audit_ledger where organization_id = cvg_request_organization() order by sequence_id desc limit 1 for update");
+      let previousAuditHash = auditTail.rows[0]?.record_hash ?? null;
       for (const audit of input.auditRecords ?? []) {
+        if (audit.chainVersion !== 2 || audit.previousHash !== previousAuditHash || audit.recordHash !== auditRecordHash(audit)) throw new PersistenceCorruptionError(`audit record ${audit.id} failed tamper-evident chain validation`);
         await client.query(
-          "insert into audit_records(id, organization_id, actor_id, unit_id, workspace_id, action, resource_type, resource_id, result, reason, correlation_id, metadata, created_at) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::jsonb, $13) on conflict (id) do nothing",
-          [audit.id, audit.organizationId, audit.actorId, audit.unitId, audit.workspaceId, audit.action, audit.resourceType, audit.resourceId, audit.result, audit.reason, audit.correlationId, JSON.stringify(audit.metadata), audit.createdAt]
+          "insert into audit_records(id, organization_id, actor_id, unit_id, workspace_id, action, resource_type, resource_id, result, reason, correlation_id, metadata, chain_version, previous_hash, record_hash, created_at) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::jsonb, $13, $14, $15, $16) on conflict (id) do nothing",
+          [audit.id, audit.organizationId, audit.actorId, audit.unitId, audit.workspaceId, audit.action, audit.resourceType, audit.resourceId, audit.result, audit.reason, audit.correlationId, JSON.stringify(audit.metadata), audit.chainVersion, audit.previousHash, audit.recordHash, audit.createdAt]
         );
         const result = await client.query<{ audit_id: string }>(
-          "insert into cvg_audit_ledger(audit_id, organization_id, record, record_digest) values ($1, $2, $3::jsonb, $4) on conflict (audit_id) do update set record_digest = cvg_audit_ledger.record_digest where cvg_audit_ledger.record_digest = excluded.record_digest returning audit_id",
-          [audit.id, audit.organizationId, JSON.stringify(audit), digest(audit)]
+          "insert into cvg_audit_ledger(audit_id, organization_id, record, record_digest, previous_hash, record_hash, chain_version) values ($1, $2, $3::jsonb, $4, $5, $6, $7) on conflict (audit_id) do update set record_digest = cvg_audit_ledger.record_digest where cvg_audit_ledger.record_digest = excluded.record_digest and cvg_audit_ledger.previous_hash is not distinct from excluded.previous_hash and cvg_audit_ledger.record_hash = excluded.record_hash and cvg_audit_ledger.chain_version = excluded.chain_version returning audit_id",
+          [audit.id, audit.organizationId, JSON.stringify(audit), digest(audit), audit.previousHash, audit.recordHash, audit.chainVersion]
         );
         if (!result.rows[0]) throw new PersistenceCorruptionError(`audit record ${audit.id} changed after it was durably recorded`);
+        previousAuditHash = audit.recordHash;
       }
       for (const receipt of input.commandReceipts ?? []) {
         const receiptResult = await client.query<{ id: string }>(
@@ -1690,7 +1694,19 @@ export class PostgresPersistence {
     });
   }
 
-  async reconcileExternalEffect(organizationId: OpaqueId, effectId: OpaqueId, evidence: DurableExternalReconciliationEvidence): Promise<DurableExternalEffectRecord> {
+  async claimExternalEffectForReconciliation(organizationId: OpaqueId, effectId: OpaqueId, workerId: string, leaseSeconds = 30): Promise<DurableExternalEffectRecord | null> {
+    const boundedLease = Math.min(300, Math.max(1, Math.trunc(leaseSeconds)));
+    if (!workerId.trim() || workerId.length > 160) throw new PersistenceStateError("external effect reconciliation worker id is invalid");
+    return this.organizationTransaction(organizationId, "claim external effect reconciliation", async (client) => {
+      const claimed = await client.query<ExternalEffectRow>(
+        "update external_effects set status = 'RECONCILING', claimed_by = $2, lease_until = now() + ($3::int * interval '1 second'), fence_token = fence_token + 1, updated_at = now() where id = $1 and organization_id = cvg_request_organization() and (status in ('OUTCOME_UNKNOWN', 'RECONCILIATION_REQUIRED') or (status = 'RECONCILING' and (lease_until is null or lease_until <= now()))) returning id::text as id, organization_id::text as organization_id, outbox_id::text as outbox_id, integration_id, idempotency_key, request, request_digest, status, attempts, claimed_by, lease_until, fence_token::text as fence_token, provider_request_id, response, last_error, outcome_digest, reconciliation_source, reconciled_at, created_at, updated_at",
+        [effectId, workerId, boundedLease]
+      );
+      return claimed.rows[0] ? mapExternalEffectRow(claimed.rows[0]) : null;
+    });
+  }
+
+  async reconcileExternalEffect(organizationId: OpaqueId, effectId: OpaqueId, evidence: DurableExternalReconciliationEvidence, claim?: { workerId: string; fenceToken: bigint }): Promise<DurableExternalEffectRecord> {
     if (evidence.status === "SUCCEEDED") validateExternalSuccess(evidence.providerRequestId, evidence.response);
     if (!evidence.observedAt || Number.isNaN(Date.parse(evidence.observedAt))) throw new PersistenceStateError("external effect reconciliation requires a valid observation timestamp");
     const expectedQueryDigest = digest({ effectId, status: evidence.status, providerRequestId: evidence.providerRequestId, response: evidence.response, observedAt: evidence.observedAt });
@@ -1707,9 +1723,11 @@ export class PostgresPersistence {
       const currentRecord = mapExternalEffectRow(current);
       if (currentRecord.status === evidence.status && currentRecord.outcomeDigest === outcomeDigest) return currentRecord;
       if (currentRecord.status !== "OUTCOME_UNKNOWN" && currentRecord.status !== "RECONCILIATION_REQUIRED" && currentRecord.status !== "RECONCILING") throw new PersistenceStateError(`external effect ${effectId} is ${currentRecord.status} and cannot be reconciled`);
+      if (claim && (currentRecord.status !== "RECONCILING" || currentRecord.claimedBy !== claim.workerId || currentRecord.fenceToken !== claim.fenceToken || !currentRecord.leaseUntil || Date.parse(currentRecord.leaseUntil) <= Date.now())) throw new OutboxLeaseLostError(`external effect ${effectId} reconciliation lease is no longer valid`);
+      const claimPredicate = claim ? " and status = 'RECONCILING' and claimed_by = $9 and fence_token = $10::bigint and lease_until > now()" : "";
       const updated = await client.query<ExternalEffectRow>(
-        "update external_effects set status = $2, provider_request_id = $3, response = $4::jsonb, last_error = $5, outcome_digest = $6, reconciliation_source = $7, reconciled_at = $8, claimed_by = null, lease_until = null, updated_at = now() where id = $1 and organization_id = cvg_request_organization() returning id::text as id, organization_id::text as organization_id, outbox_id::text as outbox_id, integration_id, idempotency_key, request, request_digest, status, attempts, claimed_by, lease_until, fence_token::text as fence_token, provider_request_id, response, last_error, outcome_digest, reconciliation_source, reconciled_at, created_at, updated_at",
-        [effectId, evidence.status, evidence.providerRequestId, evidence.response === null ? null : JSON.stringify(evidence.response), error, outcomeDigest, evidence.source, evidence.observedAt]
+        `update external_effects set status = $2, provider_request_id = $3, response = $4::jsonb, last_error = $5, outcome_digest = $6, reconciliation_source = $7, reconciled_at = $8, claimed_by = null, lease_until = null, updated_at = now() where id = $1 and organization_id = cvg_request_organization()${claimPredicate} returning id::text as id, organization_id::text as organization_id, outbox_id::text as outbox_id, integration_id, idempotency_key, request, request_digest, status, attempts, claimed_by, lease_until, fence_token::text as fence_token, provider_request_id, response, last_error, outcome_digest, reconciliation_source, reconciled_at, created_at, updated_at`,
+        claim ? [effectId, evidence.status, evidence.providerRequestId, evidence.response === null ? null : JSON.stringify(evidence.response), error, outcomeDigest, evidence.source, evidence.observedAt, claim.workerId, claim.fenceToken.toString()] : [effectId, evidence.status, evidence.providerRequestId, evidence.response === null ? null : JSON.stringify(evidence.response), error, outcomeDigest, evidence.source, evidence.observedAt]
       );
       if (!updated.rows[0]) throw new PersistenceCorruptionError(`external effect ${effectId} disappeared during reconciliation`);
       await client.query(

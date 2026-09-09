@@ -18,7 +18,8 @@ const writeHeartbeat = async (payload: Record<string, number | string>): Promise
 };
 
 let stopping = false;
-const stop = (): void => { stopping = true; };
+let activeWorker: CvgWorkerApplication | null = null;
+const stop = (): void => { stopping = true; activeWorker?.stop(); };
 process.on("SIGINT", stop);
 process.on("SIGTERM", stop);
 
@@ -26,7 +27,8 @@ async function main(): Promise<void> {
   await mkdir(dirname(config.workerHeartbeatFile), { recursive: true, mode: 0o700 });
   const persistence = new PostgresPersistence({ connectionString: config.databaseUrl, max: 2, connectionTimeoutMillis: 2_500, idleTimeoutMillis: 30_000 });
   const configuredSink = createConfiguredWorkerSink(config);
-  const worker = new CvgWorkerApplication({ persistence, sink: configuredSink.sink, sinkMode: configuredSink.sinkMode, ...(configuredSink.queryAdapter ? { reconciliationAdapter: configuredSink.queryAdapter } : {}) });
+  const worker = new CvgWorkerApplication({ persistence, sink: configuredSink.sink, sinkMode: configuredSink.sinkMode, maxOutstandingOutbox: config.workerMaxOutstandingOutbox, ...(configuredSink.queryAdapter ? { reconciliationAdapter: configuredSink.queryAdapter } : {}) });
+  activeWorker = worker;
   try {
     const health = await worker.health();
     if (health.status === "UNAVAILABLE") throw new Error(health.reason ?? "worker persistence is unavailable");
@@ -39,6 +41,7 @@ async function main(): Promise<void> {
       if (!stopping) await sleep(config.workerIntervalMs);
     }
   } finally {
+    activeWorker = null;
     await persistence.close();
   }
 }

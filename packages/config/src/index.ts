@@ -34,9 +34,10 @@ export const cvgConfigSchema = z.object({
   workerOrganizationId: z.string().trim().min(1).max(200).nullable().default(null),
   workerId: z.string().trim().regex(/^[A-Za-z0-9._:-]{1,120}$/).default("cvg-worker-local"),
   workerIntervalMs: z.number().int().min(1_000).max(30_000).default(5_000),
+  workerMaxOutstandingOutbox: z.number().int().min(1).max(1_000_000).default(1_000),
   workerSinkMode: z.enum(["quarantine", "enabled"]).default("quarantine"),
   workerHeartbeatFile: z.string().trim().min(1).max(1_024).default("/tmp/cvg-worker/heartbeat"),
-  secretProvider: z.enum(["none", "env", "file", "vault", "aws", "gcp", "azure", "kubernetes"]).default("none"),
+  secretProvider: z.enum(["none", "env", "file", "docker", "vault", "aws", "gcp", "azure", "kubernetes"]).default("none"),
   messagingProviderEndpoint: z.string().url().nullable().default(null),
   messagingProviderAllowedHosts: z.array(z.string().trim().regex(/^[A-Za-z0-9.-]{1,253}$/)).max(20).default([]),
   messagingCredentialRef: z.string().trim().regex(/^[A-Za-z0-9._:-]{1,160}$/).nullable().default(null),
@@ -86,7 +87,7 @@ export function validateCvgConfig(value: unknown): CvgConfig {
   return parsed.data;
 }
 
-const knownEnvironmentKeys = new Set(["NODE_ENV", "SESSION_TTL_MINUTES", "CVG_AUTH_MFA_MODE", "CVG_PASSWORD_MIN_LENGTH", "CVG_PASSWORD_MAX_AGE_DAYS", "CVG_AUTH_MAX_FAILED_ATTEMPTS", "CVG_AUTH_LOCKOUT_MINUTES", "CVG_AUTH_CHALLENGE_TTL_SECONDS", "CVG_AUTH_MAX_CHALLENGE_ATTEMPTS", "DATABASE_URL", "CVG_HOST", "CVG_API_PORT", "CVG_WEB_ORIGIN", "CVG_TRUST_PROXY", "CVG_STORAGE", "CVG_DEMO_MODE", "CVG_BOOTSTRAP_PASSWORD", "CVG_DEEPSEEK_BASE_URL", "CVG_DEEPSEEK_RUNTIME_ENABLED", "CVG_DEEPSEEK_EXPECTED_ENGINE_COMMIT", "CVG_DEEPSEEK_EXPECTED_MANIFEST_VERSION", "CVG_DEEPSEEK_BEARER_TOKEN_REF", "CVG_SECRET_DIR", "CVG_WORKER_ORGANIZATION_ID", "CVG_WORKER_ID", "CVG_WORKER_INTERVAL_MS", "CVG_WORKER_SINK_MODE", "CVG_WORKER_HEARTBEAT_FILE", "CVG_SECRET_PROVIDER", "CVG_MESSAGING_PROVIDER_ENDPOINT", "CVG_MESSAGING_PROVIDER_ALLOWED_HOSTS", "CVG_MESSAGING_CREDENTIAL_REF", "CVG_MESSAGING_SEND_PATH", "CVG_MESSAGING_QUERY_PATH", "CVG_RATE_LIMIT_BACKEND", "CVG_RATE_LIMIT_REQUESTS_PER_WINDOW", "CVG_RATE_LIMIT_WINDOW_SECONDS"]);
+const knownEnvironmentKeys = new Set(["NODE_ENV", "SESSION_TTL_MINUTES", "CVG_AUTH_MFA_MODE", "CVG_PASSWORD_MIN_LENGTH", "CVG_PASSWORD_MAX_AGE_DAYS", "CVG_AUTH_MAX_FAILED_ATTEMPTS", "CVG_AUTH_LOCKOUT_MINUTES", "CVG_AUTH_CHALLENGE_TTL_SECONDS", "CVG_AUTH_MAX_CHALLENGE_ATTEMPTS", "DATABASE_URL", "CVG_HOST", "CVG_API_PORT", "CVG_WEB_ORIGIN", "CVG_TRUST_PROXY", "CVG_STORAGE", "CVG_DEMO_MODE", "CVG_BOOTSTRAP_PASSWORD", "CVG_DEEPSEEK_BASE_URL", "CVG_DEEPSEEK_RUNTIME_ENABLED", "CVG_DEEPSEEK_EXPECTED_ENGINE_COMMIT", "CVG_DEEPSEEK_EXPECTED_MANIFEST_VERSION", "CVG_DEEPSEEK_BEARER_TOKEN_REF", "CVG_SECRET_DIR", "CVG_WORKER_ORGANIZATION_ID", "CVG_WORKER_ID", "CVG_WORKER_INTERVAL_MS", "CVG_WORKER_MAX_OUTSTANDING", "CVG_WORKER_SINK_MODE", "CVG_WORKER_HEARTBEAT_FILE", "CVG_SECRET_PROVIDER", "CVG_MESSAGING_PROVIDER_ENDPOINT", "CVG_MESSAGING_PROVIDER_ALLOWED_HOSTS", "CVG_MESSAGING_CREDENTIAL_REF", "CVG_MESSAGING_SEND_PATH", "CVG_MESSAGING_QUERY_PATH", "CVG_RATE_LIMIT_BACKEND", "CVG_RATE_LIMIT_REQUESTS_PER_WINDOW", "CVG_RATE_LIMIT_WINDOW_SECONDS"]);
 
 function parseEnvironmentValue(value: string | undefined, parser: (value: string) => unknown): unknown {
   return value === undefined ? undefined : parser(value);
@@ -123,6 +124,7 @@ export function loadCvgConfig(environment: NodeJS.ProcessEnv = process.env): Cvg
     ...(environment.CVG_WORKER_ORGANIZATION_ID === undefined ? {} : { workerOrganizationId: environment.CVG_WORKER_ORGANIZATION_ID }),
     ...(environment.CVG_WORKER_ID === undefined ? {} : { workerId: environment.CVG_WORKER_ID }),
     ...(environment.CVG_WORKER_INTERVAL_MS === undefined ? {} : { workerIntervalMs: Number(environment.CVG_WORKER_INTERVAL_MS) }),
+    ...(environment.CVG_WORKER_MAX_OUTSTANDING === undefined ? {} : { workerMaxOutstandingOutbox: Number(environment.CVG_WORKER_MAX_OUTSTANDING) }),
     ...(environment.CVG_WORKER_SINK_MODE === undefined ? {} : { workerSinkMode: environment.CVG_WORKER_SINK_MODE }),
     ...(environment.CVG_WORKER_HEARTBEAT_FILE === undefined ? {} : { workerHeartbeatFile: environment.CVG_WORKER_HEARTBEAT_FILE }),
     ...(environment.CVG_SECRET_PROVIDER === undefined ? {} : { secretProvider: environment.CVG_SECRET_PROVIDER }),

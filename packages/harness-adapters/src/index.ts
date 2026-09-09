@@ -273,9 +273,10 @@ export class DeepSeekHarnessAdapter implements AgentRuntime {
       const token = this.config.resolveBearerToken ? await this.config.resolveBearerToken() : null;
       if (this.config.resolveBearerToken && !token?.trim()) throw new AgentRuntimeUnavailableError("DeepSeek Harness sem credencial resolvida; nenhum request foi enviado.");
       const headers: Record<string, string> = { accept: "application/json" };
-      if (body !== undefined) headers["content-type"] = "application/json";
+      if (body !== undefined && method === "GET") headers["x-cvg-context"] = Buffer.from(JSON.stringify(body), "utf8").toString("base64url");
+      if (body !== undefined && method !== "GET") headers["content-type"] = "application/json";
       if (token) headers.authorization = `Bearer ${token}`;
-      const response = await this.fetchImpl(`${this.config.baseUrl.replace(/\/$/, "")}${path}`, { method, headers, ...(body === undefined ? {} : { body: JSON.stringify(body) }), signal: controller.signal });
+      const response = await this.fetchImpl(`${this.config.baseUrl.replace(/\/$/, "")}${path}`, { method, headers, ...(body === undefined || method === "GET" ? {} : { body: JSON.stringify(body) }), signal: controller.signal });
       const payload = await response.json();
       if (!response.ok) throw new AgentRuntimeUnavailableError(`DeepSeek Harness respondeu HTTP ${response.status}.`);
       return payload;

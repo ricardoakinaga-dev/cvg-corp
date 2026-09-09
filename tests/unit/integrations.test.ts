@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { createHmac } from "node:crypto";
 import { id } from "@cvg/contracts";
 import { DomainError } from "@cvg/domain";
-import { HttpMessagingProvider, inboxEventToOutbox, IntegrationGateway, MessagingCircuitBreaker, MessagingOutboxSink, MessagingProviderError, MessagingRateLimiter, OutboxWorker, reconcileUnknownExternalEffect, redactMessagingError, StaticSecretProvider, SyntheticMessagingProvider, verifyMessagingCallback, type ExternalEffectLedger } from "@cvg/integrations";
+import { createMessagingExternalEffectQueryAdapter, DockerSecretProvider, HttpMessagingProvider, inboxEventToOutbox, IntegrationGateway, MessagingCircuitBreaker, MessagingOutboxSink, MessagingProviderError, MessagingRateLimiter, OutboxWorker, reconcileUnknownExternalEffect, redactMessagingError, StaticSecretProvider, SyntheticMessagingProvider, verifyMessagingCallback, type ExternalEffectLedger } from "@cvg/integrations";
 import type { DurableExternalEffectRecord, DurableExternalReconciliationEvidence, DurableInboxInput, DurableOutboxRecord } from "@cvg/persistence";
 
 const organizationId = id("00000000-0000-4000-0000-000000000010");
@@ -194,6 +194,28 @@ test("provider reconciliation enforces a hard query deadline", async () => {
   );
 });
 
+test("provider reconciliation claims an eligible effect once before querying", async () => {
+  const effect: DurableExternalEffectRecord = {
+    id: id("00000000-0000-4000-0000-000000000209"), organizationId, outboxId: id("00000000-0000-4000-0000-000000000210"), integrationId: "provider.synthetic.claim", idempotencyKey: "effect-209", request: { orderId: "opaque-order" }, requestDigest: "request-digest", status: "OUTCOME_UNKNOWN", attempts: 1, claimedBy: null, leaseUntil: null, fenceToken: 2n, providerRequestId: null, response: null, lastError: "timeout", outcomeDigest: null, reconciliationSource: null, reconciledAt: null, createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-01T00:00:00.000Z"
+  };
+  let claimCalls = 0;
+  let queryCalls = 0;
+  let receivedClaim: { workerId: string; fenceToken: bigint } | undefined;
+  const claimed = { ...effect, status: "RECONCILING" as const, claimedBy: "reconciliation-test", leaseUntil: "2099-01-01T00:00:00.000Z", fenceToken: 3n };
+  const result = await reconcileUnknownExternalEffect({
+    listExternalEffects: async () => [effect],
+    claimExternalEffectForReconciliation: async () => { claimCalls += 1; return claimed; },
+    reconcileExternalEffect: async (_organizationId, effectId, evidence, claim) => { receivedClaim = claim; return { ...claimed, id: effectId, status: evidence.status, providerRequestId: evidence.providerRequestId, response: evidence.response, outcomeDigest: evidence.queryDigest, reconciliationSource: evidence.source, reconciledAt: evidence.observedAt, claimedBy: null, leaseUntil: null }; }
+  }, organizationId, effect.id, {
+    integrationIds: [effect.integrationId],
+    query: async ({ effectId, idempotencyKey, signal }) => { queryCalls += 1; assert.equal(effectId, effect.id); assert.equal(idempotencyKey, effect.idempotencyKey); assert.equal(signal.aborted, false); return { status: "SUCCEEDED", providerRequestId: "provider-209", response: { confirmed: true }, source: "SYNTHETIC_PROVIDER_QUERY" }; }
+  }, { workerId: "reconciliation-test", leaseSeconds: 15 });
+  assert.equal(result.status, "SUCCEEDED");
+  assert.equal(claimCalls, 1);
+  assert.equal(queryCalls, 1);
+  assert.deepEqual(receivedClaim, { workerId: "reconciliation-test", fenceToken: 3n });
+});
+
 test("integration gateway exposes secret-provider health without exposing secret material", () => {
   const unconfigured = new IntegrationGateway();
   assert.equal(unconfigured.getHealth().secretProvider, "NOT_CONFIGURED");
@@ -202,6 +224,9 @@ test("integration gateway exposes secret-provider health without exposing secret
   assert.equal(configured.getHealth().secretProvider, "READY");
   assert.equal(synthetic.has("synthetic-provider-key"), true);
   assert.equal("secret" in synthetic, false);
+  const docker = new DockerSecretProvider(process.cwd());
+  assert.equal(docker.status(), "READY");
+  assert.equal(docker.has("missing-synthetic-secret"), false);
 });
 
 test("synthetic messaging preserves idempotency and reconciles an unknown outcome", async () => {
@@ -215,6 +240,74 @@ test("synthetic messaging preserves idempotency and reconciles an unknown outcom
   const replay = await provider.send({ idempotencyKey: "message-unknown-1", channel: "SMS", recipient: "+5511999999999", body: "fixture" });
   assert.equal(replay.status, "OUTCOME_UNKNOWN");
   await assert.rejects(() => provider.send({ idempotencyKey: "message-unknown-1", channel: "SMS", recipient: "+5511999999999", body: "different" }), (error: unknown) => error instanceof DomainError && error.code === "IDEMPOTENCY_CONFLICT");
+});
+
+test("synthetic provider vertical closes outbox, unknown outcome and reconciliation without a blind resend", async () => {
+  const item = { ...record("00000000-0000-0000-0000-000000000211", 1), eventType: "communication.message.approved", payload: { messageId: "vertical-message-211", channel: "SMS", recipient: "+5511999999999", template: "vertical", body: "fixture" } };
+  let effect: DurableExternalEffectRecord = {
+    id: item.id,
+    organizationId,
+    outboxId: item.id,
+    integrationId: "outbox:communication.message.approved",
+    idempotencyKey: item.id,
+    request: { eventType: item.eventType, payload: item.payload },
+    requestDigest: "vertical-request-digest",
+    status: "ADMISSION_PENDING",
+    attempts: 0,
+    claimedBy: "vertical-worker",
+    leaseUntil: "2099-01-01T00:00:00.000Z",
+    fenceToken: item.fenceToken,
+    providerRequestId: null,
+    response: null,
+    lastError: null,
+    outcomeDigest: null,
+    reconciliationSource: null,
+    reconciledAt: null,
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z"
+  };
+  const provider = new SyntheticMessagingProvider({ sendOutcome: "OUTCOME_UNKNOWN" });
+  const baseSink = new MessagingOutboxSink(provider, (outbox, context) => ({ idempotencyKey: context.idempotencyKey, requestId: (outbox.payload as { messageId: string }).messageId, channel: "SMS", recipient: "+5511999999999", body: "fixture" }));
+  let sinkCalls = 0;
+  const sink = { ...baseSink, deliver: async (...args: Parameters<typeof baseSink.deliver>) => { sinkCalls += 1; return baseSink.deliver(...args); } };
+  const failures: Array<{ quarantine: boolean; reason: string }> = [];
+  const effects: ExternalEffectLedger = {
+    prepareExternalEffect: async () => effect,
+    markExternalEffectDispatched: async () => { effect = { ...effect, status: "DISPATCHED", attempts: effect.attempts + 1 }; return effect; },
+    recordExternalEffectOutcome: async (_organizationId, _effectId, _workerId, _fenceToken, outcome) => {
+      effect = { ...effect, status: outcome.status, providerRequestId: outcome.providerRequestId ?? effect.providerRequestId, response: outcome.response ?? null, lastError: outcome.error ?? null, claimedBy: null, leaseUntil: null };
+      return effect;
+    }
+  };
+  const worker = new OutboxWorker({
+    claimOutbox: async () => [item],
+    completeOutbox: async () => { throw new Error("unknown outcome must not complete the outbox"); },
+    failOutbox: async (_organizationId, _recordId, _workerId, _fenceToken, reason, quarantine) => { failures.push({ quarantine: Boolean(quarantine), reason }); return quarantine ? "QUARANTINED" : "PENDING"; }
+  }, effects);
+
+  const first = await worker.runOnce(organizationId, "vertical-worker", sink);
+  assert.deepEqual(first, { claimed: 1, delivered: 0, retried: 0, quarantined: 1, outcomeUnknown: 1 });
+  assert.equal(effect.status, "OUTCOME_UNKNOWN");
+  assert.equal(effect.providerRequestId?.startsWith("synthetic-request-"), true);
+  assert.equal(sinkCalls, 1);
+  assert.equal(failures[0]?.quarantine, true);
+
+  const second = await worker.runOnce(organizationId, "vertical-worker-retry", sink);
+  assert.deepEqual(second, { claimed: 1, delivered: 0, retried: 0, quarantined: 1, outcomeUnknown: 1 });
+  assert.equal(sinkCalls, 1, "an unknown effect is reconciled, never resent blindly");
+
+  const reconciled = await reconcileUnknownExternalEffect({
+    listExternalEffects: async () => [effect],
+    claimExternalEffectForReconciliation: async () => { effect = { ...effect, status: "RECONCILING", claimedBy: "reconciliation-worker", leaseUntil: "2099-01-01T00:00:00.000Z", fenceToken: effect.fenceToken + 1n }; return effect; },
+    reconcileExternalEffect: async (_organizationId, _effectId, evidence, claim) => {
+      assert.deepEqual(claim, { workerId: "reconciliation-worker", fenceToken: 5n });
+      effect = { ...effect, status: evidence.status, providerRequestId: evidence.providerRequestId, response: evidence.response, outcomeDigest: evidence.queryDigest, reconciliationSource: evidence.source, reconciledAt: evidence.observedAt, claimedBy: null, leaseUntil: null };
+      return effect;
+    }
+  }, organizationId, effect.id, createMessagingExternalEffectQueryAdapter(provider), { workerId: "reconciliation-worker", leaseSeconds: 30 });
+  assert.equal(reconciled.status, "SUCCEEDED");
+  assert.equal(reconciled.reconciliationSource, "PROVIDER_QUERY");
+  assert.equal(reconciled.providerRequestId, effect.providerRequestId);
 });
 
 test("HTTP messaging validates receipts, keeps credentials out of results and never retries ambiguous transport", async () => {

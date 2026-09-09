@@ -532,6 +532,9 @@ export interface AuditRecord {
   reason: string | null;
   correlationId: string;
   metadata: Record<string, string | number | boolean | null>;
+  chainVersion: 2;
+  previousHash: string | null;
+  recordHash: string;
   createdAt: string;
 }
 

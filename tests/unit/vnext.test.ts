@@ -181,9 +181,10 @@ test("DeepSeek adapter never sends a request without a resolved credential", asy
 });
 
 test("typed configuration rejects unknown CVG keys and insecure production", () => {
-  const config = loadCvgConfig({ NODE_ENV: "test", CVG_DEMO_MODE: "false", CVG_API_PORT: "4321" });
+  const config = loadCvgConfig({ NODE_ENV: "test", CVG_DEMO_MODE: "false", CVG_API_PORT: "4321", CVG_WORKER_MAX_OUTSTANDING: "321" });
   assert.equal(config.demoMode, false);
   assert.equal(config.apiPort, 4321);
+  assert.equal(config.workerMaxOutstandingOutbox, 321);
   assert.throws(() => loadCvgConfig({ CVG_UNSAFE_MODE: "true" }), (error: unknown) => error instanceof ConfigError);
   assert.throws(() => loadCvgConfig({ NODE_ENV: "production", CVG_DEMO_MODE: "false", CVG_WEB_ORIGIN: "http://example.test" }), (error: unknown) => error instanceof ConfigError);
   assert.throws(() => loadCvgConfig({ NODE_ENV: "production", CVG_DEMO_MODE: "false", CVG_WEB_ORIGIN: "https://example.test", CVG_STORAGE: "memory", CVG_SECRET_PROVIDER: "none", CVG_DEEPSEEK_RUNTIME_ENABLED: "false" }), (error: unknown) => error instanceof ConfigError);

@@ -123,6 +123,12 @@ export function digest(value: unknown): string {
   return createHash("sha256").update(JSON.stringify(value, canonicalReplacer)).digest("hex");
 }
 
+/** Hashes an audit record without allowing the hash field to hash itself. */
+export function auditRecordHash(record: AuditRecord): string {
+  const { recordHash: _recordHash, ...unsigned } = record;
+  return digest(unsigned);
+}
+
 function canonicalReplacer(_key: string, value: unknown): unknown {
   if (!value || typeof value !== "object" || Array.isArray(value)) return value;
   return Object.fromEntries(Object.entries(value as Record<string, unknown>).sort(([a], [b]) => a.localeCompare(b)));
@@ -666,8 +672,10 @@ export class CvgStore {
     if (context.organizationId !== organizationId) throw new DomainError("NOT_FOUND", "Recurso não encontrado.", 404);
   }
 
-  recordAudit(input: Omit<AuditRecord, "id" | "createdAt">): AuditRecord {
-    const audit: AuditRecord = { ...input, id: makeId(), createdAt: now() };
+  recordAudit(input: Omit<AuditRecord, "id" | "createdAt" | "chainVersion" | "previousHash" | "recordHash">): AuditRecord {
+    const previousHash = [...this.auditRecords.values()].filter((record) => record.organizationId === input.organizationId).at(-1)?.recordHash ?? null;
+    const unsigned: AuditRecord = { ...input, id: makeId(), chainVersion: 2, previousHash, recordHash: "", createdAt: now() };
+    const audit: AuditRecord = { ...unsigned, recordHash: auditRecordHash(unsigned) };
     this.auditRecords.set(audit.id, audit);
     return audit;
   }

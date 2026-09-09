@@ -114,7 +114,7 @@ export interface ServerConfig {
   deepseekBearerTokenRef: string | null;
   secretDir: string;
   workerOrganizationId: string | null;
-  secretProvider: "none" | "env" | "file" | "vault" | "aws" | "gcp" | "azure" | "kubernetes";
+  secretProvider: "none" | "env" | "file" | "docker" | "vault" | "aws" | "gcp" | "azure" | "kubernetes";
   rateLimitBackend: "local" | "distributed";
   rateLimitRequestsPerWindow: number;
   rateLimitWindowSeconds: number;

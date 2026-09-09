@@ -6,9 +6,9 @@ Este diretório contém a documentação da arquitetura-alvo de um programa de g
 
 | Campo | Estado |
 |---|---|
-| Fase | BUILD vNext; fundação de runtime/policy/tools, API e web modulares, worker separado, migrations 001–025, boundary local de autenticação, provider/reconciliação fail-closed e verificação local determinística |
+| Fase | BUILD vNext; fundação de runtime/policy/tools, API e web modulares, worker separado, migrations 001–026, boundary local de autenticação, provider/reconciliação fail-closed, cadeia de auditoria local e verificação determinística |
 | Escopo desta fase | Evolução brownfield controlada; mock/sintético e PostgreSQL local continuam permitidos; aceite operacional independente e produção continuam pendentes |
-| Motor proposto | `AgentRuntime` com adapter Mock e ponte DeepSeek opcional; protocolo externo ainda não provado |
+| Motor proposto | `AgentRuntime` com adapter Mock e bridge DeepSeek `/v1` opcional; port nativo e protocolo externo ainda não provados |
 | Qualidade | barra v3 `FAIL_WITH_LIMITATIONS`; `verify:triplo-aaa`/`verify:staging` fail-closed, recorte local executável, produção bloqueada |
 | Fonte de verdade clínica | O domínio transacional do CVG, não a conversa do agente |
 | Próximo gate | PostgreSQL/Docker production-like, provider/consulta externa real, secret authority, observabilidade/carga/recovery, matriz de browsers/acessibilidade e aceite independente |
@@ -45,13 +45,20 @@ Este diretório contém a documentação da arquitetura-alvo de um programa de g
 25. [`auth-boundary-vNext.md`](auth-boundary-vNext.md) — MFA, rotação, lockout, recuperação e autoridade de sessão.
 26. [`visual-qa-vNext.md`](visual-qa-vNext.md) — correções visuais, acessibilidade e limites da evidência.
 27. [`prompt-state-of-the-art-triplo-aaa-2026-09-09.txt`](prompt-state-of-the-art-triplo-aaa-2026-09-09.txt) — cópia byte a byte do prompt de execução recebido.
-28. [`production-reality-audit-vNext.md`](production-reality-audit-vNext.md) — fotografia corrente, blockers e limites de produção.
-29. [`deepseek-integration-vNext.md`](deepseek-integration-vNext.md), [`provider-integration-vNext.md`](provider-integration-vNext.md) — boundaries de runtime e provider com fail-closed.
-30. [`observability-vNext.md`](observability-vNext.md), [`staging-vNext.md`](staging-vNext.md), [`recovery-vNext.md`](recovery-vNext.md), [`performance-vNext.md`](performance-vNext.md) — evidência, execução e limites operacionais.
+28. [`prompt-state-of-the-art-triplo-aaa-2026-09-09-v2.txt`](prompt-state-of-the-art-triplo-aaa-2026-09-09-v2.txt) — cópia byte a byte da revisão v2 recebida nesta execução.
+29. [`final-closure-audit.md`](final-closure-audit.md) — reaudit F0, blockers, plano, rollback e gates de promoção.
+30. [`deepseek-production-integration.md`](deepseek-production-integration.md), [`provider-production-integration.md`](provider-production-integration.md) — boundaries de AI e provider, com matriz de contrato e limitações reais.
+31. [`pdp-universal-coverage.md`](pdp-universal-coverage.md) — cobertura corrente de PDP, idempotência e repositories.
+32. [`observability-production.md`](observability-production.md), [`staging.md`](staging.md) — observabilidade, TLS e pré-condições de staging.
+33. [`load-and-chaos.md`](load-and-chaos.md), [`recovery-proof.md`](recovery-proof.md) — evidência local e gates ainda não executados de carga, caos e recovery.
+34. [`triple-aaa-final-scorecard.md`](triple-aaa-final-scorecard.md) — scorecard final honesto, sem declarar AAA.
+35. [`production-reality-audit-vNext.md`](production-reality-audit-vNext.md) — fotografia corrente, blockers e limites de produção.
+36. [`deepseek-integration-vNext.md`](deepseek-integration-vNext.md), [`provider-integration-vNext.md`](provider-integration-vNext.md) — boundaries históricos de runtime e provider com fail-closed.
+37. [`observability-vNext.md`](observability-vNext.md), [`staging-vNext.md`](staging-vNext.md), [`recovery-vNext.md`](recovery-vNext.md), [`performance-vNext.md`](performance-vNext.md) — evidência, execução e limites operacionais históricos.
 
 Os procedimentos operacionais estão em [`runbooks/`](runbooks/), incluindo deploy, rollback, backup/restore, incidentes de banco e segurança, indisponibilidade de provider/DeepSeek, rotação de credenciais, backlog do worker, quarentena e o break-glass ainda bloqueado.
 
-As decisões técnicas vNext estão em [`adr/`](adr/), com boundaries de runtime, PDP, tools, persistência, worker, secrets, release, DeepSeek, RLS, approval, fonte de verdade da IA e restore.
+As decisões técnicas vNext estão em [`adr/`](adr/), com boundaries de runtime, PDP, tools, persistência, worker, secrets, release, DeepSeek, RLS, approval, fonte de verdade da IA, restore e o contrato do bridge em [`ADR-015`](adr/015-deepseek-bridge-contract.md).
 
 ## Princípio de leitura
 

@@ -2,7 +2,7 @@
 
 ## Purpose / Big Picture
 
-Transformar o artifact local-first existente em uma base modular, segura, observável, recuperável e preparada para produção conforme o prompt preservado em `docs/prompt-state-of-the-art-triplo-aaa.md`, sem inventar provider, autoridade, dados ou evidência que não existam.
+Transformar o artifact local-first existente em uma base modular, segura, observável, recuperável e preparada para produção conforme os prompts preservados em `docs/prompt-state-of-the-art-triplo-aaa.md` e `docs/prompt-state-of-the-art-triplo-aaa-2026-09-09-v2.txt`, sem inventar provider, autoridade, dados ou evidência que não existam.
 
 O resultado esperado é um produto executável com uma rota completa de desenvolvimento até release evidence. A elegibilidade Triplo AAA só será avaliada depois de todos os critérios obrigatórios da barra `.gauntlet/bar-v3.json` terem evidência atual, score mínimo de 95 em cada dimensão e críticos independentes frescos sem blocker.
 
@@ -12,6 +12,7 @@ O resultado esperado é um produto executável com uma rota completa de desenvol
 - [x] (2026-09-08T20:54:00-03:00) — Fase 0 concluída em `docs/architecture-audit-vNext.md` com inventário, trust boundaries, gaps, dependências, plano e rollback.
 - [x] (2026-09-08T20:54:00-03:00) — Barra v3 congelada em `.gauntlet/bar-v3.json`; barra v2 histórica preservada.
 - [x] (2026-09-08T20:54:00-03:00) — Sessão recuperada; estado, backlog, gates e ledgers JSON/JSONL validados.
+- [x] (2026-09-09T17:30:34-03:00) — Prompt v2 salvo byte a byte; Fase 0 refeita em `docs/final-closure-audit.md`; o plano anterior foi reconhecido como stale e replanejado para o contrato do bridge DeepSeek.
 - [ ] Onda A — contratos de runtime, Tool Gateway, PDP/ABAC, configuração typed e ADRs (fundação inicial implementada; integração, catálogo/proveniência completo e fechamento da onda ainda pendentes).
 - [ ] Onda B — decomposição da API e application layer com compatibilidade v1.
 - [ ] Onda C — repositories completos, worker separado, recovery e fault drills.
@@ -22,7 +23,7 @@ O resultado esperado é um produto executável com uma rota completa de desenvol
 
 ## Context and Orientation
 
-O repositório contém uma aplicação TypeScript/Fastify/React com domínio sintético, persistência PostgreSQL e migrations 001–018, Harness local determinístico e testes locais. O commit de entrada é `7b49bd22ec32c72d9aff8fb39bfb6be7fb6bd295`; o working tree inicial desta etapa contém somente a cópia do prompt não commitada.
+O repositório contém uma aplicação TypeScript/Fastify/React com domínio sintético, persistência PostgreSQL e migrations 001–025, Harness local determinístico e testes locais. A revisão observada é `586479c845337c7a4f952987234ff5c6eab2503e`; o worktree desta continuação contém somente a cópia v2 do prompt não commitada.
 
 O repositório local do DeepSeek Harness está em `/home/ricardo/deepseek-harness`, commit `5dda764ed3`. Ele é uma dependência externa observada e documentada, não uma autoridade de runtime do CVG e não será editado por este plano.
 
@@ -79,10 +80,11 @@ Outbox/inbox/effect ledger têm lease/fencing, retry bounded, backoff, quarantin
 
 ## Concrete Steps
 
-<!-- engineering-framework: active_action_id=CVG-FULL-STATE-OF-THE-ART:TOOL-GATEWAY-BOUNDARY -->
+<!-- engineering-framework: active_action_id=CVG-FULL-STATE-OF-THE-ART:SECRETS-AUTH-MFA -->
 
-1. `CVG-FULL-STATE-OF-THE-ART:TOOL-GATEWAY-BOUNDARY` — exigir sessão autenticada, alvo/escopo declarados, idempotência e metadata compatíveis antes da autorização; cobrir known-good/known-bad sem egress.
-2. `CVG-FULL-STATE-OF-THE-ART:PRODUCTION-LIKE-EVIDENCE` — executar somente as evidências production-like que tenham ambiente e autoridade correspondentes; manter os gaps externos como `NOT_RUN` e continuar a evolução local nos maiores gaps reproduzíveis.
+1. `CVG-FULL-STATE-OF-THE-ART:SECRETS-AUTH-MFA` — endurecer secret references/Docker seam, MFA/WebAuthn/break-glass fail-closed e readiness, sem autoridade real.
+2. `CVG-FULL-STATE-OF-THE-ART:DEEPSEEK-NATIVE-ADAPTER` — somente quando houver contrato/authority externos; manter native/LLM como `BLOCKED` sem inventar protocolo.
+3. `CVG-FULL-STATE-OF-THE-ART:PRODUCTION-LIKE-EVIDENCE` — executar somente as evidências production-like que tenham ambiente e autoridade correspondentes; manter os gaps externos como `NOT_RUN` e continuar a evolução local nos maiores gaps reproduzíveis.
 3. `CVG-FULL-STATE-OF-THE-ART:SLO-CONTRACTS-ALERTS` — concluída localmente: tipar targets SLO propostos, avaliar observações somente com amostra explícita e testar alertas/runbooks em harness sintético; não promover medição local a evidência de produção.
 
 ### Onda A — fundamento seguro
@@ -301,3 +303,23 @@ Após `EVT-CVG-20260909-VERIFY-057`, foi aberta a ação local `CVG-FULL-STATE-O
 ## Current checkpoint — 2026-09-09 02:14
 
 `VER-CVG-043` registra os contratos de SLO/alerta: oito sinais tipados, targets sem aprovação como `PROPOSED`/`TBD`, error budget somente onde o modelo é derivável, amostras ausentes como `NOT_RUN`, regras ligadas a runbooks e nenhum dispatch operacional. A suíte passou 73/73, typecheck, lint (99 fontes), static (30/101), `verify:production`, verificação de ponteiros JSON/JSONL, hash/cópia do prompt e diff check; `--production` saiu 1 fail-closed por configuração real ausente. O pointer retorna à ação `CVG-FULL-STATE-OF-THE-ART:PRODUCTION-LIKE-EVIDENCE`; SLOs medidos, collector, carga, CI remoto, containers, provider, secret authority e revisão independente continuam `NOT_RUN`.
+
+## Replan corrente — 2026-09-09 17:30
+
+A nova solicitação foi tratada como alteração material do objetivo: preserva o código já entregue, mas amplia a barra e exige nove entregáveis canônicos, bridge DeepSeek, cobertura PDP universal, stack operacional, matriz browser/accessibility, carga, chaos, recovery e CI remoto. `docs/final-closure-audit.md` é o artefato de fechamento da Fase 0 e registra que a revisão externa do Harness não expõe o contrato CVG `/v1` esperado pelo adapter; por isso a próxima fatia local é o bridge/contrato, sem credencial ou provider.
+
+Ações seguintes, em dependência: bridge/contract → PDP universal/repositories → worker budgets/backpressure → OTel stack → staging autorizado → browser/a11y/load/chaos/recovery → remote CI → critics finais/scorecard. Cada etapa mantém evidência `NOT_RUN`, `BLOCKED` ou `SYNTHETIC_ONLY` quando a execução correspondente não existir.
+
+Checkpoint de recovery: o pointer antigo `PRODUCTION-LIKE-EVIDENCE` foi reconciliado com a auditoria v2; a ação executável única agora é `CVG-FULL-STATE-OF-THE-ART:DEEPSEEK-BRIDGE-CONTRACT`.
+
+## Current checkpoint — 2026-09-09 17:30
+
+`EVT-CVG-20260909-RECOVERY-063` registra a reaudit da continuação e a supersessão operacional do pointer antigo. O prompt v2 está em `docs/prompt-state-of-the-art-triplo-aaa-2026-09-09-v2.txt`; a cópia é byte-idêntica à fonte anexada. O artifact local segue `IN_PROGRESS`/`FAIL_WITH_LIMITATIONS`; nenhuma integração externa foi acionada.
+
+## Current checkpoint — 2026-09-09 17:50
+
+`EVT-CVG-20260909-VERIFY-066` registra o bridge DeepSeek local: port nativo explícito, health `UNAVAILABLE` por default, contrato `/v1`, correlation/cancel/timeout, approval/replay/provenance e 7 testes known-good/known-bad. Typecheck, 89 testes, lint, static, build, `verify:production` e diff check passaram. A implementação não prova Harness/LLM/provider real; o próximo pointer é `CVG-FULL-STATE-OF-THE-ART:PROVIDER-CONTRACT-AND-UNIVERSAL-PDP`.
+
+## Current checkpoint — 2026-09-09 18:16
+
+`EVT-CVG-20260909-VERIFY-069` fecha a onda local provider/PDP/worker/audit chain: 94/94 testes, lint 112 fontes, static 39/114, PDP 62/64/12, build, produção estrutural, E2E 22/24 (2 skips intencionais), prompt byte-idêntico e diff check passaram. A vertical sintética preserva `providerRequestId` em `OUTCOME_UNKNOWN`, reconcilia com claim/lease/fence e nunca reenvia cegamente; migration 026 adiciona cadeia `previousHash/recordHash`. `verify:triplo-aaa` continua `AAA_NOT_PROVEN` e staging `STAGING_EVIDENCE_INCOMPLETE`; critics I2 expiraram sem parecer. O próximo pointer é `CVG-FULL-STATE-OF-THE-ART:SECRETS-AUTH-MFA`.

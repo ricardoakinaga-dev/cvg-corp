@@ -1,0 +1,1715 @@
+# MISSÃO
+
+Você é o principal engenheiro responsável por levar o repositório:
+
+https://github.com/ricardoakinaga-dev/cvg-corp
+
+do estado atual de arquitetura enterprise avançada para um sistema **State of the Art, Triplo AAA**, com qualidade de produção comprovada e não apenas arquitetura documentada.
+
+O projeto já possui uma base forte:
+
+* `AgentRuntime`;
+* `MockHarnessAdapter`;
+* `DeepSeekHarnessAdapter`;
+* Tool Gateway governado;
+* PDP/ABAC;
+* PostgreSQL com RLS;
+* outbox/inbox;
+* effect ledger;
+* idempotência;
+* recovery/restore;
+* worker separado;
+* frontend/backend modularizados;
+* Docker;
+* CI;
+* testes de segurança/fault/database/contract/E2E;
+* fail-closed;
+* verificação de manifest/commit do Harness.
+
+NÃO reescreva o sistema do zero.
+
+NÃO destrua arquitetura já correta.
+
+A missão agora é fechar os gaps restantes de produção e provar que a arquitetura funciona sob condições reais.
+
+---
+
+# OBJETIVO FINAL
+
+Alcançar um sistema que possa ser classificado, com evidência, como:
+
+```text
+State of the Art
+Enterprise-grade
+Mission-critical ready
+Production-grade
+Secure-by-default
+Recoverable
+Observable
+Agent-native
+Fail-closed
+Operationally proven
+```
+
+Metas:
+
+```text
+Architecture                >= 97/100
+Security                    >= 97/100
+Reliability                 >= 97/100
+AI Governance               >= 97/100
+Testing                     >= 97/100
+Observability               >= 95/100
+Operations                  >= 95/100
+Production Readiness        >= 95/100
+Overall                     >= 97/100
+```
+
+Nunca declarar essas notas atingidas sem evidência reproduzível.
+
+---
+
+# REGRA CENTRAL
+
+A arquitetura obrigatória continua:
+
+```text
+CVG Domain
+   ↓
+Application Layer
+   ↓
+Policy Enforcement
+   ↓
+AgentRuntime
+   ↓
+Harness Adapter
+   ↓
+DeepSeek Harness
+```
+
+O DeepSeek Harness deve continuar como runtime externo e substituível.
+
+O Harness nunca deve ser autoridade sobre:
+
+* banco;
+* prontuário;
+* estoque;
+* financeiro;
+* autenticação;
+* autorização;
+* auditoria;
+* segredos.
+
+A fonte de verdade continua sendo o domínio transacional do CVG-Corp.
+
+---
+
+# FASE 0 — REAUDITORIA DO ESTADO ATUAL
+
+Antes de alterar qualquer código:
+
+1. Ler todo o README.
+2. Ler `docs/`.
+3. Ler `.agent/`.
+4. Ler `.gauntlet/`.
+5. Ler `.github/workflows/`.
+6. Ler os Dockerfiles e Compose.
+7. Ler `packages/agent-runtime`.
+8. Ler `packages/harness-adapters`.
+9. Ler `packages/agent-policy`.
+10. Ler `packages/agent-tools`.
+11. Ler `packages/persistence`.
+12. Ler `packages/integrations`.
+13. Ler `apps/api`.
+14. Ler `apps/worker`.
+15. Ler `apps/web`.
+16. Ler todos os testes.
+17. Ler migrations.
+
+Gerar:
+
+```text
+docs/production-reality-audit-vNext.md
+```
+
+com:
+
+* estado atual;
+* gaps reais;
+* riscos;
+* dependências;
+* blockers;
+* plano de implementação;
+* plano de rollback;
+* critérios de aceite;
+* critérios de não-regressão.
+
+---
+
+# FASE 1 — DEEPSEEK HARNESS REAL
+
+O objetivo é provar de ponta a ponta:
+
+```text
+CVG
+ ↓
+AgentRuntime
+ ↓
+DeepSeekHarnessAdapter
+ ↓
+DeepSeek Harness real
+ ↓
+LLM real
+```
+
+Implementar o boundary real necessário para que o adapter atual converse com o Harness real.
+
+Não presumir que o protocolo CVG `/v1` já exista no Harness.
+
+Se necessário, criar um bridge sidecar separado:
+
+```text
+deepseek-harness-bridge/
+```
+
+Esse bridge deve:
+
+* adaptar protocolo CVG → Harness;
+* não conter regra de negócio do CVG;
+* não acessar banco CVG diretamente;
+* ser stateless sempre que possível;
+* validar manifest;
+* validar engine commit;
+* validar tool catalog;
+* expor health/readiness;
+* propagar correlation ID;
+* propagar cancellation;
+* impor timeout;
+* suportar structured output;
+* suportar replay;
+* suportar approvals;
+* suportar provenance.
+
+Fluxo:
+
+```text
+CVG API
+ ↓
+DeepSeekHarnessAdapter
+ ↓
+Bridge
+ ↓
+DeepSeek Harness
+ ↓
+LLM
+```
+
+Nunca:
+
+```text
+Harness
+ ↓
+PostgreSQL CVG
+```
+
+---
+
+# FASE 2 — CONTRACT TESTS DO HARNESS REAL
+
+Criar testes específicos de compatibilidade.
+
+Cobrir:
+
+```text
+manifest correto
+manifest incorreto
+engine commit incorreto
+tool registry diferente
+health degraded
+timeout
+connection refused
+invalid JSON
+schema mismatch
+partial response
+provider failure
+cancellation
+replay
+approval
+expired approval
+wrong approval
+```
+
+Criar:
+
+```text
+tests/contract/deepseek-harness-real.test.ts
+```
+
+ou estrutura equivalente.
+
+---
+
+# FASE 3 — FIRST REAL PROVIDER
+
+Escolher UMA integração externa real e completar ponta a ponta.
+
+Preferencialmente mensageria/WhatsApp.
+
+Arquitetura obrigatória:
+
+```text
+Application Service
+   ↓
+communication.stage
+   ↓
+approval
+   ↓
+outbox
+   ↓
+worker
+   ↓
+provider adapter
+   ↓
+provider
+   ↓
+receipt/callback
+   ↓
+inbox
+   ↓
+effect ledger
+   ↓
+audit
+```
+
+Não chamar provider diretamente da rota HTTP.
+
+---
+
+# FASE 4 — PROVIDER ADAPTER
+
+Criar abstraction:
+
+```ts
+interface MessagingProvider {
+  send(...)
+  queryStatus(...)
+  verifyCallback(...)
+  normalizeReceipt(...)
+}
+```
+
+Implementar:
+
+```text
+SyntheticMessagingProvider
+RealMessagingProvider
+```
+
+O provider real deve possuir:
+
+* timeout;
+* retries controlados;
+* idempotency;
+* request ID;
+* provider message ID;
+* receipt;
+* callback validation;
+* status query;
+* unknown outcome handling;
+* rate limit;
+* circuit breaker;
+* redaction;
+* structured error taxonomy.
+
+---
+
+# FASE 5 — UNKNOWN OUTCOME
+
+Essa fase é obrigatória.
+
+Testar situações:
+
+```text
+request enviada
+↓
+provider executa
+↓
+resposta é perdida
+```
+
+Nunca reenviar cegamente.
+
+Fluxo:
+
+```text
+DISPATCHING
+ ↓
+OUTCOME_UNKNOWN
+ ↓
+provider query
+ ↓
+RECONCILING
+ ↓
+SUCCEEDED / FAILED_FINAL
+```
+
+Se o provider não permitir query:
+
+```text
+manual reconciliation
+```
+
+Nunca:
+
+```text
+OUTCOME_UNKNOWN → retry automático
+```
+
+---
+
+# FASE 6 — OUTBOX DURÁVEL AAA
+
+Revisar e fortalecer o outbox atual.
+
+Garantir:
+
+```text
+claim
+lease
+fencing
+attempt count
+backoff
+next attempt
+dead-letter
+outcome_unknown
+provider receipt
+reconciliation
+final failure
+```
+
+Estados sugeridos:
+
+```text
+PENDING
+CLAIMED
+DISPATCHING
+OUTCOME_UNKNOWN
+SUCCEEDED
+FAILED_RETRYABLE
+FAILED_FINAL
+RECONCILING
+RECONCILED
+```
+
+As transições devem ser explicitamente testadas.
+
+---
+
+# FASE 7 — TOOL GATEWAY DURÁVEL
+
+A idempotência em memória do Tool Gateway é útil, mas não suficiente para operações externas críticas.
+
+Para tools externas:
+
+```text
+Tool Gateway
+ ↓
+Command / Effect Ledger
+ ↓
+Outbox
+```
+
+Garantir que:
+
+```text
+same idempotency key + same digest
+```
+
+retorne o resultado existente.
+
+E:
+
+```text
+same idempotency key + different digest
+```
+
+falhe.
+
+Mesmo após restart.
+
+Criar testes de restart.
+
+---
+
+# FASE 8 — SECRET MANAGER REAL
+
+Implementar secret management de produção.
+
+Suportar inicialmente:
+
+```text
+EnvironmentSecretProvider
+DockerSecretProvider
+```
+
+Preparar extension point para:
+
+```text
+Vault
+Infisical
+AWS Secrets Manager
+GCP Secret Manager
+Azure Key Vault
+```
+
+Regras:
+
+* nenhum segredo no repositório;
+* nenhum segredo em logs;
+* nenhum segredo em exception;
+* nenhum segredo em telemetry;
+* nenhum segredo em dump;
+* rotação possível;
+* startup fail-closed se secret obrigatório não existir.
+
+---
+
+# FASE 9 — AUTH PRODUÇÃO
+
+Fortalecer autenticação.
+
+Implementar ou completar:
+
+```text
+password policy
+password aging
+account lockout
+MFA boundary
+session inventory
+session revocation
+credential rotation
+login audit
+failed login audit
+device/session metadata
+secure recovery
+```
+
+Garantir em produção:
+
+```text
+Secure
+HttpOnly
+SameSite
+HTTPS
+```
+
+---
+
+# FASE 10 — MFA
+
+Implementar MFA de produção.
+
+Preferência:
+
+```text
+TOTP
+```
+
+Arquitetura preparada para:
+
+```text
+WebAuthn / passkeys
+```
+
+Cobrir:
+
+* enrollment;
+* recovery;
+* reset;
+* brute-force;
+* expired challenge;
+* reused challenge;
+* revoked factor.
+
+---
+
+# FASE 11 — PDP UNIVERSAL
+
+Hoje o PDP já existe.
+
+A tarefa é provar que **todas as rotas críticas e application services sensíveis passam por ele**.
+
+Criar verificador estático ou testes que detectem rotas sensíveis sem policy.
+
+Nenhuma operação sensível deve conseguir chamar repository diretamente sem enforcement.
+
+Criar algo semelhante a:
+
+```text
+PolicyEnforcedUseCase
+```
+
+ou middleware/application wrapper.
+
+---
+
+# FASE 12 — BREAK GLASS
+
+Implementar break-glass real.
+
+Exigir:
+
+```text
+explicit activation
+reason mandatory
+short TTL
+independent audit
+session tagging
+enhanced logging
+automatic expiry
+post-event review
+```
+
+Nunca usar role `admin` comum como break-glass.
+
+---
+
+# FASE 13 — REPOSITORIES NORMALIZADOS
+
+Reduzir progressivamente dependência do snapshot JSONB.
+
+Criar repositories normalizados completos para:
+
+```text
+Guardian
+Patient
+Appointment
+Encounter
+ClinicalDocument
+DiagnosticRequest
+DiagnosticResult
+HospitalEpisode
+Medication
+Stock
+Finance
+Communication
+Audit
+```
+
+O JSONB pode continuar como mecanismo de recovery/snapshot, mas não como fonte operacional principal.
+
+---
+
+# FASE 14 — CONSISTÊNCIA TRANSACIONAL
+
+Provar atomicidade entre:
+
+```text
+domain mutation
+audit
+receipt
+journal
+outbox
+```
+
+Criar testes de crash:
+
+```text
+antes do commit
+durante o commit
+depois do commit
+antes do projection update
+depois do projection update
+```
+
+---
+
+# FASE 15 — WORKER HARDENING
+
+Fortalecer `apps/worker`.
+
+Implementar:
+
+```text
+lane scheduler
+per-lane concurrency
+backpressure
+lease
+heartbeat
+graceful shutdown
+deadline
+retry budget
+poison message handling
+dead-letter
+metrics
+```
+
+Lanes:
+
+```text
+outbox
+jobs
+schedule
+reconciliation
+notifications
+maintenance
+```
+
+Cada lane deve possuir limites próprios.
+
+---
+
+# FASE 16 — OBSERVABILITY REAL
+
+Implementar OpenTelemetry.
+
+Instrumentar:
+
+```text
+HTTP
+Fastify
+DB
+application service
+worker
+outbox
+integration
+provider
+AgentRuntime
+DeepSeek adapter
+tool execution
+```
+
+Adicionar:
+
+```text
+traces
+metrics
+structured logs
+```
+
+Propagar:
+
+```text
+correlationId
+requestId
+sessionId
+toolInvocationId
+outboxId
+providerRequestId
+```
+
+Nunca propagar dados clínicos sensíveis em labels de alta cardinalidade.
+
+---
+
+# FASE 17 — OBSERVABILITY STACK
+
+Adicionar stack de staging/dev:
+
+```text
+OpenTelemetry Collector
+Prometheus
+Grafana
+Alertmanager
+```
+
+Criar Docker Compose opcional:
+
+```text
+docker-compose.observability.yml
+```
+
+Dashboards mínimos:
+
+```text
+API health
+API latency
+5xx rate
+DB health
+worker heartbeat
+outbox backlog
+reconciliation backlog
+provider failures
+AI latency
+AI token usage
+tool denials
+approval queue
+auth failures
+```
+
+---
+
+# FASE 18 — SLOs
+
+Definir SLOs como PROPOSED até existirem medições.
+
+Exemplos:
+
+```text
+API availability
+p95 latency
+patient lookup
+login
+outbox delay
+provider acknowledgment
+worker backlog age
+RTO
+RPO
+```
+
+Criar:
+
+```text
+docs/slo-vNext.md
+```
+
+Nunca marcar como VERIFIED antes de staging.
+
+---
+
+# FASE 19 — ALERTING
+
+Criar alertas para:
+
+```text
+API unavailable
+Postgres unavailable
+worker heartbeat stale
+outbox backlog old
+provider error spike
+OUTCOME_UNKNOWN growth
+reconciliation backlog
+auth brute-force
+high denial spike
+DeepSeek runtime unavailable
+restore verification failure
+```
+
+---
+
+# FASE 20 — STAGING REAL
+
+Criar ambiente staging reproduzível.
+
+Estrutura:
+
+```text
+dev
+staging
+production
+```
+
+Staging deve usar:
+
+```text
+PostgreSQL real
+worker real
+DeepSeek Harness real
+provider sandbox real
+secret provider real
+TLS real
+observability real
+```
+
+Sem dados clínicos reais.
+
+Usar dados sintéticos.
+
+---
+
+# FASE 21 — TLS / REVERSE PROXY
+
+Adicionar TLS de staging/produção.
+
+Pode usar:
+
+```text
+Caddy
+Traefik
+Nginx
+```
+
+Requisitos:
+
+```text
+TLS 1.2+
+HSTS
+secure cookies
+redirect HTTP→HTTPS
+security headers
+```
+
+---
+
+# FASE 22 — SECURITY HEADERS
+
+Garantir:
+
+```text
+CSP
+HSTS
+X-Content-Type-Options
+Referrer-Policy
+Permissions-Policy
+frame protection
+```
+
+Testar automaticamente.
+
+---
+
+# FASE 23 — CSP
+
+Criar CSP restritiva.
+
+Evitar:
+
+```text
+unsafe-inline
+unsafe-eval
+```
+
+quando possível.
+
+Adicionar nonce/hash quando necessário.
+
+---
+
+# FASE 24 — RATE LIMIT DURÁVEL
+
+O rate limit de produção não deve depender apenas de memória.
+
+Criar abstraction para:
+
+```text
+RedisRateLimitStore
+```
+
+ou equivalente.
+
+Limites diferentes para:
+
+```text
+login
+MFA
+AI
+search
+exports
+webhooks
+provider callbacks
+high-risk actions
+```
+
+---
+
+# FASE 25 — CIRCUIT BREAKERS
+
+Criar circuit breaker para dependências externas.
+
+Aplicar a:
+
+```text
+DeepSeek Harness
+messaging provider
+future payment provider
+future diagnostic provider
+```
+
+Estados:
+
+```text
+CLOSED
+OPEN
+HALF_OPEN
+```
+
+Com métricas.
+
+---
+
+# FASE 26 — RESILIENCE PATTERNS
+
+Implementar onde apropriado:
+
+```text
+timeout
+bulkhead
+retry
+jitter
+circuit breaker
+rate limit
+backpressure
+```
+
+Nunca aplicar retry automaticamente em operações não-idempotentes.
+
+---
+
+# FASE 27 — CHAOS TESTS
+
+Adicionar testes:
+
+```text
+kill worker during dispatch
+kill API during commit
+restart Postgres
+provider timeout
+provider duplicate callback
+provider malformed callback
+Harness unavailable
+Harness slow
+Harness invalid manifest
+network partition
+restore corruption
+secret unavailable
+```
+
+---
+
+# FASE 28 — RECOVERY TESTS
+
+Provar:
+
+```text
+RPO
+RTO
+restore quarantine
+session revocation
+audit preservation
+outbox preservation
+effect ledger preservation
+```
+
+Criar testes automatizados sempre que possível.
+
+---
+
+# FASE 29 — BACKUP OPERACIONAL
+
+Criar processo real de backup.
+
+Incluir:
+
+```text
+encrypted backup
+manifest
+checksum
+key reference
+retention
+rotation
+restore verification
+```
+
+Backup que nunca foi restaurado não conta como backup validado.
+
+---
+
+# FASE 30 — PERFORMANCE
+
+Criar benchmarks reais de staging:
+
+```text
+login
+patient lookup
+appointments
+clinical read
+write
+outbox processing
+worker throughput
+AI turn
+DeepSeek roundtrip
+provider dispatch
+```
+
+Ferramentas possíveis:
+
+```text
+k6
+autocannon
+pgbench
+```
+
+Salvar resultados versionados.
+
+---
+
+# FASE 31 — LOAD TEST
+
+Criar carga sintética production-like.
+
+Testar:
+
+```text
+concurrent users
+concurrent patient reads
+appointments
+worker backlog
+AI requests
+provider requests
+```
+
+Não usar dados reais.
+
+---
+
+# FASE 32 — BROWSER MATRIX
+
+Expandir E2E:
+
+```text
+Chromium
+Firefox
+WebKit
+```
+
+Viewports:
+
+```text
+mobile
+tablet
+desktop
+```
+
+Adicionar touch tests.
+
+---
+
+# FASE 33 — ACCESSIBILITY
+
+Adicionar:
+
+```text
+axe-core
+```
+
+ou equivalente.
+
+Verificar:
+
+```text
+WCAG AA
+keyboard
+focus
+labels
+contrast
+forms
+dialog
+navigation
+```
+
+---
+
+# FASE 34 — FRONTEND RESILIENCE
+
+Cobrir estados:
+
+```text
+loading
+empty
+error
+offline
+degraded
+unauthorized
+session expired
+context invalid
+provider unavailable
+Harness unavailable
+stale data
+```
+
+---
+
+# FASE 35 — SUPPLY CHAIN
+
+Fortalecer:
+
+```text
+npm audit
+SBOM
+Trivy
+dependency pinning
+license policy
+Dependabot/Renovate
+```
+
+Fixar GitHub Actions por SHA para maior segurança de supply chain.
+
+---
+
+# FASE 36 — CONTAINER SECURITY
+
+Garantir:
+
+```text
+non-root
+read-only fs
+cap_drop ALL
+no-new-privileges
+minimal images
+healthcheck
+resource limits
+```
+
+Adicionar scan.
+
+---
+
+# FASE 37 — RESOURCE LIMITS
+
+Definir limites de:
+
+```text
+CPU
+memory
+pids
+```
+
+para:
+
+```text
+api
+worker
+web
+proxy
+postgres
+bridge
+```
+
+Em staging, testar comportamento sob pressão.
+
+---
+
+# FASE 38 — DATABASE CONNECTION CONTROL
+
+Adicionar:
+
+```text
+pool limits
+query timeout
+statement timeout
+idle timeout
+transaction timeout
+```
+
+Criar métricas de pool exhaustion.
+
+---
+
+# FASE 39 — MIGRATION SAFETY
+
+Fortalecer migrations:
+
+```text
+append-only
+checksummed
+forward-only
+compatibility tested
+```
+
+Adicionar gate para:
+
+```text
+migration on previous version
+mixed-version startup
+rollback by forward-fix
+```
+
+---
+
+# FASE 40 — CONTRACT VERSIONING
+
+Versionar:
+
+```text
+AgentRuntime
+Harness Bridge
+Provider contract
+Tool descriptors
+API schema
+Inbox webhook schema
+```
+
+Criar política de compatibilidade.
+
+---
+
+# FASE 41 — AI SECURITY
+
+Expandir red-team contra:
+
+```text
+prompt injection
+indirect prompt injection
+malicious knowledge
+tool injection
+secret extraction
+cross-patient exfiltration
+role escalation
+approval bypass
+context poisoning
+tool confusion
+```
+
+Adicionar testes automatizados.
+
+---
+
+# FASE 42 — KNOWLEDGE GOVERNANCE
+
+Garantir que documentos usados por IA possuam:
+
+```text
+source
+owner
+classification
+scope
+checksum
+version
+approval status
+review date
+```
+
+Somente:
+
+```text
+APPROVED
+```
+
+pode entrar no contexto.
+
+---
+
+# FASE 43 — AI PROVENANCE
+
+Toda execução deve registrar:
+
+```text
+runtime adapter
+engine commit
+manifest
+model/provider
+tool registry digest
+policy revision
+session
+turn
+references
+approval
+usage
+correlation
+```
+
+---
+
+# FASE 44 — COST / USAGE LEDGER
+
+Fortalecer usage ledger para IA.
+
+Registrar:
+
+```text
+input tokens
+output tokens
+provider
+model
+cost estimate
+budget
+reservation
+settlement
+```
+
+Sem confiar apenas no valor retornado pelo modelo.
+
+---
+
+# FASE 45 — AUDIT TAMPER EVIDENCE
+
+Fortalecer audit trail.
+
+Adicionar encadeamento criptográfico ou mecanismo equivalente:
+
+```text
+prevHash
+recordHash
+```
+
+quando tecnicamente apropriado.
+
+Verificar a cadeia em restore/audit.
+
+---
+
+# FASE 46 — EXPORT
+
+Implementar export governado.
+
+Exigir:
+
+```text
+authorization
+scope
+purpose
+audit
+expiry
+encryption
+```
+
+Export não deve ser caminho de bypass.
+
+---
+
+# FASE 47 — DATA RETENTION
+
+Definir políticas explícitas.
+
+Marcar como:
+
+```text
+PROPOSED
+```
+
+onde ainda houver decisão regulatória pendente.
+
+Nunca inventar requisito legal.
+
+---
+
+# FASE 48 — RUNBOOKS
+
+Atualizar/criar:
+
+```text
+docs/runbooks/
+```
+
+Incluir:
+
+```text
+deploy
+rollback
+backup
+restore
+database outage
+worker backlog
+provider outage
+DeepSeek outage
+secret rotation
+security incident
+MFA recovery
+break-glass
+OUTCOME_UNKNOWN
+reconciliation
+```
+
+---
+
+# FASE 49 — ADRs
+
+Criar/atualizar ADRs para:
+
+```text
+DeepSeek bridge
+provider architecture
+PDP enforcement
+OpenTelemetry
+backup
+secret management
+break-glass
+real integration
+```
+
+---
+
+# FASE 50 — PRODUCTION VERIFY
+
+Criar:
+
+```bash
+npm run verify:triplo-aaa
+```
+
+Esse gate deve executar tudo que for possível localmente:
+
+```text
+lint
+typecheck
+unit
+integration
+contract
+security
+database
+fault
+AI security
+policy coverage
+migration
+build
+E2E
+accessibility
+dependency audit
+license
+SBOM
+Docker validation
+container scan
+static verification
+restore
+```
+
+Gates de staging real podem ser separados:
+
+```bash
+npm run verify:staging
+```
+
+---
+
+# PHASE FINAL — GAUNTLET
+
+Executar critics independentes:
+
+```text
+architecture
+security
+database
+reliability
+AI safety
+DeepSeek integration
+provider integration
+observability
+operations
+frontend
+recovery
+production readiness
+```
+
+Cada critic:
+
+* contexto fresco;
+* read-only;
+* sem alterar código;
+* com findings objetivos.
+
+Fluxo:
+
+```text
+critic
+↓
+findings
+↓
+repair
+↓
+retest
+↓
+critic final
+```
+
+---
+
+# QUALITY BAR FINAL
+
+Só declarar `STATE_OF_THE_ART_CANDIDATE` se:
+
+```text
+[ ] DeepSeek Harness real comprovado
+[ ] provider real comprovado
+[ ] staging real
+[ ] secrets reais
+[ ] TLS real
+[ ] observabilidade real
+[ ] PDP universal
+[ ] worker real
+[ ] unknown outcome provado
+[ ] recovery provado
+[ ] backup restaurado
+[ ] load test
+[ ] chaos tests
+[ ] browsers adicionais
+[ ] accessibility
+[ ] security scans
+[ ] CI verde
+[ ] container scans
+```
+
+Só declarar `TRIPLE_AAA_CANDIDATE` se:
+
+```text
+State of Art Candidate
++
+zero blocker crítico
++
+gates independentes aprovados
++
+staging estável
++
+fault/recovery aprovados
++
+security critic aprovado
++
+production readiness critic aprovado
+```
+
+Nunca declarar produção apenas porque testes locais passaram.
+
+---
+
+# PRIORIDADE DE EXECUÇÃO
+
+Ordem recomendada:
+
+```text
+1  Reaudit
+2  DeepSeek Harness real
+3  Harness contract tests
+4  Real provider
+5  Unknown outcome
+6  Durable tool effects
+7  Secret manager
+8  PDP universal
+9  Auth/MFA
+10 Worker hardening
+11 Observability
+12 Staging
+13 TLS
+14 Fault/chaos
+15 Backup/restore
+16 Performance/load
+17 Accessibility/browser matrix
+18 Supply chain
+19 Final gauntlet
+```
+
+---
+
+# PROIBIÇÕES
+
+Não:
+
+* reescrever tudo;
+* trocar stack sem motivo;
+* enfraquecer RLS;
+* remover fail-closed;
+* colocar regra de negócio no Harness bridge;
+* permitir acesso direto do Harness ao banco;
+* adicionar fallback permissivo;
+* esconder gap;
+* marcar provider sintético como real;
+* marcar CI declarada como CI executada;
+* marcar staging como produção;
+* marcar SLO proposto como cumprido;
+* criar microservices desnecessários;
+* adicionar complexidade sem evidência de benefício.
+
+---
+
+# DELIVERABLES
+
+Gerar/atualizar:
+
+```text
+docs/production-reality-audit-vNext.md
+docs/deepseek-runtime-integration-vNext.md
+docs/provider-integration-vNext.md
+docs/observability-vNext.md
+docs/staging-vNext.md
+docs/security-vNext.md
+docs/recovery-vNext.md
+docs/performance-vNext.md
+docs/triplo-aaa-scorecard.md
+```
+
+E atualizar:
+
+```text
+README.md
+docs/adr/
+docs/runbooks/
+```
+
+---
+
+# SCORECARD FINAL
+
+Gerar nota 0–100 para:
+
+```text
+Architecture
+Domain
+Security
+Auth
+Authorization
+Database
+Reliability
+DeepSeek Integration
+AI Governance
+Tool Gateway
+Provider Integration
+Worker
+Testing
+Observability
+DevOps
+Recovery
+Frontend
+Performance
+Documentation
+Production Readiness
+```
+
+Cada nota precisa conter:
+
+```text
+evidence
+tests
+files
+limitations
+risk residual
+```
+
+---
+
+# DEFINITION OF DONE
+
+A tarefa NÃO termina quando:
+
+```text
+compila
+```
+
+Nem quando:
+
+```text
+os testes locais passam
+```
+
+Termina quando houver:
+
+```text
+real harness
++
+real provider
++
+real staging
++
+observability
++
+security
++
+fault testing
++
+recovery
++
+load testing
++
+independent critics
++
+documented evidence
+```
+
+Se alguma fase continuar não comprovada, registrar:
+
+```text
+NOT_RUN
+PARTIAL
+BLOCKED
+SYNTHETIC_ONLY
+STAGING_ONLY
+```
+
+O objetivo é entregar um CVG-Corp que possa ser defendido tecnicamente como **State of the Art, Triplo AAA**, sem depender de marketing ou overclaim.

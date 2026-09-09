@@ -358,6 +358,42 @@
   --type-offline-display: clamp(34px, 5vw, 54px);
 }
 
+/* Dynamic visual values use audited class buckets so the runtime keeps a strict style-src CSP. */
+.finance-bars .bar-35 { height: var(--space-pct-35); }
+.finance-bars .bar-45 { height: var(--space-pct-45); }
+.finance-bars .bar-50 { height: var(--space-pct-50); }
+.finance-bars .bar-62 { height: var(--space-pct-62); }
+.finance-bars .bar-78 { height: var(--space-pct-78); }
+.finance-bars .bar-90 { height: var(--space-pct-90); }
+.mini-chart .chart-bar-36 { height: var(--space-pct-36); }
+.mini-chart .chart-bar-42 { height: var(--space-pct-42); }
+.mini-chart .chart-bar-48 { height: var(--space-pct-48); }
+.mini-chart .chart-bar-58 { height: var(--space-pct-58); }
+.mini-chart .chart-bar-67 { height: var(--space-pct-67); }
+.mini-chart .chart-bar-70 { height: var(--space-pct-70); }
+.mini-chart .chart-bar-76 { height: var(--space-pct-76); }
+.mini-chart .chart-bar-88 { height: var(--space-pct-88); }
+.stock-progress span.stock-progress-5 { width: 5%; }
+.stock-progress span.stock-progress-10 { width: 10%; }
+.stock-progress span.stock-progress-15 { width: 15%; }
+.stock-progress span.stock-progress-20 { width: 20%; }
+.stock-progress span.stock-progress-25 { width: 25%; }
+.stock-progress span.stock-progress-30 { width: 30%; }
+.stock-progress span.stock-progress-35 { width: 35%; }
+.stock-progress span.stock-progress-40 { width: 40%; }
+.stock-progress span.stock-progress-45 { width: 45%; }
+.stock-progress span.stock-progress-50 { width: 50%; }
+.stock-progress span.stock-progress-55 { width: 55%; }
+.stock-progress span.stock-progress-60 { width: 60%; }
+.stock-progress span.stock-progress-65 { width: 65%; }
+.stock-progress span.stock-progress-70 { width: 70%; }
+.stock-progress span.stock-progress-75 { width: 75%; }
+.stock-progress span.stock-progress-80 { width: 80%; }
+.stock-progress span.stock-progress-85 { width: 85%; }
+.stock-progress span.stock-progress-90 { width: 90%; }
+.stock-progress span.stock-progress-95 { width: 95%; }
+.stock-progress span.stock-progress-100 { width: 100%; }
+
 * { box-sizing: border-box; }
 html { min-width: 320px; background: var(--canvas); }
 body { margin: var(--space-zero); color: var(--ink-900); background: var(--canvas); font-family: var(--font-body); font-size: var(--type-001); line-height: var(--type-002); -webkit-font-smoothing: antialiased; }

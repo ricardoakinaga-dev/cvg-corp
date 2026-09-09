@@ -1,8 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { createHmac } from "node:crypto";
 import { id } from "@cvg/contracts";
 import { DomainError } from "@cvg/domain";
-import { inboxEventToOutbox, IntegrationGateway, OutboxWorker, reconcileUnknownExternalEffect, StaticSecretProvider, type ExternalEffectLedger } from "@cvg/integrations";
+import { HttpMessagingProvider, inboxEventToOutbox, IntegrationGateway, MessagingCircuitBreaker, MessagingOutboxSink, MessagingProviderError, MessagingRateLimiter, OutboxWorker, reconcileUnknownExternalEffect, redactMessagingError, StaticSecretProvider, SyntheticMessagingProvider, verifyMessagingCallback, type ExternalEffectLedger } from "@cvg/integrations";
 import type { DurableExternalEffectRecord, DurableExternalReconciliationEvidence, DurableInboxInput, DurableOutboxRecord } from "@cvg/persistence";
 
 const organizationId = id("00000000-0000-4000-0000-000000000010");
@@ -201,4 +202,91 @@ test("integration gateway exposes secret-provider health without exposing secret
   assert.equal(configured.getHealth().secretProvider, "READY");
   assert.equal(synthetic.has("synthetic-provider-key"), true);
   assert.equal("secret" in synthetic, false);
+});
+
+test("synthetic messaging preserves idempotency and reconciles an unknown outcome", async () => {
+  const provider = new SyntheticMessagingProvider({ sendOutcome: "OUTCOME_UNKNOWN" });
+  const unknown = await provider.send({ idempotencyKey: "message-unknown-1", channel: "SMS", recipient: "+5511999999999", body: "fixture" });
+  assert.equal(unknown.status, "OUTCOME_UNKNOWN");
+  assert.equal(unknown.providerRequestId?.startsWith("synthetic-request-"), true);
+  const observed = await provider.queryStatus({ requestId: unknown.requestId });
+  assert.equal(observed.status, "SUCCEEDED");
+  assert.equal(observed.providerRequestId, unknown.providerRequestId);
+  const replay = await provider.send({ idempotencyKey: "message-unknown-1", channel: "SMS", recipient: "+5511999999999", body: "fixture" });
+  assert.equal(replay.status, "OUTCOME_UNKNOWN");
+  await assert.rejects(() => provider.send({ idempotencyKey: "message-unknown-1", channel: "SMS", recipient: "+5511999999999", body: "different" }), (error: unknown) => error instanceof DomainError && error.code === "IDEMPOTENCY_CONFLICT");
+});
+
+test("HTTP messaging validates receipts, keeps credentials out of results and never retries ambiguous transport", async () => {
+  const calls: Array<{ url: string; init?: RequestInit }> = [];
+  const provider = new HttpMessagingProvider({
+    endpoint: "https://provider.example.test/api",
+    credentialRef: "messaging.token",
+    secretResolver: async (reference) => reference === "messaging.token" ? "fixture-secret" : null,
+    fetch: async (url, init) => {
+      calls.push(init ? { url, init } : { url });
+      return { ok: true, status: 202, json: async () => ({ requestId: "request-1", providerRequestId: "provider-1", status: "ACCEPTED", receipt: { providerRequestId: "provider-1", providerMessageId: "message-1", status: "ACCEPTED", receivedAt: "2026-01-01T00:00:00.000Z" } }) };
+    }
+  });
+  const delivered = await provider.send({ requestId: "request-1", idempotencyKey: "http-message-1", channel: "EMAIL", to: "guardian@example.test", content: "fixture" });
+  assert.equal(delivered.status, "DELIVERED");
+  assert.equal(delivered.providerRequestId, "provider-1");
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0]?.url, "https://provider.example.test/api/messages");
+  assert.match(String(calls[0]?.init?.headers && (calls[0]?.init?.headers as Record<string, string>).authorization), /Bearer fixture-secret/);
+
+  const unknownProvider = new HttpMessagingProvider({ endpoint: "https://provider.example.test", credentialRef: "messaging.token", secretResolver: async () => "fixture-secret", fetch: async () => new Promise(() => undefined) });
+  const unknown = await unknownProvider.send({ idempotencyKey: "http-timeout-1", channel: "SMS", recipient: "+5511999999999", body: "fixture", timeoutMs: 100 });
+  assert.equal(unknown.status, "OUTCOME_UNKNOWN");
+  await assert.rejects(() => new HttpMessagingProvider({ endpoint: "http://provider.example.test", credentialRef: "messaging.token", secretResolver: async () => "fixture-secret" }).send({ idempotencyKey: "insecure-1", channel: "SMS", recipient: "+5511999999999", body: "fixture" }), (error: unknown) => error instanceof MessagingProviderError && error.failure === "CONFIGURATION");
+});
+
+test("messaging callbacks require a valid HMAC and external sinks require the durable effect ledger", async () => {
+  const payload = JSON.stringify({ providerRequestId: "provider-1", status: "DELIVERED" });
+  const signature = createHmac("sha256", "callback-secret").update(payload).digest("hex");
+  assert.equal(verifyMessagingCallback(payload, `sha256=${signature}`, "callback-secret"), true);
+  assert.equal(verifyMessagingCallback(payload, signature.slice(0, -1) + "0", "callback-secret"), false);
+
+  const provider = new SyntheticMessagingProvider();
+  const sink = new MessagingOutboxSink(provider, (_record, context) => ({ idempotencyKey: context.idempotencyKey, channel: "SMS", recipient: "+5511999999999", body: "fixture" }));
+  assert.equal(sink.requiresDurableEffectLedger, true);
+  let deliveredCalls = 0;
+  const failed: string[] = [];
+  const worker = new OutboxWorker({ claimOutbox: async () => [record("00000000-0000-4000-0000-000000000209", 1)], completeOutbox: async () => undefined, failOutbox: async (_organizationId, recordId) => { failed.push(recordId); return "QUARANTINED"; } });
+  const result = await worker.runOnce(organizationId, "worker-without-ledger", { ...sink, deliver: async (...args) => { deliveredCalls += 1; return sink.deliver(...args); } });
+  assert.deepEqual(result, { claimed: 1, delivered: 0, retried: 0, quarantined: 1, outcomeUnknown: 0 });
+  assert.equal(deliveredCalls, 0);
+  assert.deepEqual(failed, ["00000000-0000-4000-0000-000000000209"]);
+});
+
+test("HTTP messaging fails closed, rejects malformed receipts and redacts provider failures", async () => {
+  let calls = 0;
+  const injectedFetch = async () => {
+    calls += 1;
+    return { ok: true, status: 200, json: async () => ({ requestId: "request-invalid", providerRequestId: "provider-invalid", receipt: { providerMessageId: "message-invalid", status: "BROKEN", receivedAt: "2026-01-01T00:00:00.000Z" } }) };
+  };
+  await assert.rejects(() => new HttpMessagingProvider({ fetch: injectedFetch }).send({ idempotencyKey: "no-endpoint", channel: "SMS", recipient: "+5511", body: "fixture" }), (error: unknown) => error instanceof DomainError && error.code === "CAPABILITY_DISABLED");
+  await assert.rejects(() => new HttpMessagingProvider({ endpoint: "https://provider.example.test", credentialRef: "messaging.token", secretResolver: async () => null, fetch: injectedFetch }).send({ idempotencyKey: "no-credential", channel: "SMS", recipient: "+5511", body: "fixture" }), (error: unknown) => error instanceof DomainError && error.code === "CREDENTIAL_UNAVAILABLE");
+  const invalid = await new HttpMessagingProvider({ endpoint: "https://provider.example.test", credentialRef: "messaging.token", secretResolver: async () => "fixture-secret", fetch: injectedFetch }).send({ idempotencyKey: "invalid-receipt", channel: "SMS", recipient: "+5511", body: "fixture" });
+  assert.equal(invalid.status, "OUTCOME_UNKNOWN");
+  assert.equal(calls, 1);
+  assert.equal(redactMessagingError(new Error("authorization=fixture-secret Bearer fixture-token"), ["fixture-secret", "fixture-token"]).includes("fixture-secret"), false);
+});
+
+test("messaging rate limiter and circuit breaker stop new egress explicitly", async () => {
+  let time = 0;
+  const limited = new SyntheticMessagingProvider({ rateLimiter: new MessagingRateLimiter({ maxRequests: 1, windowMs: 1_000, now: () => time }) });
+  await limited.send({ idempotencyKey: "rate-1", channel: "SMS", recipient: "+5511", body: "fixture" });
+  await assert.rejects(() => limited.send({ idempotencyKey: "rate-2", channel: "SMS", recipient: "+5511", body: "fixture" }), (error: unknown) => error instanceof DomainError && error.code === "RATE_LIMITED");
+  time = 1_001;
+  const recovered = await limited.send({ idempotencyKey: "rate-2", channel: "SMS", recipient: "+5511", body: "fixture" });
+  assert.equal(recovered.status, "DELIVERED");
+
+  let providerCalls = 0;
+  const breaker = new MessagingCircuitBreaker({ failureThreshold: 1, cooldownMs: 60_000, now: () => 0 });
+  const broken = new HttpMessagingProvider({ endpoint: "https://provider.example.test", credentialRef: "messaging.token", secretResolver: async () => "fixture-secret", circuitBreaker: breaker, fetch: async () => { providerCalls += 1; throw new Error("authorization=fixture-secret"); } });
+  const first = await broken.send({ idempotencyKey: "circuit-1", channel: "SMS", recipient: "+5511", body: "fixture" });
+  assert.equal(first.status, "OUTCOME_UNKNOWN");
+  await assert.rejects(() => broken.send({ idempotencyKey: "circuit-2", channel: "SMS", recipient: "+5511", body: "fixture" }), (error: unknown) => error instanceof DomainError && error.code === "DEPENDENCY_UNAVAILABLE");
+  assert.equal(providerCalls, 1);
 });

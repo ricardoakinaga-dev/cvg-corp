@@ -41,3 +41,19 @@ Após as mudanças de autenticação, UI, worker e fault harness, foi aberta uma
 ## Tentativa posterior — gates de CI/release — 2026-09-09
 
 Dois workers read-only em contexto fresco (`Kant`, `01a08434-0f2c-79e1-bab9-efe9428a7a6e`, backend/segurança/reliability; `Halley`, `01a08434-0f8d-75c2-8d05-ccb9a50194a0`, frontend/runtime/operação) foram iniciados para revisar a barra corrente após os gates de CI/release. Após janelas de espera e pedido de encerramento conciso, ambos foram encerrados ainda em `running`, sem parecer entregue e sem escrita no workspace. Esta tentativa é `NOT_RUN_TIMEOUT`, não aprovação. A crítica negativa/limitada anterior permanece vigente e a revisão independente final continua requisito para qualquer decisão AAA.
+
+## Críticos frescos posteriores — implementação final local — 2026-09-09
+
+Dois críticos read-only em contexto fresco, `Bacon` e `Hubble`, revisaram o artifact após o endurecimento de Tool Gateway, persistência, provider, rate limit, UI e release. Ambos retornaram `FAIL`; a sentinela de mutação permaneceu intacta.
+
+### Bacon — frontend, QA, acessibilidade e release
+
+Reconheceu a UI responsiva e coerente, a remoção de dados estáticos enganosos, os estados offline/revalidação, CSP endurecida, actions pinadas e limites de recursos no Compose. Manteve como gaps a ausência de Firefox/WebKit/hasTouch/axe/leitor de tela, estados degradados de sessão/provider/stale não exercitados, ausência de smoke real de container/TLS e a classificação de tokens com 72 sinais heurísticos medium. Não encontrou base para aprovação AAA.
+
+### Hubble — persistência, integrações e segurança operacional
+
+Reconheceu runtime role não-superuser com RLS, rate limit distribuído, ledger durável de execução de tools, estados `OUTCOME_UNKNOWN`/`RECONCILING`/`FAILED_FINAL`, callback HMAC sobre corpo bruto, allowlist/SSRF guard do provider e proveniência de aprovação. Manteve como gaps a ausência de PostgreSQL/containers/secret authority/provider reais, wiring operacional externo, prova distribuída de recovery/SLO e a necessidade de demonstrar uso universal do PDP; apontou também que a execução local continua sintética. Não encontrou base para aprovação AAA.
+
+### Integração do gauntlet
+
+Findings corrigíveis desta rodada foram incorporados e revalidados pelos gates locais. Os blockers externos e de autoridade permanecem explícitos; a decisão final da rodada continua `FAIL_WITH_LIMITATIONS`, sem promoção de `AAA_NOT_PROVEN` para aprovação.

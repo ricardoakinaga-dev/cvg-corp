@@ -107,6 +107,10 @@ export class DomainCommandService {
     return this.run(context, "communication.stage", () => this.store.createMessage(context, input));
   }
 
+  decideMessage(context: CvgContext, messageId: OpaqueId, decision: "approved" | "rejected", reason: string | null): ReturnType<CvgStore["decideMessage"]> {
+    return this.run(context, "communication.approve", () => this.store.decideMessage(context, messageId, decision, reason));
+  }
+
   restore(context: CvgContext, snapshot: StoreSnapshot): void {
     this.authorize(context, "ops.restore");
     this.store.restore(snapshot);

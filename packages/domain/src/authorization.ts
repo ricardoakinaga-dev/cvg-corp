@@ -50,6 +50,7 @@ export const CAPABILITY_ROLES = Object.freeze({
   "finance:refund": ["admin", "financeiro"],
   "knowledge:write": ["admin", "veterinario"],
   "communication:stage": ["admin", "recepcao", "veterinario"],
+  "communication:approve": ["admin", "veterinario"],
   "ai:session": ["admin", "veterinario", "recepcao"],
   "ai:approval": ["admin", "veterinario", "recepcao", "estoque", "financeiro"],
   "ai:replay": ["admin", "veterinario", "recepcao"],

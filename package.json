@@ -38,6 +38,8 @@
     "verify:all": "npm run verify:m1 && npm run test:e2e",
     "verify:postgres": "tsx scripts/verify-postgres.ts",
     "verify:postgres:restore": "tsx scripts/verify-postgres-restore.ts",
+    "verify:triplo-aaa": "tsx scripts/verify-triplo-aaa.ts",
+    "verify:staging": "tsx scripts/verify-staging.ts",
     "db:migrate": "tsx scripts/db.ts migrate",
     "db:check": "tsx scripts/db.ts check",
     "bootstrap": "tsx scripts/bootstrap.ts",

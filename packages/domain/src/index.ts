@@ -799,7 +799,7 @@ export class CvgStore {
     const overlaps = [...this.appointments.values()].some((appointment) => appointment.organizationId === context.organizationId && appointment.unitId === context.unitId && appointment.workspaceId === context.workspaceId && appointment.status !== "CANCELLED" && (appointment.providerId === input.providerId || (input.resourceId && appointment.resourceId === input.resourceId)) && new Date(input.startsAt).getTime() < new Date(appointment.endsAt).getTime() && new Date(input.endsAt).getTime() > new Date(appointment.startsAt).getTime());
     if (overlaps) throw new DomainError("CONFLICT", "A janela escolhida já está ocupada.", 409);
     void patient;
-    const appointment: Appointment = { id: makeId(), organizationId: context.organizationId, unitId: context.unitId, workspaceId: context.workspaceId, patientId: input.patientId, providerId: input.providerId, resourceId: input.resourceId, serviceId: input.serviceId, startsAt: input.startsAt, endsAt: input.endsAt, purpose: input.purpose, status: "SCHEDULED", version: 1, createdAt: now() };
+    const appointment: Appointment = { id: makeId(), organizationId: context.organizationId, unitId: context.unitId, workspaceId: context.workspaceId, patientId: input.patientId, providerId: input.providerId, resourceId: input.resourceId ?? null, serviceId: input.serviceId, startsAt: input.startsAt, endsAt: input.endsAt, purpose: input.purpose, status: "SCHEDULED", version: 1, createdAt: now() };
     this.appointments.set(appointment.id, appointment);
     return appointment;
   }
@@ -1074,15 +1074,34 @@ export class CvgStore {
     this.requireRole(context, ["admin", "recepcao", "veterinario"], "communication:stage");
     if (!context.unitId || !context.workspaceId) throw new DomainError("INVALID_INPUT", "Comunicação precisa de unidade e workspace explícitos.", 400);
     if (input.patientId) this.findPatient(context, input.patientId);
-    const message: CommunicationMessage = { ...input, id: makeId(), organizationId: context.organizationId, unitId: context.unitId, workspaceId: context.workspaceId, status: "APPROVAL_REQUIRED", createdAt: now() };
+    const message: CommunicationMessage = { ...input, id: makeId(), organizationId: context.organizationId, unitId: context.unitId, workspaceId: context.workspaceId, status: "APPROVAL_REQUIRED", createdBy: context.actorId, createdAt: now() };
     this.messages.set(message.id, message);
     return message;
+  }
+
+  decideMessage(context: CvgContext, messageId: OpaqueId, decision: "approved" | "rejected", reason: string | null = null): CommunicationMessage {
+    this.requireRole(context, ["admin", "veterinario"], "communication:approve");
+    const message = this.messages.get(messageId);
+    if (!message || message.organizationId !== context.organizationId || !this.scopeMatches(context, message.unitId, message.workspaceId)) throw new DomainError("NOT_FOUND", "Mensagem não encontrada neste contexto.", 404);
+    if (message.status !== "APPROVAL_REQUIRED") throw new DomainError("INVALID_STATE", "A mensagem não está aguardando decisão.", 409);
+    if (!message.createdBy || message.createdBy === context.actorId) throw new DomainError("POLICY_DENIED", "A aprovação de comunicação exige um segundo ator independente.", 403);
+    message.decisionReason = reason;
+    message.decidedBy = context.actorId;
+    message.decidedAt = now();
+    if (decision === "approved") {
+      message.approvedBy = context.actorId;
+      message.approvedAt = message.decidedAt;
+    }
+    message.status = decision === "approved" ? "QUEUED" : "FAILED";
+    return clone(message);
   }
 }
 
 export interface IdempotencyInput {
   organizationId: OpaqueId;
   actorId: OpaqueId;
+  /** Binds a command receipt to the authenticated session that created it. */
+  sessionId?: OpaqueId | null;
   operation: string;
   key: string;
   resourceId: OpaqueId | null;
@@ -1092,7 +1111,7 @@ export interface IdempotencyInput {
 }
 
 export function idempotencyLookup(input: IdempotencyInput): string {
-  return digest({ v: 1, organizationId: input.organizationId, actorId: input.actorId, operation: input.operation, key: input.key, resourceId: input.resourceId, unitId: input.unitId, workspaceId: input.workspaceId });
+  return digest({ v: 2, organizationId: input.organizationId, actorId: input.actorId, sessionId: input.sessionId ?? null, operation: input.operation, key: input.key, resourceId: input.resourceId, unitId: input.unitId, workspaceId: input.workspaceId });
 }
 
 export function idempotent<T>(store: CvgStore, input: IdempotencyInput, execute: () => T): { receipt: CommandReceipt; value: T; replayed: boolean } {

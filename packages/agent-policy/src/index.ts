@@ -242,6 +242,7 @@ export const APPLICATION_POLICY_REGISTRY: readonly ApplicationPolicyRule[] = [
   applicationRule("finance.refund", "finance:refund", ["admin", "financeiro"], d2, "MEDIUM"),
   applicationRule("communication.read", "communication:read", receptionRoles, d2),
   applicationRule("communication.stage", "communication:stage", receptionRoles, d2, "MEDIUM"),
+  applicationRule("communication.approve", "communication:approve", ["admin", "veterinario"], d2, "MEDIUM"),
   applicationRule("knowledge.read", "knowledge:read", receptionRoles, d2),
   applicationRule("knowledge.write", "knowledge:write", clinicalRoles, d2, "MEDIUM"),
   applicationRule("ai.health", "ai:health", aiRoles, d2),

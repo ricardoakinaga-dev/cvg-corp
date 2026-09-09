@@ -121,16 +121,17 @@ test("harness quarantines prompt injection and requires approval for impact tool
 test("high-impact harness approvals require a different authorized actor", () => {
   const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
   const stockId = [...store.users.values()].find((user) => user.login.startsWith("leo."))?.id;
-  assert.ok(stockId);
+  const lot = [...store.lots.values()][0];
+  assert.ok(stockId && lot);
   const admin = context(store);
   const stock = context(store, stockId);
   const harness = new GovernedHarness(store);
-  const pending = harness.executeTurn(admin, { sessionId: null, prompt: "dispensar item", purpose: "OPERATIONS", patientId: null, encounterId: null, requestedTool: "cvg.stock.dispense", approvalId: null, idempotencyKey: "high-impact-1" });
+  const pending = harness.executeTurn(admin, { sessionId: null, prompt: "dispensar item", purpose: "OPERATIONS", patientId: null, encounterId: null, resourceId: lot.id, requestedTool: "cvg.stock.dispense", approvalId: null, idempotencyKey: "high-impact-1" });
   assert.ok(pending.approval);
   assert.throws(() => harness.approve(admin, pending.approval!.id, "allowed-once", "mesmo ator"), (error: unknown) => error instanceof DomainError && error.code === "POLICY_DENIED");
   const approved = harness.approve(stock, pending.approval!.id, "allowed-once", "duplo controle sintético");
   assert.equal(approved.decidedBy, stock.actorId);
-  const completed = harness.executeTurn(admin, { sessionId: pending.session.id, prompt: "dispensar item", purpose: "OPERATIONS", patientId: null, encounterId: null, requestedTool: "cvg.stock.dispense", approvalId: pending.approval!.id, idempotencyKey: "high-impact-2" }, pending.approval!.id);
+  const completed = harness.executeTurn(admin, { sessionId: pending.session.id, prompt: "dispensar item", purpose: "OPERATIONS", patientId: null, encounterId: null, resourceId: lot.id, requestedTool: "cvg.stock.dispense", approvalId: pending.approval!.id, idempotencyKey: "high-impact-2" }, pending.approval!.id);
   assert.equal(completed.turn.status, "COMPLETED");
 });
 
@@ -184,6 +185,22 @@ test("scoped knowledge, communications and AI replay never cross workspaces", ()
   const harness = new GovernedHarness(store);
   const session = harness.createSession(clinicalContext, { purpose: "SUMMARY", patientId: null, encounterId: null });
   assert.throws(() => harness.replay(receptionContext, session.id), (error: unknown) => error instanceof DomainError && error.code === "NOT_FOUND");
+});
+
+test("communication approval requires a second actor and produces a queued message", () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const admin = context(store);
+  const vetId = [...store.users.values()].find((user) => user.login.startsWith("ana."))?.id;
+  assert.ok(vetId);
+  const vet = context(store, vetId);
+  const message = store.createMessage(admin, { patientId: null, channel: "SMS", recipient: "+5511999999999", template: "appointment-reminder", body: "lembrete sintético" });
+  assert.equal(message.createdBy, admin.actorId);
+  assert.throws(() => store.decideMessage(admin, message.id, "approved", "mesmo ator"), (error: unknown) => error instanceof DomainError && error.code === "POLICY_DENIED");
+  const approved = store.decideMessage(vet, message.id, "approved", "duplo controle");
+  assert.equal(approved.status, "QUEUED");
+  assert.equal(approved.decidedBy, vet.actorId);
+  assert.equal(approved.approvedBy, vet.actorId);
+  assert.throws(() => store.decideMessage(vet, message.id, "approved", "replay"), (error: unknown) => error instanceof DomainError && error.code === "INVALID_STATE");
 });
 
 test("domain PDP invalidates contexts after an authorization revision change", () => {

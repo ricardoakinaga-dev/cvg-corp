@@ -6,12 +6,12 @@ Este diretório contém a documentação da arquitetura-alvo de um programa de g
 
 | Campo | Estado |
 |---|---|
-| Fase | BUILD vNext; fundação de runtime/policy/tools, API e web modulares, worker separado, migrations 001–020, boundary local de autenticação e verificação local determinística |
+| Fase | BUILD vNext; fundação de runtime/policy/tools, API e web modulares, worker separado, migrations 001–025, boundary local de autenticação, provider/reconciliação fail-closed e verificação local determinística |
 | Escopo desta fase | Evolução brownfield controlada; mock/sintético e PostgreSQL local continuam permitidos; aceite operacional independente e produção continuam pendentes |
 | Motor proposto | `AgentRuntime` com adapter Mock e ponte DeepSeek opcional; protocolo externo ainda não provado |
-| Qualidade | barra v3 `FAIL_WITH_LIMITATIONS`; recorte local executável, produção bloqueada |
+| Qualidade | barra v3 `FAIL_WITH_LIMITATIONS`; `verify:triplo-aaa`/`verify:staging` fail-closed, recorte local executável, produção bloqueada |
 | Fonte de verdade clínica | O domínio transacional do CVG, não a conversa do agente |
-| Próximo gate | PDP de negócio e autorização contextual completa, provider/consulta externa real, secret-provider e backup operacional gerenciado, cache offline autorizado, fault/crash drills, SLOs e aceite independente |
+| Próximo gate | PostgreSQL/Docker production-like, provider/consulta externa real, secret authority, observabilidade/carga/recovery, matriz de browsers/acessibilidade e aceite independente |
 
 ## Leitura recomendada
 
@@ -44,6 +44,10 @@ Este diretório contém a documentação da arquitetura-alvo de um programa de g
 24. [`error-taxonomy-vNext.md`](error-taxonomy-vNext.md) — envelope e taxonomia estável de erros.
 25. [`auth-boundary-vNext.md`](auth-boundary-vNext.md) — MFA, rotação, lockout, recuperação e autoridade de sessão.
 26. [`visual-qa-vNext.md`](visual-qa-vNext.md) — correções visuais, acessibilidade e limites da evidência.
+27. [`prompt-state-of-the-art-triplo-aaa-2026-09-09.txt`](prompt-state-of-the-art-triplo-aaa-2026-09-09.txt) — cópia byte a byte do prompt de execução recebido.
+28. [`production-reality-audit-vNext.md`](production-reality-audit-vNext.md) — fotografia corrente, blockers e limites de produção.
+29. [`deepseek-integration-vNext.md`](deepseek-integration-vNext.md), [`provider-integration-vNext.md`](provider-integration-vNext.md) — boundaries de runtime e provider com fail-closed.
+30. [`observability-vNext.md`](observability-vNext.md), [`staging-vNext.md`](staging-vNext.md), [`recovery-vNext.md`](recovery-vNext.md), [`performance-vNext.md`](performance-vNext.md) — evidência, execução e limites operacionais.
 
 Os procedimentos operacionais estão em [`runbooks/`](runbooks/), incluindo deploy, rollback, backup/restore, incidentes de banco e segurança, indisponibilidade de provider/DeepSeek, rotação de credenciais, backlog do worker, quarentena e o break-glass ainda bloqueado.
 

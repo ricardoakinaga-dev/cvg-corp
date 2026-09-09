@@ -183,7 +183,7 @@ export type PatientMergeInput = z.infer<typeof patientMergeInputSchema>;
 export const appointmentInputSchema = z.object({
   patientId: idSchema,
   providerId: idSchema,
-  resourceId: idSchema.nullable().default(null),
+  resourceId: idSchema.nullable().optional(),
   serviceId: idSchema,
   startsAt: z.string().datetime({ offset: true }),
   endsAt: z.string().datetime({ offset: true }),
@@ -313,6 +313,7 @@ export const aiTurnInputSchema = z.object({
   purpose: z.enum(["SUMMARY", "DRAFT_CLINICAL", "KNOWLEDGE_QUERY", "OPERATIONS"]),
   patientId: idSchema.nullable().default(null),
   encounterId: idSchema.nullable().default(null),
+  resourceId: idSchema.nullable().optional(),
   requestedTool: z.string().trim().max(120).nullable().default(null),
   approvalId: idSchema.nullable().default(null),
   idempotencyKey: idempotencyKeySchema
@@ -325,6 +326,12 @@ export const approvalInputSchema = z.object({
 }).strict();
 export type ApprovalInput = z.infer<typeof approvalInputSchema>;
 
+export const communicationApprovalInputSchema = z.object({
+  decision: z.enum(["approved", "rejected"]),
+  reason: z.string().trim().max(500).nullable().default(null)
+}).strict();
+export type CommunicationApprovalInput = z.infer<typeof communicationApprovalInputSchema>;
+
 const digestSchema = z.string().regex(/^[a-f0-9]{64}$/, "digest must be a sha-256 hex string");
 const correlationSchema = z.string().regex(/^[A-Za-z0-9._-]{1,80}$/, "correlationId must be bounded and transport-safe");
 
@@ -335,15 +342,12 @@ export const integrationInboxEventSchema = z.object({
   externalEventId: z.string().trim().min(1).max(240),
   eventType: z.string().trim().regex(/^[A-Za-z0-9._:-]{1,160}$/),
   schemaVersion: z.literal(API_SCHEMA_VERSION),
-  signatureAlgorithm: z.literal("HMAC-SHA256"),
-  signatureKeyRef: z.string().trim().regex(/^[A-Za-z0-9._:-]{1,160}$/),
-  signature: z.string().trim().min(32).max(512),
   payload: z.record(z.string(), z.unknown())
 }).strict();
 export type IntegrationInboxEventInput = z.infer<typeof integrationInboxEventSchema>;
 
 export const externalEffectReconciliationInputSchema = z.object({
-  status: z.enum(["SUCCEEDED", "QUARANTINED"]),
+  status: z.enum(["SUCCEEDED", "FAILED_FINAL", "QUARANTINED"]),
   providerRequestId: z.string().trim().max(240).nullable(),
   response: z.record(z.string(), z.unknown()).nullable(),
   error: z.string().trim().max(2_000).nullable().default(null),
@@ -863,6 +867,13 @@ export interface CommunicationMessage {
   template: string;
   body: string;
   status: "STAGED" | "APPROVAL_REQUIRED" | "QUEUED" | "SENT" | "FAILED";
+  /** Provenance fields are optional for backwards-compatible snapshots; new messages always populate them. */
+  createdBy?: OpaqueId;
+  decidedBy?: OpaqueId;
+  decidedAt?: string;
+  approvedBy?: OpaqueId;
+  approvedAt?: string;
+  decisionReason?: string | null;
   createdAt: string;
 }
 

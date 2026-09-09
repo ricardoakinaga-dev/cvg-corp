@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from "fastify";
 import cookie from "@fastify/cookie";
 import cors from "@fastify/cors";
+import { Pool } from "pg";
 import { z } from "zod";
 import { generateOpaqueToken, passwordPolicyIssues, verifyTotpCode, type MfaSecretResolver } from "@cvg/auth";
 import { loadCvgConfig, validateCvgConfig, ConfigError } from "@cvg/config";
@@ -17,6 +18,7 @@ import {
   appointmentInputSchema,
   chargeInputSchema,
   clinicalDocumentInputSchema,
+  communicationApprovalInputSchema,
   contextSelectorSchema,
   dispensationInputSchema,
   diagnosticRequestInputSchema,
@@ -69,7 +71,7 @@ import { GovernedHarness, TOOL_REGISTRY } from "@cvg/harness";
 import type { AgentRuntime } from "@cvg/agent-runtime";
 import { DeepSeekHarnessAdapter, MockHarnessAdapter } from "@cvg/harness-adapters";
 import { AgentRuntimeUnavailableError } from "@cvg/agent-runtime";
-import { configuredSecretProvider, IntegrationGateway, inboxEventToOutbox, integrationContracts, OutboxWorker, reconcileUnknownExternalEffect, type ExternalEffectQueryAdapter, type OutboxSink, type OutboxWorkerResult, type SecretProvider, type SecretProviderStatus } from "@cvg/integrations";
+import { configuredSecretProvider, IntegrationGateway, inboxEventToOutbox, integrationContracts, OutboxWorker, reconcileUnknownExternalEffect, verifyMessagingCallback, type ExternalEffectQueryAdapter, type OutboxSink, type OutboxWorkerResult, type SecretProvider, type SecretProviderStatus } from "@cvg/integrations";
 import { OpsTelemetry } from "@cvg/ops";
 import { PersistenceConflictError, PersistenceCorruptionError, PersistenceSignatureError, PersistenceStateError, PersistenceUnavailableError, PostgresPersistence, type DurableExternalEffectRecord, type InboxSignatureVerifier } from "@cvg/persistence";
 import { registerHealthRoutes } from "./routes/health.ts";
@@ -90,6 +92,7 @@ function isLoopbackHost(host: string): boolean {
 export interface ServerConfig {
   nodeEnv: "development" | "test" | "production";
   host: string;
+  trustProxy: boolean;
   port: number;
   webOrigin: string;
   storageMode: "memory" | "postgres";
@@ -112,6 +115,90 @@ export interface ServerConfig {
   secretDir: string;
   workerOrganizationId: string | null;
   secretProvider: "none" | "env" | "file" | "vault" | "aws" | "gcp" | "azure" | "kubernetes";
+  rateLimitBackend: "local" | "distributed";
+  rateLimitRequestsPerWindow: number;
+  rateLimitWindowSeconds: number;
+}
+
+export interface RateLimiter {
+  readonly distributed: boolean;
+  consume(input: { key: string; limit: number; windowMs: number }): Promise<{ allowed: boolean; retryAfterSeconds: number }>;
+  close?(): Promise<void>;
+}
+
+/** Bounded fallback for local/test use; production must inject a shared implementation. */
+export class MemoryRateLimiter implements RateLimiter {
+  readonly distributed = false;
+  private readonly buckets = new Map<string, { count: number; resetAt: number }>();
+
+  constructor(private readonly maxKeys = 10_000) {}
+
+  async consume(input: { key: string; limit: number; windowMs: number }): Promise<{ allowed: boolean; retryAfterSeconds: number }> {
+    const nowMs = Date.now();
+    const current = this.buckets.get(input.key);
+    if (!current || current.resetAt <= nowMs) {
+      if (this.buckets.size >= this.maxKeys) {
+        const oldest = [...this.buckets.entries()].sort((left, right) => left[1].resetAt - right[1].resetAt)[0]?.[0];
+        if (oldest) this.buckets.delete(oldest);
+      }
+      this.buckets.set(input.key, { count: 1, resetAt: nowMs + input.windowMs });
+      return { allowed: true, retryAfterSeconds: 0 };
+    }
+    if (current.count >= input.limit) return { allowed: false, retryAfterSeconds: Math.max(1, Math.ceil((current.resetAt - nowMs) / 1_000)) };
+    current.count += 1;
+    return { allowed: true, retryAfterSeconds: 0 };
+  }
+
+  async close(): Promise<void> {
+    this.buckets.clear();
+  }
+}
+
+/**
+ * Atomic PostgreSQL fixed-window limiter. The bucket key is hashed before it
+ * reaches the database so addresses and session identifiers never become
+ * durable rate-limit metadata. The table is provisioned by migrations 023+.
+ */
+export class PostgresRateLimiter implements RateLimiter {
+  readonly distributed = true;
+  private readonly pool: Pool;
+
+  constructor(databaseUrl: string) {
+    this.pool = new Pool({ connectionString: databaseUrl, max: 5, connectionTimeoutMillis: 2_500, idleTimeoutMillis: 30_000, application_name: "cvg-corp-rate-limit" });
+  }
+
+  async consume(input: { key: string; limit: number; windowMs: number }): Promise<{ allowed: boolean; retryAfterSeconds: number }> {
+    if (!Number.isSafeInteger(input.limit) || input.limit < 1 || !Number.isSafeInteger(input.windowMs) || input.windowMs < 1) throw new DomainError("INVALID_INPUT", "Os parâmetros de rate limit são inválidos.", 400);
+    try {
+      const result = await this.pool.query<{ request_count: number; retry_after_ms: number }>(
+        `insert into cvg_rate_limit_buckets(bucket_key, window_started_at, request_count, updated_at)
+         values ($1, now(), 1, now())
+         on conflict (bucket_key) do update set
+           request_count = case
+             when cvg_rate_limit_buckets.window_started_at <= now() - ($3::double precision * interval '1 millisecond') then 1
+             else cvg_rate_limit_buckets.request_count + 1
+           end,
+           window_started_at = case
+             when cvg_rate_limit_buckets.window_started_at <= now() - ($3::double precision * interval '1 millisecond') then now()
+             else cvg_rate_limit_buckets.window_started_at
+           end,
+           updated_at = now()
+         returning request_count, greatest(0, extract(epoch from ((window_started_at + ($3::double precision * interval '1 millisecond')) - now())) * 1000)::double precision as retry_after_ms`,
+        [tokenDigest(input.key), input.limit, input.windowMs]
+      );
+      const row = result.rows[0];
+      if (!row) throw new Error("rate-limit bucket write returned no row");
+      const retryAfterSeconds = Math.max(1, Math.ceil(Number(row.retry_after_ms ?? input.windowMs) / 1_000));
+      return { allowed: Number(row.request_count) <= input.limit, retryAfterSeconds: Number(row.request_count) <= input.limit ? 0 : retryAfterSeconds };
+    } catch (error) {
+      if (error instanceof DomainError) throw error;
+      throw new DomainError("DEPENDENCY_UNAVAILABLE", "O rate limit distribuído está indisponível; a solicitação foi bloqueada.", 503, { cause: error instanceof Error ? error.name : "unknown" });
+    }
+  }
+
+  async close(): Promise<void> {
+    await this.pool.end();
+  }
 }
 
 export interface ServerOptions {
@@ -126,6 +213,7 @@ export interface ServerOptions {
   providerQueryAdapter?: ExternalEffectQueryAdapter;
   secretProvider?: SecretProvider;
   mfaSecretResolver?: MfaSecretResolver;
+  rateLimiter?: RateLimiter;
 }
 
 export interface CvgServerRuntime {
@@ -151,6 +239,7 @@ function getConfig(overrides: Partial<ServerConfig> = {}): ServerConfig {
   const validated = validateCvgConfig({
     nodeEnv: overrides.nodeEnv ?? typed.nodeEnv,
     host: overrides.host ?? typed.host,
+    trustProxy: overrides.trustProxy ?? typed.trustProxy,
     apiPort: (overrides.port ?? typed.apiPort) || DEFAULT_PORT,
     webOrigin: overrides.webOrigin ?? typed.webOrigin,
     storageMode: overrides.storageMode ?? typed.storageMode,
@@ -172,9 +261,12 @@ function getConfig(overrides: Partial<ServerConfig> = {}): ServerConfig {
     deepseekBearerTokenRef: overrides.deepseekBearerTokenRef ?? typed.deepseekBearerTokenRef,
     secretDir: overrides.secretDir ?? typed.secretDir,
     workerOrganizationId: overrides.workerOrganizationId ?? typed.workerOrganizationId,
-    secretProvider: overrides.secretProvider ?? typed.secretProvider
+    secretProvider: overrides.secretProvider ?? typed.secretProvider,
+    rateLimitBackend: overrides.rateLimitBackend ?? typed.rateLimitBackend,
+    rateLimitRequestsPerWindow: overrides.rateLimitRequestsPerWindow ?? typed.rateLimitRequestsPerWindow,
+    rateLimitWindowSeconds: overrides.rateLimitWindowSeconds ?? typed.rateLimitWindowSeconds
   });
-  return { nodeEnv: validated.nodeEnv, host: validated.host, port: validated.apiPort, webOrigin: validated.webOrigin, storageMode: validated.storageMode, demoMode: validated.demoMode, sessionTtlMinutes: validated.sessionTtlMinutes, authMfaMode: validated.authMfaMode, passwordMinLength: validated.passwordMinLength, passwordMaxAgeDays: validated.passwordMaxAgeDays, authMaxFailedAttempts: validated.authMaxFailedAttempts, authLockoutMinutes: validated.authLockoutMinutes, authChallengeTtlSeconds: validated.authChallengeTtlSeconds, authMaxChallengeAttempts: validated.authMaxChallengeAttempts, databaseUrl: validated.databaseUrl, bootstrapPassword: validated.bootstrapPassword, deepseekBaseUrl: validated.deepseekBaseUrl, deepseekRuntimeEnabled: validated.deepseekRuntimeEnabled, deepseekExpectedEngineCommit: validated.deepseekExpectedEngineCommit, deepseekExpectedManifestVersion: validated.deepseekExpectedManifestVersion, deepseekBearerTokenRef: validated.deepseekBearerTokenRef, secretDir: validated.secretDir, workerOrganizationId: validated.workerOrganizationId, secretProvider: validated.secretProvider };
+  return { nodeEnv: validated.nodeEnv, host: validated.host, trustProxy: validated.trustProxy, port: validated.apiPort, webOrigin: validated.webOrigin, storageMode: validated.storageMode, demoMode: validated.demoMode, sessionTtlMinutes: validated.sessionTtlMinutes, authMfaMode: validated.authMfaMode, passwordMinLength: validated.passwordMinLength, passwordMaxAgeDays: validated.passwordMaxAgeDays, authMaxFailedAttempts: validated.authMaxFailedAttempts, authLockoutMinutes: validated.authLockoutMinutes, authChallengeTtlSeconds: validated.authChallengeTtlSeconds, authMaxChallengeAttempts: validated.authMaxChallengeAttempts, databaseUrl: validated.databaseUrl, bootstrapPassword: validated.bootstrapPassword, deepseekBaseUrl: validated.deepseekBaseUrl, deepseekRuntimeEnabled: validated.deepseekRuntimeEnabled, deepseekExpectedEngineCommit: validated.deepseekExpectedEngineCommit, deepseekExpectedManifestVersion: validated.deepseekExpectedManifestVersion, deepseekBearerTokenRef: validated.deepseekBearerTokenRef, secretDir: validated.secretDir, workerOrganizationId: validated.workerOrganizationId, secretProvider: validated.secretProvider, rateLimitBackend: validated.rateLimitBackend, rateLimitRequestsPerWindow: validated.rateLimitRequestsPerWindow, rateLimitWindowSeconds: validated.rateLimitWindowSeconds };
 }
 
 function tokenDigest(value: string): string {
@@ -273,6 +365,7 @@ const commandOperationByAuditAction: Record<string, string> = {
   "finance.payment": "finance.payment",
   "finance.refund": "finance.refund",
   "communication.stage": "communication.stage",
+  "communication.approve": "communication.approve",
   "knowledge.write": "knowledge.write",
   "ai.turn": "ai.turn",
   "ai.approval": "ai.approval",
@@ -282,10 +375,26 @@ const commandOperationByAuditAction: Record<string, string> = {
 
 export async function createRuntime(options: ServerOptions = {}): Promise<CvgServerRuntime> {
   const config = getConfig(options.config);
+  const ownsRateLimiter = !options.rateLimiter && config.nodeEnv === "production" && config.rateLimitBackend === "distributed";
+  const rateLimiter = options.rateLimiter ?? (ownsRateLimiter ? new PostgresRateLimiter(config.databaseUrl) : new MemoryRateLimiter());
+  if (config.nodeEnv === "production" && (config.rateLimitBackend !== "distributed" || !rateLimiter.distributed)) {
+    await rateLimiter.close?.();
+    throw new DomainError("CAPABILITY_DISABLED", "Produção exige um rate limiter distribuído; nenhum limite local pode ser promovido.", 503);
+  }
   if (config.demoMode && config.storageMode === "memory" && !isLoopbackHost(config.host)) {
     throw new DomainError("CAPABILITY_DISABLED", "A demonstração sintética só pode ser exposta em loopback.", 503);
   }
-  const persistence = config.storageMode === "postgres" ? options.persistence ?? new PostgresPersistence({ connectionString: config.databaseUrl, ...(options.inboxSignatureVerifier ? { inboxSignatureVerifier: options.inboxSignatureVerifier } : {}) }) : null;
+  const secretProvider = options.secretProvider ?? configuredSecretProvider(config.secretProvider, process.env, config.secretDir);
+  if (config.nodeEnv === "production" && (!secretProvider || secretProvider.status() !== "READY")) {
+    if (ownsRateLimiter) await rateLimiter.close?.();
+    throw new DomainError("CAPABILITY_DISABLED", "Produção exige uma autoridade de segredos pronta; o runtime foi mantido bloqueado.", 503);
+  }
+  const inboxSignatureVerifier: InboxSignatureVerifier | undefined = options.inboxSignatureVerifier ?? (secretProvider?.resolve ? async (input) => {
+    if (!input.rawBody) return false;
+    const secret = await secretProvider.resolve!(input.signatureKeyRef);
+    return Boolean(secret && verifyMessagingCallback(input.rawBody, input.signature, secret));
+  } : undefined);
+  const persistence = config.storageMode === "postgres" ? options.persistence ?? new PostgresPersistence({ connectionString: config.databaseUrl, ...(inboxSignatureVerifier ? { inboxSignatureVerifier } : {}) }) : null;
   let store: CvgStore;
   try {
     if (options.store) store = options.store;
@@ -305,13 +414,13 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     }
   } catch (error) {
     await persistence?.close();
+    if (ownsRateLimiter) await rateLimiter.close?.();
     if (error instanceof DomainError) throw error;
     if (error instanceof PersistenceCorruptionError) throw new DomainError("QUARANTINED", "O estado persistido falhou na validação e foi mantido bloqueado.", 503);
     throw new DomainError("CAPABILITY_DISABLED", `A persistência PostgreSQL não está pronta: ${error instanceof Error ? error.message : String(error)}`, 503);
   }
   store.storageMode = config.storageMode;
   const harness = options.harness ?? new GovernedHarness(store);
-  const secretProvider = options.secretProvider ?? configuredSecretProvider(config.secretProvider, process.env, config.secretDir);
   const agentRuntime = options.agentRuntime ?? (() => {
     if (!config.deepseekRuntimeEnabled) return new MockHarnessAdapter(harness);
     if (!config.deepseekBaseUrl || !config.deepseekExpectedEngineCommit || !config.deepseekExpectedManifestVersion) throw new DomainError("CAPABILITY_DISABLED", "O runtime DeepSeek exige URL, commit e manifest aprovados.", 503);
@@ -330,11 +439,25 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
   const patientApplication = new PatientApplicationService(persistence ? new PostgresPatientRepository(persistence, store) : new StorePatientRepository(store));
   const readApplication = createReadApplicationService(store, persistence);
   const domainCommands = new DomainCommandService(store);
-  const app = Fastify({ logger: false, bodyLimit: 256 * 1024, requestIdHeader: "x-request-id" });
+  const app = Fastify({ logger: false, bodyLimit: 256 * 1024, requestIdHeader: "x-request-id", trustProxy: config.trustProxy });
   app.addHook("onClose", async () => { await agentRuntime.shutdown(); });
+  if (ownsRateLimiter) app.addHook("onClose", async () => { await rateLimiter.close?.(); });
+
+  const rawRequestBodies = new WeakMap<object, string>();
+  app.removeContentTypeParser("application/json");
+  app.addContentTypeParser("application/json", { parseAs: "buffer" }, (request, body, done) => {
+    const rawBody = Buffer.isBuffer(body) ? body.toString("utf8") : String(body);
+    rawRequestBodies.set(request, rawBody);
+    try {
+      done(null, JSON.parse(rawBody) as unknown);
+    } catch (error) {
+      done(error instanceof Error ? error : new Error("invalid JSON body"));
+    }
+  });
 
   const durableRequests = new WeakMap<FastifyRequest, { baseline: StoreSnapshot; revision: bigint }>();
   const durableReleases = new WeakMap<FastifyRequest, () => void>();
+  const durableOutboxes = new WeakMap<FastifyRequest, import("@cvg/persistence").DurableOutboxInput[]>();
   let persistenceQueue = Promise.resolve();
   const acquireDurableRequest = async (): Promise<() => void> => {
     let release!: () => void;
@@ -371,6 +494,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
       const commandReceipts = snapshot.commandReceipts.filter((receipt) => baselineReceiptDigests.get(receipt.id) !== digest(receipt));
       const latestAudit = auditRecords.at(-1);
       const latestReceipt = commandReceipts.at(-1);
+      const outboxRecords = durableOutboxes.get(request);
       try {
         await persistence.commit({
           expectedRevision: transaction.revision,
@@ -384,7 +508,8 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
           aggregateId: latestReceipt?.id ?? null,
           payload: { method: request.method, path: request.url.split("?")[0], statusCode: reply.statusCode, auditIds: auditRecords.map((record) => record.id), receiptIds: commandReceipts.map((receipt) => receipt.id) },
           auditRecords,
-          commandReceipts
+          commandReceipts,
+          ...(outboxRecords ? { outboxRecords } : {})
         });
       } catch (error) {
         telemetry.log({ timestamp: now(), level: error instanceof PersistenceConflictError ? "warn" : "error", event: "persistence.commit.failed", correlationId: correlationId(request), actorId: null, metadata: persistenceDiagnostic(error) });
@@ -417,17 +542,32 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
       durableReleases.get(request)?.();
       durableReleases.delete(request);
       durableRequests.delete(request);
+      durableOutboxes.delete(request);
     });
     app.addHook("onClose", async () => { await persistence.close(); });
   }
 
   await app.register(cookie);
   await app.register(cors, { origin: config.webOrigin, credentials: true, methods: ["GET", "POST", "DELETE", "OPTIONS"] });
+  app.addHook("onRequest", async (request) => {
+    if (!request.url.startsWith("/api/v1/") || request.url === "/api/v1/health" || request.url === "/api/v1/ready") return;
+    const rawSession = request.cookies[SESSION_COOKIE];
+    const session = rawSession ? store.findSession(tokenDigest(rawSession)) : null;
+    const organization = session?.organizationId ?? "anonymous";
+    const route = String((request.routeOptions as { url?: string }).url ?? request.url.split("?")[0]);
+    const category = route.startsWith("/api/v1/auth/") ? "auth" : route.startsWith("/api/v1/ai/") ? "ai" : route.startsWith("/api/v1/integrations/") ? "webhook" : "api";
+    const key = `route:${category}:${tokenDigest(`${request.ip}|${organization}|${request.method}|${route}`)}`;
+    const decision = await rateLimiter.consume({ key, limit: config.rateLimitRequestsPerWindow, windowMs: config.rateLimitWindowSeconds * 1_000 });
+    if (!decision.allowed) throw new DomainError("RATE_LIMITED", "Muitas solicitações; aguarde antes de tentar novamente.", 429, { retryAfterSeconds: decision.retryAfterSeconds });
+  });
   app.addHook("onSend", async (request, reply) => {
     reply.header("x-content-type-options", "nosniff");
     reply.header("x-frame-options", "DENY");
     reply.header("referrer-policy", "no-referrer");
     reply.header("permissions-policy", "camera=(), microphone=(), geolocation=()");
+    reply.header("content-security-policy", "default-src 'self'; base-uri 'none'; frame-ancestors 'none'; object-src 'none'; form-action 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'");
+    reply.header("cross-origin-opener-policy", "same-origin");
+    reply.header("cross-origin-resource-policy", "same-origin");
     if (config.nodeEnv === "production") reply.header("strict-transport-security", "max-age=31536000; includeSubDomains");
     if (request.url.startsWith("/api/v1/")) reply.header("cache-control", "no-store");
   });
@@ -475,7 +615,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     }
   };
 
-  const requestContext = (request: FastifyRequest, purpose: string, patientId: OpaqueId | null = null, encounterId: OpaqueId | null = null, allowImplicitContext = false, validatePatient = true): { session: ReturnType<typeof requireSession>; context: CvgContext } => {
+  const requestContext = (request: FastifyRequest, purpose: string, patientId: OpaqueId | null = null, encounterId: OpaqueId | null = null, allowImplicitContext = false, validatePatient = true, policyResourceId: OpaqueId | null = null): { session: ReturnType<typeof requireSession>; context: CvgContext } => {
     const session = requireSession(request);
     const unitHeader = header(request, "x-cvg-unit-id");
     const workspaceHeader = header(request, "x-cvg-workspace-id");
@@ -492,7 +632,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
       }
     }
     const context = store.resolveContext(session.userId, { unitId, workspaceId }, purpose, correlationId(request), patientId, encounterId, session.id);
-    enforceApplicationPolicy(request, context, purpose, encounterId ?? patientId);
+    enforceApplicationPolicy(request, context, purpose, policyResourceId ?? encounterId ?? patientId);
     if (patientId && validatePatient) store.findPatient(context, patientId);
     if (encounterId) {
       const encounter = store.encounters.get(encounterId);
@@ -501,27 +641,9 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     return { session, context };
   };
 
-  const failedLogins = new Map<string, { count: number; windowStartedAt: number; blockedUntil: number }>();
-  const loginAttemptKey = (request: FastifyRequest, login: string): string => `${request.ip}:${tokenDigest(login.trim().toLowerCase())}`;
-  const checkLoginRate = (request: FastifyRequest, login: string): string => {
-    const key = loginAttemptKey(request, login);
-    const attempt = failedLogins.get(key);
-    const current = Date.now();
-    if (!attempt || current - attempt.windowStartedAt > 5 * 60_000) {
-      failedLogins.delete(key);
-      return key;
-    }
-    if (attempt.blockedUntil > current) {
-      throw new DomainError("RATE_LIMITED", "Muitas tentativas de login; aguarde antes de tentar novamente.", 429, { retryAfterSeconds: Math.ceil((attempt.blockedUntil - current) / 1_000) });
-    }
-    return key;
-  };
-  const noteLoginFailure = (key: string): void => {
-    const current = Date.now();
-    const attempt = failedLogins.get(key);
-    const next = attempt && current - attempt.windowStartedAt <= 5 * 60_000 ? { ...attempt, count: attempt.count + 1 } : { count: 1, windowStartedAt: current, blockedUntil: 0 };
-    if (next.count >= 8) next.blockedUntil = current + 60_000;
-    failedLogins.set(key, next);
+  const checkLoginRate = async (request: FastifyRequest, login: string): Promise<void> => {
+    const decision = await rateLimiter.consume({ key: `login:${request.ip}:${tokenDigest(login.trim().toLowerCase())}`, limit: config.authMaxFailedAttempts, windowMs: 5 * 60_000 });
+    if (!decision.allowed) throw new DomainError("RATE_LIMITED", "Muitas tentativas de login; aguarde antes de tentar novamente.", 429, { retryAfterSeconds: decision.retryAfterSeconds });
   };
 
   const passwordPolicy = {
@@ -588,7 +710,10 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const body = parse(integrationInboxEventSchema, request.body);
     if (body.provider !== params.provider) throw new DomainError("INVALID_INPUT", "O provider da rota não corresponde ao provider assinado.", 400);
     if (body.organizationId !== store.bootstrapCredentials.organizationId) throw new DomainError("NOT_FOUND", "A organização não está vinculada a este runtime.", 404);
-    const input = { id: id(randomUUID()), ...body };
+    const signature = header(request, "x-cvg-signature");
+    const signatureKeyRef = header(request, "x-cvg-signature-key-ref");
+    if (!signature || !signatureKeyRef) throw new PersistenceSignatureError("inbox event signature headers are required");
+    const input = { id: id(randomUUID()), ...body, signatureAlgorithm: "HMAC-SHA256" as const, signatureKeyRef, signature, rawBody: rawRequestBodies.get(request) ?? "" };
     try {
       const receipt = await persistence.processInboxEvent(input, [inboxEventToOutbox(input)]);
       telemetry.log({ timestamp: now(), level: receipt.status === "QUARANTINED" ? "warn" : "info", event: "integration.inbox.accepted", correlationId: correlationId(request), actorId: null, metadata: { provider: body.provider, status: receipt.status, duplicate: receipt.duplicate } });
@@ -602,7 +727,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
 
   app.post("/api/v1/auth/login", async (request, reply) => {
     const input = parse(loginInputSchema, request.body);
-    const attemptKey = checkLoginRate(request, input.login);
+    await checkLoginRate(request, input.login);
     const user = store.getUserByLogin(input.login);
     if (user && store.isAccountLocked(user)) throw new DomainError("RATE_LIMITED", "Muitas tentativas de login; aguarde antes de tentar novamente.", 429, { retryAfterSeconds: Math.max(1, Math.ceil((Date.parse(user.security.lockedUntil!) - Date.now()) / 1_000)) });
     if (!user || user.status !== "ACTIVE" || !verifyPassword(input.password, user.passwordDigest) || store.healthStatus === "QUARANTINED") {
@@ -610,10 +735,8 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
         store.recordLoginFailure(user.id, config.authMaxFailedAttempts, config.authLockoutMinutes);
         store.recordAudit({ organizationId: user.organizationId, actorId: user.id, unitId: null, workspaceId: null, action: "auth.login", resourceType: "User", resourceId: user.id, result: "DENIED", reason: "AUTHENTICATION_FAILED", correlationId: correlationId(request), metadata: { failedAttempts: user.security.failedLoginAttempts } });
       }
-      noteLoginFailure(attemptKey);
       throw new DomainError("AUTHENTICATION_FAILED", "Login ou senha inválidos.", 401);
     }
-    failedLogins.delete(attemptKey);
     const corr = randomUUID();
     if (user.security.passwordExpiresAt && Date.parse(user.security.passwordExpiresAt) <= Date.now()) {
       store.recordAudit({ organizationId: user.organizationId, actorId: user.id, unitId: null, workspaceId: null, action: "auth.login", resourceType: "User", resourceId: user.id, result: "DENIED", reason: "CREDENTIAL_EXPIRED", correlationId: corr, metadata: { storageMode: store.storageMode } });
@@ -711,9 +834,9 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
   });
 
   app.post("/api/v1/auth/sessions/:id/revoke", async (request, reply) => {
-    const { session, context } = requestContext(request, "identity.sessions.revoke", null, null, true);
-    requireCsrf(request, session);
     const sessionId = id(parse(idSchema, (request.params as { id: string }).id));
+    const { session, context } = requestContext(request, "identity.sessions.revoke", null, null, true, true, sessionId);
+    requireCsrf(request, session);
     const target = store.sessions.get(sessionId);
     if (!target || target.userId !== session.userId) throw new DomainError("NOT_FOUND", "Sessão não encontrada.", 404);
     store.revokeSession(target);
@@ -781,11 +904,11 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
   app.post("/api/v1/role-assignments", async (request, reply) => {
     const session = requireSession(request);
     requireCsrf(request, session);
-    const { context } = requestContext(request, "role.grant");
     const input = parse(roleAssignmentInputSchema, request.body);
+    const { context } = requestContext(request, "role.grant", null, null, false, true, input.userId);
     const key = header(request, "idempotency-key");
     if (!key) throw new DomainError("INVALID_INPUT", "Idempotency-Key é obrigatório.", 400);
-    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, operation: "role.grant", key, resourceId: input.userId, unitId: input.unitId, workspaceId: input.workspaceId, body: input }, () => domainCommands.grantRole(context, input));
+    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, sessionId: context.sessionId, operation: "role.grant", key, resourceId: input.userId, unitId: input.unitId, workspaceId: input.workspaceId, body: input }, () => domainCommands.grantRole(context, input));
     audit(context, "role.grant", "RoleAssignment", result.value.id, "ALLOWED", null, { replay: result.replayed });
     return response(reply, success({ assignment: result.value, receiptId: result.receipt.id, revision: store.organizations.get(context.organizationId)?.authorizationRevision.toString() ?? "0" }, context.correlationId), 201);
   });
@@ -793,14 +916,14 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
   app.delete("/api/v1/role-assignments/:id", async (request, reply) => {
     const session = requireSession(request);
     requireCsrf(request, session);
-    const { context } = requestContext(request, "role.revoke");
     const params = request.params as { id: string };
     const query = request.query as Record<string, unknown>;
     const expectedRevision = typeof query.expectedRevision === "string" ? query.expectedRevision : "";
     const parsedId = id(parse(idSchema, params.id));
+    const { context } = requestContext(request, "role.revoke", null, null, false, true, parsedId);
     const key = header(request, "idempotency-key");
     if (!key || !expectedRevision) throw new DomainError("INVALID_INPUT", "Idempotency-Key e expectedRevision são obrigatórios.", 400);
-    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, operation: "role.revoke", key, resourceId: parsedId, unitId: null, workspaceId: null, body: { assignmentId: parsedId, expectedRevision } }, () => domainCommands.revokeRole(context, parsedId, expectedRevision));
+    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, sessionId: context.sessionId, operation: "role.revoke", key, resourceId: parsedId, unitId: null, workspaceId: null, body: { assignmentId: parsedId, expectedRevision } }, () => domainCommands.revokeRole(context, parsedId, expectedRevision));
     audit(context, "role.revoke", "RoleAssignment", parsedId, "ALLOWED");
     return response(reply, success({ assignment: result.value, receiptId: result.receipt.id, revision: store.organizations.get(context.organizationId)?.authorizationRevision.toString() ?? "0" }, context.correlationId));
   });
@@ -828,7 +951,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const { context } = requestContext(request, "guardians.create");
     const input = parse(z.object({ displayName: z.string().trim().min(2).max(120), phone: z.string().trim().min(8).max(40), email: z.string().email().nullable().default(null) }).strict(), request.body);
     const key = requireIdempotencyKey(request);
-    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, operation: "guardians.create", key, resourceId: null, unitId: context.unitId, workspaceId: context.workspaceId, body: input }, () => domainCommands.createGuardian(context, input));
+    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, sessionId: context.sessionId, operation: "guardians.create", key, resourceId: null, unitId: context.unitId, workspaceId: context.workspaceId, body: input }, () => domainCommands.createGuardian(context, input));
     audit(context, "guardians.create", "Guardian", result.value.id, "ALLOWED", null, { replay: result.replayed });
     return response(reply, success({ guardian: publicGuardian(result.value), receiptId: result.receipt.id }, context.correlationId), 201);
   });
@@ -853,10 +976,10 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
 
   app.post("/api/v1/patients", async (request, reply) => {
     const session = requireSession(request); requireCsrf(request, session);
-    const { context } = requestContext(request, "patients.create");
     const input = parse(patientInputSchema, request.body);
+    const { context } = requestContext(request, "patients.create", null, null, false, true, input.guardianId);
     const key = requireIdempotencyKey(request);
-    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, operation: "patients.create", key, resourceId: input.guardianId, unitId: context.unitId, workspaceId: context.workspaceId, body: input }, () => patientApplication.create(context, input));
+    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, sessionId: context.sessionId, operation: "patients.create", key, resourceId: input.guardianId, unitId: context.unitId, workspaceId: context.workspaceId, body: input }, () => patientApplication.create(context, input));
     audit(context, "patients.create", "AnimalPatient", result.value.id, "ALLOWED");
     return response(reply, success({ patient: publicPatient(store, result.value.id, context.actorRoleSnapshot), receiptId: result.receipt.id }, context.correlationId), 201);
   });
@@ -867,7 +990,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const { context } = requestContext(request, "patients.disable", patientId);
     const key = header(request, "idempotency-key");
     if (!key) throw new DomainError("INVALID_INPUT", "Idempotency-Key é obrigatório.", 400);
-    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, operation: "patients.disable", key, resourceId: patientId, unitId: context.unitId, workspaceId: context.workspaceId, body: { patientId } }, () => domainCommands.disablePatient(context, patientId));
+    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, sessionId: context.sessionId, operation: "patients.disable", key, resourceId: patientId, unitId: context.unitId, workspaceId: context.workspaceId, body: { patientId } }, () => domainCommands.disablePatient(context, patientId));
     audit(context, "patients.disable", "AnimalPatient", patientId, "ALLOWED", "registro preservado; apenas status alterado");
     return response(reply, success({ patient: publicPatient(store, result.value.id, context.actorRoleSnapshot), receiptId: result.receipt.id }, context.correlationId));
   });
@@ -878,7 +1001,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const { context } = requestContext(request, "patients.merge", input.sourcePatientId);
     const key = header(request, "idempotency-key");
     if (!key) throw new DomainError("INVALID_INPUT", "Idempotency-Key é obrigatório.", 400);
-    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, operation: "patients.merge", key, resourceId: input.sourcePatientId, unitId: context.unitId, workspaceId: context.workspaceId, body: input }, () => domainCommands.mergePatients(context, input));
+    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, sessionId: context.sessionId, operation: "patients.merge", key, resourceId: input.sourcePatientId, unitId: context.unitId, workspaceId: context.workspaceId, body: input }, () => domainCommands.mergePatients(context, input));
     audit(context, "patients.merge", "AnimalPatient", input.sourcePatientId, "ALLOWED", "confirmação humana explícita; histórico preservado", { targetPatientId: input.targetPatientId });
     return response(reply, success({ targetPatient: publicPatient(store, result.value.id, context.actorRoleSnapshot), sourcePatientId: input.sourcePatientId, receiptId: result.receipt.id }, context.correlationId), 202);
   });
@@ -894,11 +1017,11 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
 
   app.post("/api/v1/appointments", async (request, reply) => {
     const session = requireSession(request); requireCsrf(request, session);
-    const { context } = requestContext(request, "appointments.create");
     const input = parse(appointmentInputSchema, request.body);
+    const { context } = requestContext(request, "appointments.create", input.patientId, null, false, true, input.patientId);
     const key = header(request, "idempotency-key");
     if (!key) throw new DomainError("INVALID_INPUT", "Idempotency-Key é obrigatório.", 400);
-    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, operation: "appointments.create", key, resourceId: null, unitId: context.unitId, workspaceId: context.workspaceId, body: input }, () => domainCommands.createAppointment(context, input));
+    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, sessionId: context.sessionId, operation: "appointments.create", key, resourceId: null, unitId: context.unitId, workspaceId: context.workspaceId, body: input }, () => domainCommands.createAppointment(context, input));
     audit(context, "appointments.create", "Appointment", result.value.id, "ALLOWED");
     return response(reply, success({ appointment: result.value, receiptId: result.receipt.id }, context.correlationId), 201);
   });
@@ -913,10 +1036,10 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
   app.post("/api/v1/appointments/:id/check-in", async (request, reply) => {
     const session = requireSession(request); requireCsrf(request, session);
     const appointmentId = id(parse(idSchema, (request.params as { id: string }).id));
-    const { context } = requestContext(request, "queue.check-in");
+    const { context } = requestContext(request, "queue.check-in", null, null, false, true, appointmentId);
     const key = header(request, "idempotency-key");
     if (!key) throw new DomainError("INVALID_INPUT", "Idempotency-Key é obrigatório.", 400);
-    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, operation: "queue.check-in", key, resourceId: appointmentId, unitId: context.unitId, workspaceId: context.workspaceId, body: { appointmentId } }, () => domainCommands.checkInAppointment(context, appointmentId));
+    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, sessionId: context.sessionId, operation: "queue.check-in", key, resourceId: appointmentId, unitId: context.unitId, workspaceId: context.workspaceId, body: { appointmentId } }, () => domainCommands.checkInAppointment(context, appointmentId));
     audit(context, "queue.check-in", "QueueEntry", result.value.id, "ALLOWED");
     return response(reply, success({ queueEntry: result.value, receiptId: result.receipt.id }, context.correlationId), 201);
   });
@@ -933,7 +1056,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const input = parse(z.object({ patientId: idSchema, appointmentId: idSchema.nullable().default(null), chiefComplaint: z.string().trim().min(2).max(500), urgency: z.enum(["ROUTINE", "URGENT", "EMERGENCY"]).default("ROUTINE") }).strict(), request.body);
     const { context } = requestContext(request, "encounters.create", input.patientId);
     const key = requireIdempotencyKey(request);
-    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, operation: "encounters.create", key, resourceId: input.patientId, unitId: context.unitId, workspaceId: context.workspaceId, body: input }, () => domainCommands.createEncounter(context, input));
+    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, sessionId: context.sessionId, operation: "encounters.create", key, resourceId: input.patientId, unitId: context.unitId, workspaceId: context.workspaceId, body: input }, () => domainCommands.createEncounter(context, input));
     audit(context, "encounters.create", "Encounter", result.value.id, "ALLOWED");
     return response(reply, success({ encounter: result.value, receiptId: result.receipt.id }, context.correlationId), 201);
   });
@@ -949,19 +1072,19 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
   app.post("/api/v1/clinical/documents", async (request, reply) => {
     const session = requireSession(request); requireCsrf(request, session);
     const input = parse(clinicalDocumentInputSchema, request.body);
-    const { context } = requestContext(request, "clinical.write", null, input.encounterId);
+    const { context } = requestContext(request, "clinical.write", null, input.encounterId, false, true, input.encounterId);
     const key = requireIdempotencyKey(request);
-    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, operation: "clinical.write", key, resourceId: input.encounterId, unitId: context.unitId, workspaceId: context.workspaceId, body: input }, () => domainCommands.createClinicalDocument(context, input));
+    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, sessionId: context.sessionId, operation: "clinical.write", key, resourceId: input.encounterId, unitId: context.unitId, workspaceId: context.workspaceId, body: input }, () => domainCommands.createClinicalDocument(context, input));
     audit(context, "clinical.write", "ClinicalDocument", result.value.id, "ALLOWED");
     return response(reply, success({ document: { ...result.value, content: undefined }, receiptId: result.receipt.id }, context.correlationId), 201);
   });
 
   app.post("/api/v1/clinical/documents/:id/sign", async (request, reply) => {
     const session = requireSession(request); requireCsrf(request, session);
-    const { context } = requestContext(request, "clinical.sign");
     const documentId = id(parse(idSchema, (request.params as { id: string }).id));
+    const { context } = requestContext(request, "clinical.sign", null, null, false, false, documentId);
     const key = requireIdempotencyKey(request);
-    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, operation: "clinical.sign", key, resourceId: documentId, unitId: context.unitId, workspaceId: context.workspaceId, body: { documentId } }, () => domainCommands.signClinicalDocument(context, documentId));
+    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, sessionId: context.sessionId, operation: "clinical.sign", key, resourceId: documentId, unitId: context.unitId, workspaceId: context.workspaceId, body: { documentId } }, () => domainCommands.signClinicalDocument(context, documentId));
     audit(context, "clinical.sign", "ClinicalDocument", result.value.id, "ALLOWED");
     return response(reply, success({ document: { ...result.value, content: undefined }, receiptId: result.receipt.id }, context.correlationId));
   });
@@ -969,11 +1092,11 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
   app.post("/api/v1/clinical/documents/:id/addenda", async (request, reply) => {
     const session = requireSession(request); requireCsrf(request, session);
     const documentId = id(parse(idSchema, (request.params as { id: string }).id));
-    const { context } = requestContext(request, "clinical.addendum");
     const input = parse(z.object({ reason: z.string().trim().min(5).max(500), content: z.string().trim().min(1).max(30_000) }).strict(), request.body);
+    const { context } = requestContext(request, "clinical.addendum", null, null, false, false, documentId);
     const key = header(request, "idempotency-key");
     if (!key) throw new DomainError("INVALID_INPUT", "Idempotency-Key é obrigatório.", 400);
-    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, operation: "clinical.addendum", key, resourceId: documentId, unitId: context.unitId, workspaceId: context.workspaceId, body: input }, () => domainCommands.addClinicalAddendum(context, documentId, input.reason, input.content));
+    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, sessionId: context.sessionId, operation: "clinical.addendum", key, resourceId: documentId, unitId: context.unitId, workspaceId: context.workspaceId, body: input }, () => domainCommands.addClinicalAddendum(context, documentId, input.reason, input.content));
     audit(context, "clinical.addendum", "ClinicalAddendum", result.value.id, "ALLOWED", "documento assinado permanece imutável");
     return response(reply, success({ addendum: result.value, receiptId: result.receipt.id }, context.correlationId), 201);
   });
@@ -994,7 +1117,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const input = parse(diagnosticRequestInputSchema, request.body);
     const { context } = requestContext(request, "diagnostics.create", input.patientId, input.encounterId);
     const key = requireIdempotencyKey(request);
-    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, operation: "diagnostics.create", key, resourceId: input.patientId, unitId: context.unitId, workspaceId: context.workspaceId, body: input }, () => domainCommands.createDiagnosticRequest(context, input));
+    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, sessionId: context.sessionId, operation: "diagnostics.create", key, resourceId: input.patientId, unitId: context.unitId, workspaceId: context.workspaceId, body: input }, () => domainCommands.createDiagnosticRequest(context, input));
     audit(context, "diagnostics.create", "DiagnosticRequest", result.value.id, "ALLOWED");
     return response(reply, success({ request: result.value, receiptId: result.receipt.id }, context.correlationId), 201);
   });
@@ -1014,21 +1137,21 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
   app.post("/api/v1/diagnostics/requests/:id/specimens", async (request, reply) => {
     const session = requireSession(request); requireCsrf(request, session);
     const requestId = id(parse(idSchema, (request.params as { id: string }).id));
-    const { context } = requestContext(request, "diagnostics.specimen");
     const input = parse(specimenInputSchema, request.body);
+    const { context } = requestContext(request, "diagnostics.specimen", null, null, false, false, requestId);
     const key = header(request, "idempotency-key");
     if (!key) throw new DomainError("INVALID_INPUT", "Idempotency-Key é obrigatório.", 400);
-    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, operation: "diagnostics.specimen", key, resourceId: requestId, unitId: context.unitId, workspaceId: context.workspaceId, body: input }, () => domainCommands.createSpecimen(context, requestId, input.label));
+    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, sessionId: context.sessionId, operation: "diagnostics.specimen", key, resourceId: requestId, unitId: context.unitId, workspaceId: context.workspaceId, body: input }, () => domainCommands.createSpecimen(context, requestId, input.label));
     audit(context, "diagnostics.specimen", "Specimen", result.value.id, "ALLOWED");
     return response(reply, success({ specimen: result.value, receiptId: result.receipt.id }, context.correlationId), 201);
   });
 
   app.post("/api/v1/diagnostics/results", async (request, reply) => {
     const session = requireSession(request); requireCsrf(request, session);
-    const { context } = requestContext(request, "diagnostics.result");
     const input = parse(resultInputSchema, request.body);
+    const { context } = requestContext(request, "diagnostics.result", null, null, false, false, input.requestId);
     const key = requireIdempotencyKey(request);
-    const idempotentResult = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, operation: "diagnostics.result", key, resourceId: input.requestId, unitId: context.unitId, workspaceId: context.workspaceId, body: input }, () => domainCommands.createResult(context, input));
+    const idempotentResult = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, sessionId: context.sessionId, operation: "diagnostics.result", key, resourceId: input.requestId, unitId: context.unitId, workspaceId: context.workspaceId, body: input }, () => domainCommands.createResult(context, input));
     audit(context, "diagnostics.result", "DiagnosticResult", idempotentResult.value.id, "ALLOWED");
     return response(reply, success({ result: idempotentResult.value, receiptId: idempotentResult.receipt.id }, context.correlationId), 201);
   });
@@ -1054,11 +1177,11 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
 
   app.post("/api/v1/stock/movements", async (request, reply) => {
     const session = requireSession(request); requireCsrf(request, session);
-    const { context } = requestContext(request, "stock.write");
     const input = parse(stockMovementInputSchema, request.body);
+    const { context } = requestContext(request, "stock.write", null, null, false, false, input.lotId);
     const key = header(request, "idempotency-key");
     if (!key) throw new DomainError("INVALID_INPUT", "Idempotency-Key é obrigatório.", 400);
-    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, operation: "stock.movement", key, resourceId: input.lotId, unitId: context.unitId, workspaceId: context.workspaceId, body: input }, () => domainCommands.createStockMovement(context, input));
+    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, sessionId: context.sessionId, operation: "stock.movement", key, resourceId: input.lotId, unitId: context.unitId, workspaceId: context.workspaceId, body: input }, () => domainCommands.createStockMovement(context, input));
     audit(context, "stock.write", "StockMovement", result.value.id, "ALLOWED");
     return response(reply, success({ movement: result.value, receiptId: result.receipt.id }, context.correlationId), 201);
   });
@@ -1083,7 +1206,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const { context } = requestContext(request, "hospitalization.create", input.patientId, input.encounterId);
     const key = header(request, "idempotency-key");
     if (!key) throw new DomainError("INVALID_INPUT", "Idempotency-Key é obrigatório.", 400);
-    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, operation: "hospitalization.create", key, resourceId: input.patientId, unitId: context.unitId, workspaceId: context.workspaceId, body: input }, () => domainCommands.createHospitalEpisode(context, input));
+    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, sessionId: context.sessionId, operation: "hospitalization.create", key, resourceId: input.patientId, unitId: context.unitId, workspaceId: context.workspaceId, body: input }, () => domainCommands.createHospitalEpisode(context, input));
     audit(context, "hospitalization.create", "HospitalEpisode", result.value.id, "ALLOWED");
     return response(reply, success({ episode: result.value, receiptId: result.receipt.id }, context.correlationId), 201);
   });
@@ -1101,7 +1224,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const { context } = requestContext(request, "medication.prescribe", input.patientId, input.encounterId);
     const key = header(request, "idempotency-key");
     if (!key) throw new DomainError("INVALID_INPUT", "Idempotency-Key é obrigatório.", 400);
-    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, operation: "medication.prescribe", key, resourceId: input.patientId, unitId: context.unitId, workspaceId: context.workspaceId, body: input }, () => domainCommands.createMedicationOrder(context, input));
+    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, sessionId: context.sessionId, operation: "medication.prescribe", key, resourceId: input.patientId, unitId: context.unitId, workspaceId: context.workspaceId, body: input }, () => domainCommands.createMedicationOrder(context, input));
     audit(context, "medication.prescribe", "MedicationOrder", result.value.id, "ALLOWED");
     return response(reply, success({ order: result.value, receiptId: result.receipt.id }, context.correlationId), 201);
   });
@@ -1109,11 +1232,11 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
   app.post("/api/v1/medications/orders/:id/dispense", async (request, reply) => {
     const session = requireSession(request); requireCsrf(request, session);
     const medicationOrderId = id(parse(idSchema, (request.params as { id: string }).id));
-    const { context } = requestContext(request, "medication.dispense");
     const input = parse(dispensationInputSchema.omit({ medicationOrderId: true }), request.body);
+    const { context } = requestContext(request, "medication.dispense", null, null, false, false, medicationOrderId);
     const key = header(request, "idempotency-key");
     if (!key) throw new DomainError("INVALID_INPUT", "Idempotency-Key é obrigatório.", 400);
-    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, operation: "medication.dispense", key, resourceId: medicationOrderId, unitId: context.unitId, workspaceId: context.workspaceId, body: input }, () => domainCommands.dispenseMedication(context, medicationOrderId, input.lotId, input.quantity));
+    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, sessionId: context.sessionId, operation: "medication.dispense", key, resourceId: medicationOrderId, unitId: context.unitId, workspaceId: context.workspaceId, body: input }, () => domainCommands.dispenseMedication(context, medicationOrderId, input.lotId, input.quantity));
     audit(context, "medication.dispense", "Dispensation", result.value.id, "ALLOWED");
     return response(reply, success({ dispensation: result.value, receiptId: result.receipt.id }, context.correlationId), 201);
   });
@@ -1121,11 +1244,11 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
   app.post("/api/v1/medications/orders/:id/administer", async (request, reply) => {
     const session = requireSession(request); requireCsrf(request, session);
     const medicationOrderId = id(parse(idSchema, (request.params as { id: string }).id));
-    const { context } = requestContext(request, "medication.administer");
     const input = parse(administrationInputSchema.omit({ medicationOrderId: true }), request.body);
+    const { context } = requestContext(request, "medication.administer", null, null, false, false, medicationOrderId);
     const key = header(request, "idempotency-key");
     if (!key) throw new DomainError("INVALID_INPUT", "Idempotency-Key é obrigatório.", 400);
-    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, operation: "medication.administer", key, resourceId: medicationOrderId, unitId: context.unitId, workspaceId: context.workspaceId, body: input }, () => domainCommands.administerMedication(context, medicationOrderId, input.status, input.note));
+    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, sessionId: context.sessionId, operation: "medication.administer", key, resourceId: medicationOrderId, unitId: context.unitId, workspaceId: context.workspaceId, body: input }, () => domainCommands.administerMedication(context, medicationOrderId, input.status, input.note));
     audit(context, "medication.administer", "AdministrationOccurrence", result.value.id, "ALLOWED");
     return response(reply, success({ occurrence: result.value, receiptId: result.receipt.id }, context.correlationId), 201);
   });
@@ -1140,21 +1263,21 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
 
   app.post("/api/v1/finance/charges", async (request, reply) => {
     const session = requireSession(request); requireCsrf(request, session);
-    const { context } = requestContext(request, "finance.charge");
     const input = parse(chargeInputSchema, request.body);
+    const { context } = requestContext(request, "finance.charge", input.patientId, null, false, true, input.patientId);
     const key = requireIdempotencyKey(request);
-    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, operation: "finance.charge", key, resourceId: input.patientId, unitId: context.unitId, workspaceId: context.workspaceId, body: input }, () => domainCommands.createCharge(context, input));
+    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, sessionId: context.sessionId, operation: "finance.charge", key, resourceId: input.patientId, unitId: context.unitId, workspaceId: context.workspaceId, body: input }, () => domainCommands.createCharge(context, input));
     audit(context, "finance.charge", "Charge", result.value.id, "ALLOWED");
     return response(reply, success({ charge: result.value, receiptId: result.receipt.id }, context.correlationId), 201);
   });
 
   app.post("/api/v1/finance/payments", async (request, reply) => {
     const session = requireSession(request); requireCsrf(request, session);
-    const { context } = requestContext(request, "finance.payment");
     const input = parse(paymentInputSchema, request.body);
+    const { context } = requestContext(request, "finance.payment", null, null, false, true, input.chargeId);
     const key = header(request, "idempotency-key");
     if (!key) throw new DomainError("INVALID_INPUT", "Idempotency-Key é obrigatório.", 400);
-    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, operation: "finance.payment", key, resourceId: input.chargeId, unitId: context.unitId, workspaceId: context.workspaceId, body: input }, () => domainCommands.createPayment(context, input));
+    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, sessionId: context.sessionId, operation: "finance.payment", key, resourceId: input.chargeId, unitId: context.unitId, workspaceId: context.workspaceId, body: input }, () => domainCommands.createPayment(context, input));
     audit(context, "finance.payment", "Payment", result.value.id, "ALLOWED");
     return response(reply, success({ payment: result.value, receiptId: result.receipt.id }, context.correlationId), 201);
   });
@@ -1181,11 +1304,11 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
 
   app.post("/api/v1/finance/refunds", async (request, reply) => {
     const session = requireSession(request); requireCsrf(request, session);
-    const { context } = requestContext(request, "finance.refund");
     const input = parse(refundInputSchema, request.body);
+    const { context } = requestContext(request, "finance.refund", null, null, false, false, input.paymentId);
     const key = header(request, "idempotency-key");
     if (!key) throw new DomainError("INVALID_INPUT", "Idempotency-Key é obrigatório.", 400);
-    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, operation: "finance.refund", key, resourceId: input.paymentId, unitId: context.unitId, workspaceId: context.workspaceId, body: input }, () => domainCommands.requestRefund(context, input.paymentId, input.reason));
+    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, sessionId: context.sessionId, operation: "finance.refund", key, resourceId: input.paymentId, unitId: context.unitId, workspaceId: context.workspaceId, body: input }, () => domainCommands.requestRefund(context, input.paymentId, input.reason));
     audit(context, "finance.refund", "Payment", input.paymentId, "ALLOWED", "ledger compensatório criado");
     return response(reply, success({ payment: result.value, receiptId: result.receipt.id }, context.correlationId), 202);
   });
@@ -1199,12 +1322,27 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
 
   app.post("/api/v1/communications", async (request, reply) => {
     const session = requireSession(request); requireCsrf(request, session);
-    const { context } = requestContext(request, "communication.stage");
     const input = parse(z.object({ patientId: idSchema.nullable().default(null), channel: z.enum(["SMS", "EMAIL", "WHATSAPP"]), recipient: z.string().trim().min(5).max(200), template: z.string().trim().min(2).max(120), body: z.string().trim().min(1).max(4_000) }).strict(), request.body);
+    const { context } = requestContext(request, "communication.stage", input.patientId, null, false, true, input.patientId);
     const key = requireIdempotencyKey(request);
-    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, operation: "communication.stage", key, resourceId: input.patientId, unitId: context.unitId, workspaceId: context.workspaceId, body: input }, () => domainCommands.createMessage(context, input));
+    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, sessionId: context.sessionId, operation: "communication.stage", key, resourceId: input.patientId, unitId: context.unitId, workspaceId: context.workspaceId, body: input }, () => domainCommands.createMessage(context, input));
     audit(context, "communication.stage", "CommunicationMessage", result.value.id, "ALLOWED");
     return response(reply, success({ message: result.value, receiptId: result.receipt.id }, context.correlationId), 201);
+  });
+
+  app.post("/api/v1/communications/:id/approve", async (request, reply) => {
+    const session = requireSession(request); requireCsrf(request, session);
+    const messageId = id(parse(idSchema, (request.params as { id: string }).id));
+    const { context } = requestContext(request, "communication.approve", null, null, false, false, messageId);
+    const input = parse(communicationApprovalInputSchema, request.body);
+    if (input.decision === "approved" && !persistence) throw new DomainError("CAPABILITY_DISABLED", "A aprovação que libera egress exige persistência durável; nenhum envio foi liberado.", 503);
+    const key = requireIdempotencyKey(request);
+    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, sessionId: context.sessionId, operation: "communication.approve", key, resourceId: messageId, unitId: context.unitId, workspaceId: context.workspaceId, body: { messageId, ...input } }, () => domainCommands.decideMessage(context, messageId, input.decision, input.reason));
+    if (input.decision === "approved" && !result.replayed) {
+      durableOutboxes.set(request, [{ id: id(randomUUID()), organizationId: context.organizationId, eventType: "communication.message.approved", aggregateId: messageId, payload: { source: "CVG_COMMUNICATION_APPROVAL", messageId, channel: result.value.channel, recipient: result.value.recipient, template: result.value.template, body: result.value.body } }]);
+    }
+    audit(context, "communication.approve", "CommunicationMessage", messageId, "ALLOWED", input.reason);
+    return response(reply, success({ message: result.value, receiptId: result.receipt.id, queued: input.decision === "approved" }, context.correlationId), input.decision === "approved" ? 202 : 200);
   });
 
   app.get("/api/v1/knowledge", async (request, reply) => {
@@ -1220,7 +1358,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const input = parse(knowledgeDocumentInputSchema, request.body);
     const key = header(request, "idempotency-key");
     if (!key) throw new DomainError("INVALID_INPUT", "Idempotency-Key é obrigatório.", 400);
-    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, operation: "knowledge.write", key, resourceId: null, unitId: context.unitId, workspaceId: context.workspaceId, body: input }, () => domainCommands.createKnowledgeDocument(context, input));
+    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, sessionId: context.sessionId, operation: "knowledge.write", key, resourceId: null, unitId: context.unitId, workspaceId: context.workspaceId, body: input }, () => domainCommands.createKnowledgeDocument(context, input));
     audit(context, "knowledge.write", "KnowledgeDocument", result.value.id, "ALLOWED", "documento aguardando validação humana");
     return response(reply, success({ document: { ...result.value, content: undefined }, receiptId: result.receipt.id }, context.correlationId), 201);
   });
@@ -1242,7 +1380,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
   app.post("/api/v1/ai/turns", async (request, reply) => {
     const session = requireSession(request); requireCsrf(request, session);
     const input = parse(aiTurnInputSchema, request.body);
-    const { context } = requestContext(request, `ai.turn.${input.purpose}`, input.patientId, input.encounterId);
+    const { context } = requestContext(request, `ai.turn.${input.purpose}`, input.patientId, input.encounterId, false, true, input.resourceId ?? null);
     const result = await agentApplication.executeTurn(context, input);
     const turnResult = result.value;
     audit(context, "ai.turn", "AiTurn", turnResult.turn.id, turnResult.turn.status === "DENIED" ? "DENIED" : "ALLOWED", turnResult.turn.status === "QUARANTINED" ? "untrusted content quarantined" : null, { inputTokens: turnResult.turn.inputTokens, outputTokens: turnResult.turn.outputTokens, provider: turnResult.provenance.provider, replay: result.replayed });
@@ -1251,9 +1389,9 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
 
   app.post("/api/v1/ai/approvals/:id", async (request, reply) => {
     const session = requireSession(request); requireCsrf(request, session);
-    const { context } = requestContext(request, "ai.approval");
     const approvalId = id(parse(idSchema, (request.params as { id: string }).id));
     const input = parse(z.object({ decision: z.enum(["allowed-once", "rejected"]), reason: z.string().trim().max(500).nullable().default(null) }).strict(), request.body) as ApprovalInput;
+    const { context } = requestContext(request, "ai.approval", null, null, false, true, approvalId);
     const key = requireIdempotencyKey(request);
     const result = await agentApplication.approve(context, approvalId, input.decision, input.reason, key);
     audit(context, "ai.approval", "AiApproval", result.value.id, "ALLOWED", input.reason);
@@ -1265,7 +1403,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const approvalId = id(parse(idSchema, (request.params as { id: string }).id));
     const input = parse(aiTurnInputSchema, request.body);
     if (input.approvalId !== approvalId) throw new DomainError("INVALID_INPUT", "approvalId deve corresponder à aprovação da rota.", 400);
-    const { context } = requestContext(request, `ai.turn.${input.purpose}`, input.patientId, input.encounterId);
+    const { context } = requestContext(request, `ai.turn.${input.purpose}`, input.patientId, input.encounterId, false, true, input.resourceId ?? approvalId);
     const result = await agentApplication.retryTurn(context, input, approvalId);
     const turnResult = result.value;
     audit(context, "ai.approval.retry", "AiTurn", turnResult.turn.id, "ALLOWED", "dispatch revalidado após approval", { provider: turnResult.provenance.provider, replay: result.replayed });
@@ -1274,8 +1412,8 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
 
   app.post("/api/v1/ai/drafts/:id/promote", async (request, reply) => {
     const session = requireSession(request); requireCsrf(request, session);
-    const { context } = requestContext(request, "ai.draft.promote");
     const draftId = id(parse(idSchema, (request.params as { id: string }).id));
+    const { context } = requestContext(request, "ai.draft.promote", null, null, false, true, draftId);
     const key = requireIdempotencyKey(request);
     const result = await agentApplication.promoteDraft(context, draftId, key);
     audit(context, "ai.draft.promote", "AiDraft", draftId, "ALLOWED", "explicit human promotion");
@@ -1283,8 +1421,8 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
   });
 
   app.get("/api/v1/ai/sessions/:id/replay", async (request, reply) => {
-    const { context } = requestContext(request, "ai.replay");
     const sessionId = id(parse(idSchema, (request.params as { id: string }).id));
+    const { context } = requestContext(request, "ai.replay", null, null, false, true, sessionId);
     const replay = await agentApplication.replay(context, sessionId);
     audit(context, "ai.replay", "AiSession", sessionId, "ALLOWED", null, { digest: replay.digest });
     return response(reply, success(replay, context.correlationId));

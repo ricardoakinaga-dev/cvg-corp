@@ -44,7 +44,8 @@ function persistence(overrides: Partial<{
 }
 
 test("separate worker exposes health, quarantine and stopped lifecycle", async () => {
-  const quarantined = new CvgWorkerApplication({ persistence: persistence(), sink: blockedWorkerSink, sinkMode: "quarantine" });
+  let quarantinedClaims = 0;
+  const quarantined = new CvgWorkerApplication({ persistence: persistence({ claimOutbox: async () => { quarantinedClaims += 1; return [record()]; } }), sink: blockedWorkerSink, sinkMode: "quarantine" });
   assert.deepEqual(await quarantined.health(), {
     status: "DEGRADED",
     process: "READY",
@@ -54,7 +55,8 @@ test("separate worker exposes health, quarantine and stopped lifecycle", async (
     lanes: { outbox: "BLOCKED", jobs: "BLOCKED", schedule: "BLOCKED", reconciliation: "BLOCKED", notifications: "BLOCKED", maintenance: "BLOCKED" },
     reason: "O sink está em quarentena ou não foi configurado; nenhum efeito externo será enviado."
   });
-  assert.deepEqual(await quarantined.runOnce(organizationId, "worker-test"), { claimed: 1, delivered: 0, retried: 0, quarantined: 1, outcomeUnknown: 0 });
+  await assert.rejects(() => quarantined.runOnce(organizationId, "worker-test"), (error: unknown) => error instanceof DomainError && error.code === "CAPABILITY_DISABLED");
+  assert.equal(quarantinedClaims, 0);
 
   const laneRunners = { jobs: async () => 0, schedule: async () => 0, reconciliation: async () => 0, notifications: async () => 0, maintenance: async () => 0 };
   const enabled = new CvgWorkerApplication({ persistence: persistence(), sink: { deliver: async () => "DELIVERED" }, sinkMode: "enabled", lanes: laneRunners });

@@ -6,7 +6,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_DB: cvg_local
-      POSTGRES_USER: cvg_app
+      POSTGRES_USER: ${CVG_MIGRATION_DB_USER:-cvg_migration}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be supplied through an external env file}
     ports:
       - "127.0.0.1:${CVG_POSTGRES_PORT:-5440}:5432"
@@ -20,8 +20,13 @@ services:
       - no-new-privileges:true
     networks:
       - backend
+    deploy:
+      resources:
+        limits:
+          cpus: "1.50"
+          memory: 768M
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U cvg_app -d cvg_local"]
+      test: ["CMD-SHELL", "pg_isready -U ${CVG_MIGRATION_DB_USER:-cvg_migration} -d cvg_local"]
       interval: 5s
       timeout: 3s
       retries: 12
@@ -34,7 +39,9 @@ services:
       dockerfile: Dockerfile.api
     command: ["node", "--import", "tsx", "scripts/db.ts", "migrate"]
     environment:
-      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL must be supplied with an URL-encoded password}
+      DATABASE_URL: ${MIGRATION_DATABASE_URL:?MIGRATION_DATABASE_URL must be supplied with an URL-encoded password}
+      CVG_RUNTIME_DB_USER: ${CVG_RUNTIME_DB_USER:-cvg_runtime}
+      CVG_RUNTIME_DB_PASSWORD: ${CVG_RUNTIME_DB_PASSWORD:?CVG_RUNTIME_DB_PASSWORD must be supplied through an external env file}
     depends_on:
       postgres:
         condition: service_healthy
@@ -48,6 +55,11 @@ services:
       disable: true
     networks:
       - backend
+    deploy:
+      resources:
+        limits:
+          cpus: "1.00"
+          memory: 512M
 
   api:
     image: ${CVG_API_IMAGE:-cvg-corp/api:local}
@@ -57,6 +69,7 @@ services:
     environment:
       NODE_ENV: ${NODE_ENV:-development}
       CVG_HOST: 0.0.0.0
+      CVG_TRUST_PROXY: ${CVG_TRUST_PROXY:-false}
       CVG_API_PORT: 4310
       CVG_WEB_ORIGIN: ${CVG_WEB_ORIGIN:-http://localhost:8080}
       CVG_STORAGE: postgres
@@ -72,6 +85,9 @@ services:
       CVG_AUTH_LOCKOUT_MINUTES: ${CVG_AUTH_LOCKOUT_MINUTES:-15}
       CVG_AUTH_CHALLENGE_TTL_SECONDS: ${CVG_AUTH_CHALLENGE_TTL_SECONDS:-300}
       CVG_AUTH_MAX_CHALLENGE_ATTEMPTS: ${CVG_AUTH_MAX_CHALLENGE_ATTEMPTS:-5}
+      CVG_RATE_LIMIT_BACKEND: ${CVG_RATE_LIMIT_BACKEND:-local}
+      CVG_RATE_LIMIT_REQUESTS_PER_WINDOW: ${CVG_RATE_LIMIT_REQUESTS_PER_WINDOW:-120}
+      CVG_RATE_LIMIT_WINDOW_SECONDS: ${CVG_RATE_LIMIT_WINDOW_SECONDS:-60}
       CVG_DEEPSEEK_BASE_URL: ${CVG_DEEPSEEK_BASE_URL:-https://deepseek.invalid}
       CVG_DEEPSEEK_RUNTIME_ENABLED: ${CVG_DEEPSEEK_RUNTIME_ENABLED:-false}
       CVG_DEEPSEEK_EXPECTED_ENGINE_COMMIT: ${CVG_DEEPSEEK_EXPECTED_ENGINE_COMMIT:-0000000000000000000000000000000000000000}
@@ -90,6 +106,11 @@ services:
       - ALL
     networks:
       - backend
+    deploy:
+      resources:
+        limits:
+          cpus: "1.00"
+          memory: 768M
     healthcheck:
       test:
         - CMD-SHELL
@@ -115,6 +136,11 @@ services:
       - ALL
     networks:
       - backend
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 128M
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:8080/healthz | grep -qx ok"]
       interval: 10s
@@ -132,6 +158,13 @@ services:
       CVG_WORKER_INTERVAL_MS: ${CVG_WORKER_INTERVAL_MS:-5000}
       CVG_WORKER_SINK_MODE: ${CVG_WORKER_SINK_MODE:-quarantine}
       CVG_WORKER_HEARTBEAT_FILE: /tmp/cvg-worker/heartbeat
+      CVG_SECRET_PROVIDER: ${CVG_SECRET_PROVIDER:-none}
+      CVG_SECRET_DIR: ${CVG_SECRET_DIR:-/run/secrets/cvg}
+      CVG_MESSAGING_PROVIDER_ENDPOINT: ${CVG_MESSAGING_PROVIDER_ENDPOINT:-}
+      CVG_MESSAGING_PROVIDER_ALLOWED_HOSTS: ${CVG_MESSAGING_PROVIDER_ALLOWED_HOSTS:-}
+      CVG_MESSAGING_CREDENTIAL_REF: ${CVG_MESSAGING_CREDENTIAL_REF:-}
+      CVG_MESSAGING_SEND_PATH: ${CVG_MESSAGING_SEND_PATH:-/messages}
+      CVG_MESSAGING_QUERY_PATH: ${CVG_MESSAGING_QUERY_PATH:-}
     depends_on:
       api:
         condition: service_healthy
@@ -145,6 +178,11 @@ services:
       - ALL
     networks:
       - backend
+    deploy:
+      resources:
+        limits:
+          cpus: "1.00"
+          memory: 384M
     healthcheck:
       test:
         - CMD-SHELL
@@ -177,6 +215,11 @@ services:
     user: "101"
     networks:
       - backend
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 128M
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:8080/healthz | grep -qx ok"]
       interval: 10s

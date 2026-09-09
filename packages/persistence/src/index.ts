@@ -139,12 +139,14 @@ export interface DurableInboxInput {
   signatureAlgorithm: "HMAC-SHA256";
   signatureKeyRef: string;
   signature: string;
+  /** Exact received bytes, used only for signature verification and never persisted. */
+  rawBody?: string;
   payload: Record<string, unknown>;
 }
 
 export type DurableInboxSignatureAlgorithm = "HMAC-SHA256" | "UNVERIFIED";
 
-export interface DurableInboxRecord extends Omit<DurableInboxInput, "signatureAlgorithm"> {
+export interface DurableInboxRecord extends Omit<DurableInboxInput, "signatureAlgorithm" | "rawBody"> {
   signatureAlgorithm: DurableInboxSignatureAlgorithm;
   recordDigest: string;
   status: DurableInboxStatus;
@@ -159,7 +161,7 @@ export interface DurableInboxReceipt extends DurableInboxRecord {
   duplicate: boolean;
 }
 
-export type DurableExternalEffectStatus = "ADMISSION_PENDING" | "DISPATCHED" | "FAILED_RETRYABLE" | "SUCCEEDED" | "OUTCOME_UNKNOWN" | "RECONCILIATION_REQUIRED" | "QUARANTINED";
+export type DurableExternalEffectStatus = "ADMISSION_PENDING" | "DISPATCHED" | "FAILED_RETRYABLE" | "SUCCEEDED" | "OUTCOME_UNKNOWN" | "RECONCILIATION_REQUIRED" | "RECONCILING" | "FAILED_FINAL" | "QUARANTINED";
 
 export interface DurableExternalEffectInput {
   id: OpaqueId;
@@ -187,7 +189,7 @@ export interface DurableExternalEffectRecord extends DurableExternalEffectInput 
   updatedAt: string;
 }
 
-export type DurableExternalEffectOutcomeStatus = "SUCCEEDED" | "FAILED_RETRYABLE" | "OUTCOME_UNKNOWN" | "QUARANTINED";
+export type DurableExternalEffectOutcomeStatus = "SUCCEEDED" | "FAILED_RETRYABLE" | "OUTCOME_UNKNOWN" | "FAILED_FINAL" | "QUARANTINED";
 
 export interface DurableExternalEffectOutcome {
   status: DurableExternalEffectOutcomeStatus;
@@ -197,7 +199,7 @@ export interface DurableExternalEffectOutcome {
 }
 
 export interface DurableExternalReconciliationEvidence {
-  status: "SUCCEEDED" | "QUARANTINED";
+  status: "SUCCEEDED" | "FAILED_FINAL" | "QUARANTINED";
   providerRequestId: string | null;
   response: Record<string, unknown> | null;
   error?: string | null;
@@ -1043,9 +1045,9 @@ async function projectDomain(client: PoolClient, snapshot: StoreSnapshot): Promi
     (entry) => [entry.id, entry.organizationId, entry.kind, entry.referenceId, entry.amountCents, entry.currency, entry.description, entry.createdAt]
   );
   await writeRows(client,
-    "insert into communication_messages(id, organization_id, unit_id, workspace_id, patient_id, channel, recipient, template, body, status, created_at) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) on conflict (id) do update set organization_id = excluded.organization_id, unit_id = excluded.unit_id, workspace_id = excluded.workspace_id, patient_id = excluded.patient_id, channel = excluded.channel, recipient = excluded.recipient, template = excluded.template, body = excluded.body, status = excluded.status",
+    "insert into communication_messages(id, organization_id, unit_id, workspace_id, patient_id, channel, recipient, template, body, status, created_by, decided_by, decided_at, approved_by, approved_at, decision_reason, created_at) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17) on conflict (id) do update set organization_id = excluded.organization_id, unit_id = excluded.unit_id, workspace_id = excluded.workspace_id, patient_id = excluded.patient_id, channel = excluded.channel, recipient = excluded.recipient, template = excluded.template, body = excluded.body, status = excluded.status, created_by = excluded.created_by, decided_by = excluded.decided_by, decided_at = excluded.decided_at, approved_by = excluded.approved_by, approved_at = excluded.approved_at, decision_reason = excluded.decision_reason",
     snapshot.messages,
-    (message) => [message.id, message.organizationId, message.unitId, message.workspaceId, message.patientId, message.channel, message.recipient, message.template, message.body, message.status, message.createdAt]
+    (message) => [message.id, message.organizationId, message.unitId, message.workspaceId, message.patientId, message.channel, message.recipient, message.template, message.body, message.status, message.createdBy ?? null, message.decidedBy ?? null, message.decidedAt ?? null, message.approvedBy ?? null, message.approvedAt ?? null, message.decisionReason ?? null, message.createdAt]
   );
   await writeRows(client,
     "insert into knowledge_documents(id, organization_id, unit_id, workspace_id, title, source, data_class, version, status, content, created_at) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) on conflict (id) do update set organization_id = excluded.organization_id, unit_id = excluded.unit_id, workspace_id = excluded.workspace_id, title = excluded.title, source = excluded.source, data_class = excluded.data_class, version = excluded.version, status = excluded.status, content = excluded.content",
@@ -1232,9 +1234,10 @@ export class PostgresPersistence {
 
   async assertSchema(): Promise<void> {
     try {
-      const result = await this.pool.query<{ snapshots: boolean; journal: boolean; audit: boolean; receipts: boolean; communications: boolean; outbox: boolean; usage_ledger: boolean; inbox: boolean; external_effects: boolean; runtime_scope_guards: boolean; auth_security: boolean; ai_turn_scope: boolean; ai_draft_scope: boolean }>("select to_regclass('public.cvg_state_snapshots') is not null as snapshots, to_regclass('public.cvg_event_journal') is not null as journal, to_regclass('public.cvg_audit_ledger') is not null as audit, to_regclass('public.cvg_command_receipt_ledger') is not null as receipts, to_regclass('public.communication_messages') is not null as communications, to_regclass('public.outbox_records') is not null as outbox, to_regclass('public.ai_usage_ledger') is not null as usage_ledger, to_regclass('public.integration_inbox_records') is not null as inbox, to_regclass('public.external_effects') is not null as external_effects, exists (select 1 from schema_migrations where version = '019_runtime_scope_guards') as runtime_scope_guards, exists (select 1 from schema_migrations where version = '020_auth_security_boundary') and to_regclass('public.auth_challenges') is not null and exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'users' and column_name = 'mfa_secret_ref') and exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'sessions' and column_name = 'device_id_digest') as auth_security, exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'ai_turns' and column_name in ('organization_id', 'unit_id', 'workspace_id') group by table_schema, table_name having count(*) = 3) as ai_turn_scope, exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'ai_drafts' and column_name in ('organization_id', 'unit_id', 'workspace_id') group by table_schema, table_name having count(*) = 3) as ai_draft_scope");
+      const result = await this.pool.query<{ snapshots: boolean; journal: boolean; audit: boolean; receipts: boolean; communications: boolean; outbox: boolean; usage_ledger: boolean; inbox: boolean; external_effects: boolean; rate_limit_buckets: boolean; runtime_role: boolean; runtime_scope_guards: boolean; auth_security: boolean; ai_turn_scope: boolean; ai_draft_scope: boolean }>("select to_regclass('public.cvg_state_snapshots') is not null as snapshots, to_regclass('public.cvg_event_journal') is not null as journal, to_regclass('public.cvg_audit_ledger') is not null as audit, to_regclass('public.cvg_command_receipt_ledger') is not null as receipts, to_regclass('public.communication_messages') is not null as communications, to_regclass('public.outbox_records') is not null as outbox, to_regclass('public.ai_usage_ledger') is not null as usage_ledger, to_regclass('public.integration_inbox_records') is not null as inbox, to_regclass('public.external_effects') is not null as external_effects, to_regclass('public.cvg_rate_limit_buckets') is not null as rate_limit_buckets, exists (select 1 from pg_roles where rolname = current_user and rolsuper = false and rolbypassrls = false and rolcreaterole = false and rolcreatedb = false) as runtime_role, exists (select 1 from schema_migrations where version = '019_runtime_scope_guards') as runtime_scope_guards, exists (select 1 from schema_migrations where version = '020_auth_security_boundary') and to_regclass('public.auth_challenges') is not null and exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'users' and column_name = 'mfa_secret_ref') and exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'sessions' and column_name = 'device_id_digest') as auth_security, exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'ai_turns' and column_name in ('organization_id', 'unit_id', 'workspace_id') group by table_schema, table_name having count(*) = 3) as ai_turn_scope, exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'ai_drafts' and column_name in ('organization_id', 'unit_id', 'workspace_id') group by table_schema, table_name having count(*) = 3) as ai_draft_scope");
+      const snapshotKey = await this.pool.query<{ snapshot_scope_revision: boolean }>("select exists (select 1 from pg_constraint constraint_row join pg_class table_row on table_row.oid = constraint_row.conrelid join pg_namespace namespace_row on namespace_row.oid = table_row.relnamespace where namespace_row.nspname = 'public' and table_row.relname = 'cvg_state_snapshots' and constraint_row.contype = 'p' and pg_get_constraintdef(constraint_row.oid) = 'PRIMARY KEY (organization_id, revision)') as snapshot_scope_revision");
       const row = result.rows[0];
-      if (!row?.snapshots || !row.journal || !row.audit || !row.receipts || !row.communications || !row.outbox || !row.usage_ledger || !row.inbox || !row.external_effects || !row.runtime_scope_guards || !row.auth_security || !row.ai_turn_scope || !row.ai_draft_scope) throw new PersistenceUnavailableError("CVG persistence schema is missing the required authentication security boundary; run npm run db:migrate");
+      if (!row?.snapshots || !row.journal || !row.audit || !row.receipts || !row.communications || !row.outbox || !row.usage_ledger || !row.inbox || !row.external_effects || !row.rate_limit_buckets || !row.runtime_role || !row.runtime_scope_guards || !row.auth_security || !row.ai_turn_scope || !row.ai_draft_scope || snapshotKey.rows[0]?.snapshot_scope_revision !== true) throw new PersistenceUnavailableError("CVG persistence schema or runtime database role is not ready; run migrations with a non-superuser DATABASE_URL");
     } catch (error) {
       if (error instanceof PersistenceUnavailableError) throw error;
       throw new PersistenceUnavailableError("CVG persistence schema could not be checked", error);
@@ -1703,7 +1706,7 @@ export class PostgresPersistence {
       if (!current) throw new PersistenceStateError(`external effect ${effectId} does not exist in this organization`);
       const currentRecord = mapExternalEffectRow(current);
       if (currentRecord.status === evidence.status && currentRecord.outcomeDigest === outcomeDigest) return currentRecord;
-      if (currentRecord.status !== "OUTCOME_UNKNOWN" && currentRecord.status !== "RECONCILIATION_REQUIRED") throw new PersistenceStateError(`external effect ${effectId} is ${currentRecord.status} and cannot be reconciled`);
+      if (currentRecord.status !== "OUTCOME_UNKNOWN" && currentRecord.status !== "RECONCILIATION_REQUIRED" && currentRecord.status !== "RECONCILING") throw new PersistenceStateError(`external effect ${effectId} is ${currentRecord.status} and cannot be reconciled`);
       const updated = await client.query<ExternalEffectRow>(
         "update external_effects set status = $2, provider_request_id = $3, response = $4::jsonb, last_error = $5, outcome_digest = $6, reconciliation_source = $7, reconciled_at = $8, claimed_by = null, lease_until = null, updated_at = now() where id = $1 and organization_id = cvg_request_organization() returning id::text as id, organization_id::text as organization_id, outbox_id::text as outbox_id, integration_id, idempotency_key, request, request_digest, status, attempts, claimed_by, lease_until, fence_token::text as fence_token, provider_request_id, response, last_error, outcome_digest, reconciliation_source, reconciled_at, created_at, updated_at",
         [effectId, evidence.status, evidence.providerRequestId, evidence.response === null ? null : JSON.stringify(evidence.response), error, outcomeDigest, evidence.source, evidence.observedAt]

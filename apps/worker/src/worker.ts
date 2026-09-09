@@ -1,6 +1,7 @@
 import type { OpaqueId } from "@cvg/contracts";
 import { DomainError, makeId, now } from "@cvg/domain";
-import { OutboxWorker, type ExternalEffectLedger, type OutboxDeliveryDecision, type OutboxSink, type OutboxWorkerResult } from "@cvg/integrations";
+import { configuredSecretProvider, createMessagingExternalEffectQueryAdapter, HttpMessagingProvider, MessagingOutboxSink, OutboxWorker, reconcileUnknownExternalEffect, type ExternalEffectLedger, type ExternalEffectQueryAdapter, type OutboxDeliveryDecision, type OutboxSink, type OutboxWorkerResult } from "@cvg/integrations";
+import type { CvgConfig } from "@cvg/config";
 import type { PostgresPersistence } from "@cvg/persistence";
 
 export const WORKER_LANES = ["outbox", "jobs", "schedule", "reconciliation", "notifications", "maintenance"] as const;
@@ -42,10 +43,11 @@ export interface WorkerHealth {
 }
 
 export interface WorkerDependencies {
-  persistence: Pick<PostgresPersistence, "check" | "assertSchema" | "claimOutbox" | "completeOutbox" | "failOutbox">;
+  persistence: Pick<PostgresPersistence, "check" | "assertSchema" | "claimOutbox" | "completeOutbox" | "failOutbox"> & Partial<Pick<PostgresPersistence, "listExternalEffects" | "reconcileExternalEffect">>;
   effects?: ExternalEffectLedger | null;
   sink?: OutboxSink;
   sinkMode?: "quarantine" | "enabled";
+  reconciliationAdapter?: ExternalEffectQueryAdapter;
   lanes?: Partial<Record<Exclude<WorkerLane, "outbox">, WorkerLaneRunner>>;
 }
 
@@ -75,7 +77,7 @@ export class CvgWorkerApplication {
 
   async runOnce(organizationId: OpaqueId, workerId: string, options: { limit?: number; leaseSeconds?: number; maxAttempts?: number } = {}): Promise<OutboxWorkerResult> {
     if (this.stopped) throw new DomainError("INVALID_STATE", "O worker já foi encerrado.", 409);
-    if (!this.dependencies.sink) throw new DomainError("CAPABILITY_DISABLED", "Nenhum sink governado foi configurado; nenhum dispatch foi realizado.", 503);
+    if (!this.dependencies.sink || this.dependencies.sinkMode === "quarantine") throw new DomainError("CAPABILITY_DISABLED", "Nenhum sink governado foi configurado; nenhum dispatch foi realizado.", 503);
     return this.relay.runOnce(organizationId, workerId, this.dependencies.sink, options);
   }
 
@@ -101,7 +103,7 @@ export class CvgWorkerApplication {
       }
       for (const lane of WORKER_LANES) {
         if (lane === "outbox") continue;
-        const runner = this.dependencies.lanes?.[lane];
+        const runner = lane === "reconciliation" ? this.dependencies.lanes?.reconciliation ?? this.defaultReconciliationRunner() : this.dependencies.lanes?.[lane];
         if (!runner) {
           lanes[lane] = { status: "BLOCKED", processed: 0, durationMs: 0, reason: "lane runner is not configured; no work was claimed" };
           continue;
@@ -133,7 +135,7 @@ export class CvgWorkerApplication {
       outbox: this.dependencies.sink && this.dependencies.sinkMode !== "quarantine" ? "READY" : "BLOCKED",
       jobs: this.dependencies.lanes?.jobs ? "READY" : "BLOCKED",
       schedule: this.dependencies.lanes?.schedule ? "READY" : "BLOCKED",
-      reconciliation: this.dependencies.lanes?.reconciliation ? "READY" : "BLOCKED",
+      reconciliation: this.dependencies.lanes?.reconciliation || this.hasDefaultReconciliation() ? "READY" : "BLOCKED",
       notifications: this.dependencies.lanes?.notifications ? "READY" : "BLOCKED",
       maintenance: this.dependencies.lanes?.maintenance ? "READY" : "BLOCKED"
     };
@@ -141,6 +143,31 @@ export class CvgWorkerApplication {
 
   private blockedLaneAvailability(): Record<WorkerLane, "READY" | "BLOCKED"> {
     return { outbox: "BLOCKED", jobs: "BLOCKED", schedule: "BLOCKED", reconciliation: "BLOCKED", notifications: "BLOCKED", maintenance: "BLOCKED" };
+  }
+
+  private hasDefaultReconciliation(): boolean {
+    return Boolean(this.dependencies.reconciliationAdapter && this.dependencies.persistence.listExternalEffects && this.dependencies.persistence.reconcileExternalEffect);
+  }
+
+  private defaultReconciliationRunner(): WorkerLaneRunner | undefined {
+    if (!this.hasDefaultReconciliation()) return undefined;
+    return async (context) => {
+      const listExternalEffects = this.dependencies.persistence.listExternalEffects!;
+      const reconcileExternalEffect = this.dependencies.persistence.reconcileExternalEffect!;
+      const effects = await listExternalEffects(context.organizationId);
+      let processed = 0;
+      for (const effect of effects.filter((candidate) => candidate.status === "OUTCOME_UNKNOWN" || candidate.status === "RECONCILIATION_REQUIRED" || candidate.status === "RECONCILING").slice(0, 10)) {
+        if (context.signal.aborted) break;
+        try {
+          await reconcileUnknownExternalEffect({ listExternalEffects, reconcileExternalEffect }, context.organizationId, effect.id, this.dependencies.reconciliationAdapter!, { timeoutMs: 3_000 });
+          processed += 1;
+        } catch (error) {
+          if (error instanceof DomainError && error.code === "DEPENDENCY_UNAVAILABLE") continue;
+          throw error;
+        }
+      }
+      return processed;
+    };
   }
 }
 
@@ -150,3 +177,32 @@ export const blockedWorkerSink: OutboxSink = {
     return "QUARANTINE";
   }
 };
+
+function messagePayload(value: unknown): { messageId: string; channel: "SMS" | "EMAIL" | "WHATSAPP"; recipient: string; template: string; body: string } {
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new DomainError("INVALID_INPUT", "O payload de comunicação não é um objeto.", 400);
+  const payload = value as Record<string, unknown>;
+  const messageId = typeof payload.messageId === "string" ? payload.messageId : "";
+  const channel = payload.channel;
+  const recipient = typeof payload.recipient === "string" ? payload.recipient : "";
+  const template = typeof payload.template === "string" ? payload.template : "";
+  const body = typeof payload.body === "string" ? payload.body : "";
+  if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/.test(messageId) || (channel !== "SMS" && channel !== "EMAIL" && channel !== "WHATSAPP") || !recipient.trim() || recipient.length > 320 || !template.trim() || template.length > 120 || !body.trim() || body.length > 20_000) throw new DomainError("INVALID_INPUT", "O payload de comunicação não atende ao contrato do provider.", 400);
+  return { messageId, channel, recipient: recipient.trim(), template: template.trim(), body };
+}
+
+/** Builds the only enabled external sink; quarantine remains the safe default. */
+export function createConfiguredWorkerSink(config: Pick<CvgConfig, "workerSinkMode" | "messagingProviderEndpoint" | "messagingProviderAllowedHosts" | "messagingCredentialRef" | "messagingSendPath" | "messagingQueryPath" | "secretProvider" | "secretDir">): { sink: OutboxSink; sinkMode: "quarantine" | "enabled"; queryAdapter?: ExternalEffectQueryAdapter } {
+  if (config.workerSinkMode !== "enabled") return { sink: blockedWorkerSink, sinkMode: "quarantine" };
+  if (!config.messagingProviderEndpoint || !config.messagingCredentialRef) throw new DomainError("CAPABILITY_DISABLED", "O sink de mensagens foi habilitado sem endpoint e referência de credencial aprovados.", 503);
+  if (!config.messagingProviderAllowedHosts.length) throw new DomainError("CAPABILITY_DISABLED", "O sink de mensagens exige uma allowlist de hosts do provider.", 503);
+  const secretProvider = configuredSecretProvider(config.secretProvider, process.env, config.secretDir);
+  if (!secretProvider?.resolve) throw new DomainError("CAPABILITY_DISABLED", "O sink de mensagens exige um SecretProvider com resolução autorizada.", 503);
+  if (!secretProvider.has(config.messagingCredentialRef)) throw new DomainError("CAPABILITY_DISABLED", "A referência de credencial do sink não está disponível no SecretProvider configurado.", 503);
+  const provider = new HttpMessagingProvider({ endpoint: config.messagingProviderEndpoint, allowedHosts: config.messagingProviderAllowedHosts, credentialRef: config.messagingCredentialRef, sendPath: config.messagingSendPath, ...(config.messagingQueryPath ? { queryPath: config.messagingQueryPath } : {}), resolveSecret: (reference) => secretProvider.resolve!(reference) });
+  const sink = new MessagingOutboxSink(provider, (record, context) => {
+    if (record.eventType !== "communication.message.approved") throw new DomainError("CAPABILITY_DISABLED", "O sink de mensagens recebeu um evento que não pertence à sua integração.", 503);
+    const payload = messagePayload(record.payload);
+    return { idempotencyKey: context.idempotencyKey, requestId: payload.messageId, channel: payload.channel, recipient: payload.recipient, body: payload.body, metadata: { template: payload.template, organizationId: record.organizationId, effectId: context.effectId, outboxId: record.id } };
+  });
+  return { sink, sinkMode: "enabled", queryAdapter: createMessagingExternalEffectQueryAdapter(provider) };
+}

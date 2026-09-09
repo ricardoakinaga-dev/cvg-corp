@@ -2,7 +2,7 @@ import { isWriteAllowed, type RuntimeState } from "../state/runtime-state";
 import type { ContextOption } from "../state/types";
 
 type ApiErrorPayload = { code: string; message: string; details?: Record<string, unknown> };
-type ApiEnvelope<T> = { data?: T; error?: ApiErrorPayload; correlationId?: string };
+type ApiEnvelope<T> = { schemaVersion: number; data?: T; error?: ApiErrorPayload; correlationId: string };
 
 const API = import.meta.env.VITE_API_URL ?? "";
 const WRITE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
@@ -60,7 +60,24 @@ function isWrite(path: string, method: string): boolean {
 
 function parseEnvelope<T>(body: string): ApiEnvelope<T> | null {
   if (!body) return null;
-  try { return JSON.parse(body) as ApiEnvelope<T>; } catch { return null; }
+  try {
+    const parsed: unknown = JSON.parse(body);
+    if (typeof parsed !== "object" || parsed === null) return null;
+    const envelope = parsed as Record<string, unknown>;
+    if (envelope.schemaVersion !== 1 || typeof envelope.correlationId !== "string" || !/^[A-Za-z0-9._-]{1,80}$/.test(envelope.correlationId)) return null;
+    const hasData = Object.prototype.hasOwnProperty.call(envelope, "data");
+    const hasError = Object.prototype.hasOwnProperty.call(envelope, "error");
+    if (hasData === hasError) return null;
+    if (hasError) {
+      const error = envelope.error;
+      if (typeof error !== "object" || error === null) return null;
+      const bodyError = error as Record<string, unknown>;
+      if (typeof bodyError.code !== "string" || typeof bodyError.message !== "string") return null;
+    }
+    return envelope as ApiEnvelope<T>;
+  } catch {
+    return null;
+  }
 }
 
 export function createApiClient(getRuntimeState: () => RuntimeState, onFailure?: (error: unknown) => void): ApiClient {
@@ -82,6 +99,11 @@ export function createApiClient(getRuntimeState: () => RuntimeState, onFailure?:
     try {
       const response = await fetch(`${API}/api/v1${path}`, { ...init, headers, credentials: "include" });
       const payload = parseEnvelope<T>(await response.text());
+      if (!payload) {
+        const error = new ApiError("A API retornou um envelope inválido ou incompatível.", { status: response.status, code: "INTERNAL_ERROR", correlationId: null, details: null });
+        if (!PUBLIC_AUTH_WRITES.has(path)) onFailure?.(error);
+        throw error;
+      }
       if (!response.ok || payload?.error) {
         const error = new ApiError(payload?.error?.message ?? "Não foi possível concluir a operação.", {
           status: response.status,

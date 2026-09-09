@@ -28,9 +28,13 @@ function inboxSignature(input: Omit<DurableInboxInput, "signature">): string {
   return createHmac("sha256", syntheticInboxSigningKey).update(signedDigest).digest("hex");
 }
 
+function rawInboxSignature(rawBody: string): string {
+  return createHmac("sha256", syntheticInboxSigningKey).update(rawBody, "utf8").digest("hex");
+}
+
 function verifySyntheticInboxSignature(input: DurableInboxInput): boolean {
   if (input.signatureAlgorithm !== "HMAC-SHA256" || input.signatureKeyRef !== "synthetic-test-key" || !/^[a-f0-9]{64}$/.test(input.signature)) return false;
-  const expected = inboxSignature(input);
+  const expected = input.rawBody ? rawInboxSignature(input.rawBody) : inboxSignature(input);
   return timingSafeEqual(Buffer.from(input.signature, "utf8"), Buffer.from(expected, "utf8"));
 }
 
@@ -270,16 +274,16 @@ try {
   const inboxConflict = await second.persistence!.recordInboxEvent({ ...inboxConflictUnsigned, signature: inboxSignature(inboxConflictUnsigned) });
   if (inboxConflict.status !== "QUARANTINED" || !inboxConflict.conflictDigest) throw new Error("divergent inbox replay was not quarantined");
 
-  const ingressUnsigned = { ...inboxUnsigned, id: id(randomUUID()), consumer: "verify-http-consumer", externalEventId: `http-event-${randomUUID()}` };
-  const ingressInput = { ...ingressUnsigned, signature: inboxSignature(ingressUnsigned) };
-  const { id: _ingressId, ...ingressPayload } = ingressInput;
-  const ingress = await second.app.inject({ method: "POST", url: "/api/v1/integrations/synthetic-provider/events", headers: { "content-type": "application/json" }, payload: JSON.stringify(ingressPayload) });
+  const ingressPayload = { organizationId, consumer: "verify-http-consumer", provider: "synthetic-provider", externalEventId: `http-event-${randomUUID()}`, eventType: "guardian.changed", schemaVersion: 1, payload: { synthetic: true, guardianId: firstResult.guardianId, transport: "raw-body" } };
+  const ingressRawBody = JSON.stringify(ingressPayload);
+  const ingressHeaders = { "content-type": "application/json", "x-cvg-signature-key-ref": "synthetic-test-key", "x-cvg-signature": rawInboxSignature(ingressRawBody) };
+  const ingress = await second.app.inject({ method: "POST", url: "/api/v1/integrations/synthetic-provider/events", headers: ingressHeaders, payload: ingressRawBody });
   if (ingress.statusCode !== 202) throw new Error(`signed HTTP inbox ingress failed with ${ingress.statusCode}: ${ingress.body}`);
   const ingressBody = JSON.parse(ingress.body) as { data: { accepted: boolean; duplicate: boolean; status: string } };
   if (!ingressBody.data.accepted || ingressBody.data.duplicate || ingressBody.data.status !== "PROCESSED") throw new Error("signed HTTP inbox ingress did not atomically process its local effect");
-  const ingressReplay = await second.app.inject({ method: "POST", url: "/api/v1/integrations/synthetic-provider/events", headers: { "content-type": "application/json" }, payload: JSON.stringify(ingressPayload) });
+  const ingressReplay = await second.app.inject({ method: "POST", url: "/api/v1/integrations/synthetic-provider/events", headers: ingressHeaders, payload: ingressRawBody });
   if (ingressReplay.statusCode !== 202 || !(JSON.parse(ingressReplay.body) as { data: { duplicate: boolean } }).data.duplicate) throw new Error("signed HTTP inbox ingress replay was not deduplicated");
-  const invalidIngress = await second.app.inject({ method: "POST", url: "/api/v1/integrations/synthetic-provider/events", headers: { "content-type": "application/json" }, payload: JSON.stringify({ ...ingressPayload, signature: "0".repeat(64) }) });
+  const invalidIngress = await second.app.inject({ method: "POST", url: "/api/v1/integrations/synthetic-provider/events", headers: { ...ingressHeaders, "x-cvg-signature": "0".repeat(64) }, payload: ingressRawBody });
   if (invalidIngress.statusCode !== 403) throw new Error(`invalid signed HTTP inbox ingress was not rejected: ${invalidIngress.statusCode}`);
   await cleanupWorker.runOnce(organizationId, "verify-worker-inbox-cleanup", { deliver: async () => "DELIVERED" }, { limit: 100 });
 
@@ -318,12 +322,18 @@ try {
   )).rows[0]?.organization_id;
   if (!latestOrganization) throw new Error("durable verification has no organization for RLS test");
   const rlsRole = `cvg_rls_verify_${randomUUID().replaceAll("-", "")}`;
-  await client.query(`create role "${rlsRole}" noinherit nobypassrls`);
+  const currentRole = (await client.query<{ rolsuper: boolean; rolbypassrls: boolean; rolcreaterole: boolean; rolcreatedb: boolean }>(
+    "select rolsuper, rolbypassrls, rolcreaterole, rolcreatedb from pg_roles where rolname = current_user"
+  )).rows[0];
+  const needsTemporaryRole = !currentRole || currentRole.rolsuper || currentRole.rolbypassrls || currentRole.rolcreaterole || currentRole.rolcreatedb;
+  if (needsTemporaryRole) await client.query(`create role "${rlsRole}" noinherit nosuperuser nobypassrls nocreatedb nocreaterole`);
   try {
-    await client.query(`grant usage on schema public to "${rlsRole}"`);
-    await client.query(`grant select, update on organizations, patients, guardians, outbox_records, ai_usage_ledger, integration_inbox_records, external_effects, ai_turns, ai_drafts, lifecycle_decisions, lifecycle_transition_events, inbox_records, appointments, encounters, clinical_documents, clinical_addenda, knowledge_documents, communication_messages, ai_sessions, ai_approvals, audit_records, command_receipts, role_assignments, providers, resources, queue_entries, beds, hospital_episodes, stock_locations, charges to "${rlsRole}"`);
-    await client.query(`grant select on cvg_state_snapshots, cvg_event_journal to "${rlsRole}"`);
-    await client.query(`set role "${rlsRole}"`);
+    if (needsTemporaryRole) {
+      await client.query(`grant usage on schema public to "${rlsRole}"`);
+      await client.query(`grant select, update on organizations, patients, guardians, outbox_records, ai_usage_ledger, integration_inbox_records, external_effects, ai_turns, ai_drafts, lifecycle_decisions, lifecycle_transition_events, inbox_records, appointments, encounters, clinical_documents, clinical_addenda, knowledge_documents, communication_messages, ai_sessions, ai_approvals, audit_records, command_receipts, role_assignments, providers, resources, queue_entries, beds, hospital_episodes, stock_locations, charges to "${rlsRole}"`);
+      await client.query(`grant select on cvg_state_snapshots, cvg_event_journal to "${rlsRole}"`);
+      await client.query(`set role "${rlsRole}"`);
+    }
     await client.query("select set_config('cvg.organization_id', $1, false)", [latestOrganization]);
     await client.query("select set_config('cvg.unit_id', $1, false)", [auth.unitId]);
     await client.query("select set_config('cvg.workspace_id', $1, false)", [auth.workspaceId]);
@@ -388,10 +398,12 @@ try {
     if (catalogProtection.domainTables === 0 || catalogProtection.protectedTables !== catalogProtection.domainTables || catalogProtection.organizationForeignKeys < 1) throw new Error(`domain catalog protection is incomplete: ${JSON.stringify(catalogProtection)}`);
   } finally {
     await client.query("reset role").catch(() => undefined);
-    await client.query(`revoke all privileges on organizations, patients, guardians, outbox_records, ai_usage_ledger, integration_inbox_records, external_effects, ai_turns, ai_drafts, lifecycle_decisions, lifecycle_transition_events, inbox_records, appointments, encounters, clinical_documents, clinical_addenda, knowledge_documents, communication_messages, ai_sessions, ai_approvals, audit_records, command_receipts, role_assignments, providers, resources, queue_entries, beds, hospital_episodes, stock_locations, charges from "${rlsRole}"`).catch(() => undefined);
-    await client.query(`revoke all privileges on cvg_state_snapshots, cvg_event_journal from "${rlsRole}"`).catch(() => undefined);
-    await client.query(`revoke usage on schema public from "${rlsRole}"`).catch(() => undefined);
-    await client.query(`drop role "${rlsRole}"`);
+    if (needsTemporaryRole) {
+      await client.query(`revoke all privileges on organizations, patients, guardians, outbox_records, ai_usage_ledger, integration_inbox_records, external_effects, ai_turns, ai_drafts, lifecycle_decisions, lifecycle_transition_events, inbox_records, appointments, encounters, clinical_documents, clinical_addenda, knowledge_documents, communication_messages, ai_sessions, ai_approvals, audit_records, command_receipts, role_assignments, providers, resources, queue_entries, beds, hospital_episodes, stock_locations, charges from "${rlsRole}"`).catch(() => undefined);
+      await client.query(`revoke all privileges on cvg_state_snapshots, cvg_event_journal from "${rlsRole}"`).catch(() => undefined);
+      await client.query(`revoke usage on schema public from "${rlsRole}"`).catch(() => undefined);
+      await client.query(`drop role "${rlsRole}"`);
+    }
   }
   await client.end();
 } finally {

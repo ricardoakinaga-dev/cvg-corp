@@ -1,6 +1,6 @@
 import { startServer } from "./app.ts";
 
-export { createRuntime } from "./app.ts";
+export { createRuntime, MemoryRateLimiter } from "./app.ts";
 export { startServer } from "./app.ts";
 export type { CvgServerRuntime, ServerConfig, ServerOptions } from "./app.ts";
 

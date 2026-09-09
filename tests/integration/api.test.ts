@@ -216,6 +216,8 @@ test("context is explicit for scoped API operations", async () => {
   assert.equal(noContext.statusCode, 400);
   assert.equal((noContext.json() as { error: { code: string } }).error.code, "INVALID_INPUT");
   assert.equal(noContext.headers["cache-control"], "no-store");
+  assert.match(String(noContext.headers["content-security-policy"]), /default-src 'self'/);
+  assert.equal(noContext.headers["cross-origin-opener-policy"], "same-origin");
 });
 
 test("login abuse is throttled without revealing account existence", async () => {

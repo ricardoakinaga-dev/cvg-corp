@@ -104,3 +104,80 @@ export function verifyTotpCode(secretText: string, code: string, atMs = Date.now
 export interface MfaSecretResolver {
   resolve(secretRef: string): Promise<string | null> | string | null;
 }
+
+/**
+ * Provider-neutral phishing-resistant MFA seam. The CVG auth boundary owns
+ * challenge lifecycle and policy; a WebAuthn implementation owns the
+ * authenticator cryptography and credential store.
+ */
+export type MfaMethod = "TOTP" | "WEBAUTHN" | "RECOVERY_CODE";
+
+export interface WebAuthnChallenge {
+  challengeId: string;
+  userId: string;
+  challenge: string;
+  rpId: string;
+  origin: string;
+  expiresAt: string;
+  attempts: number;
+  maxAttempts: number;
+  status: "PENDING" | "CONSUMED" | "EXPIRED" | "LOCKED";
+}
+
+export interface WebAuthnAssertionEnvelope {
+  challengeId: string;
+  credentialId: string;
+  clientDataJson: string;
+  authenticatorData: string;
+  signature: string;
+  userHandle: string | null;
+  userVerified: boolean;
+}
+
+export interface WebAuthnProvider {
+  begin(input: { userId: string; rpId: string; origin: string }): Promise<WebAuthnChallenge>;
+  verify(input: { challenge: WebAuthnChallenge; assertion: WebAuthnAssertionEnvelope }): Promise<{ userId: string; credentialId: string; signCount: number }>;
+}
+
+function encodedField(value: string, field: string, minLength: number, maxLength: number): void {
+  if (typeof value !== "string" || value.length < minLength || value.length > maxLength || !/^[A-Za-z0-9_-]+$/.test(value)) throw new Error(`${field} must be a bounded base64url value`);
+}
+
+/** Shape and state validation before delegating cryptographic verification. */
+export function validateWebAuthnAssertion(challenge: WebAuthnChallenge, assertion: WebAuthnAssertionEnvelope, atMs = Date.now()): void {
+  if (challenge.status !== "PENDING") throw new Error("WebAuthn challenge is not pending");
+  if (Date.parse(challenge.expiresAt) <= atMs) throw new Error("WebAuthn challenge expired");
+  if (!Number.isInteger(challenge.attempts) || !Number.isInteger(challenge.maxAttempts) || challenge.attempts >= challenge.maxAttempts) throw new Error("WebAuthn challenge attempt budget exhausted");
+  if (assertion.challengeId !== challenge.challengeId || !assertion.userVerified) throw new Error("WebAuthn assertion is not bound to the pending challenge");
+  encodedField(assertion.credentialId, "credentialId", 8, 512);
+  encodedField(assertion.clientDataJson, "clientDataJson", 8, 16_384);
+  encodedField(assertion.authenticatorData, "authenticatorData", 8, 16_384);
+  encodedField(assertion.signature, "signature", 8, 16_384);
+  if (assertion.userHandle !== null) encodedField(assertion.userHandle, "userHandle", 1, 512);
+}
+
+export interface BreakGlassRequest {
+  actorId: string;
+  approverId: string | null;
+  reason: string;
+  target: string;
+  mfaMethod: MfaMethod;
+  issuedAt: string;
+  expiresAt: string;
+}
+
+export type BreakGlassDecision = { status: "ALLOW" | "DENY"; reason: "approved" | "missing_independent_approval" | "weak_mfa" | "invalid_window" | "missing_reason_or_target" };
+
+/**
+ * Pure fail-closed policy for an emergency lane. Activation, audit and
+ * revocation remain owned by the application/persistence boundary.
+ */
+export function evaluateBreakGlass(request: BreakGlassRequest, atMs = Date.now(), maxWindowMs = 15 * 60_000): BreakGlassDecision {
+  if (!request.reason.trim() || !request.target.trim()) return { status: "DENY", reason: "missing_reason_or_target" };
+  if (!request.approverId || request.approverId === request.actorId) return { status: "DENY", reason: "missing_independent_approval" };
+  if (request.mfaMethod !== "WEBAUTHN") return { status: "DENY", reason: "weak_mfa" };
+  const issuedAt = Date.parse(request.issuedAt);
+  const expiresAt = Date.parse(request.expiresAt);
+  if (!Number.isFinite(issuedAt) || !Number.isFinite(expiresAt) || issuedAt > atMs || expiresAt <= atMs || expiresAt - issuedAt > maxWindowMs) return { status: "DENY", reason: "invalid_window" };
+  return { status: "ALLOW", reason: "approved" };
+}

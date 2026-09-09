@@ -3,7 +3,7 @@ import type { AiApproval, AiDraft, AiSession, AiTurn, CvgContext, DataClass, Opa
 import type { AiTurnInput } from "@cvg/contracts";
 import { CvgStore, DomainError, digest, isInContext, makeId, now } from "@cvg/domain";
 import { StaticPolicyDecisionPoint } from "@cvg/agent-policy";
-import { ToolGateway, ToolGatewayError } from "@cvg/agent-tools";
+import { ToolGateway, ToolGatewayError, toolExecutionDigest, type ToolExecutionLedger, type ToolExecutionLedgerClaim, type ToolExecutionLedgerInput, type ToolExecutionLedgerRecord, type ToolExecutionRequest } from "@cvg/agent-tools";
 
 export const DSH_ENGINE_COMMIT = "6454e3270642c3a7551dcae4f7447e4032febd77";
 export const DSH_MANIFEST_VERSION = "0.1.1-rc.2";
@@ -25,16 +25,65 @@ export interface GovernedTool {
   capability: string;
   acceptedDataClasses: readonly DataClass[];
   scope: "ORGANIZATION" | "UNIT" | "WORKSPACE";
+  resourceRequired: boolean;
 }
 
 export const TOOL_REGISTRY: GovernedTool[] = [
-  { name: "cvg.patient.read", version: "1.0.0", description: "Ler dados mínimos de um paciente no escopo", operation: "patients.read", risk: "READ_ONLY", approvalMode: "NONE", allowedRoles: ["admin", "veterinario", "recepcao"], requiresApproval: false, idempotency: "REQUIRED", auditAction: "patients.read", secretRefs: [], capability: "patients:read", acceptedDataClasses: ["D2", "D3"], scope: "WORKSPACE" },
-  { name: "cvg.agenda.read", version: "1.0.0", description: "Consultar agenda e fila autorizadas", operation: "appointments.read", risk: "READ_ONLY", approvalMode: "NONE", allowedRoles: ["admin", "veterinario", "recepcao"], requiresApproval: false, idempotency: "REQUIRED", auditAction: "appointments.read", secretRefs: [], capability: "appointments:read", acceptedDataClasses: ["D0", "D1"], scope: "WORKSPACE" },
-  { name: "cvg.clinical.draft", version: "1.0.0", description: "Gerar rascunho clínico sem alterar prontuário", operation: "clinical.draft", risk: "DRAFT", approvalMode: "NONE", allowedRoles: ["admin", "veterinario"], requiresApproval: false, idempotency: "REQUIRED", auditAction: "clinical.draft", secretRefs: [], capability: "clinical:draft", acceptedDataClasses: ["D3"], scope: "WORKSPACE" },
-  { name: "cvg.communication.stage", version: "1.0.0", description: "Preparar comunicação para revisão humana", operation: "communication.stage", risk: "REVERSIBLE", approvalMode: "SAME_ACTOR", allowedRoles: ["admin", "veterinario", "recepcao"], requiresApproval: true, idempotency: "REQUIRED", auditAction: "communication.stage", secretRefs: [], capability: "communication:stage", acceptedDataClasses: ["D2", "D3"], scope: "WORKSPACE" },
-  { name: "cvg.stock.dispense", version: "1.0.0", description: "Dispensar item de estoque", operation: "stock.dispense", risk: "HIGH_IMPACT", approvalMode: "INDEPENDENT", allowedRoles: ["admin", "estoque"], requiresApproval: true, idempotency: "REQUIRED", auditAction: "stock.dispense", secretRefs: [], capability: "stock:write", acceptedDataClasses: ["D2"], scope: "UNIT" },
-  { name: "cvg.finance.refund", version: "1.0.0", description: "Solicitar estorno financeiro", operation: "finance.refund", risk: "HIGH_IMPACT", approvalMode: "INDEPENDENT", allowedRoles: ["admin", "financeiro"], requiresApproval: true, idempotency: "REQUIRED", auditAction: "finance.refund", secretRefs: [], capability: "finance:refund", acceptedDataClasses: ["D2"], scope: "UNIT" }
+  { name: "cvg.patient.read", version: "1.0.0", description: "Ler dados mínimos de um paciente no escopo", operation: "patients.read", risk: "READ_ONLY", approvalMode: "NONE", allowedRoles: ["admin", "veterinario", "recepcao"], requiresApproval: false, idempotency: "REQUIRED", auditAction: "patients.read", secretRefs: [], capability: "patients:read", acceptedDataClasses: ["D2", "D3"], scope: "WORKSPACE", resourceRequired: true },
+  { name: "cvg.agenda.read", version: "1.0.0", description: "Consultar agenda e fila autorizadas", operation: "appointments.read", risk: "READ_ONLY", approvalMode: "NONE", allowedRoles: ["admin", "veterinario", "recepcao"], requiresApproval: false, idempotency: "REQUIRED", auditAction: "appointments.read", secretRefs: [], capability: "appointments:read", acceptedDataClasses: ["D0", "D1"], scope: "WORKSPACE", resourceRequired: false },
+  { name: "cvg.clinical.draft", version: "1.0.0", description: "Gerar rascunho clínico sem alterar prontuário", operation: "clinical.draft", risk: "DRAFT", approvalMode: "NONE", allowedRoles: ["admin", "veterinario"], requiresApproval: false, idempotency: "REQUIRED", auditAction: "clinical.draft", secretRefs: [], capability: "clinical:draft", acceptedDataClasses: ["D3"], scope: "WORKSPACE", resourceRequired: true },
+  { name: "cvg.communication.stage", version: "1.0.0", description: "Preparar comunicação para revisão humana", operation: "communication.stage", risk: "REVERSIBLE", approvalMode: "SAME_ACTOR", allowedRoles: ["admin", "veterinario", "recepcao"], requiresApproval: true, idempotency: "REQUIRED", auditAction: "communication.stage", secretRefs: [], capability: "communication:stage", acceptedDataClasses: ["D2", "D3"], scope: "WORKSPACE", resourceRequired: false },
+  { name: "cvg.stock.dispense", version: "1.0.0", description: "Dispensar item de estoque", operation: "stock.dispense", risk: "HIGH_IMPACT", approvalMode: "INDEPENDENT", allowedRoles: ["admin", "estoque"], requiresApproval: true, idempotency: "REQUIRED", auditAction: "stock.dispense", secretRefs: [], capability: "stock:write", acceptedDataClasses: ["D2"], scope: "UNIT", resourceRequired: true },
+  { name: "cvg.finance.refund", version: "1.0.0", description: "Solicitar estorno financeiro", operation: "finance.refund", risk: "HIGH_IMPACT", approvalMode: "INDEPENDENT", allowedRoles: ["admin", "financeiro"], requiresApproval: true, idempotency: "REQUIRED", auditAction: "finance.refund", secretRefs: [], capability: "finance:refund", acceptedDataClasses: ["D2"], scope: "UNIT", resourceRequired: true }
 ];
+
+/** Stores Tool Gateway receipts in the canonical command-receipt map. The enclosing application transaction persists it through PostgreSQL. */
+class CvgStoreToolExecutionLedger implements ToolExecutionLedger {
+  constructor(private readonly store: CvgStore) {}
+
+  claim(input: ToolExecutionLedgerInput): ToolExecutionLedgerClaim {
+    const existing = this.store.commandReceipts.get(input.lookup);
+    if (!existing) {
+      this.store.commandReceipts.set(input.lookup, { id: makeId(), organizationId: input.organizationId, actorId: input.actorId, unitId: input.unitId, workspaceId: input.workspaceId, auditRecordId: null, operation: `tool.${input.operation}`, idempotencyLookup: input.lookup, bodyDigest: input.requestDigest, status: "IN_FLIGHT", result: null, createdAt: now(), completedAt: null });
+      return { status: "NEW" };
+    }
+    if (existing.bodyDigest !== input.requestDigest) return { status: "CONFLICT" };
+    if (existing.status === "SUCCEEDED" && isStoredToolRecord(existing.result)) return { status: "REPLAY", record: existing.result };
+    if (existing.status === "OUTCOME_UNKNOWN") return { status: "OUTCOME_UNKNOWN" };
+    if (existing.status === "IN_FLIGHT") return { status: "IN_FLIGHT" };
+    return { status: "CONFLICT" };
+  }
+
+  complete(lookup: string, record: ToolExecutionLedgerRecord): void {
+    const receipt = this.store.commandReceipts.get(lookup);
+    if (!receipt || receipt.bodyDigest !== record.requestDigest) throw new DomainError("IDEMPOTENCY_CONFLICT", "O receipt da tool não corresponde ao digest autorizado.", 409);
+    receipt.status = "SUCCEEDED";
+    receipt.result = record;
+    receipt.completedAt = now();
+  }
+
+  markOutcomeUnknown(lookup: string, requestDigest: string): void {
+    const receipt = this.store.commandReceipts.get(lookup);
+    if (receipt?.bodyDigest === requestDigest) {
+      receipt.status = "OUTCOME_UNKNOWN";
+      receipt.completedAt = now();
+    }
+  }
+
+  markFailed(lookup: string, requestDigest: string): void {
+    const receipt = this.store.commandReceipts.get(lookup);
+    if (receipt?.bodyDigest === requestDigest) {
+      receipt.status = "FAILED";
+      receipt.completedAt = now();
+    }
+  }
+}
+
+function isStoredToolRecord(value: unknown): value is ToolExecutionLedgerRecord {
+  if (typeof value !== "object" || value === null) return false;
+  const record = value as Partial<ToolExecutionLedgerRecord>;
+  return typeof record.requestDigest === "string" && typeof record.policyRevision === "string" && typeof record.decision === "object" && record.decision !== null && "result" in record;
+}
 
 function policyRisk(risk: ToolRisk): "LOW" | "MEDIUM" | "HIGH" | "CRITICAL" {
   if (risk === "READ_ONLY") return "LOW";
@@ -72,7 +121,7 @@ export class GovernedHarness {
   private readonly toolGateway: ToolGateway;
 
   constructor(private readonly store: CvgStore) {
-    this.toolGateway = new ToolGateway(new StaticPolicyDecisionPoint("local-synthetic-v1"));
+    this.toolGateway = new ToolGateway(new StaticPolicyDecisionPoint("local-synthetic-v1"), new CvgStoreToolExecutionLedger(store));
     for (const tool of TOOL_REGISTRY) this.toolGateway.register({ ...tool, risk: policyRisk(tool.risk), timeoutMs: 5_000, egress: "LOCAL_ONLY", parseInput: (value: unknown) => value });
   }
 
@@ -124,13 +173,13 @@ export class GovernedHarness {
     if (tool?.requiresApproval) {
       const approval = approvalId ? this.store.aiApprovals.get(approvalId) : undefined;
       const requestDigest = this.approvalRequestDigest(context, session, input, tool.name);
-      if (approvalId && (!approval || approval.organizationId !== context.organizationId || approval.actorId !== session.actorId || approval.sessionId !== session.id || approval.toolName !== tool.name || approval.resourceId !== (input.encounterId ?? input.patientId) || approval.patientId !== input.patientId || approval.encounterId !== input.encounterId || approval.unitId !== context.unitId || approval.workspaceId !== context.workspaceId || approval.purpose !== input.purpose || approval.policyRevision !== context.policyRevision || approval.requestDigest !== requestDigest || Date.parse(approval.expiresAt) <= Date.now() || approval.decidedBy === null || (tool.risk === "HIGH_IMPACT" && approval.decidedBy === approval.actorId) || approval.decision === "rejected" || approval.decision === "consumed")) {
+      if (approvalId && (!approval || approval.organizationId !== context.organizationId || approval.actorId !== session.actorId || approval.sessionId !== session.id || approval.toolName !== tool.name || approval.resourceId !== (input.resourceId ?? input.encounterId ?? input.patientId) || approval.patientId !== input.patientId || approval.encounterId !== input.encounterId || approval.unitId !== context.unitId || approval.workspaceId !== context.workspaceId || approval.purpose !== input.purpose || approval.policyRevision !== context.policyRevision || approval.requestDigest !== requestDigest || Date.parse(approval.expiresAt) <= Date.now() || approval.decidedBy === null || (tool.risk === "HIGH_IMPACT" && approval.decidedBy === approval.actorId) || approval.decision === "rejected" || approval.decision === "consumed")) {
         const turn = this.persistTurn(session, prompt, "DENIED", "Approval ausente, incompatível ou já consumida; nenhum dispatch foi realizado.", this.estimateInput(prompt), 0, []);
         throw new DomainError("POLICY_DENIED", "A aprovação não corresponde exatamente a esta operação ou já foi consumida.", 403, { turnId: turn.id });
       }
       if (!approval) {
         const turn = this.persistTurn(session, prompt, "RECEIVED", null, this.estimateInput(prompt), 0, []);
-        const pending: AiApproval = { id: makeId(), organizationId: context.organizationId, actorId: context.actorId, sessionId: session.id, turnId: turn.id, toolName: tool.name, resourceId: input.encounterId ?? input.patientId, patientId: input.patientId, encounterId: input.encounterId, unitId: context.unitId, workspaceId: context.workspaceId, purpose: input.purpose, requestDigest, policyRevision: context.policyRevision, expiresAt: new Date(Date.now() + 5 * 60_000).toISOString(), decision: "unavailable", decidedBy: null, reason: "Ação exige confirmação contextual e não pode ser presumida.", createdAt: now() };
+        const pending: AiApproval = { id: makeId(), organizationId: context.organizationId, actorId: context.actorId, sessionId: session.id, turnId: turn.id, toolName: tool.name, resourceId: input.resourceId ?? input.encounterId ?? input.patientId, patientId: input.patientId, encounterId: input.encounterId, unitId: context.unitId, workspaceId: context.workspaceId, purpose: input.purpose, requestDigest, policyRevision: context.policyRevision, expiresAt: new Date(Date.now() + 5 * 60_000).toISOString(), decision: "unavailable", decidedBy: null, reason: "Ação exige confirmação contextual e não pode ser presumida.", createdAt: now() };
         this.store.aiApprovals.set(pending.id, pending);
         return this.result(session, turn, null, pending, []);
       }
@@ -143,15 +192,7 @@ export class GovernedHarness {
     if (tool) {
       const approval = approvalId ? this.store.aiApprovals.get(approvalId) : undefined;
       try {
-        this.toolGateway.authorize(tool.name, {
-          context,
-          sessionId: session.id,
-          resource: { organizationId: context.organizationId, unitId: context.unitId, workspaceId: context.workspaceId, resourceId: input.encounterId ?? input.patientId, dataClass: input.patientId ? "D3" : tool.acceptedDataClasses[0] ?? "D0" },
-          input: { prompt, purpose: input.purpose, patientId: input.patientId, encounterId: input.encounterId },
-          idempotencyKey: input.idempotencyKey,
-          requestDigest: this.approvalRequestDigest(context, session, input, tool.name),
-          ...(approval ? { approval: { approvalId: approval.id, actorId: approval.actorId, approverId: approval.decidedBy, requestDigest: approval.requestDigest, policyRevision: approval.policyRevision, expiresAt: approval.expiresAt, oneShot: true, consumed: approval.decision === "consumed" } } : {})
-        });
+        this.toolGateway.authorize(tool.name, this.gatewayRequest(context, session, input, tool, approval));
       } catch (error) {
         if (error instanceof ToolGatewayError) throw new DomainError(error.code, error.message, error.code === "APPROVAL_REQUIRED" ? 409 : 403, error.details);
         throw error;
@@ -229,7 +270,22 @@ export class GovernedHarness {
   }
 
   private approvalRequestDigest(context: CvgContext, session: AiSession, input: AiTurnInput, toolName: string): string {
-    return digest({ version: 1, organizationId: context.organizationId, actorId: context.actorId, sessionId: session.id, resourceId: input.encounterId ?? input.patientId, patientId: input.patientId, encounterId: input.encounterId, unitId: context.unitId, workspaceId: context.workspaceId, purpose: input.purpose, prompt: input.prompt, toolName, policyRevision: context.policyRevision });
+    const descriptor = this.toolGateway.get(toolName);
+    if (!descriptor) throw new DomainError("CAPABILITY_DISABLED", "A tool não está registrada no gateway.", 503);
+    const request = this.gatewayRequest(context, session, input, TOOL_REGISTRY.find((candidate) => candidate.name === toolName)!, undefined);
+    return toolExecutionDigest(descriptor, request, request.input);
+  }
+
+  private gatewayRequest(context: CvgContext, session: AiSession, input: AiTurnInput, tool: GovernedTool, approval: AiApproval | undefined): ToolExecutionRequest {
+    const request: ToolExecutionRequest = {
+      context,
+      sessionId: context.sessionId!,
+      resource: { organizationId: context.organizationId, unitId: context.unitId, workspaceId: context.workspaceId, resourceId: input.resourceId ?? input.encounterId ?? input.patientId, dataClass: input.patientId ? "D3" : tool.acceptedDataClasses[0] ?? "D0" },
+      input: { aiSessionId: session.id, prompt: input.prompt, purpose: input.purpose, patientId: input.patientId, encounterId: input.encounterId, resourceId: input.resourceId },
+      idempotencyKey: input.idempotencyKey
+    };
+    if (approval) request.approval = { approvalId: approval.id, actorId: approval.actorId, approverId: approval.decidedBy, requestDigest: approval.requestDigest, policyRevision: approval.policyRevision, expiresAt: approval.expiresAt, oneShot: true, consumed: approval.decision === "consumed" };
+    return request;
   }
 
   private availableBudget(sessionId: OpaqueId): number {

@@ -23,21 +23,21 @@ jobs:
         image: postgres:18.0-bookworm
         env:
           POSTGRES_DB: cvg_ci
-          POSTGRES_USER: cvg_app
+          POSTGRES_USER: cvg_migration
           POSTGRES_PASSWORD: cvg_ci_password
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U cvg_app -d cvg_ci"
+          --health-cmd "pg_isready -U cvg_migration -d cvg_ci"
           --health-interval 5s
           --health-timeout 3s
           --health-retries 20
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24.20.0
           cache: npm
@@ -92,19 +92,25 @@ jobs:
 
       - name: Apply migrations in ephemeral PostgreSQL
         env:
-          DATABASE_URL: postgresql://cvg_app:cvg_ci_password@localhost:5432/cvg_ci
+          DATABASE_URL: postgresql://cvg_migration:cvg_ci_password@localhost:5432/cvg_ci
+          CVG_RUNTIME_DB_USER: cvg_runtime
+          CVG_RUNTIME_DB_PASSWORD: cvg_ci_runtime_password
         run: npm run db:migrate
 
       - name: PostgreSQL integration and RLS gate
         env:
-          DATABASE_URL: postgresql://cvg_app:cvg_ci_password@localhost:5432/cvg_ci
+          DATABASE_URL: postgresql://cvg_runtime:cvg_ci_runtime_password@localhost:5432/cvg_ci
           CVG_STORAGE: postgres
           CVG_BOOTSTRAP_PASSWORD: cvg-ci-bootstrap-password
         run: npm run verify:postgres
 
       - name: PostgreSQL restore gate
         env:
-          DATABASE_URL: postgresql://cvg_app:cvg_ci_password@localhost:5432/cvg_ci
+          DATABASE_URL: postgresql://cvg_runtime:cvg_ci_runtime_password@localhost:5432/cvg_ci
+          MIGRATION_DATABASE_URL: postgresql://cvg_migration:cvg_ci_password@localhost:5432/cvg_ci
+          ADMIN_DATABASE_URL: postgresql://cvg_migration:cvg_ci_password@localhost:5432/postgres
+          CVG_RUNTIME_DB_USER: cvg_runtime
+          CVG_RUNTIME_DB_PASSWORD: cvg_ci_runtime_password
           CVG_BOOTSTRAP_PASSWORD: cvg-ci-bootstrap-password
         run: npm run verify:postgres:restore
 
@@ -118,7 +124,7 @@ jobs:
         run: npm sbom --sbom-format cyclonedx > artifacts/sbom.cdx.json
 
       - name: Upload verification artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: cvg-verification-${{ github.sha }}
           path: artifacts/
@@ -134,7 +140,7 @@ jobs:
     timeout-minutes: 25
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Build API image
         run: docker build --file Dockerfile.api --tag cvg-corp/api:ci .
@@ -143,7 +149,7 @@ jobs:
         run: docker build --file Dockerfile.web --tag cvg-corp/web:ci .
 
       - name: Scan API image
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: cvg-corp/api:ci
           format: table
@@ -152,7 +158,7 @@ jobs:
           severity: HIGH,CRITICAL
 
       - name: Scan web image
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: cvg-corp/web:ci
           format: table

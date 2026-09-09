@@ -18,6 +18,8 @@ const requiredFiles = [
   "docker/nginx/web.conf",
   "docker/nginx/proxy.conf",
   "docker/worker.ts",
+  "apps/api/src/app.ts",
+  "apps/api/src/server.ts",
   "apps/worker/src/main.ts",
   "apps/worker/src/worker.ts",
   "packages/config/src/index.ts",
@@ -27,6 +29,11 @@ const requiredFiles = [
   "packages/auth/src/index.ts",
   "db/migrations/019_runtime_scope_guards.sql",
   "db/migrations/020_auth_security_boundary.sql",
+  "db/migrations/021_snapshot_revision_scope.sql",
+  "db/migrations/022_runtime_database_role.sql",
+  "db/migrations/023_distributed_rate_limit.sql",
+  "db/migrations/024_external_effect_reconciliation_states.sql",
+  "db/migrations/025_communication_approval_provenance.sql",
   "docs/runbooks/deploy.md",
   "docs/runbooks/deployment.md",
   "docs/runbooks/rollback.md",
@@ -50,6 +57,13 @@ const requiredFiles = [
   "docs/fault-matrix-vNext.md",
   "docs/error-taxonomy-vNext.md",
   "docs/state-of-the-art-scorecard.md",
+  "docs/production-reality-audit-vNext.md",
+  "docs/deepseek-integration-vNext.md",
+  "docs/provider-integration-vNext.md",
+  "docs/observability-vNext.md",
+  "docs/staging-vNext.md",
+  "docs/recovery-vNext.md",
+  "docs/performance-vNext.md",
   "scripts/verify-licenses.ts",
   "scripts/lint.ts",
   "scripts/audit-design-tokens.ts",
@@ -58,7 +72,9 @@ const requiredFiles = [
   "tests/integration/faults.test.ts",
   ".gauntlet/bar-v3.json",
   ".gauntlet/critique-v3-fresh.md",
-  "scripts/verify-production.ts"
+  "scripts/verify-production.ts",
+  "scripts/verify-triplo-aaa.ts",
+  "scripts/verify-staging.ts"
 ];
 
 const readArtifacts = new Map<string, string>();
@@ -82,7 +98,8 @@ async function inspectArtifacts(): Promise<void> {
 }
 
 function requireText(relative: string, fragment: string): void {
-  if (!readArtifacts.get(relative)?.includes(fragment)) failures.push(`${relative}: missing required release control`);
+  const content = readArtifacts.get(relative);
+  if (!content?.includes(fragment)) failures.push(`${relative}: missing required release control ${JSON.stringify(fragment)}`);
 }
 
 function rejectText(relative: string, expression: RegExp, message: string): void {
@@ -109,11 +126,27 @@ function inspectStaticContracts(): void {
   requireText("docker-compose.yml", "condition: service_completed_successfully");
   requireText("docker-compose.yml", "internal: true");
   requireText("docker-compose.yml", "CVG_WORKER_SINK_MODE");
+  requireText("docker-compose.yml", "CVG_RATE_LIMIT_BACKEND");
+  requireText("docker/nginx/proxy.conf", "Content-Security-Policy");
+  requireText("docker/nginx/web.conf", "Content-Security-Policy");
   requireText("docker/worker.ts", "CvgWorkerApplication");
   requireText("docker/worker.ts", "process.exitCode = 1");
-  requireText("apps/worker/src/main.ts", "blockedWorkerSink");
+  requireText("apps/worker/src/main.ts", "createConfiguredWorkerSink");
+  requireText("apps/worker/src/worker.ts", "HttpMessagingProvider");
+  requireText("apps/worker/src/worker.ts", "MessagingOutboxSink");
+  requireText("packages/config/src/index.ts", "CVG_MESSAGING_PROVIDER_ENDPOINT");
   requireText("packages/config/src/index.ts", "Unknown CVG configuration key");
+  requireText("packages/config/src/index.ts", "distributed rate-limit backend");
+  requireText("apps/api/src/app.ts", "content-security-policy");
+  requireText("apps/api/src/app.ts", "MemoryRateLimiter");
+  requireText("packages/auth/src/index.ts", "validateWebAuthnAssertion");
+  requireText("packages/auth/src/index.ts", "evaluateBreakGlass");
   requireText("packages/agent-tools/src/index.ts", "OUTCOME_UNKNOWN");
+  requireText("db/migrations/021_snapshot_revision_scope.sql", "PRIMARY KEY (organization_id, revision)");
+  requireText("db/migrations/022_runtime_database_role.sql", "nobypassrls");
+  requireText("db/migrations/023_distributed_rate_limit.sql", "cvg_rate_limit_buckets");
+  requireText("db/migrations/024_external_effect_reconciliation_states.sql", "FAILED_FINAL");
+  requireText("db/migrations/025_communication_approval_provenance.sql", "approved_by");
   requireText(".gauntlet/bar-v3.json", "V3-AAA-001");
   requireText(".github/workflows/ci.yml", "npm ci --ignore-scripts");
   requireText(".github/workflows/ci.yml", "npx playwright install --with-deps chromium");
@@ -129,11 +162,19 @@ function inspectStaticContracts(): void {
   requireText(".github/workflows/ci.yml", "npm run audit:contrast");
   requireText(".github/workflows/ci.yml", "npm run audit:tokens");
   requireText(".github/workflows/ci.yml", "npm run audit:licenses");
-  requireText(".github/workflows/ci.yml", "aquasecurity/trivy-action@0.28.0");
+  for (const action of [
+    "actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683",
+    "actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+    "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+    "aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25"
+  ]) requireText(".github/workflows/ci.yml", action);
+  rejectText(".github/workflows/ci.yml", /^\s+uses:\s+[^\s@]+@(?![0-9a-f]{40}\b)\S+/gm, "GitHub Actions must be pinned to immutable commit SHAs");
   requireText(".github/dependabot.yml", "package-ecosystem: npm");
   requireText(".github/dependabot.yml", "package-ecosystem: docker");
   requireText("package.json", "tsx scripts/audit-design-tokens.ts");
   requireText("package.json", "tsx scripts/check-contrast.ts");
+  requireText("package.json", "tsx scripts/verify-triplo-aaa.ts");
+  requireText("package.json", "tsx scripts/verify-staging.ts");
   requireText(".github/workflows/ci.yml", "docker build --file Dockerfile.api");
   rejectText(".github/workflows/ci.yml", /docker compose up|docker push|npm publish/, "CI must not deploy or publish");
   for (const relative of ["docs/runbooks/deploy.md", "docs/runbooks/rollback.md", "docs/runbooks/backup-incidente.md"]) {
@@ -152,6 +193,7 @@ type ComposeService = {
   user?: string;
   security_opt?: string[];
   cap_drop?: string[];
+  deploy?: { resources?: { limits?: { cpus?: string; memory?: string } } };
 };
 
 type ComposeConfig = {
@@ -171,7 +213,10 @@ function syntheticComposeEnvironment(): NodeJS.ProcessEnv {
   return {
     ...inherited,
     POSTGRES_PASSWORD: "verify-local-only-password",
-    DATABASE_URL: "postgresql://cvg_app:verify-local-only-password@postgres:5432/cvg_local",
+    MIGRATION_DATABASE_URL: "postgresql://cvg_migration:verify-local-only-password@postgres:5432/cvg_local",
+    DATABASE_URL: "postgresql://cvg_runtime:verify-local-only-runtime-password@postgres:5432/cvg_local",
+    CVG_RUNTIME_DB_USER: "cvg_runtime",
+    CVG_RUNTIME_DB_PASSWORD: "verify-local-only-runtime-password",
     CVG_BOOTSTRAP_PASSWORD: "verify-local-only-bootstrap-password",
     CVG_WORKER_ORGANIZATION_ID: "00000000-0000-4000-8000-000000000010",
     NODE_ENV: "development",
@@ -219,7 +264,10 @@ function inspectComposeConfig(config: ComposeConfig): void {
     if (service.read_only !== true) failures.push(`docker-compose.yml: ${name} must be read-only`);
     if (!service.security_opt?.includes("no-new-privileges:true")) failures.push(`docker-compose.yml: ${name} must disable privilege escalation`);
     if (name !== "postgres" && !service.cap_drop?.includes("ALL")) failures.push(`docker-compose.yml: ${name} must drop all Linux capabilities`);
+    if (!service.deploy?.resources?.limits?.cpus || !service.deploy.resources.limits.memory) failures.push(`docker-compose.yml: ${name} must declare CPU and memory limits`);
   }
+  const migration = services.migrate;
+  if (!migration?.deploy?.resources?.limits?.cpus || !migration.deploy.resources.limits.memory) failures.push("docker-compose.yml: migrate must declare CPU and memory limits");
 
   for (const name of ["api", "web", "worker", "migrate"]) {
     if ((services[name]?.ports ?? []).length > 0) failures.push(`docker-compose.yml: ${name} must not publish a host port`);
@@ -240,10 +288,11 @@ function inspectComposeConfig(config: ComposeConfig): void {
 function inspectProductionEnvironment(): void {
   if (!process.argv.includes("--production")) return;
   const environment = process.env;
-  const requiredNames = ["DATABASE_URL", "CVG_BOOTSTRAP_PASSWORD", "CVG_WEB_ORIGIN", "CVG_DEEPSEEK_BASE_URL", "CVG_DEEPSEEK_EXPECTED_ENGINE_COMMIT", "CVG_DEEPSEEK_EXPECTED_MANIFEST_VERSION", "CVG_DEEPSEEK_BEARER_TOKEN_REF"];
+  const requiredNames = ["DATABASE_URL", "CVG_BOOTSTRAP_PASSWORD", "CVG_WEB_ORIGIN", "CVG_TRUST_PROXY", "CVG_DEEPSEEK_BASE_URL", "CVG_DEEPSEEK_EXPECTED_ENGINE_COMMIT", "CVG_DEEPSEEK_EXPECTED_MANIFEST_VERSION", "CVG_DEEPSEEK_BEARER_TOKEN_REF"];
   for (const name of requiredNames) if (!environment[name]?.trim()) failures.push(`production configuration: ${name} is required`);
   if (environment.NODE_ENV !== "production") failures.push("production configuration: NODE_ENV must be production");
   if (environment.CVG_STORAGE !== "postgres") failures.push("production configuration: CVG_STORAGE must be postgres");
+  if (environment.CVG_TRUST_PROXY !== "true") failures.push("production configuration: CVG_TRUST_PROXY must be true behind the TLS edge");
   if (environment.CVG_DEMO_MODE !== "false") failures.push("production configuration: CVG_DEMO_MODE must be false");
   if (environment.CVG_SECRET_PROVIDER === undefined || environment.CVG_SECRET_PROVIDER === "none") failures.push("production configuration: an explicit secret provider is required");
   if (environment.CVG_DEEPSEEK_RUNTIME_ENABLED !== "true") failures.push("production configuration: the mock runtime must be disabled");

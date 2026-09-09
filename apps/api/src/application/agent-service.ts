@@ -36,6 +36,6 @@ export class AgentApplicationService {
   }
 
   private command(context: CvgContext, operation: string, key: string, resourceId: OpaqueId | null, body: unknown): IdempotencyInput {
-    return { organizationId: context.organizationId, actorId: context.actorId, operation, key, resourceId, unitId: context.unitId, workspaceId: context.workspaceId, body };
+    return { organizationId: context.organizationId, actorId: context.actorId, sessionId: context.sessionId, operation, key, resourceId, unitId: context.unitId, workspaceId: context.workspaceId, body };
   }
 }

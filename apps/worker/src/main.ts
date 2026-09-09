@@ -1,14 +1,15 @@
 import { loadCvgConfig } from "@cvg/config";
 import { id } from "@cvg/contracts";
 import { PostgresPersistence } from "@cvg/persistence";
-import { blockedWorkerSink, CvgWorkerApplication } from "./worker.ts";
+import { createConfiguredWorkerSink, CvgWorkerApplication } from "./worker.ts";
 
 const config = loadCvgConfig();
 if (config.storageMode !== "postgres") throw new Error("@cvg/worker requires CVG_STORAGE=postgres");
 if (!config.workerOrganizationId) throw new Error("CVG_WORKER_ORGANIZATION_ID is required before a worker can claim outbox records");
 
 const persistence = new PostgresPersistence({ connectionString: config.databaseUrl });
-const worker = new CvgWorkerApplication({ persistence, sink: blockedWorkerSink, sinkMode: config.workerSinkMode });
+const configuredSink = createConfiguredWorkerSink(config);
+const worker = new CvgWorkerApplication({ persistence, sink: configuredSink.sink, sinkMode: configuredSink.sinkMode, ...(configuredSink.queryAdapter ? { reconciliationAdapter: configuredSink.queryAdapter } : {}) });
 let stopping = false;
 const stop = (): void => { stopping = true; worker.stop(); };
 process.on("SIGINT", stop);

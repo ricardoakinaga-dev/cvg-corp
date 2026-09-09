@@ -3,7 +3,7 @@ import { dirname } from "node:path";
 import { loadCvgConfig } from "@cvg/config";
 import { id } from "@cvg/contracts";
 import { PostgresPersistence } from "@cvg/persistence";
-import { blockedWorkerSink, CvgWorkerApplication } from "../apps/worker/src/worker.ts";
+import { createConfiguredWorkerSink, CvgWorkerApplication } from "../apps/worker/src/worker.ts";
 
 const config = loadCvgConfig();
 if (config.storageMode !== "postgres") throw new Error("@cvg/worker requires CVG_STORAGE=postgres");
@@ -25,7 +25,8 @@ process.on("SIGTERM", stop);
 async function main(): Promise<void> {
   await mkdir(dirname(config.workerHeartbeatFile), { recursive: true, mode: 0o700 });
   const persistence = new PostgresPersistence({ connectionString: config.databaseUrl, max: 2, connectionTimeoutMillis: 2_500, idleTimeoutMillis: 30_000 });
-  const worker = new CvgWorkerApplication({ persistence, sink: blockedWorkerSink, sinkMode: config.workerSinkMode });
+  const configuredSink = createConfiguredWorkerSink(config);
+  const worker = new CvgWorkerApplication({ persistence, sink: configuredSink.sink, sinkMode: configuredSink.sinkMode, ...(configuredSink.queryAdapter ? { reconciliationAdapter: configuredSink.queryAdapter } : {}) });
   try {
     const health = await worker.health();
     if (health.status === "UNAVAILABLE") throw new Error(health.reason ?? "worker persistence is unavailable");

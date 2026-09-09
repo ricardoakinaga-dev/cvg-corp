@@ -70,8 +70,9 @@ function stableSerialize(value: unknown): string {
   return `{${Object.entries(value as Record<string, unknown>).sort(([left], [right]) => left.localeCompare(right)).map(([key, nested]) => `${JSON.stringify(key)}:${stableSerialize(nested)}`).join(",")}}`;
 }
 
-function requestDigest(tool: ToolDescriptor, request: ToolExecutionRequest, parsedInput: unknown): string {
-  return createHash("sha256").update(stableSerialize({ version: 2, tool: tool.name, toolVersion: tool.version, operation: tool.operation, sessionId: request.sessionId, actorId: request.context.actorId, organizationId: request.context.organizationId, unitId: request.context.unitId, workspaceId: request.context.workspaceId, resourceId: request.resource.resourceId, dataClass: request.resource.dataClass, input: parsedInput, idempotencyKey: request.idempotencyKey })).digest("hex");
+/** Computes the canonical digest used to bind a tool request to its policy decision. */
+export function toolExecutionDigest(tool: ToolDescriptor, request: ToolExecutionRequest, parsedInput: unknown): string {
+  return createHash("sha256").update(stableSerialize({ version: 2, tool: tool.name, toolVersion: tool.version, operation: tool.operation, sessionId: request.sessionId, actorId: request.context.actorId, organizationId: request.context.organizationId, unitId: request.context.unitId, workspaceId: request.context.workspaceId, resourceId: request.resource.resourceId, dataClass: request.resource.dataClass, input: parsedInput })).digest("hex");
 }
 
 export interface AuthorizedToolExecution {
@@ -82,15 +83,79 @@ export interface AuthorizedToolExecution {
   parsedInput: unknown;
 }
 
+export interface ToolExecutionLedgerInput {
+  lookup: string;
+  requestDigest: string;
+  operation: string;
+  organizationId: OpaqueId;
+  actorId: OpaqueId;
+  unitId: OpaqueId | null;
+  workspaceId: OpaqueId | null;
+}
+
+export interface ToolExecutionLedgerRecord {
+  requestDigest: string;
+  result: unknown;
+  policyRevision: string;
+  decision: PolicyDecision;
+}
+
+export type ToolExecutionLedgerClaim =
+  | { status: "NEW" }
+  | { status: "REPLAY"; record: ToolExecutionLedgerRecord }
+  | { status: "IN_FLIGHT" | "OUTCOME_UNKNOWN" }
+  | { status: "CONFLICT" };
+
+/** Durable command/effect storage supplied by the application boundary. */
+export interface ToolExecutionLedger {
+  claim(input: ToolExecutionLedgerInput): Promise<ToolExecutionLedgerClaim> | ToolExecutionLedgerClaim;
+  complete(lookup: string, record: ToolExecutionLedgerRecord): Promise<void> | void;
+  markOutcomeUnknown(lookup: string, requestDigest: string): Promise<void> | void;
+  markFailed(lookup: string, requestDigest: string): Promise<void> | void;
+}
+
+/** Explicitly ephemeral fixture for isolated gateway tests; production wiring uses the domain ledger. */
+export class InMemoryToolExecutionLedger implements ToolExecutionLedger {
+  private readonly records = new Map<string, { state: "IN_FLIGHT" | "SUCCEEDED" | "OUTCOME_UNKNOWN" | "FAILED"; requestDigest: string; record?: ToolExecutionLedgerRecord }>();
+
+  claim(input: ToolExecutionLedgerInput): ToolExecutionLedgerClaim {
+    const existing = this.records.get(input.lookup);
+    if (!existing) {
+      this.records.set(input.lookup, { state: "IN_FLIGHT", requestDigest: input.requestDigest });
+      return { status: "NEW" };
+    }
+    if (existing.requestDigest !== input.requestDigest) return { status: "CONFLICT" };
+    if (existing.state === "SUCCEEDED" && existing.record) return { status: "REPLAY", record: existing.record };
+    if (existing.state === "OUTCOME_UNKNOWN") return { status: "OUTCOME_UNKNOWN" };
+    if (existing.state === "IN_FLIGHT") return { status: "IN_FLIGHT" };
+    return { status: "CONFLICT" };
+  }
+
+  complete(lookup: string, record: ToolExecutionLedgerRecord): void {
+    const existing = this.records.get(lookup);
+    if (!existing || existing.requestDigest !== record.requestDigest) throw new ToolGatewayError("IDEMPOTENCY_CONFLICT", "O ledger da tool não corresponde ao digest autorizado.");
+    this.records.set(lookup, { state: "SUCCEEDED", requestDigest: record.requestDigest, record });
+  }
+
+  markOutcomeUnknown(lookup: string, requestDigest: string): void {
+    const existing = this.records.get(lookup);
+    if (existing?.requestDigest === requestDigest) this.records.set(lookup, { state: "OUTCOME_UNKNOWN", requestDigest });
+  }
+
+  markFailed(lookup: string, requestDigest: string): void {
+    const existing = this.records.get(lookup);
+    if (existing?.requestDigest === requestDigest) this.records.set(lookup, { state: "FAILED", requestDigest });
+  }
+}
+
 /**
  * The only execution entry point for model-visible tools. It delegates authorization to the PDP and never performs implicit egress.
  */
 export class ToolGateway {
   private readonly descriptors = new Map<string, ToolDescriptor>();
-  private readonly completed = new Map<string, { requestDigest: string; result: ToolExecutionResult<unknown> }>();
   private readonly inFlight = new Map<string, { requestDigest: string; promise: Promise<ToolExecutionResult<unknown>> }>();
 
-  constructor(private readonly policy: PolicyDecisionPoint) {}
+  constructor(private readonly policy: PolicyDecisionPoint, private readonly executionLedger: ToolExecutionLedger) {}
 
   register<TInput>(descriptor: ToolDescriptor<TInput>): void {
     if (!/^[a-z][a-z0-9._:-]{2,119}$/.test(descriptor.name) || !/^\d+\.\d+\.\d+$/.test(descriptor.version) || !descriptor.operation.trim() || descriptor.timeoutMs < 100 || descriptor.timeoutMs > 120_000) throw new ToolGatewayError("INVALID_INPUT", "Tool descriptor inválido.");
@@ -121,35 +186,39 @@ export class ToolGateway {
     const parsedInput = (() => {
       try { return descriptor.parseInput(request.input); } catch (error) { throw new ToolGatewayError("INVALID_INPUT", "A entrada da tool não atende ao schema.", { cause: error instanceof Error ? error.message : String(error) }); }
     })();
-    const digest = request.requestDigest ?? requestDigest(descriptor, request, parsedInput);
-    const decision = this.policy.evaluate({ context: request.context, operation: descriptor.operation, sessionId: request.sessionId, purpose: request.context.purpose, capability: descriptor.capability, risk: descriptor.risk, requiresApproval: descriptor.requiresApproval, approvalMode: descriptor.approvalMode, allowedRoles: descriptor.allowedRoles, acceptedDataClasses: descriptor.acceptedDataClasses, resource: request.resource, requestDigest: digest, constraints: { resourceRequired: descriptor.resourceRequired, scope: descriptor.scope, egress: descriptor.egress }, ...(request.approval ? { approval: { ...request.approval } } : {}) });
+    const computedDigest = toolExecutionDigest(descriptor, request, parsedInput);
+    if (request.requestDigest !== undefined && request.requestDigest !== computedDigest) throw new ToolGatewayError("IDEMPOTENCY_CONFLICT", "O digest da solicitação não corresponde aos argumentos canônicos.", { expectedDigest: computedDigest, receivedDigest: request.requestDigest });
+    const decision = this.policy.evaluate({ context: request.context, operation: descriptor.operation, sessionId: request.sessionId, purpose: request.context.purpose, capability: descriptor.capability, risk: descriptor.risk, requiresApproval: descriptor.requiresApproval, approvalMode: descriptor.approvalMode, allowedRoles: descriptor.allowedRoles, acceptedDataClasses: descriptor.acceptedDataClasses, resource: request.resource, requestDigest: computedDigest, constraints: { resourceRequired: descriptor.resourceRequired, scope: descriptor.scope, egress: descriptor.egress }, ...(request.approval ? { approval: { ...request.approval } } : {}) });
     try { assertPolicyAllowed(decision); } catch (error) {
-      if (error instanceof Error && "code" in error && (error as { code?: unknown }).code === "APPROVAL_REQUIRED") throw new ToolGatewayError("APPROVAL_REQUIRED", decision.reason, { requestDigest: digest, policyRevision: decision.policyRevision });
-      throw new ToolGatewayError("POLICY_DENIED", decision.reason, { requestDigest: digest, policyRevision: decision.policyRevision });
+      if (error instanceof Error && "code" in error && (error as { code?: unknown }).code === "APPROVAL_REQUIRED") throw new ToolGatewayError("APPROVAL_REQUIRED", decision.reason, { requestDigest: computedDigest, policyRevision: decision.policyRevision });
+      throw new ToolGatewayError("POLICY_DENIED", decision.reason, { requestDigest: computedDigest, policyRevision: decision.policyRevision });
     }
-    return { requestDigest: digest, policyRevision: decision.policyRevision, decision, descriptor, parsedInput };
+    return { requestDigest: computedDigest, policyRevision: decision.policyRevision, decision, descriptor, parsedInput };
   }
 
   async execute<TInput, TOutput>(name: string, request: ToolExecutionRequest, executor: (input: TInput, signal: AbortSignal) => Promise<TOutput>): Promise<ToolExecutionResult<TOutput>> {
     const authorized = this.authorize(name, request);
     const descriptor = authorized.descriptor as ToolDescriptor<TInput>;
-    const key = `${name}:${request.idempotencyKey}`;
-    const prior = this.completed.get(key);
-    if (prior) {
-      if (prior.requestDigest !== authorized.requestDigest) throw new ToolGatewayError("IDEMPOTENCY_CONFLICT", "A chave de idempotência já foi usada com argumentos diferentes.", { name, idempotencyKey: request.idempotencyKey });
-      return prior.result as ToolExecutionResult<TOutput>;
-    }
+    const key = toolExecutionLookup(name, request);
     const running = this.inFlight.get(key);
     if (running) {
       if (running.requestDigest !== authorized.requestDigest) throw new ToolGatewayError("IDEMPOTENCY_CONFLICT", "A chave de idempotência está em execução com argumentos diferentes.", { name, idempotencyKey: request.idempotencyKey });
       return await running.promise as ToolExecutionResult<TOutput>;
     }
+    const claim = await this.executionLedger.claim({ lookup: key, requestDigest: authorized.requestDigest, operation: descriptor.operation, organizationId: request.context.organizationId, actorId: request.context.actorId, unitId: request.context.unitId, workspaceId: request.context.workspaceId });
+    if (claim.status === "CONFLICT") throw new ToolGatewayError("IDEMPOTENCY_CONFLICT", "A chave de idempotência já foi usada com argumentos diferentes.", { name, idempotencyKey: request.idempotencyKey });
+    if (claim.status === "IN_FLIGHT" || claim.status === "OUTCOME_UNKNOWN") throw new ToolGatewayError("OUTCOME_UNKNOWN", "A execução anterior permanece em reconciliação; nenhum retry cego foi feito.", { name, idempotencyKey: request.idempotencyKey });
+    if (claim.status === "REPLAY") return { result: claim.record.result as TOutput, requestDigest: claim.record.requestDigest, policyRevision: claim.record.policyRevision, decision: claim.record.decision, descriptor };
     const promise = this.runExecutor(descriptor, authorized, executor);
     this.inFlight.set(key, { requestDigest: authorized.requestDigest, promise: promise as Promise<ToolExecutionResult<unknown>> });
     try {
       const result = await promise;
-      this.completed.set(key, { requestDigest: authorized.requestDigest, result: result as ToolExecutionResult<unknown> });
+      await this.executionLedger.complete(key, { requestDigest: result.requestDigest, result: result.result, policyRevision: result.policyRevision, decision: result.decision });
       return result;
+    } catch (error) {
+      if (error instanceof ToolGatewayError && error.code === "OUTCOME_UNKNOWN") await this.executionLedger.markOutcomeUnknown(key, authorized.requestDigest);
+      else await this.executionLedger.markFailed(key, authorized.requestDigest);
+      throw error;
     } finally {
       this.inFlight.delete(key);
     }
@@ -168,6 +237,10 @@ export class ToolGateway {
       if (timer) clearTimeout(timer);
     }
   }
+}
+
+export function toolExecutionLookup(name: string, request: ToolExecutionRequest): string {
+  return createHash("sha256").update(stableSerialize({ version: 1, name, idempotencyKey: request.idempotencyKey, sessionId: request.sessionId, actorId: request.context.actorId, organizationId: request.context.organizationId })).digest("hex");
 }
 
 export function toolRegistryDigest(tools: readonly ToolDescriptor[]): string {

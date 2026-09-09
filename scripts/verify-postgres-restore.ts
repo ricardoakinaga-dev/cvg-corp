@@ -9,6 +9,8 @@ import { decryptRecoveryBundle, encryptRecoveryBundle, PersistenceCorruptionErro
 const { Client } = pg;
 const sourceUrl = process.env.DATABASE_URL;
 if (!sourceUrl) throw new Error("DATABASE_URL is required; use an explicitly identified synthetic source database");
+const migrationUrl = process.env.MIGRATION_DATABASE_URL ?? sourceUrl;
+const maintenanceConnectionString = process.env.ADMIN_DATABASE_URL ?? maintenanceUrl(migrationUrl);
 
 const bootstrapPassword = process.env.CVG_BOOTSTRAP_PASSWORD ?? "synthetic-password-123";
 const restoreDatabase = `cvg_restore_${randomUUID().replaceAll("-", "")}`;
@@ -52,6 +54,22 @@ async function migrate(connectionString: string): Promise<void> {
         throw error;
       }
     }
+    const runtimeRole = (process.env.CVG_RUNTIME_DB_USER ?? "cvg_runtime").trim();
+    if (!/^[A-Za-z_][A-Za-z0-9_]{0,62}$/.test(runtimeRole)) throw new Error("CVG_RUNTIME_DB_USER is invalid");
+    const runtimeIdentifier = quoteIdentifier(runtimeRole);
+    const exists = await client.query<{ exists: boolean }>("select exists (select 1 from pg_roles where rolname = $1) as exists", [runtimeRole]);
+    if (!exists.rows[0]?.exists) {
+      const password = process.env.CVG_RUNTIME_DB_PASSWORD;
+      if (!password || password.length < 16 || password.length > 256) throw new Error("CVG_RUNTIME_DB_PASSWORD is required to provision the restore runtime role");
+      await client.query(`create role ${runtimeIdentifier} login password '${password.replaceAll("'", "''")}' noinherit nosuperuser nobypassrls nocreatedb nocreaterole`);
+    }
+    const database = (await client.query<{ database: string }>("select current_database() as database")).rows[0]?.database;
+    if (!database) throw new Error("restore database name is unavailable");
+    await client.query(`grant connect on database ${quoteIdentifier(database)} to ${runtimeIdentifier}`);
+    await client.query(`grant usage on schema public to ${runtimeIdentifier}`);
+    await client.query(`grant select, insert, update, delete on all tables in schema public to ${runtimeIdentifier}`);
+    await client.query(`grant usage, select on all sequences in schema public to ${runtimeIdentifier}`);
+    await client.query(`revoke create on schema public from ${runtimeIdentifier}`);
   } finally {
     await client.end().catch(() => undefined);
   }
@@ -70,7 +88,7 @@ async function readMigrationFingerprint(connectionString: string): Promise<strin
 
 const sourcePersistence = new PostgresPersistence({ connectionString: sourceUrl });
 const sourceOrganizationId = new CvgStore({ bootstrapPassword }).bootstrapCredentials.organizationId;
-const admin = new Client({ connectionString: maintenanceUrl(sourceUrl), connectionTimeoutMillis: 2_500 });
+const admin = new Client({ connectionString: maintenanceConnectionString, connectionTimeoutMillis: 2_500 });
 let targetPersistence: PostgresPersistence | null = null;
 let runtime: Awaited<ReturnType<typeof createRuntime>> | null = null;
 let created = false;
@@ -125,9 +143,10 @@ try {
   await admin.query(`create database ${quoteIdentifier(restoreDatabase)}`);
   created = true;
 
+  const targetMigrationUrl = withDatabase(migrationUrl, restoreDatabase);
   const targetUrl = withDatabase(sourceUrl, restoreDatabase);
-  await migrate(targetUrl);
-  const targetMigrationFingerprint = await readMigrationFingerprint(targetUrl);
+  await migrate(targetMigrationUrl);
+  const targetMigrationFingerprint = await readMigrationFingerprint(targetMigrationUrl);
   validateRecoveryBundle(restoredBundle, { expectedMigrationFingerprint: targetMigrationFingerprint });
 
   const restoredStore = new CvgStore({ bootstrapPassword });
@@ -182,7 +201,7 @@ try {
   await sourcePersistence.close().catch(() => undefined);
   if (adminConnected) await admin.end().catch(() => undefined);
   if (created) {
-    const cleanup = new Client({ connectionString: maintenanceUrl(sourceUrl), connectionTimeoutMillis: 2_500 });
+    const cleanup = new Client({ connectionString: maintenanceConnectionString, connectionTimeoutMillis: 2_500 });
     try {
       await cleanup.connect();
       await cleanup.query(`drop database if exists ${quoteIdentifier(restoreDatabase)}`);

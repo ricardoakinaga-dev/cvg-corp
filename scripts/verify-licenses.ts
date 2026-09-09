@@ -5,7 +5,7 @@ type LockPackage = {
   license?: string;
 };
 
-const allowedLicenses = new Set(["MIT", "ISC", "Apache-2.0", "BSD-3-Clause", "CC-BY-4.0"]);
+const allowedLicenses = new Set(["MIT", "ISC", "Apache-2.0", "BSD-3-Clause", "CC-BY-4.0", "MPL-2.0"]);
 const lock = JSON.parse(await readFile(new URL("../package-lock.json", import.meta.url), "utf8")) as {
   packages?: Record<string, LockPackage>;
 };

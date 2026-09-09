@@ -16,8 +16,8 @@ Resultado: `FAIL_WITH_LIMITATIONS`; Triplo AAA não provado. A escala abaixo (0�
 | 10 | Observabilidade | 3 | redaction, SDK/exporter OTLP protobuf, teste de envio local e contratos de sinais | `packages/ops/src/otel.ts`; `tests/unit/ops.test.ts`; `docs/observability-production.md` | collector/staging, métricas/logs correlacionados, alert dispatch e SLO reais não executados | incidente sem detecção operacional |
 | 11 | SLO e alertas | 2 | regras propostas/runbooks | `docs/runbooks/slo-breach.md` | sem amostra/dispatch real | budget desconhecido |
 | 12 | Staging e TLS | 1 | verificador fail-closed | `docs/staging.md` | sem URL/evidência | configuração insegura |
-| 13 | Frontend states | 3 | E2E Chromium e visual local | `apps/web/` | estados de dependência e browsers faltam | UX ambígua |
-| 14 | Acessibilidade/browser matrix | 2 | contraste local | `docs/visual-qa-vNext.md` | Firefox/WebKit/axe não executados | regressão acessível |
+| 13 | Frontend states | 3 | E2E Chromium/Firefox, screenshots reais e estados offline/revalidação | `apps/web/` | WebKit e estados externos continuam sem prova | UX ambígua sob engine/dep externa |
+| 14 | Acessibilidade/browser matrix | 3 | axe login/dashboard/admin 6/6; Chromium/Firefox × 375/768/1440; contraste computado | `docs/visual-qa-vNext.md` | WebKit bloqueado por dependências do host; leitor de tela/zoom/reduced-motion dedicados ausentes | regressão cross-engine/assistiva |
 | 15 | Carga/performance | 2 | benchmark sintético | `docs/load-and-chaos.md` | sem carga production-like | saturação |
 | 16 | Chaos/resiliência | 2 | fault fixtures | `tests/integration/faults.test.ts` | sem infra/provider chaos | recuperação desconhecida |
 | 17 | Backup/recovery | 3 | restore sintético autenticado | `docs/recovery-proof.md` | backup gerenciado/RTO/RPO ausentes | perda prolongada |
@@ -27,4 +27,4 @@ Resultado: `FAIL_WITH_LIMITATIONS`; Triplo AAA não provado. A escala abaixo (0�
 
 ## Veredito
 
-Os pontos fortes locais são reais e reproduzíveis. Os bloqueadores críticos são o adapter nativo DeepSeek, provider/secret/staging reais, observabilidade, browsers, carga/chaos, recovery operacional e CI remoto. O próximo gate só pode mudar o veredito com evidência correspondente ao mesmo commit, não com documentação adicional isolada.
+Os pontos fortes locais são reais e reproduzíveis. Os bloqueadores críticos são o adapter nativo DeepSeek, provider/secret/staging reais, observabilidade, WebKit/assistive tech, carga/chaos, recovery operacional e CI remoto. O próximo gate só pode mudar o veredito com evidência correspondente ao mesmo commit, não com documentação adicional isolada.

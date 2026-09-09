@@ -1,7 +1,7 @@
 # Auditoria de fechamento — CVG-Corp State of the Art / Triplo AAA
 
 **Auditoria:** F0-2026-09-09-v2
-**Revisão do CVG:** `8eb4b240716cdf12702d7bf11bb484870b2567d0`
+**Revisão do CVG:** `8b00ff53fc3dfef6acbb3836cabeff4a35315731`
 **Revisão observada do DeepSeek Harness:** `5dda764ed3aa172535a7967b06ff95d9cbfe536a`
 **Prompt normativo:** [prompt v2](prompt-state-of-the-art-triplo-aaa-2026-09-09-v2.txt), SHA-256 `34e886f59adacf8fda46d8d54bdede259705adc6e1521590cd3c281509b0e0d9`
 **Ambiente:** workspace local, Node 24.20.0, npm 11.19.0; Docker CLI/Compose presentes, daemon sem permissão; sem URL de staging, credencial, secret authority, provider, dados reais ou autorização de release.
@@ -76,7 +76,7 @@ API e worker são processos separados. O worker nomeia seis lanes (`outbox`, `jo
 
 ### 2.5 Caminho visual
 
-`apps/web` tem shell, rotas, features, máquina de estado offline/revalidação, tokens e E2E Chromium em 375/768/1440. O render local foi inspecionado e não apresentou overflow conhecido. Firefox, WebKit, axe-core/leitor de tela, teclado/focus/reduced-motion/zoom-reflow e matriz de estados completa ainda não têm evidência corrente.
+`apps/web` tem shell, rotas, features, máquina de estado offline/revalidação, tokens e E2E Chromium/Firefox em 375/768/1440. O render local foi inspecionado em screenshots reais e não apresentou overflow conhecido; axe passou em login, dashboard e administração nos seis runs executáveis. WebKit foi baixado, mas não iniciou porque o host não possui bibliotecas nativas e sudo exige senha. Leitor de tela, DPR/touch, reduced-motion dedicado, zoom/reflow de 200% e comparação visual por baseline ainda não têm evidência corrente.
 
 ## 3. Forças observadas
 
@@ -89,7 +89,7 @@ API e worker são processos separados. O worker nomeia seis lanes (`outbox`, `jo
 | Dados | migrations 001–025, RLS, CAS, locks, runtime role, restore manifest/quarantine | volume, mixed-version, backup gerenciado e restore operacional ausentes |
 | Identidade | password policy, lockout, TOTP, recuperação, rotação e revogação local | secret authority, WebAuthn real e sessão distribuída ausentes |
 | Supply chain | actions pinadas, SBOM, licença, npm audit e Compose estrutural | execução remota e imagem/Trivy reais não observadas |
-| UI | shell modular, estados offline, E2E responsivo, contraste | browser matrix e acessibilidade profunda ausentes |
+| UI | shell modular, estados offline, E2E Chromium/Firefox, axe e screenshots reais | WebKit/assistive tech/zoom/reduced-motion dedicados ausentes |
 
 ## 4. Matriz de fechamento por fase do prompt v2
 
@@ -117,8 +117,8 @@ API e worker são processos separados. O worker nomeia seis lanes (`outbox`, `jo
 | 19 Alertas reais | **PROPOSED/SYNTHETIC_ONLY** | regras tipadas e runbooks | dispatch/alertmanager real e exercícios de breach |
 | 20 Staging | **BLOCKED** | `verify:staging` fail-closed sem URL | PostgreSQL, DeepSeek, provider sandbox, secret, TLS, worker e telemetry autorizados |
 | 21 TLS/edge | **PARTIAL** | proxy, headers, CSP/HSTS em config | endpoint HTTPS real, cookies/redirect/TLS policy observado |
-| 22 Browser matrix | **PARTIAL** | Chromium em três larguras | Firefox/WebKit × mobile/tablet/desktop |
-| 23 Accessibility | **PARTIAL** | contraste, semântica parcial e E2E | axe, keyboard, focus, labels, dialogs/forms, reduced motion, 200% zoom e leitor de tela |
+| 22 Browser matrix | **PARTIAL** | Chromium + Firefox × 375/768/1440; WebKit declarado e bloqueado por dependências nativas do host | WebKit executável e diferenças cross-engine ainda sem prova |
+| 23 Accessibility | **PARTIAL/LOCAL-EVIDENCED** | axe login/dashboard/admin 6/6; contraste computado; keyboard/focus/dialogs cobertos por E2E | leitor de tela, DPR/touch, reduced motion dedicado e 200% zoom/reflow |
 | 24 Load | **NOT_RUN** | benchmark local explicitamente sintético | k6/autocannon/pgbench em staging com workload, tails e recursos |
 | 25 Chaos | **SYNTHETIC_ONLY/PARTIAL** | fault harness local | kill/restart/partition/secret/provider/DeepSeek/restore em ambiente real |
 | 26 Recovery | **PARTIAL/SYNTHETIC_ONLY** | bundle manifest, encryption, quarantine e restore tests | RPO/RTO e restore/replay real com ledgers preservados |
@@ -150,12 +150,12 @@ API e worker são processos separados. O worker nomeia seis lanes (`outbox`, `jo
 
 1. PDP/Tool Gateway e repositories não têm cobertura automática universal provada em todas as operações críticas.
 2. Worker tem ciclo e contratos locais; reconciliação usa claim atômico/lease/fence e o scheduler possui budgets, concorrência limitada, backpressure, poison metrics, heartbeat e shutdown cooperativo, mas dead-letter, execução production-like e métricas operacionais ainda não foram executados.
-3. Acessibilidade e browser matrix permanecem incompletas.
+3. Browser/accessibility melhoraram localmente, mas WebKit, assistive tech, zoom/reflow e reduced-motion dedicado permanecem sem prova.
 4. Cadeia de audit tamper-evidence e export governado não estão demonstradas como operações de produção.
 
 ### Médio
 
-1. Auditoria de tokens tem 72 sinais medium heurísticos de cores próximas; nenhum high/critical.
+1. Auditoria de tokens tem 73 sinais medium heurísticos de cores próximas; nenhum high/critical.
 2. Documentação corrente ainda usa nomes `vNext`/históricos para entregáveis que o prompt v2 exige como artefatos canônicos.
 3. README e plano contêm números históricos que precisam apontar para a evidência mais recente.
 
@@ -167,7 +167,7 @@ API e worker são processos separados. O worker nomeia seis lanes (`outbox`, `jo
 4. **Worker/ledger:** concluído o recorte local de budgets/backpressure/concorrência/poison/metrics/heartbeat e cadeia de auditoria; falta executar container, dead-letter operacional e métricas em staging, mantendo provider externo bloqueado até autoridade.
 5. **Observability:** concluído o recorte local do SDK/exporter OTLP protobuf, redaction e pontos API/worker/bridge; falta executar Collector/Prometheus/Grafana/Alertmanager, ligar métricas/logs correlacionados e provar SLO/alerts em staging.
 6. **Staging gate:** preparar configuração reproduzível com TLS, secret provider, PostgreSQL, worker e provider sandbox; não inserir credenciais nem iniciar egress sem autoridade.
-7. **Browser/accessibility/load/chaos/recovery:** ampliar scripts e evidência; executar somente no staging autorizado e manter `NOT_RUN` quando indisponível.
+7. **Browser/accessibility/load/chaos/recovery:** Chromium/Firefox e axe têm prova local; executar WebKit/assistive tech/zoom e os drills restantes no ambiente autorizado, mantendo BLOCKED/NOT_RUN quando indisponível.
 8. **Final Gauntlet:** rodar critics frescos read-only por domínio, verificar sentinel de mutação, reparar findings reproduzíveis, executar regressão e recalcular scorecard.
 
 ## 7. Rollback e contenção

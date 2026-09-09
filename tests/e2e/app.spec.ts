@@ -52,7 +52,7 @@ test("rotas e controles permanecem utilizáveis sem overflow", async ({ page }, 
   await page.getByRole("button", { name: /Processar turno/i }).click();
   await expect(page.getByText(/Resposta para revisão|Conteúdo retido/)).toBeVisible();
 
-  if (testInfo.project.name === "mobile-375" || testInfo.project.name === "tablet-768") {
+  if (testInfo.project.name.includes("mobile-375") || testInfo.project.name.includes("tablet-768")) {
     await openMenuIfNeeded();
     await expect(page.locator(".sidebar.sidebar-open")).toBeVisible();
     await page.getByRole("button", { name: "Fechar menu" }).click();
@@ -93,7 +93,7 @@ test("revalidação bloqueia conteúdo enquanto /me e /contexts respondem", asyn
     await route.continue();
   });
   await context.setOffline(false);
-  await expect(page.getByRole("region").getByText("REVALIDATING", { exact: true })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Estado do ambiente" }).getByText("REVALIDATING", { exact: true })).toBeVisible();
   await expect(page.getByLabel("Pedido")).toHaveCount(0);
   await expect(page.getByText("rascunho clínico que deve permanecer oculto")).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Copiloto", exact: true })).toBeVisible();
@@ -101,7 +101,7 @@ test("revalidação bloqueia conteúdo enquanto /me e /contexts respondem", asyn
 });
 
 test("busca rápida abre pacientes com filtro e histórico do navegador", async ({ page }, testInfo) => {
-  test.skip(testInfo.project.name !== "wide-1440", "A busca global fica oculta em viewports móveis.");
+  test.skip(!testInfo.project.name.includes("wide-1440"), "A busca global fica oculta em viewports móveis.");
   await page.goto("/");
   await page.getByRole("button", { name: /Abrir demonstração sintética/i }).click();
   await expect(page.getByRole("heading", { name: "Bom dia, Ricardo." })).toBeVisible();
@@ -158,7 +158,7 @@ test("enters OFFLINE_READ_ONLY without exposing the composer buffer", async ({ p
   await prompt.fill("texto clínico que deve permanecer somente em memória");
 
   await context.setOffline(true);
-  await expect(page.getByRole("region").getByText("OFFLINE_READ_ONLY", { exact: true })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Estado do ambiente" }).getByText("OFFLINE_READ_ONLY", { exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Conexão interrompida." })).toBeVisible();
   await expect(page.getByLabel("Pedido")).toHaveCount(0);
   await expect(page.getByText("texto clínico que deve permanecer somente em memória")).toHaveCount(0);

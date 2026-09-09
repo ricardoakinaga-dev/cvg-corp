@@ -214,3 +214,11 @@ Esta revalidação confirma integridade do control plane e do recorte local; nã
 Após a reconciliação, `npm run verify:all` passou novamente com typecheck, build, static verification (29 artefatos obrigatórios e 100 fontes), 65/65 testes unitários/integração e 22/22 E2E Chromium executados em 375/768/1440; dois testes móveis foram pulados por serem inaplicáveis. `git diff --check` também passou. A evidência foi registrada em `VER-CVG-036`.
 
 O resultado permanece restrito ao núcleo local. Não há promoção a production-like, release ou AAA; os gaps externos e a revisão independente continuam controlando o próximo gate.
+
+## 26. Contratos de SLO e alertas — 2026-09-09 02:14
+
+A implementação de `@cvg/ops` agora mantém oito sinais SLO tipados: disponibilidade, p95, login, busca de paciente, atraso de outbox, confirmação de mensagem, RTO e RPO. Os targets que possuem somente hipótese documental permanecem `PROPOSED`/`TBD`; os targets numéricos também não são uma medição de produção. O error budget só é derivado para o modelo de disponibilidade, evitando inferir budget de uma única métrica de latência ou de um restore sem exercício.
+
+As regras de alerta são puras, versionáveis e ligadas a runbooks. `evaluateSlo` e `evaluateSloAlerts` mantêm `NOT_RUN` para target ausente, amostra vazia, evidência não medida ou avaliação indisponível. Portanto o novo harness permite known-good/known-bad e verificação fail-closed, mas não envia alertas, consulta collector, executa carga, mede SLO/RTO/RPO ou autoriza release.
+
+Evidência `VER-CVG-043`: 73/73 testes, typecheck, lint, static, `verify:production`, hash/cópia do prompt, validação de ponteiros JSON/JSONL e diff check passaram; o modo production falhou fechado pela configuração real ausente. O estado integral continua **`FAIL_WITH_LIMITATIONS`** / `IN_PROGRESS`; permanecem `NOT_RUN` o baseline production-like, collector, carga, CI remoto, Docker runtime, provider/secret authority, recovery distribuído, browsers adicionais e revisão independente fresca.

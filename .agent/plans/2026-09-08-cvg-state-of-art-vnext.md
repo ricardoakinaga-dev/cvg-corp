@@ -82,6 +82,7 @@ Outbox/inbox/effect ledger têm lease/fencing, retry bounded, backoff, quarantin
 <!-- engineering-framework: active_action_id=CVG-FULL-STATE-OF-THE-ART:PRODUCTION-LIKE-EVIDENCE -->
 
 1. `CVG-FULL-STATE-OF-THE-ART:PRODUCTION-LIKE-EVIDENCE` — executar somente as evidências production-like que tenham ambiente e autoridade correspondentes; manter os gaps externos como `NOT_RUN` e continuar a evolução local nos maiores gaps reproduzíveis.
+2. `CVG-FULL-STATE-OF-THE-ART:SLO-CONTRACTS-ALERTS` — concluída localmente: tipar targets SLO propostos, avaliar observações somente com amostra explícita e testar alertas/runbooks em harness sintético; não promover medição local a evidência de produção.
 
 ### Onda A — fundamento seguro
 
@@ -184,6 +185,17 @@ Resultado: `CvgWorkerApplication` agora expõe um ciclo com as lanes `outbox`, `
 
 Evidência: `VER-CVG-042`; 70/70 testes, 8/8 fault/worker, 9/9 database, typecheck, lint, static (30/101), `verify:production` e diff check passaram. O modo `--production` saiu 1 por configuração real ausente, fail-closed esperado. A implementação fornece a orquestração e os hooks; jobs, stores de manutenção, reconciliação externa e sink/provider real continuam não configurados.
 
+### Ação concluída — contratos de SLO e alertas
+
+- Escopo: `packages/ops`, testes de operações e documentação de verificação/runbooks.
+- Entregar um catálogo tipado de SLOs explicitamente `PROPOSED`, observações com estado de evidência e avaliação determinística de budget/violação.
+- Entregar regras de alerta ligadas a runbooks existentes, com estados `OK`, `ALERT` e `NOT_RUN`; nenhum collector, carga, provider, segredo, egress ou dado real será acionado.
+- Verificar known-good, breach, amostra ausente, budget consumido e redaction sem alterar os critérios congelados da barra v3.
+
+Resultado: `@cvg/ops` expõe oito definições SLO tipadas, quatro regras de alerta e avaliação fail-closed. Targets não aprovados permanecem `PROPOSED`/`TBD`; amostra ausente, target sem número ou evidência `NOT_RUN` não podem gerar `PASS`/`ALERT`. O runbook `docs/runbooks/slo-breach.md` liga as classificações a procedimentos sem disparar efeitos.
+
+Evidência: `VER-CVG-043`; 73/73 testes, typecheck, lint (99 fontes), static (30/101), `verify:production`, hash byte-a-byte do prompt, validação dos ponteiros JSON/JSONL e diff check passaram. O modo `--production` saiu 1 por configuração real ausente, fail-closed esperado. Collector, carga, SLO medido, alerta operacional, provider, segredo, egress, Docker runtime, CI remoto e release continuam `NOT_RUN`.
+
 ### Ação corrente — evidência production-like
 
 - Executar PostgreSQL/Docker, CI remoto, imagem/container smoke, provider/secret authority, fault/recovery distribuído, carga/SLO e matriz de browsers/acessibilidade somente quando o ambiente e a aprovação correspondentes existirem.
@@ -272,3 +284,11 @@ Após a validação adicional no próprio `exportRecoveryBundle`, `VER-CVG-040` 
 ## Current checkpoint — 2026-09-09 01:38
 
 `VER-CVG-041` registra a conclusão local da fatia PDP target-bound do detalhe de paciente: sessão autenticada, capability/operation registrada, `resourceId`, escopo persistido, projeção por application service e revalidação antes da serialização. A suíte passou 67/67, database 9/9, fault/worker 5/5, typecheck, lint, static 30/101, `verify:production` e diff check; `--production` permaneceu fail-closed por configuração real ausente. O pointer retorna a `CVG-FULL-STATE-OF-THE-ART:PRODUCTION-LIKE-EVIDENCE`; o uso universal do PDP, evidência production-like, provider/secret authority, recovery distribuído, SLOs e crítica independente fresca continuam pendentes, e o resultado não é AAA-eligible.
+
+## Current checkpoint — 2026-09-09 02:07
+
+Após `EVT-CVG-20260909-VERIFY-057`, foi aberta a ação local `CVG-FULL-STATE-OF-THE-ART:SLO-CONTRACTS-ALERTS`. O pointer de BUILD foi alinhado em state, backlog, plano, execution log e Gauntlet antes da implementação. A fatia não autoriza medição de produção, collector, carga, provider, segredo, egress ou release.
+
+## Current checkpoint — 2026-09-09 02:14
+
+`VER-CVG-043` registra os contratos de SLO/alerta: oito sinais tipados, targets sem aprovação como `PROPOSED`/`TBD`, error budget somente onde o modelo é derivável, amostras ausentes como `NOT_RUN`, regras ligadas a runbooks e nenhum dispatch operacional. A suíte passou 73/73, typecheck, lint (99 fontes), static (30/101), `verify:production`, verificação de ponteiros JSON/JSONL, hash/cópia do prompt e diff check; `--production` saiu 1 fail-closed por configuração real ausente. O pointer retorna à ação `CVG-FULL-STATE-OF-THE-ART:PRODUCTION-LIKE-EVIDENCE`; SLOs medidos, collector, carga, CI remoto, containers, provider, secret authority e revisão independente continuam `NOT_RUN`.

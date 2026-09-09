@@ -139,7 +139,7 @@ Todos os vinte critérios adicionados no Quality Bar v1.1 aparecem acima. A pres
 
 ## 9. Runbooks mínimos
 
-Antes do piloto, criar runbooks para: provider indisponível; policy stale/corrompida; credencial revogada; tool comprometida; cross-scope suspeito; resultado clínico em quarentena; pagamento duplicado; outbox parada; sessão interrompida; perda de dispositivo; restore; break-glass; e kill switch de IA.
+Antes do piloto, criar runbooks para: provider indisponível; policy stale/corrompida; credencial revogada; tool comprometida; cross-scope suspeito; resultado clínico em quarentena; pagamento duplicado; outbox parada; sessão interrompida; perda de dispositivo; restore; SLO/error budget; break-glass; e kill switch de IA. O contrato local de SLO/error budget está em [`runbooks/slo-breach.md`](runbooks/slo-breach.md), mas sua medição e execução operacional permanecem `NOT_RUN`.
 
 Cada runbook terá owner, pré-condições, comandos não destrutivos, métrica de decisão, janela, abort criteria, comunicação, reconciliação e confirmação de retorno. Nenhum runbook será considerado testado apenas por existir em Markdown.
 

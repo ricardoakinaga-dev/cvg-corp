@@ -23,6 +23,7 @@ function fakePool(options: { revision?: string; failSnapshotInsert?: boolean; au
       if (sql.includes("select revision::text")) return { rows: revision === "0" ? [] : [{ revision }] };
       if (sql.startsWith("insert into ai_usage_ledger")) return { rows: [{ id: String(params[0]) }] };
       if (sql.startsWith("insert into patients") && sql.includes("returning id::text")) return { rows: [{ id: String(params[0]) }] };
+      if (sql.startsWith("insert into appointments") && sql.includes("returning id::text")) return { rows: [{ id: String(params[0]) }] };
       if (sql.startsWith("select record_hash from cvg_audit_ledger")) return { rows: auditTail ? [{ record_hash: auditTail }] : [] };
       if (sql.startsWith("insert into cvg_audit_ledger")) {
         if (options.auditLedgerConflict) return { rows: [] };
@@ -142,6 +143,29 @@ test("patient creation can own one authoritative normalized write inside the dur
   await persistence.commit({ ...commitInput(store), snapshot: store.snapshot(), normalizedPatientWrite: patient });
 
   assert.ok(fake.statements.some((statement) => statement.startsWith("insert into patients") && statement.includes("on conflict (id) do update") && statement.includes("returning id::text")));
+  assert.ok(fake.statements.some((statement) => statement === "select set_config('cvg.unit_id', $1, true)"));
+  assert.ok(fake.statements.some((statement) => statement === "select set_config('cvg.workspace_id', $1, true)"));
+});
+
+test("appointment creation can own one authoritative normalized write inside the durable commit", async () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const option = store.contextOptions(store.bootstrapCredentials.userId)[0];
+  assert.ok(option);
+  const context = store.resolveContext(store.bootstrapCredentials.userId, { unitId: option.unit.id, workspaceId: option.workspace.id }, "appointments.create", "appointment-source-write");
+  const patient = [...store.patients.values()].find((candidate) => candidate.unitId === context.unitId && candidate.workspaceId === context.workspaceId);
+  const provider = [...store.providers.values()].find((candidate) => candidate.unitId === context.unitId);
+  const service = [...store.services.values()].find((candidate) => candidate.organizationId === context.organizationId);
+  const resource = [...store.resources.values()].find((candidate) => candidate.unitId === context.unitId);
+  assert.ok(patient && provider && service && resource);
+  const startsAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1_000).toISOString();
+  const endsAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1_000 + 45 * 60 * 1_000).toISOString();
+  const appointment = store.createAppointment(context, { patientId: patient.id, providerId: provider.id, resourceId: resource.id, serviceId: service.id, startsAt, endsAt, purpose: "consulta de retorno" });
+  const fake = fakePool();
+  const persistence = new PostgresPersistence({ connectionString: "postgres://synthetic.invalid", pool: fake.pool });
+
+  await persistence.commit({ ...commitInput(store), snapshot: store.snapshot(), normalizedAppointmentWrite: appointment });
+
+  assert.ok(fake.statements.some((statement) => statement.startsWith("insert into appointments") && statement.includes("on conflict (id) do update") && statement.includes("returning id::text")));
   assert.ok(fake.statements.some((statement) => statement === "select set_config('cvg.unit_id', $1, true)"));
   assert.ok(fake.statements.some((statement) => statement === "select set_config('cvg.workspace_id', $1, true)"));
 });
@@ -567,6 +591,42 @@ test("PostgreSQL patient creation commits its normalized source row before the H
     });
     assert.equal(created.statusCode, 201, created.body);
     assert.ok(fake.statements.some((statement) => statement.startsWith("insert into patients") && statement.includes("returning id::text")));
+  } finally {
+    await runtime.app.close();
+  }
+});
+
+test("PostgreSQL appointment creation commits its normalized source row before the HTTP response", async () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const fake = fakePool();
+  const persistence = new PostgresPersistence({ connectionString: "postgres://synthetic.invalid", pool: fake.pool });
+  const runtime = await createRuntime({ store, persistence, config: { storageMode: "postgres", demoMode: true } });
+  try {
+    const login = await runtime.app.inject({ method: "POST", url: "/api/v1/auth/login", headers: { "content-type": "application/json" }, payload: JSON.stringify({ login: "admin@cvg.local", password: "synthetic-password-123" }) });
+    assert.equal(login.statusCode, 200, login.body);
+    const cookieValues = (Array.isArray(login.headers["set-cookie"]) ? login.headers["set-cookie"] : [login.headers["set-cookie"]]).filter((value): value is string => typeof value === "string");
+    const cookiePairs = cookieValues.map((value) => value.split(";")[0]).filter((value): value is string => Boolean(value));
+    const cookie = cookiePairs.join("; ");
+    const csrfCookie = cookiePairs.find((pair) => pair.startsWith("cvg_csrf="));
+    assert.ok(csrfCookie);
+    const csrf = decodeURIComponent(csrfCookie.slice("cvg_csrf=".length));
+    const unit = [...runtime.store.units.values()][0];
+    const workspace = [...runtime.store.workspaces.values()][0];
+    const patient = [...runtime.store.patients.values()].find((candidate) => candidate.unitId === unit?.id && candidate.workspaceId === workspace?.id);
+    const provider = [...runtime.store.providers.values()].find((candidate) => candidate.unitId === unit?.id);
+    const service = [...runtime.store.services.values()].find((candidate) => candidate.organizationId === runtime.store.bootstrapCredentials.organizationId);
+    const resource = [...runtime.store.resources.values()].find((candidate) => candidate.unitId === unit?.id);
+    assert.ok(unit && workspace && patient && provider && service && resource);
+    const startsAt = new Date(Date.now() + 31 * 24 * 60 * 60 * 1_000).toISOString();
+    const endsAt = new Date(Date.now() + 31 * 24 * 60 * 60 * 1_000 + 45 * 60 * 1_000).toISOString();
+    const created = await runtime.app.inject({
+      method: "POST",
+      url: "/api/v1/appointments",
+      headers: { cookie, "x-csrf-token": csrf, "x-cvg-unit-id": unit.id, "x-cvg-workspace-id": workspace.id, "idempotency-key": "appointment-http-source-001", "content-type": "application/json" },
+      payload: JSON.stringify({ patientId: patient.id, providerId: provider.id, resourceId: resource.id, serviceId: service.id, startsAt, endsAt, purpose: "consulta de retorno" })
+    });
+    assert.equal(created.statusCode, 201, created.body);
+    assert.ok(fake.statements.some((statement) => statement.startsWith("insert into appointments") && statement.includes("returning id::text")));
   } finally {
     await runtime.app.close();
   }

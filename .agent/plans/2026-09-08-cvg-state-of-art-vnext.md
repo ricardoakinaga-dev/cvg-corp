@@ -20,6 +20,7 @@ O resultado esperado é um produto executável com uma rota completa de desenvol
 - [ ] Onda E — deploy, CI, SBOM, observabilidade, SLOs e runbooks.
 - [ ] Onda F — adapter DeepSeek/provider e vertical real, somente se autoridade e endpoint existirem.
 - [ ] Onda G — verificação de produção, críticas independentes frescas e scorecard honesto.
+- [x] (2026-09-10T06:38:00-03:00) — criação de appointment fechada localmente com port assíncrono, idempotência e escrita normalizada autoritativa contextual no commit durável; CI exato ainda pendente.
 
 ## Context and Orientation
 
@@ -80,12 +81,14 @@ Outbox/inbox/effect ledger têm lease/fencing, retry bounded, backoff, quarantin
 
 ## Concrete Steps
 
-<!-- engineering-framework: active_action_id=CVG-FULL-STATE-OF-THE-ART:EXTERNAL-EVIDENCE-AND-HUMAN-ACCEPTANCE -->
+<!-- engineering-framework: active_action_id=CVG-FULL-STATE-OF-THE-ART:REMOTE-CI-OBSERVATION-APPOINTMENT-WRITE -->
 
-1. `CVG-FULL-STATE-OF-THE-ART:EXTERNAL-EVIDENCE-AND-HUMAN-ACCEPTANCE` — obter evidência autorizada de staging/provider/DeepSeek/observabilidade/carga/recuperação, executar crítica independente fresca e registrar aceite humano; até lá manter `FAIL_WITH_LIMITATIONS`/`AAA_NOT_PROVEN`.
-2. `CVG-FULL-STATE-OF-THE-ART:DEEPSEEK-NATIVE-ADAPTER` — somente quando houver contrato/authority externos; manter native/LLM como `BLOCKED` sem inventar protocolo.
-3. `CVG-FULL-STATE-OF-THE-ART:PRODUCTION-LIKE-EVIDENCE` — executar somente as evidências production-like que tenham ambiente e autoridade correspondentes; manter os gaps externos como `NOT_RUN` e continuar a evolução local nos maiores gaps reproduzíveis.
-4. `CVG-FULL-STATE-OF-THE-ART:SLO-CONTRACTS-ALERTS` — concluída localmente: tipar targets SLO propostos, avaliar observações somente com amostra explícita e testar alertas/runbooks em harness sintético; não promover medição local a evidência de produção.
+1. `CVG-FULL-STATE-OF-THE-ART:AUTHORITATIVE-NORMALIZED-APPOINTMENT-WRITE` — concluída localmente: create assíncrono, `idempotentAsync`, escrita SQL contextual autoritativa, omissão da projeção genérica e testes SQL/HTTP/regressão; sem alegar PostgreSQL externo/staging.
+2. `CVG-FULL-STATE-OF-THE-ART:REMOTE-CI-OBSERVATION-APPOINTMENT-WRITE` — publicar o candidato, observar o run no SHA exato e registrar jobs/steps sem converter CI em staging.
+3. `CVG-FULL-STATE-OF-THE-ART:EXTERNAL-EVIDENCE-AND-HUMAN-ACCEPTANCE` — obter evidência autorizada de staging/provider/DeepSeek/observabilidade/carga/recuperação, executar crítica independente fresca e registrar aceite humano; até lá manter `FAIL_WITH_LIMITATIONS`/`AAA_NOT_PROVEN`.
+4. `CVG-FULL-STATE-OF-THE-ART:DEEPSEEK-NATIVE-ADAPTER` — somente quando houver contrato/authority externos; manter native/LLM como `BLOCKED` sem inventar protocolo.
+5. `CVG-FULL-STATE-OF-THE-ART:PRODUCTION-LIKE-EVIDENCE` — executar somente as evidências production-like que tenham ambiente e autoridade correspondentes; manter os gaps externos como `NOT_RUN` e continuar a evolução local nos maiores gaps reproduzíveis.
+6. `CVG-FULL-STATE-OF-THE-ART:SLO-CONTRACTS-ALERTS` — concluída localmente: tipar targets SLO propostos, avaliar observações somente com amostra explícita e testar alertas/runbooks em harness sintético; não promover medição local a evidência de produção.
 
 ### Onda A — fundamento seguro
 

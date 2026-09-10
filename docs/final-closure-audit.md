@@ -366,3 +366,21 @@ SBOM e artefatos; o job `102812568853` passou os builds e scans das imagens API
 e web. O resultado é limitado ao pipeline remoto: não substitui staging,
 providers/DeepSeek, autoridade de segredos, observabilidade operacional,
 carga/chaos/recovery production-like ou aceite humano.
+
+## Checkpoint atual — 2026-09-10 escrita normalizada autoritativa de appointment
+
+`docs/verification-2026-09-10-appointment-source-write.md` registra a segunda
+fatia local de escrita: `POST /api/v1/appointments` usa port assíncrono de
+aplicação, `idempotentAsync` e envia `normalizedAppointmentWrite` para o mesmo
+commit durável de snapshot, journal, auditoria, receipt e outbox. A linha
+normalizada contextual é escrita uma vez com guard de igualdade e o id é
+omitido da projeção genérica. A regressão local passou `npm test` 140
+(`139 pass`, `1 skip`), E2E 64/4 skips, typecheck, build, lint, static, PDP,
+produção estrutural, contraste, licenças e 23/23 testes de persistência.
+
+Pool sintético não prova PostgreSQL concorrente/RLS fora do CI. Outras mutações
+ainda dependem da projeção agregada; `ops.restore` continua sem replay seguro.
+Provider/DeepSeek/secret authority, staging/TLS operacional, Collector/SLO,
+carga/chaos/recovery production-like, browser/assistive-tech/zoom completo,
+crítica independente aprovadora e aceite humano continuam ausentes. O
+veredito permanece `FAIL_WITH_LIMITATIONS` / `AAA_NOT_PROVEN`.

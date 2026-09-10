@@ -48,6 +48,7 @@ import {
   stockMovementInputSchema,
   success,
   type AnimalPatient,
+  type Appointment,
   type ApprovalInput,
   type ApiResponse,
   type CvgContext,
@@ -80,6 +81,7 @@ import { createOpenTelemetryRuntime, OpsTelemetry, renderPrometheusMetrics, type
 import { PersistenceConflictError, PersistenceCorruptionError, PersistenceSignatureError, PersistenceStateError, PersistenceUnavailableError, PostgresPersistence, type DurableExternalEffectRecord, type InboxSignatureVerifier } from "@cvg/persistence";
 import { registerHealthRoutes } from "./routes/health.ts";
 import { AgentApplicationService } from "./application/agent-service.ts";
+import { AppointmentApplicationService, PostgresAppointmentRepository, StoreAppointmentRepository } from "./application/appointment-service.ts";
 import { PatientApplicationService, PostgresPatientRepository, StorePatientRepository } from "./application/patient-service.ts";
 import { createReadApplicationService } from "./application/read-services.ts";
 import { DomainCommandService } from "./application/domain-command-service.ts";
@@ -491,6 +493,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
   const secretProviderStatus: SecretProviderStatus = secretProvider?.status() ?? (config.demoMode ? "DEGRADED" : "UNAVAILABLE");
   const agentApplication = new AgentApplicationService(store, agentRuntime);
   const patientApplication = new PatientApplicationService(persistence ? new PostgresPatientRepository(persistence, store) : new StorePatientRepository(store));
+  const appointmentApplication = new AppointmentApplicationService(persistence ? new PostgresAppointmentRepository(store) : new StoreAppointmentRepository(store));
   const readApplication = createReadApplicationService(store, persistence);
   const domainCommands = new DomainCommandService(store);
   const exportApplication = new ExportApplicationService(store, persistence, secretProvider, config.recoveryEncryptionKeyRef);
@@ -515,7 +518,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
   const durableRequests = new WeakMap<FastifyRequest, DurableRequestTransaction>();
   const durableReleases = new WeakMap<FastifyRequest, () => void>();
   const durableOutboxes = new WeakMap<FastifyRequest, import("@cvg/persistence").DurableOutboxInput[]>();
-  let commitDurableRequest: ((request: FastifyRequest, reply: FastifyReply, normalizedPatientWrite?: AnimalPatient) => Promise<void>) | null = null;
+  let commitDurableRequest: ((request: FastifyRequest, reply: FastifyReply, normalizedPatientWrite?: AnimalPatient, normalizedAppointmentWrite?: Appointment) => Promise<void>) | null = null;
   let persistenceQueue = Promise.resolve();
   const acquireDurableRequest = async (): Promise<() => void> => {
     let release!: () => void;
@@ -541,11 +544,11 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
         throw error;
       }
     });
-    const commitRequest = async (request: FastifyRequest, reply: FastifyReply, normalizedPatientWrite?: AnimalPatient): Promise<void> => {
+    const commitRequest = async (request: FastifyRequest, reply: FastifyReply, normalizedPatientWrite?: AnimalPatient, normalizedAppointmentWrite?: Appointment): Promise<void> => {
       const transaction = durableRequests.get(request);
       if (!transaction || transaction.committed || transaction.failed) return;
       const snapshot = store.snapshot();
-      if (!normalizedPatientWrite && snapshotFingerprint(snapshot) === snapshotFingerprint(transaction.baseline)) return;
+      if (!normalizedPatientWrite && !normalizedAppointmentWrite && snapshotFingerprint(snapshot) === snapshotFingerprint(transaction.baseline)) return;
       const baselineAuditIds = new Set(transaction.baseline.auditRecords.map((record) => record.id));
       const baselineReceiptDigests = new Map(transaction.baseline.commandReceipts.map((receipt) => [receipt.id, digest(receipt)]));
       const auditRecords = snapshot.auditRecords.filter((record) => !baselineAuditIds.has(record.id));
@@ -568,7 +571,8 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
           auditRecords,
           commandReceipts,
           ...(outboxRecords ? { outboxRecords } : {}),
-          ...(normalizedPatientWrite ? { normalizedPatientWrite } : {})
+          ...(normalizedPatientWrite ? { normalizedPatientWrite } : {}),
+          ...(normalizedAppointmentWrite ? { normalizedAppointmentWrite } : {})
         });
         transaction.committed = true;
       } catch (error) {
@@ -1154,8 +1158,12 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const { context } = requestContext(request, "appointments.create", input.patientId, null, false, true, input.patientId);
     const key = header(request, "idempotency-key");
     if (!key) throw new DomainError("INVALID_INPUT", "Idempotency-Key é obrigatório.", 400);
-    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, sessionId: context.sessionId, operation: "appointments.create", key, resourceId: null, unitId: context.unitId, workspaceId: context.workspaceId, body: input }, () => domainCommands.createAppointment(context, input));
+    const result = await idempotentAsync(store, { organizationId: context.organizationId, actorId: context.actorId, sessionId: context.sessionId, operation: "appointments.create", key, resourceId: input.patientId, unitId: context.unitId, workspaceId: context.workspaceId, body: input }, () => appointmentApplication.create(context, input));
     audit(context, "appointments.create", "Appointment", result.value.id, "ALLOWED");
+    if (persistence && !result.replayed) {
+      reply.code(201);
+      await commitDurableRequest?.(request, reply, undefined, result.value);
+    }
     return response(reply, success({ appointment: result.value, receiptId: result.receipt.id }, context.correlationId), 201);
   });
 

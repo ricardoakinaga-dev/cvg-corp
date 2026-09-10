@@ -124,3 +124,23 @@ SBOM e artefatos; o job `102812568853` passou os builds e scans das imagens API
 e web. O resultado é limitado ao pipeline remoto: não substitui staging,
 providers/DeepSeek, autoridade de segredos, observabilidade operacional,
 carga/chaos/recovery production-like ou aceite humano.
+
+## Current checkpoint — 2026-09-10 authoritative appointment write
+
+The second local source-write slice is recorded in
+`docs/verification-2026-09-10-appointment-source-write.md`. Appointment
+creation now uses an asynchronous application port and `idempotentAsync`; in
+PostgreSQL mode the command-owned normalized appointment row is written in the
+same durable transaction as snapshot, journal, audit, receipt and outbox, with
+context scope and equality-guarded replay semantics. The generic appointment
+projection omits that id to keep one authoritative SQL write.
+
+Local evidence passed: persistence integration 23/23, `npm test` 140 (139
+pass/1 skip), E2E 64/4 intentional skips, typecheck, build, lint, static, PDP,
+production structural verification, contrast, licenses and diff check.
+Synthetic pools still do not prove external PostgreSQL concurrency/RLS. Other
+mutating domains and safe `ops.restore` replay remain open. Provider/DeepSeek,
+secret authority, staging/TLS operations, measured Collector/SLO, load/chaos/
+recovery production-like, complete browser/assistive/zoom evidence, fresh
+approving critique and human acceptance remain absent; verdict stays
+`FAIL_WITH_LIMITATIONS` / `AAA_NOT_PROVEN`.

@@ -47,7 +47,8 @@ const [commandSource, agentSource, patientSource, readServiceSource, exportSourc
 for (const [name, source] of [["DomainCommandService", commandSource], ["AgentApplicationService", agentSource], ["PatientApplicationService", patientSource], ["ReadApplicationService", readServiceSource], ["ExportApplicationService", exportSource]] as const) {
   if (!source.includes("enforceApplicationPolicy")) failures.push(`${name} does not enforce the application PDP at its use-case boundary`);
 }
-if (!exportSource.includes('enforceApplicationPolicy(context, "ops.export"') || !exportSource.includes("encryptRecoveryBundle") || !exportSource.includes("idempotentAsync")) failures.push("ExportApplicationService is missing policy, encryption or idempotency controls");
+if (!exportSource.includes('enforceApplicationPolicy(context, "ops.export"') || !exportSource.includes("encryptRecoveryBundle") || !exportSource.includes("this.commands.execute")) failures.push("ExportApplicationService is missing policy, encryption or idempotency controls");
+if (!agentSource.includes("this.commands.execute")) failures.push("AgentApplicationService is missing the durable command idempotency boundary");
 for (const match of commandSource.matchAll(/this\.(?:run|authorize)\(context,\s*"([^"]+)"/g)) {
   const operation = match[1] ?? "";
   if (operation && !applicationPolicyFor(operation)) failures.push(`DomainCommandService operation ${operation} has no application PDP rule`);

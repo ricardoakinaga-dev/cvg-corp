@@ -55,6 +55,7 @@ Este diretório contém a documentação da arquitetura-alvo de um programa de g
 35. [`production-reality-audit-vNext.md`](production-reality-audit-vNext.md) — fotografia corrente, blockers e limites de produção.
 36. [`deepseek-integration-vNext.md`](deepseek-integration-vNext.md), [`provider-integration-vNext.md`](provider-integration-vNext.md) — boundaries históricos de runtime e provider com fail-closed.
 37. [`observability-vNext.md`](observability-vNext.md), [`staging-vNext.md`](staging-vNext.md), [`recovery-vNext.md`](recovery-vNext.md), [`performance-vNext.md`](performance-vNext.md) — evidência, execução e limites operacionais históricos.
+38. [`adr/019-universal-durable-command-idempotency.md`](adr/019-universal-durable-command-idempotency.md), [`verification-2026-09-10-durable-idempotency.md`](verification-2026-09-10-durable-idempotency.md) — fronteira de idempotência durável para comandos retryable e evidência desta lane.
 
 Os procedimentos operacionais estão em [`runbooks/`](runbooks/), incluindo deploy, rollback, backup/restore, incidentes de banco e segurança, indisponibilidade de provider/DeepSeek, rotação de credenciais, backlog do worker, quarentena e o break-glass ainda bloqueado. O SDK/exporter OTLP está conectado em API, worker e bridge; o stack declarado de observabilidade está em [`docker-compose.observability.yml`](../docker-compose.observability.yml) e permanece `NOT_RUN` fora da prova local do exporter.
 

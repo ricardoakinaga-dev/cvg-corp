@@ -66,7 +66,6 @@ import {
   DomainError,
   digest,
   hashPassword,
-  idempotent,
   idempotentAsync,
   now,
   publicUser,
@@ -92,6 +91,7 @@ import { PatientApplicationService, PostgresPatientRepository, StorePatientRepos
 import { createReadApplicationService } from "./application/read-services.ts";
 import { DomainCommandService } from "./application/domain-command-service.ts";
 import { ExportApplicationService, governedExportDigest } from "./application/export-service.ts";
+import { DurableIdempotencyService, commandInput } from "./application/idempotency-service.ts";
 
 const SESSION_COOKIE = "cvg_session";
 const CSRF_COOKIE = "cvg_csrf";
@@ -497,14 +497,17 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
   });
   const integrations = new IntegrationGateway(secretProvider);
   const secretProviderStatus: SecretProviderStatus = secretProvider?.status() ?? (config.demoMode ? "DEGRADED" : "UNAVAILABLE");
-  const agentApplication = new AgentApplicationService(store, agentRuntime);
+  const commandExecutor = new DurableIdempotencyService(store, persistence, ({ receiptId, error }) => {
+    telemetry.log({ timestamp: now(), level: "error", event: "idempotency.receipt.settlement.failed", correlationId: randomUUID(), actorId: null, metadata: { receiptId, error: error instanceof Error ? error.name : "unknown" } });
+  });
+  const agentApplication = new AgentApplicationService(store, agentRuntime, commandExecutor);
   const patientApplication = new PatientApplicationService(persistence ? new PostgresPatientRepository(persistence, store) : new StorePatientRepository(store));
   const appointmentApplication = new AppointmentApplicationService(persistence ? new PostgresAppointmentRepository(store) : new StoreAppointmentRepository(store));
   const clinicalSignApplication = new ClinicalSignApplicationService(persistence ? new PostgresClinicalSignRepository(store) : new StoreClinicalSignRepository(store));
   const encounterApplication = new EncounterApplicationService(persistence ? new PostgresEncounterRepository(store) : new StoreEncounterRepository(store));
   const readApplication = createReadApplicationService(store, persistence);
   const domainCommands = new DomainCommandService(store);
-  const exportApplication = new ExportApplicationService(store, persistence, secretProvider, config.recoveryEncryptionKeyRef);
+  const exportApplication = new ExportApplicationService(store, persistence, secretProvider, config.recoveryEncryptionKeyRef, commandExecutor);
   const app = Fastify({ logger: false, bodyLimit: 256 * 1024, requestIdHeader: "x-request-id", trustProxy: config.trustProxy });
   app.addHook("onClose", async () => { await agentRuntime.shutdown(); });
   app.addHook("onClose", async () => { await otelRuntime?.shutdown(); });
@@ -882,7 +885,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
       throw new DomainError("MFA_INVALID", "O fator MFA não pôde ser validado.", 401);
     }
     const key = requireIdempotencyKey(request);
-    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, sessionId: context.sessionId, operation: "identity.mfa.enroll", key, resourceId: user.id, unitId: context.unitId, workspaceId: context.workspaceId, body: { secretRef: input.secretRef, codeDigest: tokenDigest(input.code) } }, () => {
+    const result = await commandExecutor.execute(commandInput(context, "identity.mfa.enroll", key, user.id, { secretRef: input.secretRef, codeDigest: tokenDigest(input.code) }), () => {
       store.configureMfaFactor(user.id, input.secretRef);
       const sessionsRevoked = store.revokeAllSessions(user.id, session.id);
       session.mfaVerifiedAt = now();
@@ -903,7 +906,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
       throw new DomainError("AUTHENTICATION_FAILED", "A senha atual é inválida.", 401);
     }
     const key = requireIdempotencyKey(request);
-    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, sessionId: context.sessionId, operation: "identity.mfa.revoke", key, resourceId: user.id, unitId: context.unitId, workspaceId: context.workspaceId, body: { currentPasswordDigest: tokenDigest(input.currentPassword) } }, () => {
+    const result = await commandExecutor.execute(commandInput(context, "identity.mfa.revoke", key, user.id, { currentPasswordDigest: tokenDigest(input.currentPassword) }), () => {
       const hadFactor = user.security.mfaSecretRef !== null;
       store.revokeMfaFactor(user.id);
       const sessionsRevoked = store.revokeAllSessions(user.id);
@@ -981,7 +984,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const key = requireIdempotencyKey(request);
     const target = store.sessions.get(sessionId);
     if (!target || target.userId !== session.userId) throw new DomainError("NOT_FOUND", "Sessão não encontrada.", 404);
-    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, sessionId: context.sessionId, operation: "identity.sessions.revoke", key, resourceId: target.id, unitId: context.unitId, workspaceId: context.workspaceId, body: { sessionId: target.id } }, () => {
+    const result = await commandExecutor.execute(commandInput(context, "identity.sessions.revoke", key, target.id, { sessionId: target.id }), () => {
       store.revokeSession(target);
       return { revoked: true, sessionId: target.id, current: target.id === session.id };
     });
@@ -1052,7 +1055,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const { context } = requestContext(request, "role.grant", null, null, false, true, input.userId);
     const key = header(request, "idempotency-key");
     if (!key) throw new DomainError("INVALID_INPUT", "Idempotency-Key é obrigatório.", 400);
-    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, sessionId: context.sessionId, operation: "role.grant", key, resourceId: input.userId, unitId: input.unitId, workspaceId: input.workspaceId, body: input }, () => domainCommands.grantRole(context, input));
+    const result = await commandExecutor.execute(commandInput(context, "role.grant", key, input.userId, input, { unitId: input.unitId, workspaceId: input.workspaceId }), () => domainCommands.grantRole(context, input));
     audit(context, "role.grant", "RoleAssignment", result.value.id, "ALLOWED", null, { replay: result.replayed });
     return response(reply, success({ assignment: result.value, receiptId: result.receipt.id, revision: store.organizations.get(context.organizationId)?.authorizationRevision.toString() ?? "0" }, context.correlationId), 201);
   });
@@ -1067,7 +1070,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const { context } = requestContext(request, "role.revoke", null, null, false, true, parsedId);
     const key = header(request, "idempotency-key");
     if (!key || !expectedRevision) throw new DomainError("INVALID_INPUT", "Idempotency-Key e expectedRevision são obrigatórios.", 400);
-    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, sessionId: context.sessionId, operation: "role.revoke", key, resourceId: parsedId, unitId: null, workspaceId: null, body: { assignmentId: parsedId, expectedRevision } }, () => domainCommands.revokeRole(context, parsedId, expectedRevision));
+    const result = await commandExecutor.execute(commandInput(context, "role.revoke", key, parsedId, { assignmentId: parsedId, expectedRevision }), () => domainCommands.revokeRole(context, parsedId, expectedRevision));
     audit(context, "role.revoke", "RoleAssignment", parsedId, "ALLOWED");
     return response(reply, success({ assignment: result.value, receiptId: result.receipt.id, revision: store.organizations.get(context.organizationId)?.authorizationRevision.toString() ?? "0" }, context.correlationId));
   });
@@ -1095,7 +1098,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const { context } = requestContext(request, "guardians.create");
     const input = parse(z.object({ displayName: z.string().trim().min(2).max(120), phone: z.string().trim().min(8).max(40), email: z.string().email().nullable().default(null) }).strict(), request.body);
     const key = requireIdempotencyKey(request);
-    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, sessionId: context.sessionId, operation: "guardians.create", key, resourceId: null, unitId: context.unitId, workspaceId: context.workspaceId, body: input }, () => domainCommands.createGuardian(context, input));
+    const result = await commandExecutor.execute(commandInput(context, "guardians.create", key, null, input), () => domainCommands.createGuardian(context, input));
     audit(context, "guardians.create", "Guardian", result.value.id, "ALLOWED", null, { replay: result.replayed });
     return response(reply, success({ guardian: publicGuardian(result.value), receiptId: result.receipt.id }, context.correlationId), 201);
   });
@@ -1123,7 +1126,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const input = parse(patientInputSchema, request.body);
     const { context } = requestContext(request, "patients.create", null, null, false, true, input.guardianId);
     const key = requireIdempotencyKey(request);
-    const result = await idempotentAsync(store, { organizationId: context.organizationId, actorId: context.actorId, sessionId: context.sessionId, operation: "patients.create", key, resourceId: input.guardianId, unitId: context.unitId, workspaceId: context.workspaceId, body: input }, () => patientApplication.create(context, input));
+    const result = await commandExecutor.execute(commandInput(context, "patients.create", key, input.guardianId, input), () => patientApplication.create(context, input));
     audit(context, "patients.create", "AnimalPatient", result.value.id, "ALLOWED");
     if (persistence && !result.replayed) {
       reply.code(201);
@@ -1138,7 +1141,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const { context } = requestContext(request, "patients.disable", patientId);
     const key = header(request, "idempotency-key");
     if (!key) throw new DomainError("INVALID_INPUT", "Idempotency-Key é obrigatório.", 400);
-    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, sessionId: context.sessionId, operation: "patients.disable", key, resourceId: patientId, unitId: context.unitId, workspaceId: context.workspaceId, body: { patientId } }, () => domainCommands.disablePatient(context, patientId));
+    const result = await commandExecutor.execute(commandInput(context, "patients.disable", key, patientId, { patientId }), () => domainCommands.disablePatient(context, patientId));
     audit(context, "patients.disable", "AnimalPatient", patientId, "ALLOWED", "registro preservado; apenas status alterado");
     return response(reply, success({ patient: publicPatient(store, result.value.id, context.actorRoleSnapshot), receiptId: result.receipt.id }, context.correlationId));
   });
@@ -1149,7 +1152,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const { context } = requestContext(request, "patients.merge", input.sourcePatientId);
     const key = header(request, "idempotency-key");
     if (!key) throw new DomainError("INVALID_INPUT", "Idempotency-Key é obrigatório.", 400);
-    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, sessionId: context.sessionId, operation: "patients.merge", key, resourceId: input.sourcePatientId, unitId: context.unitId, workspaceId: context.workspaceId, body: input }, () => domainCommands.mergePatients(context, input));
+    const result = await commandExecutor.execute(commandInput(context, "patients.merge", key, input.sourcePatientId, input), () => domainCommands.mergePatients(context, input));
     audit(context, "patients.merge", "AnimalPatient", input.sourcePatientId, "ALLOWED", "confirmação humana explícita; histórico preservado", { targetPatientId: input.targetPatientId });
     return response(reply, success({ targetPatient: publicPatient(store, result.value.id, context.actorRoleSnapshot), sourcePatientId: input.sourcePatientId, receiptId: result.receipt.id }, context.correlationId), 202);
   });
@@ -1169,7 +1172,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const { context } = requestContext(request, "appointments.create", input.patientId, null, false, true, input.patientId);
     const key = header(request, "idempotency-key");
     if (!key) throw new DomainError("INVALID_INPUT", "Idempotency-Key é obrigatório.", 400);
-    const result = await idempotentAsync(store, { organizationId: context.organizationId, actorId: context.actorId, sessionId: context.sessionId, operation: "appointments.create", key, resourceId: input.patientId, unitId: context.unitId, workspaceId: context.workspaceId, body: input }, () => appointmentApplication.create(context, input));
+    const result = await commandExecutor.execute(commandInput(context, "appointments.create", key, input.patientId, input), () => appointmentApplication.create(context, input));
     audit(context, "appointments.create", "Appointment", result.value.id, "ALLOWED");
     if (persistence && !result.replayed) {
       reply.code(201);
@@ -1191,7 +1194,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const { context } = requestContext(request, "queue.check-in", null, null, false, true, appointmentId);
     const key = header(request, "idempotency-key");
     if (!key) throw new DomainError("INVALID_INPUT", "Idempotency-Key é obrigatório.", 400);
-    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, sessionId: context.sessionId, operation: "queue.check-in", key, resourceId: appointmentId, unitId: context.unitId, workspaceId: context.workspaceId, body: { appointmentId } }, () => domainCommands.checkInAppointment(context, appointmentId));
+    const result = await commandExecutor.execute(commandInput(context, "queue.check-in", key, appointmentId, { appointmentId }), () => domainCommands.checkInAppointment(context, appointmentId));
     audit(context, "queue.check-in", "QueueEntry", result.value.id, "ALLOWED");
     return response(reply, success({ queueEntry: result.value, receiptId: result.receipt.id }, context.correlationId), 201);
   });
@@ -1208,7 +1211,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const input = parse(encounterInputSchema, request.body);
     const { context } = requestContext(request, "encounters.create", input.patientId);
     const key = requireIdempotencyKey(request);
-    const result = await idempotentAsync(store, { organizationId: context.organizationId, actorId: context.actorId, sessionId: context.sessionId, operation: "encounters.create", key, resourceId: input.patientId, unitId: context.unitId, workspaceId: context.workspaceId, body: input }, () => encounterApplication.create(context, input));
+    const result = await commandExecutor.execute(commandInput(context, "encounters.create", key, input.patientId, input), () => encounterApplication.create(context, input));
     audit(context, "encounters.create", "Encounter", result.value.id, "ALLOWED");
     if (persistence && !result.replayed) {
       reply.code(201);
@@ -1229,7 +1232,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const input = parse(clinicalDocumentInputSchema, request.body);
     const { context } = requestContext(request, "clinical.write", null, input.encounterId, false, true, input.encounterId);
     const key = requireIdempotencyKey(request);
-    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, sessionId: context.sessionId, operation: "clinical.write", key, resourceId: input.encounterId, unitId: context.unitId, workspaceId: context.workspaceId, body: input }, () => domainCommands.createClinicalDocument(context, input));
+    const result = await commandExecutor.execute(commandInput(context, "clinical.write", key, input.encounterId, input), () => domainCommands.createClinicalDocument(context, input));
     audit(context, "clinical.write", "ClinicalDocument", result.value.id, "ALLOWED");
     return response(reply, success({ document: { ...result.value, content: undefined }, receiptId: result.receipt.id }, context.correlationId), 201);
   });
@@ -1281,7 +1284,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const { context } = requestContext(request, "clinical.addendum", null, null, false, false, documentId);
     const key = header(request, "idempotency-key");
     if (!key) throw new DomainError("INVALID_INPUT", "Idempotency-Key é obrigatório.", 400);
-    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, sessionId: context.sessionId, operation: "clinical.addendum", key, resourceId: documentId, unitId: context.unitId, workspaceId: context.workspaceId, body: input }, () => domainCommands.addClinicalAddendum(context, documentId, input.reason, input.content));
+    const result = await commandExecutor.execute(commandInput(context, "clinical.addendum", key, documentId, input), () => domainCommands.addClinicalAddendum(context, documentId, input.reason, input.content));
     audit(context, "clinical.addendum", "ClinicalAddendum", result.value.id, "ALLOWED", "documento assinado permanece imutável");
     return response(reply, success({ addendum: result.value, receiptId: result.receipt.id }, context.correlationId), 201);
   });
@@ -1298,7 +1301,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const input = parse(diagnosticRequestInputSchema, request.body);
     const { context } = requestContext(request, "diagnostics.create", input.patientId, input.encounterId);
     const key = requireIdempotencyKey(request);
-    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, sessionId: context.sessionId, operation: "diagnostics.create", key, resourceId: input.patientId, unitId: context.unitId, workspaceId: context.workspaceId, body: input }, () => domainCommands.createDiagnosticRequest(context, input));
+    const result = await commandExecutor.execute(commandInput(context, "diagnostics.create", key, input.patientId, input), () => domainCommands.createDiagnosticRequest(context, input));
     audit(context, "diagnostics.create", "DiagnosticRequest", result.value.id, "ALLOWED");
     return response(reply, success({ request: result.value, receiptId: result.receipt.id }, context.correlationId), 201);
   });
@@ -1317,7 +1320,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const { context } = requestContext(request, "diagnostics.specimen", null, null, false, false, requestId);
     const key = header(request, "idempotency-key");
     if (!key) throw new DomainError("INVALID_INPUT", "Idempotency-Key é obrigatório.", 400);
-    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, sessionId: context.sessionId, operation: "diagnostics.specimen", key, resourceId: requestId, unitId: context.unitId, workspaceId: context.workspaceId, body: input }, () => domainCommands.createSpecimen(context, requestId, input.label));
+    const result = await commandExecutor.execute(commandInput(context, "diagnostics.specimen", key, requestId, input), () => domainCommands.createSpecimen(context, requestId, input.label));
     audit(context, "diagnostics.specimen", "Specimen", result.value.id, "ALLOWED");
     return response(reply, success({ specimen: result.value, receiptId: result.receipt.id }, context.correlationId), 201);
   });
@@ -1327,7 +1330,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const input = parse(resultInputSchema, request.body);
     const { context } = requestContext(request, "diagnostics.result", null, null, false, false, input.requestId);
     const key = requireIdempotencyKey(request);
-    const idempotentResult = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, sessionId: context.sessionId, operation: "diagnostics.result", key, resourceId: input.requestId, unitId: context.unitId, workspaceId: context.workspaceId, body: input }, () => domainCommands.createResult(context, input));
+    const idempotentResult = await commandExecutor.execute(commandInput(context, "diagnostics.result", key, input.requestId, input), () => domainCommands.createResult(context, input));
     audit(context, "diagnostics.result", "DiagnosticResult", idempotentResult.value.id, "ALLOWED");
     return response(reply, success({ result: idempotentResult.value, receiptId: idempotentResult.receipt.id }, context.correlationId), 201);
   });
@@ -1352,7 +1355,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const { context } = requestContext(request, "stock.write", null, null, false, false, input.lotId);
     const key = header(request, "idempotency-key");
     if (!key) throw new DomainError("INVALID_INPUT", "Idempotency-Key é obrigatório.", 400);
-    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, sessionId: context.sessionId, operation: "stock.movement", key, resourceId: input.lotId, unitId: context.unitId, workspaceId: context.workspaceId, body: input }, () => domainCommands.createStockMovement(context, input));
+    const result = await commandExecutor.execute(commandInput(context, "stock.movement", key, input.lotId, input), () => domainCommands.createStockMovement(context, input));
     audit(context, "stock.write", "StockMovement", result.value.id, "ALLOWED");
     return response(reply, success({ movement: result.value, receiptId: result.receipt.id }, context.correlationId), 201);
   });
@@ -1377,7 +1380,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const { context } = requestContext(request, "hospitalization.create", input.patientId, input.encounterId);
     const key = header(request, "idempotency-key");
     if (!key) throw new DomainError("INVALID_INPUT", "Idempotency-Key é obrigatório.", 400);
-    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, sessionId: context.sessionId, operation: "hospitalization.create", key, resourceId: input.patientId, unitId: context.unitId, workspaceId: context.workspaceId, body: input }, () => domainCommands.createHospitalEpisode(context, input));
+    const result = await commandExecutor.execute(commandInput(context, "hospitalization.create", key, input.patientId, input), () => domainCommands.createHospitalEpisode(context, input));
     audit(context, "hospitalization.create", "HospitalEpisode", result.value.id, "ALLOWED");
     return response(reply, success({ episode: result.value, receiptId: result.receipt.id }, context.correlationId), 201);
   });
@@ -1395,7 +1398,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const { context } = requestContext(request, "medication.prescribe", input.patientId, input.encounterId);
     const key = header(request, "idempotency-key");
     if (!key) throw new DomainError("INVALID_INPUT", "Idempotency-Key é obrigatório.", 400);
-    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, sessionId: context.sessionId, operation: "medication.prescribe", key, resourceId: input.patientId, unitId: context.unitId, workspaceId: context.workspaceId, body: input }, () => domainCommands.createMedicationOrder(context, input));
+    const result = await commandExecutor.execute(commandInput(context, "medication.prescribe", key, input.patientId, input), () => domainCommands.createMedicationOrder(context, input));
     audit(context, "medication.prescribe", "MedicationOrder", result.value.id, "ALLOWED");
     return response(reply, success({ order: result.value, receiptId: result.receipt.id }, context.correlationId), 201);
   });
@@ -1407,7 +1410,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const { context } = requestContext(request, "medication.dispense", null, null, false, false, medicationOrderId);
     const key = header(request, "idempotency-key");
     if (!key) throw new DomainError("INVALID_INPUT", "Idempotency-Key é obrigatório.", 400);
-    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, sessionId: context.sessionId, operation: "medication.dispense", key, resourceId: medicationOrderId, unitId: context.unitId, workspaceId: context.workspaceId, body: input }, () => domainCommands.dispenseMedication(context, medicationOrderId, input.lotId, input.quantity));
+    const result = await commandExecutor.execute(commandInput(context, "medication.dispense", key, medicationOrderId, input), () => domainCommands.dispenseMedication(context, medicationOrderId, input.lotId, input.quantity));
     audit(context, "medication.dispense", "Dispensation", result.value.id, "ALLOWED");
     return response(reply, success({ dispensation: result.value, receiptId: result.receipt.id }, context.correlationId), 201);
   });
@@ -1419,7 +1422,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const { context } = requestContext(request, "medication.administer", null, null, false, false, medicationOrderId);
     const key = header(request, "idempotency-key");
     if (!key) throw new DomainError("INVALID_INPUT", "Idempotency-Key é obrigatório.", 400);
-    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, sessionId: context.sessionId, operation: "medication.administer", key, resourceId: medicationOrderId, unitId: context.unitId, workspaceId: context.workspaceId, body: input }, () => domainCommands.administerMedication(context, medicationOrderId, input.status, input.note));
+    const result = await commandExecutor.execute(commandInput(context, "medication.administer", key, medicationOrderId, input), () => domainCommands.administerMedication(context, medicationOrderId, input.status, input.note));
     audit(context, "medication.administer", "AdministrationOccurrence", result.value.id, "ALLOWED");
     return response(reply, success({ occurrence: result.value, receiptId: result.receipt.id }, context.correlationId), 201);
   });
@@ -1436,7 +1439,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const input = parse(chargeInputSchema, request.body);
     const { context } = requestContext(request, "finance.charge", input.patientId, null, false, true, input.patientId);
     const key = requireIdempotencyKey(request);
-    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, sessionId: context.sessionId, operation: "finance.charge", key, resourceId: input.patientId, unitId: context.unitId, workspaceId: context.workspaceId, body: input }, () => domainCommands.createCharge(context, input));
+    const result = await commandExecutor.execute(commandInput(context, "finance.charge", key, input.patientId, input), () => domainCommands.createCharge(context, input));
     audit(context, "finance.charge", "Charge", result.value.id, "ALLOWED");
     return response(reply, success({ charge: result.value, receiptId: result.receipt.id }, context.correlationId), 201);
   });
@@ -1447,7 +1450,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const { context } = requestContext(request, "finance.payment", null, null, false, true, input.chargeId);
     const key = header(request, "idempotency-key");
     if (!key) throw new DomainError("INVALID_INPUT", "Idempotency-Key é obrigatório.", 400);
-    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, sessionId: context.sessionId, operation: "finance.payment", key, resourceId: input.chargeId, unitId: context.unitId, workspaceId: context.workspaceId, body: input }, () => domainCommands.createPayment(context, input));
+    const result = await commandExecutor.execute(commandInput(context, "finance.payment", key, input.chargeId, input), () => domainCommands.createPayment(context, input));
     audit(context, "finance.payment", "Payment", result.value.id, "ALLOWED");
     return response(reply, success({ payment: result.value, receiptId: result.receipt.id }, context.correlationId), 201);
   });
@@ -1472,7 +1475,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const { context } = requestContext(request, "finance.refund", null, null, false, false, input.paymentId);
     const key = header(request, "idempotency-key");
     if (!key) throw new DomainError("INVALID_INPUT", "Idempotency-Key é obrigatório.", 400);
-    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, sessionId: context.sessionId, operation: "finance.refund", key, resourceId: input.paymentId, unitId: context.unitId, workspaceId: context.workspaceId, body: input }, () => domainCommands.requestRefund(context, input.paymentId, input.reason));
+    const result = await commandExecutor.execute(commandInput(context, "finance.refund", key, input.paymentId, input), () => domainCommands.requestRefund(context, input.paymentId, input.reason));
     audit(context, "finance.refund", "Payment", input.paymentId, "ALLOWED", "ledger compensatório criado");
     return response(reply, success({ payment: result.value, receiptId: result.receipt.id }, context.correlationId), 202);
   });
@@ -1489,7 +1492,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const input = parse(z.object({ patientId: idSchema.nullable().default(null), channel: z.enum(["SMS", "EMAIL", "WHATSAPP"]), recipient: z.string().trim().min(5).max(200), template: z.string().trim().min(2).max(120), body: z.string().trim().min(1).max(4_000) }).strict(), request.body);
     const { context } = requestContext(request, "communication.stage", input.patientId, null, false, true, input.patientId);
     const key = requireIdempotencyKey(request);
-    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, sessionId: context.sessionId, operation: "communication.stage", key, resourceId: input.patientId, unitId: context.unitId, workspaceId: context.workspaceId, body: input }, () => domainCommands.createMessage(context, input));
+    const result = await commandExecutor.execute(commandInput(context, "communication.stage", key, input.patientId, input), () => domainCommands.createMessage(context, input));
     audit(context, "communication.stage", "CommunicationMessage", result.value.id, "ALLOWED");
     return response(reply, success({ message: result.value, receiptId: result.receipt.id }, context.correlationId), 201);
   });
@@ -1501,7 +1504,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const input = parse(communicationApprovalInputSchema, request.body);
     if (input.decision === "approved" && !persistence) throw new DomainError("CAPABILITY_DISABLED", "A aprovação que libera egress exige persistência durável; nenhum envio foi liberado.", 503);
     const key = requireIdempotencyKey(request);
-    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, sessionId: context.sessionId, operation: "communication.approve", key, resourceId: messageId, unitId: context.unitId, workspaceId: context.workspaceId, body: { messageId, ...input } }, () => domainCommands.decideMessage(context, messageId, input.decision, input.reason));
+    const result = await commandExecutor.execute(commandInput(context, "communication.approve", key, messageId, { messageId, ...input }), () => domainCommands.decideMessage(context, messageId, input.decision, input.reason));
     if (input.decision === "approved" && !result.replayed) {
       durableOutboxes.set(request, [{ id: id(randomUUID()), organizationId: context.organizationId, eventType: "communication.message.approved", aggregateId: messageId, payload: { source: "CVG_COMMUNICATION_APPROVAL", messageId, channel: result.value.channel, recipient: result.value.recipient, template: result.value.template, body: result.value.body } }]);
     }
@@ -1522,7 +1525,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const input = parse(knowledgeDocumentInputSchema, request.body);
     const key = header(request, "idempotency-key");
     if (!key) throw new DomainError("INVALID_INPUT", "Idempotency-Key é obrigatório.", 400);
-    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, sessionId: context.sessionId, operation: "knowledge.write", key, resourceId: null, unitId: context.unitId, workspaceId: context.workspaceId, body: input }, () => domainCommands.createKnowledgeDocument(context, input));
+    const result = await commandExecutor.execute(commandInput(context, "knowledge.write", key, null, input), () => domainCommands.createKnowledgeDocument(context, input));
     audit(context, "knowledge.write", "KnowledgeDocument", result.value.id, "ALLOWED", "documento aguardando validação humana");
     return response(reply, success({ document: { ...result.value, content: undefined }, receiptId: result.receipt.id }, context.correlationId), 201);
   });

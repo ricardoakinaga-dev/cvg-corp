@@ -32,6 +32,7 @@ const requiredFiles = [
   "docker/worker.ts",
   "apps/api/src/app.ts",
   "apps/api/src/application/export-service.ts",
+  "apps/api/src/application/idempotency-service.ts",
   "apps/api/src/server.ts",
   "apps/worker/src/main.ts",
   "apps/worker/src/worker.ts",
@@ -237,7 +238,10 @@ function inspectStaticContracts(): void {
   requireText("packages/persistence/src/index.ts", "recordWorkerHeartbeat");
   requireText("apps/worker/src/worker.ts", "defaultDurableJobRunner");
   requireText("apps/api/src/application/export-service.ts", "encryptRecoveryBundle");
-  requireText("apps/api/src/application/export-service.ts", "idempotentAsync");
+  requireText("apps/api/src/application/export-service.ts", "this.commands.execute");
+  requireText("apps/api/src/application/idempotency-service.ts", "claimCommandReceipt");
+  requireText("apps/api/src/application/idempotency-service.ts", "settleCommandReceipt");
+  requireText("apps/api/src/app.ts", "new DurableIdempotencyService");
   requireText(".gauntlet/bar-v3.json", "V3-AAA-001");
   requireText(".github/workflows/ci.yml", "npm ci --ignore-scripts");
   requireText(".github/workflows/ci.yml", "npx playwright install --with-deps chromium");

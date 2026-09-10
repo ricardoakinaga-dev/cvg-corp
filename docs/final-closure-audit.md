@@ -473,3 +473,25 @@ staging/TLS operation, real provider/DeepSeek/secret authority, operational
 Collector/SLO evidence, production-like load/chaos/recovery, the full
 browser/assistive-technology matrix, or human AAA acceptance. The global
 verdict remains `FAIL_WITH_LIMITATIONS` / `AAA_NOT_PROVEN`.
+
+## Checkpoint atual — idempotência durável de comandos retryable
+
+`DurableIdempotencyService` agora é injetado no runtime e compõe as mutações
+retryable da API, os quatro comandos de IA e a exportação governada. O claim
+PostgreSQL (`IN_FLIGHT`) acontece antes do callback; replay, conflito de corpo,
+claim concorrente e settlement de falha têm estados explícitos. A rota
+`clinical.sign` permanece especializada para validar replay e projetar o CAS
+clínico, mas usa a mesma autoridade de recibo. Login/MFA/recuperação/emissão de
+sessão e webhooks não foram forçados a uma semântica genérica incompatível
+com segredos ou identidade de evento.
+
+Evidência local desta lane: `npm test` 153 (`152 pass`, `1 skip`),
+`test:database` 35/35, `test:fault` 17/17, E2E 64/4 skips, typecheck, build,
+lint, static 52/130, PDP 68/70/6/12, `verify:production` estrutural,
+provider loopback, contraste, tokens, licenças e diff check passaram.
+As tentativas de crítica fresh foram encerradas como `NOT_COMPLETED`, sem
+aprovação. O claim local ainda usa fake persistence nos testes da nova classe;
+concorrência PostgreSQL real, crash/restart, staging, provider/DeepSeek,
+segredos, Collector/SLO, carga/chaos/recovery e aceite humano permanecem
+ausentes. O veredito global não muda: `FAIL_WITH_LIMITATIONS` /
+`AAA_NOT_PROVEN`.

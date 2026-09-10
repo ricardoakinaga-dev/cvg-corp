@@ -1,6 +1,6 @@
 # Cobertura universal de PDP e idempotência
 
-Status: `PARTIAL/LOCAL-GUARDED` para os boundaries implementados; cobertura universal em todos os comandos, tools e repositories ainda `NOT_PROVEN`.
+Status: `PARTIAL/LOCAL-GUARDED` para os boundaries implementados; a admissão durável dos comandos retryable cobertos está composta, mas a cobertura universal distribuída em todos os comandos, tools e repositories ainda `NOT_PROVEN`.
 
 ## Controles já presentes
 
@@ -10,6 +10,7 @@ Status: `PARTIAL/LOCAL-GUARDED` para os boundaries implementados; cobertura univ
 - escopo persistido e RLS/FORCE RLS como defesa de profundidade;
 - digest/idempotency key, ledger durável, outbox, inbox, efeito externo e fencing em PostgreSQL;
 - `AgentApplicationService`, repositories de leitura, `DomainCommandService` e `ExportApplicationService` revalidam o application PDP; exportações usam chave resolvida por referência, AES-256-GCM e manifesto de recuperação;
+- `DurableIdempotencyService` centraliza claim/replay/conflict/settlement para as mutações retryable da API, os comandos de IA e `ops.export`; `clinical.sign` mantém sua variante especializada com a mesma autoridade durável;
 - `verify:pdp` compara o catálogo de rotas protegidas, operações dinâmicas de IA, capabilities server-side, worker com fence e recovery/export boundary;
 - aprovação independente e quarentena para escrita de alto impacto.
 
@@ -31,3 +32,17 @@ Status: `PARTIAL/LOCAL-GUARDED` para os boundaries implementados; cobertura univ
 O próximo fechamento exige uma matriz route → operation → capability → PDP → repository → transaction → audit para 100% dos repositories/jobs ainda não cobertos, além de testes negativos entre organizações, unidades, workspaces, sessões, alvos e replay após restart. A existência de uma regra de PDP ou de RLS não é aceita como prova de cobertura de uma rota que não a invoca.
 
 O guard executável atual é `npm run verify:pdp`: ele encontrou 68 operações vinculadas, 70 regras de aplicação, 6 policies canônicas de tools e os 12 domínios críticos. O guard compara o catálogo de rotas protegidas e de tools com a policy canônica — risco, capability, approval, roles, classes, escopo, recurso, idempotência, auditoria e egress — e exige controles de worker fenced e recovery/export. Isso prova o inventário e a presença da policy nos boundaries observados; ainda não prova concorrência PostgreSQL real em todos os repositories/jobs, nem substitui um turno DeepSeek real.
+
+## Atualização — 2026-09-10 — boundary durável de comandos
+
+`apps/api/src/application/idempotency-service.ts` foi conectado como limite
+único do runtime. Em PostgreSQL, a chave é admitida como `IN_FLIGHT` antes do
+callback por `claimCommandReceipt`; replay confirmado não chama o trabalho,
+corpo divergente retorna conflito, claim concorrente retorna
+`OUTCOME_UNKNOWN` e falha pré-commit é assentada. O teste de integração de
+encounter observou dois claims para a mesma chave e apenas um DML autoritativo.
+
+Isso reduz a lacuna de idempotência local, mas não prova concorrência
+multi-processo em PostgreSQL, restart/crash recovery, exactly-once de provider,
+staging ou AAA. Emissão/revogação de credenciais e webhooks permanecem com
+semânticas específicas, conforme ADR 019.

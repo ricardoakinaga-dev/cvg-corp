@@ -747,6 +747,7 @@ test("PostgreSQL encounter creation commits its normalized source row before the
     const replay = await runtime.app.inject({ method: "POST", url: "/api/v1/encounters", headers, payload });
     assert.equal(replay.statusCode, 201, replay.body);
     assert.equal(fake.statements.filter((statement) => statement.startsWith("insert into encounters") && statement.includes("returning id::text")).length, 1);
+    assert.equal(fake.statements.filter((statement) => statement.startsWith("insert into command_receipts") && statement.includes("on conflict (idempotency_lookup)")).length, 2);
   } finally {
     await runtime.app.close();
   }

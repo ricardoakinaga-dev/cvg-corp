@@ -641,3 +641,26 @@ staging autorizado, provider/DeepSeek/segredos, Collector/SLO operacional,
 carga/chaos/recovery, matriz completa de browser/assistive tech/zoom ou aceite
 humano. O veredito global continua `FAIL_WITH_LIMITATIONS` /
 `AAA_NOT_PROVEN`.
+
+## Durable command idempotency — 2026-09-10 11:11
+
+A lacuna local reproduzível de idempotência foi delimitada como uma lane
+backend: `DurableIdempotencyService` centraliza claim/replay/conflict/settlement
+para mutações retryable, comandos de IA e exportação governada. O runtime
+injeta a mesma instância; `clinical.sign` usa a variante especializada por
+causa do CAS normalizado e da validação do resultado de replay. Emissão de
+credenciais e webhooks não foram forçados a uma semântica genérica de replay.
+
+Foram atualizados os guardas static/PDP/produção e adicionados testes de
+claim-before-work, replay sem callback, claim concorrente, conflito de corpo,
+settlement e replay HTTP com dois claims e um DML. A regressão local passou
+`npm test` 153 (152/1 skip), database 35/35, fault 17/17, E2E 64/4 skips,
+typecheck/build/lint/static/PDP/produção estrutural e diff check. O provider
+loopback passou; `verify:triplo-aaa` permanece `AAA_NOT_PROVEN`, staging e
+DeepSeek permanecem bloqueados. As duas tentativas de crítica fresh foram
+encerradas como `NOT_COMPLETED` sem aprovação; o sentinel foi preservado.
+
+O próximo passo é integrar a lane e observar o CI no SHA exato, sem alterar o
+veredito global `FAIL_WITH_LIMITATIONS` / `AAA_NOT_PROVEN`. Concorrência
+PostgreSQL real, crash/restart, provider/DeepSeek/segredos, staging,
+Collector/SLO, carga/chaos/recovery e aceite humano continuam fora da prova.

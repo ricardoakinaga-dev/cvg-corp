@@ -1,8 +1,9 @@
 import { enforceApplicationPolicy } from "@cvg/agent-policy";
 import type { CvgContext, GovernedExportInput, OpaqueId } from "@cvg/contracts";
-import { DomainError, digest, idempotentAsync, makeId, now, type CvgStore } from "@cvg/domain";
+import { DomainError, digest, makeId, now, type CvgStore } from "@cvg/domain";
 import { encryptRecoveryBundle, type EncryptedRecoveryBundle, type PostgresPersistence } from "@cvg/persistence";
 import type { SecretProvider } from "@cvg/integrations";
+import { DurableIdempotencyService, type IdempotentCommandResult } from "./idempotency-service.ts";
 
 export interface GovernedExportResult {
   exportId: OpaqueId;
@@ -31,13 +32,18 @@ export class ExportApplicationService {
     private readonly store: CvgStore,
     private readonly persistence: PostgresPersistence | null,
     private readonly secretProvider: SecretProvider | null,
-    private readonly keyRef: string | null
-  ) {}
+    private readonly keyRef: string | null,
+    commands?: DurableIdempotencyService
+  ) {
+    this.commands = commands ?? new DurableIdempotencyService(store, null);
+  }
 
-  async create(context: CvgContext, input: GovernedExportInput, idempotencyKey: string): Promise<{ receipt: Awaited<ReturnType<typeof idempotentAsync<GovernedExportResult>>>["receipt"]; value: GovernedExportResult; replayed: boolean }> {
+  private readonly commands: DurableIdempotencyService;
+
+  async create(context: CvgContext, input: GovernedExportInput, idempotencyKey: string): Promise<IdempotentCommandResult<GovernedExportResult>> {
     this.store.validateContext(context);
     enforceApplicationPolicy(context, "ops.export", { dataClass: "D4" });
-    return idempotentAsync(this.store, {
+    return this.commands.execute({
       organizationId: context.organizationId,
       actorId: context.actorId,
       sessionId: context.sessionId,

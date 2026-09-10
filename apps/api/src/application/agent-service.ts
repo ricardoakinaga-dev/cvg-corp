@@ -1,39 +1,44 @@
 import type { AiApproval, AiTurnInput, AiTurnProvenance, AiTurnUsage, CvgContext, OpaqueId } from "@cvg/contracts";
-import { digest, idempotentAsync, makeId, type CvgStore, type IdempotencyInput } from "@cvg/domain";
+import { digest, makeId, type CvgStore, type IdempotencyInput } from "@cvg/domain";
 import type { AgentDraftPromotion, AgentReplayResult, AgentRuntime, AgentRuntimeHealth, AgentTurnResult } from "@cvg/agent-runtime";
 import { DomainError } from "@cvg/domain";
 import { enforceApplicationPolicy } from "@cvg/agent-policy";
+import { DurableIdempotencyService, type IdempotentCommandResult } from "./idempotency-service.ts";
 
 /** Application boundary for AI commands: context validation, idempotency and runtime delegation live here. */
 export class AgentApplicationService {
-  constructor(private readonly store: CvgStore, private readonly runtime: AgentRuntime) {}
+  private readonly commands: DurableIdempotencyService;
+
+  constructor(private readonly store: CvgStore, private readonly runtime: AgentRuntime, commands?: DurableIdempotencyService) {
+    this.commands = commands ?? new DurableIdempotencyService(store, null);
+  }
 
   health(): Promise<AgentRuntimeHealth> {
     return this.runtime.health();
   }
 
-  async executeTurn(context: CvgContext, input: AiTurnInput): Promise<{ receipt: Awaited<ReturnType<typeof idempotentAsync<AgentTurnResult>>>["receipt"]; value: AgentTurnResult; replayed: boolean }> {
+  async executeTurn(context: CvgContext, input: AiTurnInput): Promise<IdempotentCommandResult<AgentTurnResult>> {
     this.store.validateContext(context);
     enforceApplicationPolicy(context, `ai.turn.${input.purpose}`, { resourceId: input.resourceId ?? input.encounterId ?? input.patientId });
-    return idempotentAsync(this.store, this.command(context, "ai.turn", input.idempotencyKey, input.sessionId, input), async () => this.persistRuntimeResult(context, await this.runtime.executeTurn(context, input, input.approvalId)));
+    return this.commands.execute(this.command(context, "ai.turn", input.idempotencyKey, input.sessionId, input), async () => this.persistRuntimeResult(context, await this.runtime.executeTurn(context, input, input.approvalId)));
   }
 
-  async approve(context: CvgContext, approvalId: OpaqueId, decision: "allowed-once" | "rejected", reason: string | null, idempotencyKey: string): Promise<{ receipt: Awaited<ReturnType<typeof idempotentAsync<AiApproval>>>["receipt"]; value: AiApproval; replayed: boolean }> {
+  async approve(context: CvgContext, approvalId: OpaqueId, decision: "allowed-once" | "rejected", reason: string | null, idempotencyKey: string): Promise<IdempotentCommandResult<AiApproval>> {
     this.store.validateContext(context);
     enforceApplicationPolicy(context, "ai.approval", { resourceId: approvalId });
-    return idempotentAsync(this.store, this.command(context, "ai.approval", idempotencyKey, approvalId, { approvalId, decision, reason }), () => this.runtime.approve(context, approvalId, decision, reason));
+    return this.commands.execute(this.command(context, "ai.approval", idempotencyKey, approvalId, { approvalId, decision, reason }), () => this.runtime.approve(context, approvalId, decision, reason));
   }
 
-  async retryTurn(context: CvgContext, input: AiTurnInput, approvalId: OpaqueId): Promise<{ receipt: Awaited<ReturnType<typeof idempotentAsync<AgentTurnResult>>>["receipt"]; value: AgentTurnResult; replayed: boolean }> {
+  async retryTurn(context: CvgContext, input: AiTurnInput, approvalId: OpaqueId): Promise<IdempotentCommandResult<AgentTurnResult>> {
     this.store.validateContext(context);
     enforceApplicationPolicy(context, `ai.turn.${input.purpose}`, { resourceId: input.resourceId ?? input.encounterId ?? approvalId });
-    return idempotentAsync(this.store, this.command(context, "ai.approval.retry", input.idempotencyKey, approvalId, input), async () => this.persistRuntimeResult(context, await this.runtime.executeTurn(context, input, approvalId)));
+    return this.commands.execute(this.command(context, "ai.approval.retry", input.idempotencyKey, approvalId, input), async () => this.persistRuntimeResult(context, await this.runtime.executeTurn(context, input, approvalId)));
   }
 
-  async promoteDraft(context: CvgContext, draftId: OpaqueId, idempotencyKey: string): Promise<{ receipt: Awaited<ReturnType<typeof idempotentAsync<AgentDraftPromotion>>>["receipt"]; value: AgentDraftPromotion; replayed: boolean }> {
+  async promoteDraft(context: CvgContext, draftId: OpaqueId, idempotencyKey: string): Promise<IdempotentCommandResult<AgentDraftPromotion>> {
     this.store.validateContext(context);
     enforceApplicationPolicy(context, "ai.draft.promote", { resourceId: draftId });
-    return idempotentAsync(this.store, this.command(context, "ai.draft.promote", idempotencyKey, draftId, { draftId }), () => this.runtime.promoteDraft(context, draftId));
+    return this.commands.execute(this.command(context, "ai.draft.promote", idempotencyKey, draftId, { draftId }), () => this.runtime.promoteDraft(context, draftId));
   }
 
   replay(context: CvgContext, sessionId: OpaqueId): Promise<AgentReplayResult> {

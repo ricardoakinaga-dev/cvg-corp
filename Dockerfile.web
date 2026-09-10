@@ -5,6 +5,7 @@ FROM node:24.20.0-bookworm-slim AS build
 WORKDIR /app
 
 COPY package.json package-lock.json ./
+COPY tsconfig.json ./
 COPY apps ./apps
 COPY packages ./packages
 COPY db ./db

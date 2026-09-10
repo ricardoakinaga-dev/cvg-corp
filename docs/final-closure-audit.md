@@ -255,6 +255,12 @@ local correctness
 
 O último CI remoto observado antes deste patch é o run `34422825560` no SHA `0a345da99a771c440b8c36d619a5f81e43683ca5`: `Browser E2E` e migrations passaram, mas `PostgreSQL integration and RLS gate` falhou; a 028 foi aplicada no runner. O detalhe público é apenas exit 1 e os logs completos exigem autenticação. A correção local ainda precisa ser publicada e observada no SHA exato; não converter a prova efêmera em aprovação remota ou AAA.
 
+## Current checkpoint — 2026-09-09 22:20
+
+`VER-CVG-060` registra o run remoto `34424409313` no SHA `2f1840af472351daa007ec2f1799f51cef822b61`: o job principal passou Browser E2E, migrations, PostgreSQL/RLS, restore, release/Compose, performance, SBOM, artifacts e whitespace; o job separado `Build API and web images` falhou no passo `Build API image` e pulou a imagem web/scans. O detalhe do log exige autenticação. A inspeção do Dockerfile mostrou que `tsconfig.json` não era copiado para a imagem apesar de `npm run typecheck`/`npm run build` dependerem dele; a correção foi adicionada a `Dockerfile.api` e `Dockerfile.web`, ainda sem prova remota.
+
+`VER-CVG-061` confirma localmente após o ajuste dos Dockerfiles: `npm run typecheck`, `npm run build`, `npm run verify:static`, `npm run verify:production` e `git diff --check` passaram; Compose principal e observabilidade foram validados estruturalmente sem iniciar serviços. PostgreSQL/restore, suíte, PDP, provider, auditorias e demais evidências permanecem conforme `VER-CVG-058`/`VER-CVG-059`. O novo SHA precisa ser publicado e observado; o veredito segue `FAIL_WITH_LIMITATIONS`.
+
 ## 10. Próxima ação
 
 **Ação concluída localmente:** `CVG-FULL-STATE-OF-THE-ART:PROVIDER-CONTRACT-AND-UNIVERSAL-PDP`.

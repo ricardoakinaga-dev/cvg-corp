@@ -74,7 +74,7 @@ async function login(runtime: CvgServerRuntime): Promise<AuthenticatedContext> {
   };
 }
 
-async function exercise(runtime: CvgServerRuntime): Promise<{ receiptId: string; guardianId: string }> {
+async function exercise(runtime: CvgServerRuntime): Promise<{ receiptId: string; guardianId: string; auth: AuthenticatedContext }> {
   const auth = await login(runtime);
   const result = await runtime.app.inject({
     method: "POST",
@@ -93,11 +93,11 @@ async function exercise(runtime: CvgServerRuntime): Promise<{ receiptId: string;
   if (replay.statusCode !== 201) throw new Error(`idempotent replay failed with ${replay.statusCode}: ${replay.body}`);
   const replayBody = JSON.parse(replay.body) as { data: { guardian: { id: string }; receiptId: string } };
   if (replayBody.data.receiptId !== body.data.receiptId || replayBody.data.guardian.id !== body.data.guardian.id) throw new Error("idempotent replay returned a different receipt or resource");
-  return { receiptId: body.data.receiptId, guardianId: body.data.guardian.id };
+  return { receiptId: body.data.receiptId, guardianId: body.data.guardian.id, auth };
 }
 
 const first = await createRuntime({ config: runtimeConfig, persistence: newDurablePersistence(), providerQueryAdapter: syntheticProviderQueryAdapter });
-let firstResult: { receiptId: string; guardianId: string };
+let firstResult: { receiptId: string; guardianId: string; auth: AuthenticatedContext };
 try {
   firstResult = await exercise(first);
 } finally {
@@ -109,7 +109,7 @@ let counts: Record<string, number> | undefined;
 let catalogProtection = { domainTables: 0, protectedTables: 0, organizationForeignKeys: 0 };
 try {
   const auth = await login(second);
-  const restartedReplay = await second.app.inject({ method: "POST", url: "/api/v1/guardians", headers: { ...auth.headers, "idempotency-key": guardianIdempotencyKey }, payload: guardianPayload });
+  const restartedReplay = await second.app.inject({ method: "POST", url: "/api/v1/guardians", headers: { ...firstResult.auth.headers, "idempotency-key": guardianIdempotencyKey }, payload: guardianPayload });
   if (restartedReplay.statusCode !== 201) throw new Error(`restart idempotent replay failed with ${restartedReplay.statusCode}: ${restartedReplay.body}`);
   const restartedBody = JSON.parse(restartedReplay.body) as { data: { guardian: { id: string }; receiptId: string } };
   if (restartedBody.data.receiptId !== firstResult.receiptId || restartedBody.data.guardian.id !== firstResult.guardianId) throw new Error("restart idempotency returned a different receipt or resource");
@@ -314,13 +314,17 @@ try {
 
   const client = new pg.Client({ connectionString: databaseUrl });
   await client.connect();
+  const latestOrganization = second.store.bootstrapCredentials.organizationId;
+  await client.query("select set_config('cvg.organization_id', $1, false)", [latestOrganization]);
+  await client.query("select set_config('cvg.unit_id', $1, false)", [auth.unitId]);
+  await client.query("select set_config('cvg.workspace_id', $1, false)", [auth.workspaceId]);
+  const persistedOrganization = (await client.query<{ organization_id: string }>(
+    "select organization_id::text as organization_id from cvg_state_snapshots where organization_id = cvg_request_organization() order by revision desc limit 1"
+  )).rows[0]?.organization_id;
+  if (persistedOrganization !== latestOrganization) throw new Error("durable verification has no persisted organization in the authenticated RLS context");
   counts = (await client.query<{ snapshots: number; journal: number; audits: number; auditLedger: number; receipts: number; receiptLedger: number; guardians: number; outbox: number; usageLedger: number; inbox: number; externalEffects: number }>(
     "select (select count(*)::int from cvg_state_snapshots) as snapshots, (select count(*)::int from cvg_event_journal) as journal, (select count(*)::int from audit_records) as audits, (select count(*)::int from cvg_audit_ledger) as \"auditLedger\", (select count(*)::int from command_receipts) as receipts, (select count(*)::int from cvg_command_receipt_ledger) as \"receiptLedger\", (select count(*)::int from guardians) as guardians, (select count(*)::int from outbox_records) as outbox, (select count(*)::int from ai_usage_ledger) as \"usageLedger\", (select count(*)::int from integration_inbox_records) as inbox, (select count(*)::int from external_effects) as \"externalEffects\""
   )).rows[0];
-  const latestOrganization = (await client.query<{ organization_id: string }>(
-    "select snapshot #>> '{organizations,0,id}' as organization_id from cvg_state_snapshots order by revision desc limit 1"
-  )).rows[0]?.organization_id;
-  if (!latestOrganization) throw new Error("durable verification has no organization for RLS test");
   const rlsRole = `cvg_rls_verify_${randomUUID().replaceAll("-", "")}`;
   const currentRole = (await client.query<{ rolsuper: boolean; rolbypassrls: boolean; rolcreaterole: boolean; rolcreatedb: boolean }>(
     "select rolsuper, rolbypassrls, rolcreaterole, rolcreatedb from pg_roles where rolname = current_user"

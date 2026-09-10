@@ -247,6 +247,14 @@ local correctness
 
 `VER-CVG-057` observa o GitHub Actions run `34422274248` do SHA `c132d1d183e269b908607a035df5fd55cad0961e`: o step `Browser E2E` falhou com exit 1 e os gates PostgreSQL/RLS, restore, release, performance, SBOM e artifacts foram pulados. O detalhe do log exige autenticação e não foi inventado. A suíte local executável permanece verde (E2E 52 pass + 4 skips); o `test:e2e:full` local continua limitado por dependências WebKit ausentes. Portanto, este run não prova nem refuta a 028; o veredito continua `FAIL_WITH_LIMITATIONS` e a próxima ação é diagnóstico/reexecução autorizada do E2E remoto antes de qualquer promoção.
 
+## Current checkpoint — 2026-09-09 22:06
+
+`VER-CVG-058` registra a reprodução local da falha do PostgreSQL com PostgreSQL 16.15 efêmero e role runtime sem `BYPASSRLS`: o `UPSERT` de `guardians` falhava porque o writer não estabelecia `unit_id/workspace_id` para a política `SELECT` usada pelo `ON CONFLICT`. O writer agora usa escopo obrigatório para `guardians`/`patients`, limpa o contexto depois da projeção e falha fechado se um registro contextual perder seu escopo; o teste de regressão correspondente foi adicionado. O verificador também reutiliza a sessão autenticada através do restart, configura o contexto RLS antes de consultar o catálogo e o drill de restore remove as variáveis exclusivas de provisionamento antes de iniciar o runtime restaurado.
+
+`VER-CVG-059` confirma localmente, em banco novo separado, migrations `001`–`028`, `npm run verify:postgres` com `postgres=PASS`, `restartRead=PASS`, `normalizedReads=PASS`, `idempotency=PASS`, `outbox=PASS`, `externalEffects=PASS`, `inbox=PASS`, `usageLedger=PASS`, `cas=PASS`, `rls=PASS`, `rlsDomainTables=56`, `rlsProtectedTables=56`, `organizationForeignKeys=98`, e `npm run verify:postgres:restore` com AES-256-GCM, rejeição de tamper/partial/stale/migration mismatch, destino `QUARANTINED`, login/readiness bloqueados e `sourceUnchanged=true`. A bateria final local também passou `npm test` 112 (111/1 skip), typecheck, build, lint 118, static 43/120, PDP 64/68/6/12, provider loopback, contraste 7/7, tokens sem high/critical, licenças 207, `npm audit` sem vulnerabilidades e `git diff --check`.
+
+O último CI remoto observado antes deste patch é o run `34422825560` no SHA `0a345da99a771c440b8c36d619a5f81e43683ca5`: `Browser E2E` e migrations passaram, mas `PostgreSQL integration and RLS gate` falhou; a 028 foi aplicada no runner. O detalhe público é apenas exit 1 e os logs completos exigem autenticação. A correção local ainda precisa ser publicada e observada no SHA exato; não converter a prova efêmera em aprovação remota ou AAA.
+
 ## 10. Próxima ação
 
 **Ação concluída localmente:** `CVG-FULL-STATE-OF-THE-ART:PROVIDER-CONTRACT-AND-UNIVERSAL-PDP`.

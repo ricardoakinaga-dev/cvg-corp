@@ -893,9 +893,12 @@ async function writeRows<T>(client: PoolClient, sql: string, rows: T[], values: 
   for (const row of rows) await client.query(sql, values(row));
 }
 
-async function writeScopedRows<T>(client: PoolClient, sql: string, rows: T[], scope: (row: T) => { unitId: OpaqueId; workspaceId: OpaqueId }, values: (row: T) => unknown[]): Promise<void> {
+async function writeScopedRows<T>(client: PoolClient, sql: string, rows: T[], scope: (row: T) => { unitId: OpaqueId | null; workspaceId: OpaqueId | null }, values: (row: T) => unknown[]): Promise<void> {
   for (const row of rows) {
     const selected = scope(row);
+    if (!selected.unitId || !selected.workspaceId) {
+      throw new PersistenceCorruptionError("contextual projection row has no complete unit/workspace scope");
+    }
     await client.query("select set_config('cvg.unit_id', $1, true)", [selected.unitId]);
     await client.query("select set_config('cvg.workspace_id', $1, true)", [selected.workspaceId]);
     await client.query(sql, values(row));
@@ -903,16 +906,20 @@ async function writeScopedRows<T>(client: PoolClient, sql: string, rows: T[], sc
 }
 
 async function projectDomain(client: PoolClient, snapshot: StoreSnapshot): Promise<void> {
-  await writeRows(client,
+  await writeScopedRows(client,
     "insert into guardians(id, organization_id, unit_id, workspace_id, display_name, phone, email, data_class, status) values ($1, $2, $3, $4, $5, $6, $7, $8, $9) on conflict (id) do update set organization_id = excluded.organization_id, unit_id = excluded.unit_id, workspace_id = excluded.workspace_id, display_name = excluded.display_name, phone = excluded.phone, email = excluded.email, data_class = excluded.data_class, status = excluded.status",
     snapshot.guardians,
+    (guardian) => ({ unitId: guardian.unitId, workspaceId: guardian.workspaceId }),
     (guardian) => [guardian.id, guardian.organizationId, guardian.unitId, guardian.workspaceId, guardian.displayName, guardian.phone, guardian.email, guardian.dataClass, guardian.status]
   );
-  await writeRows(client,
+  await writeScopedRows(client,
     "insert into patients(id, organization_id, unit_id, workspace_id, guardian_id, name, species, breed, sex, reproductive_status, birth_date, identifiers, data_class, status, merged_into_id, status_changed_at, created_at) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::jsonb, $13, $14, $15, $16, $17) on conflict (id) do update set organization_id = excluded.organization_id, unit_id = excluded.unit_id, workspace_id = excluded.workspace_id, guardian_id = excluded.guardian_id, name = excluded.name, species = excluded.species, breed = excluded.breed, sex = excluded.sex, reproductive_status = excluded.reproductive_status, birth_date = excluded.birth_date, identifiers = excluded.identifiers, data_class = excluded.data_class, status = excluded.status, merged_into_id = excluded.merged_into_id, status_changed_at = excluded.status_changed_at",
     snapshot.patients,
+    (patient) => ({ unitId: patient.unitId, workspaceId: patient.workspaceId }),
     (patient) => [patient.id, patient.organizationId, patient.unitId, patient.workspaceId, patient.guardianId, patient.name, patient.species, patient.breed, patient.sex, patient.reproductiveStatus, patient.birthDate, JSON.stringify(patient.identifiers), patient.dataClass, patient.status, patient.mergedIntoId, patient.statusChangedAt, patient.createdAt]
   );
+  await client.query("select set_config('cvg.unit_id', '', true)");
+  await client.query("select set_config('cvg.workspace_id', '', true)");
   await writeRows(client,
     "insert into service_catalog_items(id, organization_id, name, duration_minutes, price_cents, status) values ($1, $2, $3, $4, $5, $6) on conflict (id) do update set organization_id = excluded.organization_id, name = excluded.name, duration_minutes = excluded.duration_minutes, price_cents = excluded.price_cents, status = excluded.status",
     snapshot.services,

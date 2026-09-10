@@ -146,6 +146,12 @@ try {
   const targetMigrationUrl = withDatabase(migrationUrl, restoreDatabase);
   const targetUrl = withDatabase(sourceUrl, restoreDatabase);
   await migrate(targetMigrationUrl);
+  // These variables are migration-role inputs, not application configuration.
+  // Remove them before booting the restored API so the strict CVG_ config
+  // allowlist does not confuse database provisioning credentials with runtime
+  // settings.
+  delete process.env.CVG_RUNTIME_DB_USER;
+  delete process.env.CVG_RUNTIME_DB_PASSWORD;
   const targetMigrationFingerprint = await readMigrationFingerprint(targetMigrationUrl);
   validateRecoveryBundle(restoredBundle, { expectedMigrationFingerprint: targetMigrationFingerprint });
 

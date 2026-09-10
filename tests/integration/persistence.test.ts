@@ -99,6 +99,20 @@ test("Postgres persistence commits journal and snapshot atomically", async () =>
   assert.ok(fake.statements.some((statement) => statement === "COMMIT"));
 });
 
+test("Postgres persistence fails closed when a contextual projection loses its scope", async () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const snapshot = store.snapshot();
+  snapshot.guardians[0]!.unitId = null;
+  const fake = fakePool();
+  const persistence = new PostgresPersistence({ connectionString: "postgres://synthetic.invalid", pool: fake.pool });
+
+  await assert.rejects(
+    () => persistence.commit({ ...commitInput(store), snapshot }),
+    (error: unknown) => error instanceof PersistenceCorruptionError && error.message.includes("complete unit/workspace scope")
+  );
+  assert.ok(fake.statements.some((statement) => statement === "ROLLBACK"));
+});
+
 test("AI projections derive mandatory tenant scope from the persisted session", async () => {
   const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
   const option = store.contextOptions(store.bootstrapCredentials.userId)[0];

@@ -81,6 +81,7 @@ export interface DurableCommitInput {
   recoveredUsageRecords?: DurableUsageRecord[];
   recoveredInboxRecords?: DurableInboxRecord[];
   recoveredExternalEffects?: DurableExternalEffectRecord[];
+  recoveredWorkerJobs?: DurableWorkerJobRecord[];
   eventId?: string;
 }
 
@@ -106,6 +107,54 @@ export interface DurableOutboxRecord extends DurableOutboxInput {
   createdAt: string;
   processedAt: string | null;
   recordDigest: string;
+}
+
+export type DurableWorkerLane = "jobs" | "schedule" | "reconciliation" | "notifications" | "maintenance";
+export type DurableWorkerJobStatus = "PENDING" | "CLAIMED" | "COMPLETED" | "QUARANTINED";
+
+export interface DurableWorkerJobInput {
+  id: OpaqueId;
+  organizationId: OpaqueId;
+  lane: DurableWorkerLane;
+  jobType: string;
+  idempotencyKey: string;
+  payload: Record<string, unknown>;
+  maxAttempts?: number;
+  availableAt?: string;
+}
+
+export interface DurableWorkerJobRecord extends DurableWorkerJobInput {
+  status: DurableWorkerJobStatus;
+  attempts: number;
+  maxAttempts: number;
+  availableAt: string;
+  claimedBy: string | null;
+  leaseUntil: string | null;
+  fenceToken: bigint;
+  lastError: string | null;
+  createdAt: string;
+  processedAt: string | null;
+  recordDigest: string;
+}
+
+export type DurableWorkerHeartbeatStatus = "RUNNING" | "DEGRADED" | "STOPPING" | "STOPPED";
+export type DurableWorkerHeartbeatLane = "outbox" | DurableWorkerLane;
+
+export interface DurableWorkerHeartbeatInput {
+  organizationId: OpaqueId;
+  workerId: string;
+  status: DurableWorkerHeartbeatStatus;
+  lane: DurableWorkerHeartbeatLane | null;
+  cycleId: OpaqueId | null;
+  startedAt: string;
+  lastSeenAt?: string;
+  expiresAt: string;
+  detail: string | null;
+}
+
+export interface DurableWorkerHeartbeatRecord extends Omit<DurableWorkerHeartbeatInput, "lastSeenAt"> {
+  lastSeenAt: string;
+  updatedAt: string;
 }
 
 export interface DurableUsageInput {
@@ -254,6 +303,7 @@ export interface RecoveryBundleManifest {
     usage: string;
     inbox: string;
     externalEffects: string;
+    workerJobs?: string;
   };
 }
 
@@ -267,6 +317,7 @@ export interface RecoveryBundleManifestInput {
   usageRecords: readonly DurableUsageRecord[];
   inboxRecords: readonly DurableInboxRecord[];
   externalEffects: readonly DurableExternalEffectRecord[];
+  workerJobs?: readonly DurableWorkerJobRecord[];
   createdAt?: string;
   snapshotSchemaVersion?: number;
 }
@@ -285,6 +336,7 @@ export interface DurableRecoveryBundle extends DurableSnapshot {
   usageRecords: DurableUsageRecord[];
   inboxRecords: DurableInboxRecord[];
   externalEffects: DurableExternalEffectRecord[];
+  workerJobs?: DurableWorkerJobRecord[];
 }
 
 export interface EncryptedRecoveryBundle {
@@ -424,7 +476,8 @@ export function createRecoveryBundleManifest(input: RecoveryBundleManifestInput)
       outbox: recoveryLedgerDigest(input.outboxRecords),
       usage: recoveryLedgerDigest(input.usageRecords),
       inbox: recoveryLedgerDigest(input.inboxRecords),
-      externalEffects: recoveryLedgerDigest(input.externalEffects)
+      externalEffects: recoveryLedgerDigest(input.externalEffects),
+      workerJobs: recoveryLedgerDigest(input.workerJobs ?? [])
     }
   };
 }
@@ -453,7 +506,8 @@ function parseRecoveryManifest(value: unknown): RecoveryBundleManifest {
       outbox: recoveryDigestString(ledgerDigests.outbox, "manifest.ledgerDigests.outbox"),
       usage: recoveryDigestString(ledgerDigests.usage, "manifest.ledgerDigests.usage"),
       inbox: recoveryDigestString(ledgerDigests.inbox, "manifest.ledgerDigests.inbox"),
-      externalEffects: recoveryDigestString(ledgerDigests.externalEffects, "manifest.ledgerDigests.externalEffects")
+      externalEffects: recoveryDigestString(ledgerDigests.externalEffects, "manifest.ledgerDigests.externalEffects"),
+      ...(ledgerDigests.workerJobs === undefined ? {} : { workerJobs: recoveryDigestString(ledgerDigests.workerJobs, "manifest.ledgerDigests.workerJobs") })
     }
   };
 }
@@ -489,7 +543,8 @@ export function validateRecoveryBundle(bundle: DurableRecoveryBundle, options: R
   const usageRecords = recoveryLedgerRecords(raw.usageRecords, "usageRecords", manifest.organizationId, "recordDigest");
   const inboxRecords = recoveryLedgerRecords(raw.inboxRecords, "inboxRecords", manifest.organizationId, "recordDigest");
   const externalEffects = recoveryLedgerRecords(raw.externalEffects, "externalEffects", manifest.organizationId, "requestDigest");
-  if (manifest.ledgerDigests.outbox !== recoveryLedgerDigest(outboxRecords) || manifest.ledgerDigests.usage !== recoveryLedgerDigest(usageRecords) || manifest.ledgerDigests.inbox !== recoveryLedgerDigest(inboxRecords) || manifest.ledgerDigests.externalEffects !== recoveryLedgerDigest(externalEffects)) throw new PersistenceCorruptionError("encrypted recovery bundle ledger digest mismatch");
+  const workerJobs = recoveryLedgerRecords(raw.workerJobs ?? [], "workerJobs", manifest.organizationId, "recordDigest");
+  if (manifest.ledgerDigests.outbox !== recoveryLedgerDigest(outboxRecords) || manifest.ledgerDigests.usage !== recoveryLedgerDigest(usageRecords) || manifest.ledgerDigests.inbox !== recoveryLedgerDigest(inboxRecords) || manifest.ledgerDigests.externalEffects !== recoveryLedgerDigest(externalEffects) || (manifest.ledgerDigests.workerJobs !== undefined && manifest.ledgerDigests.workerJobs !== recoveryLedgerDigest(workerJobs))) throw new PersistenceCorruptionError("encrypted recovery bundle ledger digest mismatch");
 
   const expectedSnapshotSchemaVersion = options.expectedSnapshotSchemaVersion ?? RECOVERY_SNAPSHOT_SCHEMA_VERSION;
   if (!Number.isSafeInteger(expectedSnapshotSchemaVersion) || expectedSnapshotSchemaVersion !== manifest.snapshotSchemaVersion) throw new PersistenceStateError(`recovery bundle snapshot schema version ${manifest.snapshotSchemaVersion} does not match expected ${expectedSnapshotSchemaVersion}`);
@@ -546,6 +601,7 @@ function hydrateRecoveryBundle(raw: unknown): DurableRecoveryBundle {
   const usageRecords = recoveryRecords(bundle.usageRecords, "usageRecords") as unknown as DurableUsageRecord[];
   const inboxRecords = recoveryRecords(bundle.inboxRecords, "inboxRecords") as unknown as DurableInboxRecord[];
   const externalEffects = recoveryRecords(bundle.externalEffects, "externalEffects").map((record) => ({ ...record, fenceToken: recoveryBigInt(record.fenceToken, "externalEffects.fenceToken") }) as unknown as DurableExternalEffectRecord);
+  const workerJobs = recoveryRecords(bundle.workerJobs ?? [], "workerJobs").map((record) => ({ ...record, fenceToken: recoveryBigInt(record.fenceToken, "workerJobs.fenceToken") }) as unknown as DurableWorkerJobRecord);
   const hydrated: DurableRecoveryBundle = {
     manifest: parseRecoveryManifest(bundle.manifest),
     revision: recoveryBigInt(bundle.revision, "revision"),
@@ -555,7 +611,8 @@ function hydrateRecoveryBundle(raw: unknown): DurableRecoveryBundle {
     outboxRecords,
     usageRecords,
     inboxRecords,
-    externalEffects
+    externalEffects,
+    workerJobs
   };
   validateRecoveryBundle(hydrated);
   return hydrated;
@@ -643,6 +700,39 @@ interface OutboxRow {
   record_digest: string;
 }
 
+interface WorkerJobRow {
+  id: string;
+  organization_id: string;
+  lane: DurableWorkerLane;
+  job_type: string;
+  idempotency_key: string;
+  payload: Record<string, unknown>;
+  status: DurableWorkerJobStatus;
+  attempts: number;
+  max_attempts: number;
+  available_at: SqlTimestamp;
+  claimed_by: string | null;
+  lease_until: SqlTimestamp;
+  fence_token: string | number | bigint;
+  last_error: string | null;
+  created_at: SqlTimestamp;
+  processed_at: SqlTimestamp;
+  record_digest: string;
+}
+
+interface WorkerHeartbeatRow {
+  organization_id: string;
+  worker_id: string;
+  status: DurableWorkerHeartbeatStatus;
+  lane: DurableWorkerHeartbeatLane | null;
+  cycle_id: string | null;
+  started_at: SqlTimestamp;
+  last_seen_at: SqlTimestamp;
+  expires_at: SqlTimestamp;
+  detail: string | null;
+  updated_at: SqlTimestamp;
+}
+
 interface UsageRow {
   id: string;
   organization_id: string;
@@ -721,6 +811,8 @@ interface BreakGlassRow {
 }
 
 const BREAK_GLASS_COLUMNS = "id::text as id, organization_id::text as organization_id, actor_id::text as actor_id, approver_id::text as approver_id, reason, target, mfa_method, issued_at, expires_at, status, reviewed_by::text as reviewed_by, reviewed_at, review_note, revoked_at, created_at";
+const WORKER_JOB_COLUMNS = "id::text as id, organization_id::text as organization_id, lane, job_type, idempotency_key, payload, status, attempts, max_attempts, available_at, claimed_by, lease_until, fence_token::text as fence_token, last_error, created_at, processed_at, record_digest";
+const WORKER_HEARTBEAT_COLUMNS = "organization_id::text as organization_id, worker_id, status, lane, cycle_id::text as cycle_id, started_at, last_seen_at, expires_at, detail, updated_at";
 
 type SqlTimestamp = string | Date | null;
 
@@ -1019,14 +1111,16 @@ function sqlNullableText(value: unknown, field: string): string | null {
 }
 
 function sqlTimestamp(value: SqlTimestamp, field: string): string {
-  if (value instanceof Date) return value.toISOString();
-  if (typeof value === "string") return value;
+  const timestamp = value instanceof Date ? value.toISOString() : value;
+  if (typeof timestamp === "string" && Number.isFinite(Date.parse(timestamp))) return timestamp;
   throw new PersistenceCorruptionError(`normalized ${field} is null`);
 }
 
 function sqlNullableTimestamp(value: SqlTimestamp): string | null {
   if (value === null) return null;
-  return value instanceof Date ? value.toISOString() : value;
+  const timestamp = value instanceof Date ? value.toISOString() : value;
+  if (Number.isFinite(Date.parse(timestamp))) return timestamp;
+  throw new PersistenceCorruptionError("durable timestamp is invalid");
 }
 
 function sqlStringArray(value: unknown, field: string): string[] {
@@ -1073,6 +1167,100 @@ function sqlAuditChainVersion(value: unknown): 2 {
 
 function outboxDigest(input: DurableOutboxInput): string {
   return digest({ organizationId: input.organizationId, eventType: input.eventType, aggregateId: input.aggregateId, payload: input.payload });
+}
+
+const DURABLE_WORKER_LANES = ["jobs", "schedule", "reconciliation", "notifications", "maintenance"] as const;
+const DURABLE_WORKER_HEARTBEAT_LANES = ["outbox", ...DURABLE_WORKER_LANES] as const;
+
+function durableWorkerJobDigest(input: DurableWorkerJobInput): string {
+  return digest({ organizationId: input.organizationId, lane: input.lane, jobType: input.jobType.trim(), idempotencyKey: input.idempotencyKey.trim(), payload: input.payload, maxAttempts: input.maxAttempts ?? 5, availableAt: input.availableAt ?? null });
+}
+
+function durableWorkerMaxAttempts(value: number | undefined): number {
+  const maxAttempts = value ?? 5;
+  if (!Number.isSafeInteger(maxAttempts) || maxAttempts < 1 || maxAttempts > 20) throw new PersistenceStateError("durable worker job maxAttempts is invalid");
+  return maxAttempts;
+}
+
+function validateDurableWorkerJobInput(input: DurableWorkerJobInput): void {
+  if (typeof input.id !== "string" || !input.id.trim() || typeof input.organizationId !== "string" || !input.organizationId.trim()) throw new PersistenceStateError("durable worker job identity is invalid");
+  if (!DURABLE_WORKER_LANES.includes(input.lane)) throw new PersistenceStateError("durable worker job lane is invalid");
+  if (!input.jobType.trim() || input.jobType.length > 160) throw new PersistenceStateError("durable worker job type is invalid");
+  if (!input.idempotencyKey.trim() || input.idempotencyKey.length > 512) throw new PersistenceStateError("durable worker job idempotency key is invalid");
+  sqlObject(input.payload, "worker job.payload");
+  durableWorkerMaxAttempts(input.maxAttempts);
+  if (input.availableAt !== undefined && !Number.isFinite(Date.parse(input.availableAt))) throw new PersistenceStateError("durable worker job availableAt is invalid");
+}
+
+function mapWorkerJobRow(row: WorkerJobRow): DurableWorkerJobRecord {
+  const status = sqlEnum(row.status, ["PENDING", "CLAIMED", "COMPLETED", "QUARANTINED"] as const, "worker job.status");
+  const attempts = sqlInteger(row.attempts, "worker job.attempts");
+  if (attempts < 0) throw new PersistenceCorruptionError("worker job.attempts cannot be negative");
+  const maxAttempts = sqlInteger(row.max_attempts, "worker job.max_attempts");
+  if (maxAttempts < 1 || maxAttempts > 20 || attempts > maxAttempts) throw new PersistenceCorruptionError("worker job attempt budget is invalid");
+  const recordDigest = sqlText(row.record_digest, "worker job.record_digest");
+  if (!/^[a-f0-9]{64}$/.test(recordDigest)) throw new PersistenceCorruptionError("worker job.record_digest is not a SHA-256 digest");
+  const jobType = sqlText(row.job_type, "worker job.job_type");
+  const idempotencyKey = sqlText(row.idempotency_key, "worker job.idempotency_key");
+  const claimedBy = sqlNullableText(row.claimed_by, "worker job.claimed_by");
+  const leaseUntil = sqlNullableTimestamp(row.lease_until);
+  const processedAt = sqlNullableTimestamp(row.processed_at);
+  if (!jobType.trim() || jobType.length > 160 || !idempotencyKey.trim() || idempotencyKey.length > 512) throw new PersistenceCorruptionError("worker job identity fields are invalid");
+  if (status === "CLAIMED" && (!claimedBy || !leaseUntil)) throw new PersistenceCorruptionError("claimed worker job has no owner or lease");
+  if (status !== "CLAIMED" && (claimedBy !== null || leaseUntil !== null)) throw new PersistenceCorruptionError("non-claimed worker job retains a lease");
+  if ((status === "COMPLETED" || status === "QUARANTINED") && !processedAt) throw new PersistenceCorruptionError("terminal worker job has no processed timestamp");
+  if ((status === "PENDING" || status === "CLAIMED") && processedAt) throw new PersistenceCorruptionError("active worker job has a processed timestamp");
+  return {
+    id: sqlId(row.id, "worker job.id"),
+    organizationId: sqlId(row.organization_id, "worker job.organization_id"),
+    lane: sqlEnum(row.lane, DURABLE_WORKER_LANES, "worker job.lane"),
+    jobType,
+    idempotencyKey,
+    payload: sqlObject(row.payload, "worker job.payload"),
+    status,
+    attempts,
+    maxAttempts,
+    availableAt: sqlTimestamp(row.available_at, "worker job.available_at"),
+    claimedBy,
+    leaseUntil,
+    fenceToken: revisionOf(row.fence_token),
+    lastError: sqlNullableText(row.last_error, "worker job.last_error"),
+    createdAt: sqlTimestamp(row.created_at, "worker job.created_at"),
+    processedAt,
+    recordDigest
+  };
+}
+
+function validateDurableWorkerHeartbeatInput(input: DurableWorkerHeartbeatInput, lastSeenAt: string): void {
+  if (typeof input.organizationId !== "string" || !input.organizationId.trim() || !input.workerId.trim() || input.workerId.length > 160) throw new PersistenceStateError("durable worker heartbeat identity is invalid");
+  if (!(["RUNNING", "DEGRADED", "STOPPING", "STOPPED"] as const).includes(input.status)) throw new PersistenceStateError("durable worker heartbeat status is invalid");
+  if (input.lane !== null && !DURABLE_WORKER_HEARTBEAT_LANES.includes(input.lane)) throw new PersistenceStateError("durable worker heartbeat lane is invalid");
+  if (input.cycleId !== null && (typeof input.cycleId !== "string" || !input.cycleId.trim())) throw new PersistenceStateError("durable worker heartbeat cycle is invalid");
+  const startedAt = Date.parse(input.startedAt);
+  const seenAt = Date.parse(lastSeenAt);
+  const expiresAt = Date.parse(input.expiresAt);
+  if (!Number.isFinite(startedAt) || !Number.isFinite(seenAt) || !Number.isFinite(expiresAt) || seenAt < startedAt || expiresAt < seenAt) throw new PersistenceStateError("durable worker heartbeat timestamps are invalid");
+  if (input.detail !== null && input.detail.length > 2_000) throw new PersistenceStateError("durable worker heartbeat detail is invalid");
+}
+
+function mapWorkerHeartbeatRow(row: WorkerHeartbeatRow): DurableWorkerHeartbeatRecord {
+  const lane = row.lane === null ? null : sqlEnum(row.lane, DURABLE_WORKER_HEARTBEAT_LANES, "worker heartbeat.lane");
+  const startedAt = sqlTimestamp(row.started_at, "worker heartbeat.started_at");
+  const lastSeenAt = sqlTimestamp(row.last_seen_at, "worker heartbeat.last_seen_at");
+  const expiresAt = sqlTimestamp(row.expires_at, "worker heartbeat.expires_at");
+  if (Date.parse(lastSeenAt) < Date.parse(startedAt) || Date.parse(expiresAt) < Date.parse(lastSeenAt)) throw new PersistenceCorruptionError("worker heartbeat timestamps are inconsistent");
+  return {
+    organizationId: sqlId(row.organization_id, "worker heartbeat.organization_id"),
+    workerId: sqlText(row.worker_id, "worker heartbeat.worker_id"),
+    status: sqlEnum(row.status, ["RUNNING", "DEGRADED", "STOPPING", "STOPPED"] as const, "worker heartbeat.status"),
+    lane,
+    cycleId: row.cycle_id === null ? null : sqlId(row.cycle_id, "worker heartbeat.cycle_id"),
+    startedAt,
+    lastSeenAt,
+    expiresAt,
+    detail: sqlNullableText(row.detail, "worker heartbeat.detail"),
+    updatedAt: sqlTimestamp(row.updated_at, "worker heartbeat.updated_at")
+  };
 }
 
 function inboxDigest(input: DurableInboxInput): string {
@@ -1592,6 +1780,17 @@ async function projectRecoveredOutbox(client: PoolClient, organizationId: Opaque
   }
 }
 
+async function projectRecoveredWorkerJobs(client: PoolClient, organizationId: OpaqueId, records: DurableWorkerJobRecord[]): Promise<void> {
+  for (const record of records) {
+    if (record.organizationId !== organizationId) throw new PersistenceCorruptionError(`recovered worker job ${record.id} has a different organization scope`);
+    const result = await client.query<{ id: string }>(
+      "insert into cvg_worker_jobs(id, organization_id, lane, job_type, idempotency_key, payload, status, attempts, max_attempts, available_at, claimed_by, lease_until, fence_token, last_error, created_at, processed_at, record_digest) values ($1, $2, $3, $4, $5, $6::jsonb, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17) on conflict (organization_id, lane, idempotency_key) do update set status = excluded.status, attempts = excluded.attempts, max_attempts = excluded.max_attempts, available_at = excluded.available_at, claimed_by = excluded.claimed_by, lease_until = excluded.lease_until, fence_token = excluded.fence_token, last_error = excluded.last_error, processed_at = excluded.processed_at where cvg_worker_jobs.record_digest = excluded.record_digest returning id",
+      [record.id, record.organizationId, record.lane, record.jobType, record.idempotencyKey, JSON.stringify(record.payload), record.status, record.attempts, record.maxAttempts, record.availableAt, record.claimedBy, record.leaseUntil, record.fenceToken.toString(), record.lastError, record.createdAt, record.processedAt, record.recordDigest]
+    );
+    if (!result.rows[0]) throw new PersistenceCorruptionError(`recovered worker job ${record.id} conflicts with a different immutable admission`);
+  }
+}
+
 async function projectRecoveredUsage(client: PoolClient, organizationId: OpaqueId, records: DurableUsageRecord[]): Promise<void> {
   for (const record of records) {
     if (record.organizationId !== organizationId) throw new PersistenceCorruptionError(`recovered usage record ${record.id} has a different organization scope`);
@@ -1714,10 +1913,10 @@ export class PostgresPersistence {
 
   async assertSchema(): Promise<void> {
     try {
-      const result = await this.pool.query<{ snapshots: boolean; journal: boolean; audit: boolean; receipts: boolean; communications: boolean; outbox: boolean; usage_ledger: boolean; inbox: boolean; external_effects: boolean; rate_limit_buckets: boolean; break_glass_grants: boolean; break_glass_lifecycle: boolean; runtime_role: boolean; runtime_scope_guards: boolean; auth_security: boolean; ai_turn_scope: boolean; ai_draft_scope: boolean; ai_turn_provenance_usage: boolean; audit_tamper_evident_chain: boolean; append_only_audit_guard: boolean; append_only_lock_privileges: boolean }>("select to_regclass('public.cvg_state_snapshots') is not null as snapshots, to_regclass('public.cvg_event_journal') is not null as journal, to_regclass('public.cvg_audit_ledger') is not null as audit, to_regclass('public.cvg_command_receipt_ledger') is not null as receipts, to_regclass('public.communication_messages') is not null as communications, to_regclass('public.outbox_records') is not null as outbox, to_regclass('public.ai_usage_ledger') is not null as usage_ledger, to_regclass('public.integration_inbox_records') is not null as inbox, to_regclass('public.external_effects') is not null as external_effects, to_regclass('public.cvg_rate_limit_buckets') is not null as rate_limit_buckets, to_regclass('public.break_glass_grants') is not null as break_glass_grants, exists (select 1 from pg_roles where rolname = current_user and rolsuper = false and rolbypassrls = false and rolcreaterole = false and rolcreatedb = false) as runtime_role, exists (select 1 from schema_migrations where version = '019_runtime_scope_guards') as runtime_scope_guards, exists (select 1 from schema_migrations where version = '020_auth_security_boundary') and to_regclass('public.auth_challenges') is not null and exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'users' and column_name = 'mfa_secret_ref') and exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'sessions' and column_name = 'device_id_digest') as auth_security, exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'ai_turns' and column_name in ('organization_id', 'unit_id', 'workspace_id') group by table_schema, table_name having count(*) = 3) as ai_turn_scope, exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'ai_drafts' and column_name in ('organization_id', 'unit_id', 'workspace_id') group by table_schema, table_name having count(*) = 3) as ai_draft_scope, exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'ai_turns' and column_name in ('usage_record_id', 'provenance_json') group by table_schema, table_name having count(*) = 2) and exists (select 1 from schema_migrations where version = '029_ai_turn_provenance_usage_and_dml_scope') as ai_turn_provenance_usage, exists (select 1 from schema_migrations where version = '026_audit_tamper_evident_chain') as audit_tamper_evident_chain, exists (select 1 from schema_migrations where version = '027_append_only_audit_guard') as append_only_audit_guard, exists (select 1 from schema_migrations where version = '028_append_only_lock_privileges') as append_only_lock_privileges, exists (select 1 from schema_migrations where version = '030_break_glass_durable_lifecycle') as break_glass_lifecycle");
+      const result = await this.pool.query<{ snapshots: boolean; journal: boolean; audit: boolean; receipts: boolean; communications: boolean; outbox: boolean; usage_ledger: boolean; inbox: boolean; external_effects: boolean; rate_limit_buckets: boolean; break_glass_grants: boolean; break_glass_lifecycle: boolean; runtime_role: boolean; runtime_scope_guards: boolean; auth_security: boolean; ai_turn_scope: boolean; ai_draft_scope: boolean; ai_turn_provenance_usage: boolean; audit_tamper_evident_chain: boolean; append_only_audit_guard: boolean; append_only_lock_privileges: boolean; worker_jobs: boolean; worker_heartbeats: boolean; worker_lane_schema: boolean }>("select to_regclass('public.cvg_state_snapshots') is not null as snapshots, to_regclass('public.cvg_event_journal') is not null as journal, to_regclass('public.cvg_audit_ledger') is not null as audit, to_regclass('public.cvg_command_receipt_ledger') is not null as receipts, to_regclass('public.communication_messages') is not null as communications, to_regclass('public.outbox_records') is not null as outbox, to_regclass('public.ai_usage_ledger') is not null as usage_ledger, to_regclass('public.integration_inbox_records') is not null as inbox, to_regclass('public.external_effects') is not null as external_effects, to_regclass('public.cvg_rate_limit_buckets') is not null as rate_limit_buckets, to_regclass('public.break_glass_grants') is not null as break_glass_grants, exists (select 1 from pg_roles where rolname = current_user and rolsuper = false and rolbypassrls = false and rolcreaterole = false and rolcreatedb = false) as runtime_role, exists (select 1 from schema_migrations where version = '019_runtime_scope_guards') as runtime_scope_guards, exists (select 1 from schema_migrations where version = '020_auth_security_boundary') and to_regclass('public.auth_challenges') is not null and exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'users' and column_name = 'mfa_secret_ref') and exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'sessions' and column_name = 'device_id_digest') as auth_security, exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'ai_turns' and column_name in ('organization_id', 'unit_id', 'workspace_id') group by table_schema, table_name having count(*) = 3) as ai_turn_scope, exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'ai_drafts' and column_name in ('organization_id', 'unit_id', 'workspace_id') group by table_schema, table_name having count(*) = 3) as ai_draft_scope, exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'ai_turns' and column_name in ('usage_record_id', 'provenance_json') group by table_schema, table_name having count(*) = 2) and exists (select 1 from schema_migrations where version = '029_ai_turn_provenance_usage_and_dml_scope') as ai_turn_provenance_usage, exists (select 1 from schema_migrations where version = '026_audit_tamper_evident_chain') as audit_tamper_evident_chain, exists (select 1 from schema_migrations where version = '027_append_only_audit_guard') as append_only_audit_guard, exists (select 1 from schema_migrations where version = '028_append_only_lock_privileges') as append_only_lock_privileges, exists (select 1 from schema_migrations where version = '030_break_glass_durable_lifecycle') as break_glass_lifecycle, to_regclass('public.cvg_worker_jobs') is not null as worker_jobs, to_regclass('public.cvg_worker_heartbeats') is not null as worker_heartbeats, exists (select 1 from schema_migrations where version = '031_worker_jobs_and_heartbeats') and exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'cvg_worker_jobs' and column_name in ('lane', 'job_type', 'idempotency_key', 'fence_token', 'record_digest') group by table_schema, table_name having count(*) = 5) and exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'cvg_worker_heartbeats' and column_name in ('worker_id', 'status', 'last_seen_at', 'expires_at') group by table_schema, table_name having count(*) = 4) as worker_lane_schema");
       const snapshotKey = await this.pool.query<{ snapshot_scope_revision: boolean }>("select exists (select 1 from pg_constraint constraint_row join pg_class table_row on table_row.oid = constraint_row.conrelid join pg_namespace namespace_row on namespace_row.oid = table_row.relnamespace where namespace_row.nspname = 'public' and table_row.relname = 'cvg_state_snapshots' and constraint_row.contype = 'p' and pg_get_constraintdef(constraint_row.oid) = 'PRIMARY KEY (organization_id, revision)') as snapshot_scope_revision");
       const row = result.rows[0];
-      if (!row?.snapshots || !row.journal || !row.audit || !row.receipts || !row.communications || !row.outbox || !row.usage_ledger || !row.inbox || !row.external_effects || !row.rate_limit_buckets || !row.break_glass_grants || !row.break_glass_lifecycle || !row.runtime_role || !row.runtime_scope_guards || !row.auth_security || !row.ai_turn_scope || !row.ai_draft_scope || !row.ai_turn_provenance_usage || !row.audit_tamper_evident_chain || !row.append_only_audit_guard || !row.append_only_lock_privileges || snapshotKey.rows[0]?.snapshot_scope_revision !== true) throw new PersistenceUnavailableError("CVG persistence schema or runtime database role is not ready; run migrations with a non-superuser DATABASE_URL");
+      if (!row?.snapshots || !row.journal || !row.audit || !row.receipts || !row.communications || !row.outbox || !row.usage_ledger || !row.inbox || !row.external_effects || !row.rate_limit_buckets || !row.break_glass_grants || !row.break_glass_lifecycle || !row.runtime_role || !row.runtime_scope_guards || !row.auth_security || !row.ai_turn_scope || !row.ai_draft_scope || !row.ai_turn_provenance_usage || !row.audit_tamper_evident_chain || !row.append_only_audit_guard || !row.append_only_lock_privileges || !row.worker_jobs || !row.worker_heartbeats || !row.worker_lane_schema || snapshotKey.rows[0]?.snapshot_scope_revision !== true) throw new PersistenceUnavailableError("CVG persistence schema or runtime database role is not ready; run migrations with a non-superuser DATABASE_URL");
     } catch (error) {
       if (error instanceof PersistenceUnavailableError) throw error;
       throw new PersistenceUnavailableError("CVG persistence schema could not be checked", error);
@@ -1770,6 +1969,7 @@ export class PostgresPersistence {
       const usageResult = await client.query<UsageRow>("select id::text as id, organization_id::text as organization_id, reservation_id::text as reservation_id, provider_request_id, idempotency_key, usage_kind, reserved_units, consumed_units, status, record, record_digest, created_at from ai_usage_ledger where organization_id = cvg_request_organization() order by created_at, id");
       const inboxResult = await client.query<InboxRow>("select id::text as id, organization_id::text as organization_id, consumer, provider, external_event_id, event_type, schema_version, signature_algorithm, signature_key_ref, signature, payload, record_digest, status, conflict_digest, last_error, received_at, processed_at, last_seen_at from integration_inbox_records where organization_id = cvg_request_organization() order by received_at, id");
       const effectsResult = await client.query<ExternalEffectRow>("select id::text as id, organization_id::text as organization_id, outbox_id::text as outbox_id, integration_id, idempotency_key, request, request_digest, status, attempts, claimed_by, lease_until, fence_token::text as fence_token, provider_request_id, response, last_error, outcome_digest, reconciliation_source, reconciled_at, created_at, updated_at from external_effects where organization_id = cvg_request_organization() order by created_at, id");
+      const workerJobsResult = await client.query<WorkerJobRow>(`select ${WORKER_JOB_COLUMNS} from cvg_worker_jobs where organization_id = cvg_request_organization() order by created_at, id`);
       const migrationsResult = await client.query<MigrationRow>("select version, checksum from schema_migrations order by version");
       const migrationFingerprint = digest(migrationsResult.rows.map(({ version, checksum }) => ({ version, checksum })));
       const revision = revisionOf(row.revision);
@@ -1777,8 +1977,9 @@ export class PostgresPersistence {
       const usageRecords = usageResult.rows.map(mapUsageRow);
       const inboxRecords = inboxResult.rows.map(mapInboxRow);
       const externalEffects = effectsResult.rows.map(mapExternalEffectRow);
+      const workerJobs = workerJobsResult.rows.map(mapWorkerJobRow);
       const bundle: DurableRecoveryBundle = {
-        manifest: createRecoveryBundleManifest({ organizationId, revision, snapshotDigest: row.snapshot_digest, eventId: row.event_id, migrationFingerprint, outboxRecords, usageRecords, inboxRecords, externalEffects }),
+        manifest: createRecoveryBundleManifest({ organizationId, revision, snapshotDigest: row.snapshot_digest, eventId: row.event_id, migrationFingerprint, outboxRecords, usageRecords, inboxRecords, externalEffects, workerJobs }),
         revision,
         snapshot,
         snapshotDigest: row.snapshot_digest,
@@ -1786,7 +1987,8 @@ export class PostgresPersistence {
         outboxRecords,
         usageRecords,
         inboxRecords,
-        externalEffects
+        externalEffects,
+        workerJobs
       };
       validateRecoveryBundle(bundle);
       return bundle;
@@ -1816,6 +2018,7 @@ export class PostgresPersistence {
       await projectRecoveredUsage(client, organizationId, input.recoveredUsageRecords ?? []);
       await projectRecoveredInbox(client, organizationId, input.recoveredInboxRecords ?? []);
       await projectRecoveredExternalEffects(client, organizationId, input.recoveredExternalEffects ?? []);
+      await projectRecoveredWorkerJobs(client, organizationId, input.recoveredWorkerJobs ?? []);
       await client.query(
         "insert into cvg_event_journal(event_id, event_type, organization_id, actor_id, correlation_id, operation, aggregate_type, aggregate_id, payload, snapshot_digest) values ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10)",
         [eventId, input.eventType, organizationId, input.actorId, input.correlationId, input.operation, input.aggregateType, input.aggregateId, JSON.stringify(input.payload), snapshotDigest]
@@ -2569,6 +2772,104 @@ export class PostgresPersistence {
       const result = await client.query<BreakGlassRow>(`select ${BREAK_GLASS_COLUMNS} from break_glass_grants where organization_id = cvg_request_organization() order by issued_at desc, id`);
       return result.rows.map(mapBreakGlassRow);
     });
+  }
+
+  async enqueueWorkerJob(input: DurableWorkerJobInput): Promise<DurableWorkerJobRecord> {
+    validateDurableWorkerJobInput(input);
+    const maxAttempts = durableWorkerMaxAttempts(input.maxAttempts);
+    const recordDigest = durableWorkerJobDigest(input);
+    return this.organizationTransaction(input.organizationId, "worker job admission", async (client) => {
+      const inserted = await client.query<WorkerJobRow>(
+        `insert into cvg_worker_jobs(id, organization_id, lane, job_type, idempotency_key, payload, status, attempts, max_attempts, available_at, record_digest) values ($1, $2, $3, $4, $5, $6::jsonb, 'PENDING', 0, $7, coalesce($8::timestamptz, now()), $9) on conflict (organization_id, lane, idempotency_key) do nothing returning ${WORKER_JOB_COLUMNS}`,
+        [input.id, input.organizationId, input.lane, input.jobType.trim(), input.idempotencyKey.trim(), JSON.stringify(input.payload), maxAttempts, input.availableAt ?? null, recordDigest]
+      );
+      if (inserted.rows[0]) return mapWorkerJobRow(inserted.rows[0]);
+      const existingResult = await client.query<WorkerJobRow>(
+        `select ${WORKER_JOB_COLUMNS} from cvg_worker_jobs where organization_id = cvg_request_organization() and lane = $1 and idempotency_key = $2 for update`,
+        [input.lane, input.idempotencyKey.trim()]
+      );
+      const existing = existingResult.rows[0];
+      if (!existing) throw new PersistenceCorruptionError(`worker job ${input.id} disappeared after an idempotent admission conflict`);
+      const record = mapWorkerJobRow(existing);
+      if (record.recordDigest !== recordDigest) throw new PersistenceCorruptionError(`worker job ${record.id} conflicts with a different immutable admission`);
+      return record;
+    });
+  }
+
+  async claimWorkerJobs(organizationId: OpaqueId, lane: DurableWorkerLane, workerId: string, limit = 10, leaseSeconds = 30): Promise<DurableWorkerJobRecord[]> {
+    const boundedLimit = Math.min(100, Math.max(1, Math.trunc(limit)));
+    const boundedLease = Math.min(300, Math.max(1, Math.trunc(leaseSeconds)));
+    if (!DURABLE_WORKER_LANES.includes(lane)) throw new PersistenceStateError("durable worker job lane is invalid");
+    if (!workerId.trim() || workerId.length > 160) throw new PersistenceStateError("durable worker worker identity is invalid");
+    const normalizedWorkerId = workerId.trim();
+    return this.organizationTransaction(organizationId, "worker job claim", async (client) => {
+      const result = await client.query<WorkerJobRow>(
+        `with expired_poison as (update cvg_worker_jobs set status = 'QUARANTINED', claimed_by = null, lease_until = null, last_error = coalesce(last_error, 'MAX_ATTEMPTS_EXCEEDED'), processed_at = now() where organization_id = cvg_request_organization() and lane = $2 and attempts >= max_attempts and ((status = 'CLAIMED' and lease_until <= now()) or status = 'PENDING')), candidates as (select id from cvg_worker_jobs where organization_id = cvg_request_organization() and lane = $2 and attempts < max_attempts and ((status = 'PENDING' and available_at <= now()) or (status = 'CLAIMED' and lease_until <= now())) order by created_at, id for update skip locked limit $3) update cvg_worker_jobs as job set status = 'CLAIMED', claimed_by = $1, lease_until = now() + ($4::int * interval '1 second'), fence_token = job.fence_token + 1, attempts = job.attempts + 1 from candidates where job.id = candidates.id and job.organization_id = cvg_request_organization() returning ${WORKER_JOB_COLUMNS}`,
+        [normalizedWorkerId, lane, boundedLimit, boundedLease]
+      );
+      return result.rows.map(mapWorkerJobRow).map((record) => {
+        if (record.organizationId !== organizationId) throw new PersistenceCorruptionError(`worker job ${record.id} escaped its organization scope`);
+        return record;
+      });
+    });
+  }
+
+  async completeWorkerJob(organizationId: OpaqueId, jobId: OpaqueId, workerId: string, fenceToken: bigint): Promise<void> {
+    await this.organizationTransaction(organizationId, "worker job completion", async (client) => {
+      const result = await client.query<{ id: string }>(
+        "update cvg_worker_jobs set status = 'COMPLETED', claimed_by = null, lease_until = null, processed_at = now() where id = $1 and organization_id = cvg_request_organization() and status = 'CLAIMED' and claimed_by = $2 and fence_token = $3::bigint and lease_until > now() returning id::text as id",
+        [jobId, workerId, fenceToken.toString()]
+      );
+      if (!result.rows[0]) throw new OutboxLeaseLostError(`worker job ${jobId} cannot be completed by this lease`);
+    });
+  }
+
+  async failWorkerJob(organizationId: OpaqueId, jobId: OpaqueId, workerId: string, fenceToken: bigint, reason: string, quarantine = false, retryAfterSeconds = 5): Promise<DurableWorkerJobStatus> {
+    if (!reason.trim() || reason.length > 2_000) throw new PersistenceStateError("durable worker job failure reason is invalid");
+    const nextStatus: DurableWorkerJobStatus = quarantine ? "QUARANTINED" : "PENDING";
+    const boundedRetry = Math.min(3_600, Math.max(1, Math.trunc(retryAfterSeconds)));
+    return this.organizationTransaction(organizationId, "worker job failure", async (client) => {
+      const result = await client.query<{ status: DurableWorkerJobStatus }>(
+        "update cvg_worker_jobs set status = case when $4 = 'QUARANTINED' or attempts >= max_attempts then 'QUARANTINED' else 'PENDING' end, available_at = case when $4 = 'PENDING' and attempts < max_attempts then now() + ($5::int * interval '1 second') else available_at end, claimed_by = null, lease_until = null, last_error = left(trim($6), 2000), processed_at = case when $4 = 'QUARANTINED' or attempts >= max_attempts then now() else null end where id = $1 and organization_id = cvg_request_organization() and status = 'CLAIMED' and claimed_by = $2 and fence_token = $3::bigint and lease_until > now() returning status",
+        [jobId, workerId, fenceToken.toString(), nextStatus, boundedRetry, reason]
+      );
+      if (!result.rows[0]) throw new OutboxLeaseLostError(`worker job ${jobId} cannot be failed by this lease`);
+      return result.rows[0].status;
+    });
+  }
+
+  async workerJobStats(organizationId: OpaqueId, lane?: DurableWorkerLane): Promise<{ depth: number; oldestAgeMs: number; poisonMessages: number }> {
+    if (lane !== undefined && !DURABLE_WORKER_LANES.includes(lane)) throw new PersistenceStateError("durable worker job lane is invalid");
+    return this.organizationTransaction(organizationId, "worker job stats", async (client) => {
+      const result = await client.query<{ depth: number; oldest_age_ms: string | number; poison_messages: number }>(
+        "select count(*) filter (where status in ('PENDING', 'CLAIMED'))::int as depth, coalesce((extract(epoch from (now() - min(created_at) filter (where status in ('PENDING', 'CLAIMED')))) * 1000)::bigint, 0)::text as oldest_age_ms, count(*) filter (where status = 'QUARANTINED')::int as poison_messages from cvg_worker_jobs where organization_id = cvg_request_organization() and ($1::text is null or lane = $1)",
+        [lane ?? null]
+      );
+      const row = result.rows[0];
+      return { depth: row?.depth ?? 0, oldestAgeMs: row ? Number(row.oldest_age_ms) : 0, poisonMessages: row?.poison_messages ?? 0 };
+    }, true);
+  }
+
+  async recordWorkerHeartbeat(input: DurableWorkerHeartbeatInput): Promise<DurableWorkerHeartbeatRecord> {
+    const lastSeenAt = input.lastSeenAt ?? now();
+    validateDurableWorkerHeartbeatInput(input, lastSeenAt);
+    return this.organizationTransaction(input.organizationId, "worker heartbeat", async (client) => {
+      const result = await client.query<WorkerHeartbeatRow>(
+        `insert into cvg_worker_heartbeats(organization_id, worker_id, status, lane, cycle_id, started_at, last_seen_at, expires_at, detail) values ($1, $2, $3, $4, $5, $6::timestamptz, $7::timestamptz, $8::timestamptz, $9) on conflict (organization_id, worker_id) do update set status = excluded.status, lane = excluded.lane, cycle_id = excluded.cycle_id, started_at = excluded.started_at, last_seen_at = excluded.last_seen_at, expires_at = excluded.expires_at, detail = excluded.detail, updated_at = now() where cvg_worker_heartbeats.last_seen_at <= excluded.last_seen_at and cvg_worker_heartbeats.started_at <= excluded.started_at returning ${WORKER_HEARTBEAT_COLUMNS}`,
+        [input.organizationId, input.workerId.trim(), input.status, input.lane, input.cycleId, input.startedAt, lastSeenAt, input.expiresAt, input.detail]
+      );
+      if (result.rows[0]) return mapWorkerHeartbeatRow(result.rows[0]);
+      const currentResult = await client.query<WorkerHeartbeatRow>(`select ${WORKER_HEARTBEAT_COLUMNS} from cvg_worker_heartbeats where organization_id = cvg_request_organization() and worker_id = $1`, [input.workerId.trim()]);
+      if (currentResult.rows[0]) throw new PersistenceStateError(`worker heartbeat ${input.workerId} is stale and cannot overwrite newer liveness evidence`);
+      throw new PersistenceCorruptionError(`worker heartbeat ${input.workerId} disappeared after an upsert conflict`);
+    });
+  }
+
+  async listWorkerHeartbeats(organizationId: OpaqueId): Promise<DurableWorkerHeartbeatRecord[]> {
+    return this.organizationTransaction(organizationId, "worker heartbeat list", async (client) => {
+      const result = await client.query<WorkerHeartbeatRow>(`select ${WORKER_HEARTBEAT_COLUMNS} from cvg_worker_heartbeats where organization_id = cvg_request_organization() order by worker_id`, []);
+      return result.rows.map(mapWorkerHeartbeatRow);
+    }, true);
   }
 
   async claimOutbox(organizationId: OpaqueId, workerId: string, limit = 10, leaseSeconds = 30): Promise<DurableOutboxRecord[]> {

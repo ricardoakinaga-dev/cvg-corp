@@ -1,9 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { id } from "@cvg/contracts";
+import { id, type OpaqueId } from "@cvg/contracts";
 import { DomainError } from "@cvg/domain";
 import { blockedWorkerSink, CvgWorkerApplication, WORKER_LANES, type WorkerLane } from "../../apps/worker/src/worker.ts";
-import type { DurableOutboxRecord } from "@cvg/persistence";
+import type { DurableOutboxRecord, DurableWorkerHeartbeatInput, DurableWorkerHeartbeatRecord, DurableWorkerJobRecord, DurableWorkerLane } from "@cvg/persistence";
 
 const organizationId = id("00000000-0000-4000-0000-000000000010");
 
@@ -27,6 +27,29 @@ function record(): DurableOutboxRecord {
   };
 }
 
+function workerJob(overrides: Partial<DurableWorkerJobRecord> = {}): DurableWorkerJobRecord {
+  return {
+    id: id("00000000-0000-4000-8000-000000000910"),
+    organizationId: organizationId,
+    lane: "jobs",
+    jobType: "synthetic.rebuild",
+    idempotencyKey: "worker-job-unit-1",
+    payload: { synthetic: true },
+    maxAttempts: 2,
+    status: "CLAIMED",
+    attempts: 1,
+    availableAt: "2026-01-01T00:00:00.000Z",
+    claimedBy: "worker-test",
+    leaseUntil: "2099-01-01T00:00:00.000Z",
+    fenceToken: 1n,
+    lastError: null,
+    createdAt: "2026-01-01T00:00:00.000Z",
+    processedAt: null,
+    recordDigest: "synthetic-worker-job-digest",
+    ...overrides
+  };
+}
+
 function persistence(overrides: Partial<{
   check: () => Promise<{ database: string; serverVersion: string }>;
   assertSchema: () => Promise<void>;
@@ -34,6 +57,11 @@ function persistence(overrides: Partial<{
   completeOutbox: () => Promise<void>;
   failOutbox: () => Promise<"PENDING" | "QUARANTINED">;
   outboxStats: () => Promise<{ depth: number; oldestAgeMs: number; poisonMessages: number }>;
+  claimWorkerJobs: (organizationId: OpaqueId, lane: DurableWorkerLane, workerId: string, limit?: number, leaseSeconds?: number) => Promise<DurableWorkerJobRecord[]>;
+  completeWorkerJob: (organizationId: OpaqueId, jobId: OpaqueId, workerId: string, fenceToken: bigint) => Promise<void>;
+  failWorkerJob: (organizationId: OpaqueId, jobId: OpaqueId, workerId: string, fenceToken: bigint, reason: string, quarantine?: boolean, retryAfterSeconds?: number) => Promise<"PENDING" | "QUARANTINED">;
+  workerJobStats: (organizationId: OpaqueId, lane?: DurableWorkerLane) => Promise<{ depth: number; oldestAgeMs: number; poisonMessages: number }>;
+  recordWorkerHeartbeat: (input: DurableWorkerHeartbeatInput) => Promise<DurableWorkerHeartbeatRecord>;
 }> = {}) {
   return {
     check: overrides.check ?? (async () => ({ database: "synthetic", serverVersion: "synthetic" })),
@@ -41,7 +69,12 @@ function persistence(overrides: Partial<{
     claimOutbox: overrides.claimOutbox ?? (async () => [record()]),
     completeOutbox: overrides.completeOutbox ?? (async () => undefined),
     failOutbox: overrides.failOutbox ?? (async () => "QUARANTINED" as const),
-    ...(overrides.outboxStats ? { outboxStats: overrides.outboxStats } : {})
+    ...(overrides.outboxStats ? { outboxStats: overrides.outboxStats } : {}),
+    ...(overrides.claimWorkerJobs ? { claimWorkerJobs: overrides.claimWorkerJobs } : {}),
+    ...(overrides.completeWorkerJob ? { completeWorkerJob: overrides.completeWorkerJob } : {}),
+    ...(overrides.failWorkerJob ? { failWorkerJob: overrides.failWorkerJob } : {}),
+    ...(overrides.workerJobStats ? { workerJobStats: overrides.workerJobStats } : {}),
+    ...(overrides.recordWorkerHeartbeat ? { recordWorkerHeartbeat: overrides.recordWorkerHeartbeat } : {})
   };
 }
 
@@ -192,4 +225,94 @@ test("worker enforces lane budgets and bounded concurrency", async () => {
   const budgeted = await worker.runCycle(organizationId, "worker-budget", { laneBudgets: { jobs: { maxProcessed: 0 } } });
   assert.equal(budgeted.lanes.jobs.status, "FAILED");
   assert.equal(budgeted.metrics.budgetExceeded, 1);
+});
+
+test("worker executes durable jobs with handler fencing and records a cycle heartbeat", async () => {
+  const job = workerJob();
+  const completed: string[] = [];
+  const heartbeatStatuses: string[] = [];
+  const worker = new CvgWorkerApplication({
+    persistence: persistence({
+      claimWorkerJobs: async (_organizationId, lane) => lane === "jobs" ? [job] : [],
+      completeWorkerJob: async (_organizationId, jobId) => { completed.push(jobId); },
+      failWorkerJob: async () => "PENDING",
+      recordWorkerHeartbeat: async (input) => {
+        heartbeatStatuses.push(input.status);
+        return { organizationId: input.organizationId, workerId: input.workerId, status: input.status, lane: input.lane, cycleId: input.cycleId, startedAt: input.startedAt, lastSeenAt: input.lastSeenAt ?? input.startedAt, expiresAt: input.expiresAt, detail: input.detail, updatedAt: input.lastSeenAt ?? input.startedAt };
+      }
+    }),
+    sink: { deliver: async () => "DELIVERED" },
+    sinkMode: "enabled",
+    jobHandlers: { "synthetic.rebuild": async (claimed, context) => { assert.equal(claimed.fenceToken, 1n); assert.equal(context.workerId, "worker-durable"); } },
+    lanes: { schedule: async () => 0, reconciliation: async () => 0, notifications: async () => 0, maintenance: async () => 0 }
+  });
+  assert.equal((await worker.health()).lanes.jobs, "READY");
+  const result = await worker.runCycle(organizationId, "worker-durable");
+  assert.equal(result.status, "COMPLETED");
+  assert.equal(result.lanes.jobs.processed, 1);
+  assert.deepEqual(completed, [job.id]);
+  assert.deepEqual(heartbeatStatuses, ["RUNNING", "RUNNING"]);
+});
+
+test("worker quarantines an unknown durable job handler and keeps the poison visible", async () => {
+  const job = workerJob({ jobType: "synthetic.unknown", attempts: 2 });
+  const failures: Array<{ jobId: string; quarantine: boolean }> = [];
+  const worker = new CvgWorkerApplication({
+    persistence: persistence({
+      claimWorkerJobs: async (_organizationId, lane) => lane === "jobs" ? [job] : [],
+      completeWorkerJob: async () => undefined,
+      failWorkerJob: async (_organizationId, jobId, _workerId, _fence, _reason, quarantine) => { failures.push({ jobId, quarantine: Boolean(quarantine) }); return "QUARANTINED"; }
+    }),
+    sink: { deliver: async () => "DELIVERED" },
+    sinkMode: "enabled",
+    jobHandlers: { "synthetic.other": async () => undefined },
+    lanes: { schedule: async () => 0, reconciliation: async () => 0, notifications: async () => 0, maintenance: async () => 0 }
+  });
+  const result = await worker.runCycle(organizationId, "worker-poison");
+  assert.equal(result.status, "FAILED");
+  assert.equal(result.lanes.jobs.status, "FAILED");
+  assert.equal(result.lanes.jobs.quarantined, 1);
+  assert.equal(result.metrics.poisonMessages, 1);
+  assert.deepEqual(failures, [{ jobId: job.id, quarantine: true }]);
+});
+
+test("worker fails closed before claiming when durable heartbeat cannot be written", async () => {
+  let claims = 0;
+  const worker = new CvgWorkerApplication({
+    persistence: persistence({
+      claimWorkerJobs: async () => { claims += 1; return []; },
+      completeWorkerJob: async () => undefined,
+      failWorkerJob: async () => "PENDING",
+      recordWorkerHeartbeat: async () => { throw new Error("synthetic heartbeat outage"); }
+    }),
+    sink: { deliver: async () => "DELIVERED" },
+    sinkMode: "enabled",
+    jobHandlers: { "synthetic.rebuild": async () => undefined },
+    lanes: { schedule: async () => 0, reconciliation: async () => 0, notifications: async () => 0, maintenance: async () => 0 }
+  });
+  await assert.rejects(() => worker.runCycle(organizationId, "worker-heartbeat-failure"), /synthetic heartbeat outage/);
+  assert.equal(claims, 0);
+});
+
+test("worker applies per-lane durable backpressure before claiming internal jobs", async () => {
+  let claims = 0;
+  const worker = new CvgWorkerApplication({
+    persistence: persistence({
+      claimWorkerJobs: async () => { claims += 1; return []; },
+      completeWorkerJob: async () => undefined,
+      failWorkerJob: async () => "PENDING",
+      workerJobStats: async (_organizationId, lane) => lane === "jobs" ? { depth: 3, oldestAgeMs: 900_000, poisonMessages: 2 } : { depth: 0, oldestAgeMs: 0, poisonMessages: 0 }
+    }),
+    sink: { deliver: async () => "DELIVERED" },
+    sinkMode: "enabled",
+    maxOutstandingJobs: 2,
+    jobHandlers: { "synthetic.rebuild": async () => undefined },
+    lanes: { schedule: async () => 0, reconciliation: async () => 0, notifications: async () => 0, maintenance: async () => 0 }
+  });
+  const result = await worker.runCycle(organizationId, "worker-backpressure-jobs");
+  assert.equal(result.lanes.jobs.status, "BLOCKED");
+  assert.equal(result.backpressure.workerLanes.jobs?.active, true);
+  assert.equal(result.metrics.backpressureEvents, 1);
+  assert.equal(result.metrics.poisonMessages, 2);
+  assert.equal(claims, 0);
 });

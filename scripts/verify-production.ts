@@ -34,6 +34,7 @@ const requiredFiles = [
   "apps/api/src/server.ts",
   "apps/worker/src/main.ts",
   "apps/worker/src/worker.ts",
+  "packages/persistence/src/index.ts",
   "packages/ops/src/otel.ts",
   "packages/config/src/index.ts",
   "packages/agent-runtime/src/index.ts",
@@ -55,6 +56,7 @@ const requiredFiles = [
   "db/migrations/028_append_only_lock_privileges.sql",
   "db/migrations/029_ai_turn_provenance_usage_and_dml_scope.sql",
   "db/migrations/030_break_glass_durable_lifecycle.sql",
+  "db/migrations/031_worker_jobs_and_heartbeats.sql",
   "docs/runbooks/deploy.md",
   "docs/runbooks/deployment.md",
   "docs/runbooks/rollback.md",
@@ -101,6 +103,7 @@ const requiredFiles = [
   "scripts/audit-design-tokens.ts",
   "scripts/check-contrast.ts",
   "tests/unit/worker.test.ts",
+  "tests/integration/worker-jobs.test.ts",
   "tests/integration/faults.test.ts",
   "tests/integration/provider-sandbox.test.ts",
   ".gauntlet/bar-v3.json",
@@ -218,6 +221,12 @@ function inspectStaticContracts(): void {
   requireText("db/migrations/030_break_glass_durable_lifecycle.sql", "break_glass_grants");
   requireText("db/migrations/030_break_glass_durable_lifecycle.sql", "mfa_method = 'WEBAUTHN'");
   requireText("db/migrations/030_break_glass_durable_lifecycle.sql", "cvg_break_glass_transition_guard");
+  requireText("db/migrations/031_worker_jobs_and_heartbeats.sql", "cvg_worker_jobs");
+  requireText("db/migrations/031_worker_jobs_and_heartbeats.sql", "cvg_worker_heartbeats");
+  requireText("db/migrations/031_worker_jobs_and_heartbeats.sql", "force row level security");
+  requireText("packages/persistence/src/index.ts", "claimWorkerJobs");
+  requireText("packages/persistence/src/index.ts", "recordWorkerHeartbeat");
+  requireText("apps/worker/src/worker.ts", "defaultDurableJobRunner");
   requireText("apps/api/src/application/export-service.ts", "encryptRecoveryBundle");
   requireText("apps/api/src/application/export-service.ts", "idempotentAsync");
   requireText(".gauntlet/bar-v3.json", "V3-AAA-001");

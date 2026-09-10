@@ -2,10 +2,11 @@ import type { OpaqueId } from "@cvg/contracts";
 import { DomainError, makeId, now } from "@cvg/domain";
 import { configuredSecretProvider, createMessagingExternalEffectQueryAdapter, HttpMessagingProvider, MessagingOutboxSink, OutboxWorker, reconcileUnknownExternalEffect, type ExternalEffectLedger, type ExternalEffectQueryAdapter, type OutboxDeliveryDecision, type OutboxSink, type OutboxWorkerResult } from "@cvg/integrations";
 import type { CvgConfig } from "@cvg/config";
-import type { PostgresPersistence } from "@cvg/persistence";
+import type { DurableWorkerJobRecord, DurableWorkerLane, PostgresPersistence } from "@cvg/persistence";
 
 export const WORKER_LANES = ["outbox", "jobs", "schedule", "reconciliation", "notifications", "maintenance"] as const;
 export type WorkerLane = (typeof WORKER_LANES)[number];
+const WORKER_JOB_LANES = WORKER_LANES.filter((lane): lane is Exclude<WorkerLane, "outbox"> => lane !== "outbox");
 
 export interface WorkerLaneContext {
   cycleId: OpaqueId;
@@ -20,6 +21,8 @@ export interface WorkerLaneResult {
   processed: number;
   durationMs: number;
   reason: string | null;
+  failed?: number;
+  quarantined?: number;
 }
 
 export interface WorkerCycleResult extends OutboxWorkerResult {
@@ -28,11 +31,12 @@ export interface WorkerCycleResult extends OutboxWorkerResult {
   startedAt: string;
   durationMs: number;
   lanes: Record<WorkerLane, WorkerLaneResult>;
-  backpressure: { active: boolean; depth: number | null; limit: number | null };
+  backpressure: { active: boolean; depth: number | null; limit: number | null; workerLanes: Partial<Record<Exclude<WorkerLane, "outbox">, { active: boolean; depth: number | null; limit: number; poisonMessages: number }>> };
   metrics: { laneRuns: number; laneFailures: number; budgetExceeded: number; backpressureEvents: number; poisonMessages: number };
 }
 
 export type WorkerLaneRunner = (context: WorkerLaneContext) => Promise<number>;
+export type WorkerJobHandler = (job: DurableWorkerJobRecord, context: WorkerLaneContext) => Promise<void>;
 
 export interface WorkerLaneBudget {
   maxProcessed?: number;
@@ -58,13 +62,22 @@ export interface WorkerHealth {
 }
 
 export interface WorkerDependencies {
-  persistence: Pick<PostgresPersistence, "check" | "assertSchema" | "claimOutbox" | "completeOutbox" | "failOutbox"> & Partial<Pick<PostgresPersistence, "listExternalEffects" | "reconcileExternalEffect" | "claimExternalEffectForReconciliation" | "outboxStats">>;
+  persistence: Pick<PostgresPersistence, "check" | "assertSchema" | "claimOutbox" | "completeOutbox" | "failOutbox"> & Partial<Pick<PostgresPersistence, "listExternalEffects" | "reconcileExternalEffect" | "claimExternalEffectForReconciliation" | "outboxStats" | "claimWorkerJobs" | "completeWorkerJob" | "failWorkerJob" | "workerJobStats" | "recordWorkerHeartbeat" | "listWorkerHeartbeats">>;
   effects?: ExternalEffectLedger | null;
   sink?: OutboxSink;
   sinkMode?: "quarantine" | "enabled";
   reconciliationAdapter?: ExternalEffectQueryAdapter;
   lanes?: Partial<Record<Exclude<WorkerLane, "outbox">, WorkerLaneRunner>>;
+  jobHandlers?: Partial<Record<string, WorkerJobHandler>>;
   maxOutstandingOutbox?: number;
+  maxOutstandingJobs?: number;
+}
+
+class WorkerLaneFailure extends Error {
+  constructor(public readonly processed: number, public readonly failed: number, public readonly quarantined: number, message: string) {
+    super(message);
+    this.name = "WorkerLaneFailure";
+  }
 }
 
 /** Separate process boundary for tenant-scoped leases, fenced outbox delivery and reconciliation. */
@@ -107,14 +120,39 @@ export class CvgWorkerApplication {
     const metrics = { laneRuns: 0, laneFailures: 0, budgetExceeded: 0, backpressureEvents: 0, poisonMessages: 0 };
     const laneConcurrency = Math.min(WORKER_LANES.length - 1, Math.max(1, Math.trunc(options.laneConcurrency ?? 1)));
     const backpressureLimit = this.dependencies.maxOutstandingOutbox ?? 1_000;
-    let backpressure: WorkerCycleResult["backpressure"] = { active: false, depth: null, limit: this.dependencies.persistence.outboxStats ? backpressureLimit : null };
+    const workerBackpressureLimit = this.dependencies.maxOutstandingJobs ?? 1_000;
+    const workerBackpressure = {} as NonNullable<WorkerCycleResult["backpressure"]["workerLanes"]>;
+    const workerPressureMeasurementFailed = new Set<Exclude<WorkerLane, "outbox">>();
+    let backpressure: WorkerCycleResult["backpressure"] = { active: false, depth: null, limit: this.dependencies.persistence.outboxStats ? backpressureLimit : null, workerLanes: workerBackpressure };
+    const heartbeatWriter = this.dependencies.persistence.recordWorkerHeartbeat;
+    const heartbeatLeaseSeconds = Math.min(300, Math.max(1, Math.trunc(options.leaseSeconds ?? 30)));
+    let heartbeatTimer: ReturnType<typeof setInterval> | undefined;
+    let heartbeatStarted = false;
+    let heartbeatFailure: unknown = null;
+    let finalHeartbeatDetail: string | null = null;
+    let finalHeartbeatStatus: "RUNNING" | "DEGRADED" | "STOPPING" = "RUNNING";
+    const writeHeartbeat = async (status: "RUNNING" | "DEGRADED" | "STOPPING" | "STOPPED", detail: string | null): Promise<void> => {
+      if (!heartbeatWriter) return;
+      const lastSeenAt = now();
+      await heartbeatWriter({ organizationId, workerId, status, lane: null, cycleId, startedAt, lastSeenAt, expiresAt: new Date(Date.parse(lastSeenAt) + heartbeatLeaseSeconds * 1_000).toISOString(), detail });
+    };
     try {
+      if (heartbeatWriter) {
+        await writeHeartbeat("RUNNING", "worker cycle started");
+        heartbeatStarted = true;
+        heartbeatTimer = setInterval(() => {
+          void writeHeartbeat("RUNNING", "worker cycle heartbeat").catch((error: unknown) => {
+            heartbeatFailure ??= error;
+            controller.abort();
+          });
+        }, Math.max(1_000, Math.min(30_000, Math.floor(heartbeatLeaseSeconds * 500))));
+      }
       let outbox: OutboxWorkerResult = { claimed: 0, delivered: 0, retried: 0, quarantined: 0, outcomeUnknown: 0 };
       let outboxBlockedReason: string | null = null;
       if (this.dependencies.persistence.outboxStats) {
         try {
           const stats = await this.dependencies.persistence.outboxStats(organizationId);
-          backpressure = { active: stats.depth >= backpressureLimit, depth: stats.depth, limit: backpressureLimit };
+          backpressure = { active: stats.depth >= backpressureLimit, depth: stats.depth, limit: backpressureLimit, workerLanes: workerBackpressure };
           metrics.poisonMessages = stats.poisonMessages;
           if (backpressure.active) {
             metrics.backpressureEvents += 1;
@@ -122,6 +160,20 @@ export class CvgWorkerApplication {
           }
         } catch {
           outboxBlockedReason = "outbox pressure could not be measured; no work was claimed";
+        }
+      }
+      if (this.dependencies.persistence.workerJobStats) {
+        for (const lane of WORKER_JOB_LANES) {
+          try {
+            const stats = await this.dependencies.persistence.workerJobStats(organizationId, lane);
+            workerBackpressure[lane] = { active: stats.depth >= workerBackpressureLimit, depth: stats.depth, limit: workerBackpressureLimit, poisonMessages: stats.poisonMessages };
+            metrics.poisonMessages = Math.max(metrics.poisonMessages, stats.poisonMessages);
+            if (stats.depth >= workerBackpressureLimit) {
+              metrics.backpressureEvents += 1;
+            }
+          } catch {
+            workerPressureMeasurementFailed.add(lane);
+          }
         }
       }
       if (!this.dependencies.sink || this.dependencies.sinkMode === "quarantine") {
@@ -141,7 +193,17 @@ export class CvgWorkerApplication {
         }
       }
       const runLane = async (lane: Exclude<WorkerLane, "outbox">): Promise<void> => {
-        const runner = lane === "reconciliation" ? this.dependencies.lanes?.reconciliation ?? this.defaultReconciliationRunner() : this.dependencies.lanes?.[lane];
+        const durableRunner = this.defaultDurableJobRunner(lane, options, metrics);
+        const runner = lane === "reconciliation" ? this.dependencies.lanes?.reconciliation ?? this.defaultReconciliationRunner() ?? durableRunner : this.dependencies.lanes?.[lane] ?? durableRunner;
+        const pressure = workerBackpressure[lane];
+        if (workerPressureMeasurementFailed.has(lane)) {
+          lanes[lane] = { status: "BLOCKED", processed: 0, durationMs: 0, reason: "worker lane pressure could not be measured; no work was claimed" };
+          return;
+        }
+        if (pressure?.active) {
+          lanes[lane] = { status: "BLOCKED", processed: 0, durationMs: 0, reason: `worker lane backpressure active at depth ${pressure.depth}; limit ${pressure.limit}` };
+          return;
+        }
         if (!runner) {
           lanes[lane] = { status: "BLOCKED", processed: 0, durationMs: 0, reason: "lane runner is not configured; no work was claimed" };
           return;
@@ -152,20 +214,35 @@ export class CvgWorkerApplication {
           const processed = await this.runBoundedLane(runner, { cycleId, organizationId, workerId, signal: controller.signal, startedAt }, options.laneBudgets?.[lane], metrics);
           if (!Number.isSafeInteger(processed) || processed < 0) throw new Error("lane runner returned an invalid count");
           lanes[lane] = { status: "EXECUTED", processed, durationMs: Date.now() - laneStarted, reason: null };
-        } catch (_error) {
+        } catch (error) {
           metrics.laneFailures += 1;
-          lanes[lane] = { status: "FAILED", processed: 0, durationMs: Date.now() - laneStarted, reason: "lane runner failed closed" };
+          if (error instanceof WorkerLaneFailure) {
+            lanes[lane] = { status: "FAILED", processed: error.processed, failed: error.failed, quarantined: error.quarantined, durationMs: Date.now() - laneStarted, reason: "lane runner failed closed" };
+          } else {
+            lanes[lane] = { status: "FAILED", processed: 0, durationMs: Date.now() - laneStarted, reason: "lane runner failed closed" };
+          }
         }
       };
-      const nonOutboxLanes = WORKER_LANES.filter((lane): lane is Exclude<WorkerLane, "outbox"> => lane !== "outbox");
+      const nonOutboxLanes = WORKER_JOB_LANES;
       for (let offset = 0; offset < nonOutboxLanes.length; offset += laneConcurrency) {
         await Promise.all(nonOutboxLanes.slice(offset, offset + laneConcurrency).map((lane) => runLane(lane)));
       }
       const laneStatuses = Object.values(lanes).map((lane) => lane.status);
       const status = laneStatuses.includes("FAILED") ? "FAILED" : laneStatuses.includes("BLOCKED") ? "DEGRADED" : "COMPLETED";
+      finalHeartbeatStatus = controller.signal.aborted ? "STOPPING" : status === "COMPLETED" ? "RUNNING" : "DEGRADED";
+      finalHeartbeatDetail = JSON.stringify({ cycleId, status, lanes: Object.fromEntries(Object.entries(lanes).map(([lane, result]) => [lane, { status: result.status, processed: result.processed, failed: result.failed ?? 0, quarantined: result.quarantined ?? 0 }])) }).slice(0, 2_000);
       return { ...outbox, cycleId, status, startedAt, durationMs: Date.now() - Date.parse(startedAt), lanes, backpressure, metrics };
     } finally {
+      if (heartbeatTimer) clearInterval(heartbeatTimer);
       this.activeCycles.delete(controller);
+      if (heartbeatWriter && heartbeatStarted) {
+        try {
+          await writeHeartbeat(controller.signal.aborted ? "STOPPING" : finalHeartbeatStatus, finalHeartbeatDetail ?? (heartbeatFailure ? "worker heartbeat failed" : "worker cycle completed"));
+        } catch (error) {
+          heartbeatFailure ??= error;
+        }
+      }
+      if (heartbeatFailure) throw heartbeatFailure;
     }
   }
 
@@ -204,11 +281,11 @@ export class CvgWorkerApplication {
   private laneAvailability(): Record<WorkerLane, "READY" | "BLOCKED"> {
     return {
       outbox: this.dependencies.sink && this.dependencies.sinkMode !== "quarantine" ? "READY" : "BLOCKED",
-      jobs: this.dependencies.lanes?.jobs ? "READY" : "BLOCKED",
-      schedule: this.dependencies.lanes?.schedule ? "READY" : "BLOCKED",
-      reconciliation: this.dependencies.lanes?.reconciliation || this.hasDefaultReconciliation() ? "READY" : "BLOCKED",
-      notifications: this.dependencies.lanes?.notifications ? "READY" : "BLOCKED",
-      maintenance: this.dependencies.lanes?.maintenance ? "READY" : "BLOCKED"
+      jobs: this.dependencies.lanes?.jobs || this.hasDurableJobLane("jobs") ? "READY" : "BLOCKED",
+      schedule: this.dependencies.lanes?.schedule || this.hasDurableJobLane("schedule") ? "READY" : "BLOCKED",
+      reconciliation: this.dependencies.lanes?.reconciliation || this.hasDefaultReconciliation() || this.hasDurableJobLane("reconciliation") ? "READY" : "BLOCKED",
+      notifications: this.dependencies.lanes?.notifications || this.hasDurableJobLane("notifications") ? "READY" : "BLOCKED",
+      maintenance: this.dependencies.lanes?.maintenance || this.hasDurableJobLane("maintenance") ? "READY" : "BLOCKED"
     };
   }
 
@@ -218,6 +295,65 @@ export class CvgWorkerApplication {
 
   private hasDefaultReconciliation(): boolean {
     return Boolean(this.dependencies.reconciliationAdapter && this.dependencies.persistence.listExternalEffects && this.dependencies.persistence.reconcileExternalEffect);
+  }
+
+  private hasDurableJobLane(_lane: DurableWorkerLane): boolean {
+    return Boolean(this.dependencies.persistence.claimWorkerJobs && this.dependencies.persistence.completeWorkerJob && this.dependencies.persistence.failWorkerJob && this.dependencies.jobHandlers && Object.keys(this.dependencies.jobHandlers).length > 0);
+  }
+
+  private defaultDurableJobRunner(lane: DurableWorkerLane, options: WorkerCycleOptions, metrics: { poisonMessages: number }): WorkerLaneRunner | undefined {
+    const claimWorkerJobs = this.dependencies.persistence.claimWorkerJobs;
+    const completeWorkerJob = this.dependencies.persistence.completeWorkerJob;
+    const failWorkerJob = this.dependencies.persistence.failWorkerJob;
+    const handlers = this.dependencies.jobHandlers;
+    if (!claimWorkerJobs || !completeWorkerJob || !failWorkerJob || !handlers || Object.keys(handlers).length === 0) return undefined;
+    return async (context) => {
+      const jobs = await claimWorkerJobs(context.organizationId, lane, context.workerId, options.limit ?? 10, options.leaseSeconds ?? 30);
+      let processed = 0;
+      let failed = 0;
+      let quarantined = 0;
+      let firstFailure: string | null = null;
+      for (const job of jobs) {
+        if (context.signal.aborted) {
+          const status = await failWorkerJob(context.organizationId, job.id, context.workerId, job.fenceToken, "WORKER_SHUTDOWN_INTERRUPTED", false, 1);
+          processed += 1;
+          failed += 1;
+          if (status === "QUARANTINED") {
+            quarantined += 1;
+            metrics.poisonMessages += 1;
+          }
+          break;
+        }
+        const handler = handlers[job.jobType];
+        if (!handler) {
+          await failWorkerJob(context.organizationId, job.id, context.workerId, job.fenceToken, "NO_HANDLER_CONFIGURED", true, 1);
+          processed += 1;
+          failed += 1;
+          quarantined += 1;
+          metrics.poisonMessages += 1;
+          firstFailure ??= `no handler configured for durable job type ${job.jobType}`;
+          continue;
+        }
+        try {
+          await handler(job, context);
+          await completeWorkerJob(context.organizationId, job.id, context.workerId, job.fenceToken);
+          processed += 1;
+        } catch (error) {
+          const message = (error instanceof Error ? error.message : String(error)).trim().slice(0, 2_000) || "durable worker job failed";
+          const shouldQuarantine = job.attempts >= job.maxAttempts;
+          const status = await failWorkerJob(context.organizationId, job.id, context.workerId, job.fenceToken, message, shouldQuarantine, Math.min(900, 2 ** Math.min(8, Math.max(0, job.attempts - 1))));
+          processed += 1;
+          failed += 1;
+          firstFailure ??= message;
+          if (status === "QUARANTINED") {
+            quarantined += 1;
+            metrics.poisonMessages += 1;
+          }
+        }
+      }
+      if (firstFailure) throw new WorkerLaneFailure(processed, failed, quarantined, firstFailure);
+      return processed;
+    };
   }
 
   private defaultReconciliationRunner(): WorkerLaneRunner | undefined {

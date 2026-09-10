@@ -6,7 +6,7 @@ export function PageHeader({ eyebrow, title, description, action, actionIcon = "
 }
 
 export function StatePanel({ kind, title, body, action, onAction }: { kind: "loading" | "empty" | "error"; title: string; body: string; action?: string; onAction?: () => void }) {
-  return <div className={`state-panel state-${kind}`} role={kind === "error" ? "alert" : undefined}><div className="state-symbol">{kind === "loading" ? <span className="spinner" /> : <Icon name={kind === "error" ? "alert" : "spark"} size={22} />}</div><strong>{title}</strong><p>{body}</p>{action && <button className="button button-ghost" type="button" onClick={onAction}>{action}</button>}</div>;
+  return <div className={`state-panel state-${kind}`} role={kind === "error" ? "alert" : kind === "loading" ? "status" : undefined} aria-live={kind === "loading" ? "polite" : undefined} aria-busy={kind === "loading" ? true : undefined}><div className="state-symbol">{kind === "loading" ? <span className="spinner" /> : <Icon name={kind === "error" ? "alert" : "spark"} size={22} />}</div><strong>{title}</strong><p>{body}</p>{action && <button className="button button-ghost" type="button" onClick={onAction}>{action}</button>}</div>;
 }
 
 export function StatusBadge({ children, tone = "teal" }: { children: ReactNode; tone?: "teal" | "amber" | "coral" | "slate" }) {

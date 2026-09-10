@@ -114,6 +114,7 @@ export interface ServerConfig {
   deepseekExpectedEngineCommit: string | null;
   deepseekExpectedManifestVersion: string | null;
   deepseekBearerTokenRef: string | null;
+  deepseekContextSigningSecretRef: string | null;
   secretDir: string;
   workerOrganizationId: string | null;
   secretProvider: "none" | "env" | "file" | "docker" | "vault" | "aws" | "gcp" | "azure" | "kubernetes";
@@ -261,6 +262,7 @@ function getConfig(overrides: Partial<ServerConfig> = {}): ServerConfig {
     deepseekExpectedEngineCommit: overrides.deepseekExpectedEngineCommit ?? typed.deepseekExpectedEngineCommit,
     deepseekExpectedManifestVersion: overrides.deepseekExpectedManifestVersion ?? typed.deepseekExpectedManifestVersion,
     deepseekBearerTokenRef: overrides.deepseekBearerTokenRef ?? typed.deepseekBearerTokenRef,
+    deepseekContextSigningSecretRef: overrides.deepseekContextSigningSecretRef ?? typed.deepseekContextSigningSecretRef,
     secretDir: overrides.secretDir ?? typed.secretDir,
     workerOrganizationId: overrides.workerOrganizationId ?? typed.workerOrganizationId,
     secretProvider: overrides.secretProvider ?? typed.secretProvider,
@@ -268,7 +270,7 @@ function getConfig(overrides: Partial<ServerConfig> = {}): ServerConfig {
     rateLimitRequestsPerWindow: overrides.rateLimitRequestsPerWindow ?? typed.rateLimitRequestsPerWindow,
     rateLimitWindowSeconds: overrides.rateLimitWindowSeconds ?? typed.rateLimitWindowSeconds
   });
-  return { nodeEnv: validated.nodeEnv, host: validated.host, trustProxy: validated.trustProxy, port: validated.apiPort, webOrigin: validated.webOrigin, storageMode: validated.storageMode, demoMode: validated.demoMode, sessionTtlMinutes: validated.sessionTtlMinutes, authMfaMode: validated.authMfaMode, passwordMinLength: validated.passwordMinLength, passwordMaxAgeDays: validated.passwordMaxAgeDays, authMaxFailedAttempts: validated.authMaxFailedAttempts, authLockoutMinutes: validated.authLockoutMinutes, authChallengeTtlSeconds: validated.authChallengeTtlSeconds, authMaxChallengeAttempts: validated.authMaxChallengeAttempts, databaseUrl: validated.databaseUrl, bootstrapPassword: validated.bootstrapPassword, deepseekBaseUrl: validated.deepseekBaseUrl, deepseekRuntimeEnabled: validated.deepseekRuntimeEnabled, deepseekExpectedEngineCommit: validated.deepseekExpectedEngineCommit, deepseekExpectedManifestVersion: validated.deepseekExpectedManifestVersion, deepseekBearerTokenRef: validated.deepseekBearerTokenRef, secretDir: validated.secretDir, workerOrganizationId: validated.workerOrganizationId, secretProvider: validated.secretProvider, rateLimitBackend: validated.rateLimitBackend, rateLimitRequestsPerWindow: validated.rateLimitRequestsPerWindow, rateLimitWindowSeconds: validated.rateLimitWindowSeconds };
+  return { nodeEnv: validated.nodeEnv, host: validated.host, trustProxy: validated.trustProxy, port: validated.apiPort, webOrigin: validated.webOrigin, storageMode: validated.storageMode, demoMode: validated.demoMode, sessionTtlMinutes: validated.sessionTtlMinutes, authMfaMode: validated.authMfaMode, passwordMinLength: validated.passwordMinLength, passwordMaxAgeDays: validated.passwordMaxAgeDays, authMaxFailedAttempts: validated.authMaxFailedAttempts, authLockoutMinutes: validated.authLockoutMinutes, authChallengeTtlSeconds: validated.authChallengeTtlSeconds, authMaxChallengeAttempts: validated.authMaxChallengeAttempts, databaseUrl: validated.databaseUrl, bootstrapPassword: validated.bootstrapPassword, deepseekBaseUrl: validated.deepseekBaseUrl, deepseekRuntimeEnabled: validated.deepseekRuntimeEnabled, deepseekExpectedEngineCommit: validated.deepseekExpectedEngineCommit, deepseekExpectedManifestVersion: validated.deepseekExpectedManifestVersion, deepseekBearerTokenRef: validated.deepseekBearerTokenRef, deepseekContextSigningSecretRef: validated.deepseekContextSigningSecretRef, secretDir: validated.secretDir, workerOrganizationId: validated.workerOrganizationId, secretProvider: validated.secretProvider, rateLimitBackend: validated.rateLimitBackend, rateLimitRequestsPerWindow: validated.rateLimitRequestsPerWindow, rateLimitWindowSeconds: validated.rateLimitWindowSeconds };
 }
 
 function tokenDigest(value: string): string {
@@ -453,12 +455,17 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     ? "NOT_REQUIRED"
     : await isSecretReferenceUsable(secretProvider, config.deepseekBearerTokenRef) ? "READY" : "UNAVAILABLE";
   if (config.nodeEnv === "production" && config.deepseekRuntimeEnabled && deepseekBearerTokenStatus !== "READY") await closeBeforeRuntimeFailure("Produção exige que a referência do bearer token DeepSeek seja resolvível; o runtime foi mantido bloqueado.");
+  const deepseekContextSignatureStatus: "READY" | "UNAVAILABLE" | "NOT_REQUIRED" = !config.deepseekRuntimeEnabled || !config.deepseekContextSigningSecretRef
+    ? "NOT_REQUIRED"
+    : await isSecretReferenceUsable(secretProvider, config.deepseekContextSigningSecretRef) ? "READY" : "UNAVAILABLE";
+  if (config.nodeEnv === "production" && config.deepseekRuntimeEnabled && deepseekContextSignatureStatus !== "READY") await closeBeforeRuntimeFailure("Produção exige que a referência de assinatura de contexto DeepSeek seja resolvível; o runtime foi mantido bloqueado.");
   const harness = options.harness ?? new GovernedHarness(store);
   const agentRuntime = options.agentRuntime ?? (() => {
     if (!config.deepseekRuntimeEnabled) return new MockHarnessAdapter(harness);
     if (!config.deepseekBaseUrl || !config.deepseekExpectedEngineCommit || !config.deepseekExpectedManifestVersion) throw new DomainError("CAPABILITY_DISABLED", "O runtime DeepSeek exige URL, commit e manifest aprovados.", 503);
     const bearerTokenRef = config.deepseekBearerTokenRef;
-    return new DeepSeekHarnessAdapter({ baseUrl: config.deepseekBaseUrl, expectedEngineCommit: config.deepseekExpectedEngineCommit, expectedManifestVersion: config.deepseekExpectedManifestVersion, expectedToolNames: TOOL_REGISTRY.map((tool) => tool.name), requestTimeoutMs: 5_000, allowInsecureHttp: config.nodeEnv !== "production", ...(bearerTokenRef ? { resolveBearerToken: () => secretProvider?.resolve?.(bearerTokenRef) ?? Promise.resolve(null) } : {}) });
+    const contextSigningSecretRef = config.deepseekContextSigningSecretRef;
+    return new DeepSeekHarnessAdapter({ baseUrl: config.deepseekBaseUrl, expectedEngineCommit: config.deepseekExpectedEngineCommit, expectedManifestVersion: config.deepseekExpectedManifestVersion, expectedToolNames: TOOL_REGISTRY.map((tool) => tool.name), requestTimeoutMs: 5_000, allowInsecureHttp: config.nodeEnv !== "production", ...(bearerTokenRef ? { resolveBearerToken: () => secretProvider?.resolve?.(bearerTokenRef) ?? Promise.resolve(null) } : {}), ...(contextSigningSecretRef ? { resolveContextSigningSecret: () => secretProvider?.resolve?.(contextSigningSecretRef) ?? Promise.resolve(null) } : {}) });
   })();
   try {
     otelRuntime = createOpenTelemetryRuntime({ serviceName: "cvg-api", requireTls: config.nodeEnv === "production" });
@@ -620,6 +627,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     secretProviderStatus,
     authMfaStatus,
     deepseekBearerTokenStatus,
+    deepseekContextSignatureStatus,
     secretProviderRequired: config.nodeEnv === "production" || config.deepseekRuntimeEnabled,
     config
   });

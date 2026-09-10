@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createAcpNativeHarnessPortFromEnvironment, readAcpManifestVersion } from "@cvg/deepseek-bridge";
+import { createAcpNativeHarnessPortFromEnvironment, DeepSeekAcpNativeHarnessPort, DeepSeekBridgeError, readAcpManifestVersion } from "@cvg/deepseek-bridge";
 
 test("ACP factory stays disabled until the complete explicit deployment contract exists", () => {
   assert.equal(createAcpNativeHarnessPortFromEnvironment({}), undefined);
@@ -28,6 +28,11 @@ test("ACP manifest attestation hashes the exact profile and requires the ACP bun
   } finally {
     await rm(root, { recursive: true, force: true });
   }
+});
+
+test("ACP native port blocks an ungoverned model turn", async () => {
+  const port = new DeepSeekAcpNativeHarnessPort({ command: "node", args: [], engineRoot: "/tmp/deepseek-engine", workspaceRoot: "/tmp/cvg-workspace", manifestPath: "/tmp/deepseek-manifest.json", expectedAgentName: "deepseek-harness-acp", modelName: "deepseek-acp" });
+  await assert.rejects(() => port.executeTurn({} as Parameters<DeepSeekAcpNativeHarnessPort["executeTurn"]>[0]), (error: unknown) => error instanceof DeepSeekBridgeError && error.code === "CAPABILITY_DISABLED");
 });
 
 test("real DeepSeek Harness ACP boundary initializes only when explicitly enabled", { skip: process.env.CVG_DEEPSEEK_ACP_E2E !== "1" }, async () => {

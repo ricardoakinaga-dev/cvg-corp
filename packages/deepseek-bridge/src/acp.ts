@@ -281,23 +281,8 @@ export class DeepSeekAcpNativeHarnessPort implements DeepSeekNativeHarnessPort {
   }
 
   async executeTurn(request: DeepSeekNativeTurnRequest): Promise<unknown> {
-    const key = `${request.context.organizationId}:${request.context.actorId}:${request.input.idempotencyKey}`;
-    const fingerprint = digest(sortedJson({ context: request.context, input: request.input, approvalId: request.approvalId }));
-    const previous = this.idempotency.get(key);
-    if (previous) {
-      if (previous.fingerprint !== fingerprint) throw new DeepSeekBridgeError("CONTRACT_MISMATCH", "A idempotency key ACP foi reutilizada com payload diferente.");
-      return previous.result;
-    }
-    const pending = this.idempotencyInFlight.get(key);
-    if (pending) return pending;
-    const operation = this.executeTurnOnce(request).then((result) => {
-      this.idempotency.set(key, { fingerprint, result });
-      return result;
-    }).finally(() => {
-      if (this.idempotencyInFlight.get(key) === operation) this.idempotencyInFlight.delete(key);
-    });
-    this.idempotencyInFlight.set(key, operation);
-    return operation;
+    void request;
+    throw new DeepSeekBridgeError("CAPABILITY_DISABLED", "Turn ACP bloqueado: o ToolGateway CVG ainda não governa tools, approval, replay, provenance e egress.");
   }
 
   async approve(_request: DeepSeekNativeApprovalRequest): Promise<unknown> {

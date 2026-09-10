@@ -1,3 +1,4 @@
+import { createHmac } from "node:crypto";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { once } from "node:events";
@@ -141,6 +142,18 @@ test("DeepSeek bridge rejects manifest, commit and tool mismatches before any tu
   assert.equal(executeCalls, 0);
 });
 
+test("DeepSeek bridge does not report readiness when native capabilities are incomplete", async () => {
+  const runtime = bridge(successfulPort({
+    async health(_request: DeepSeekNativeBaseRequest) {
+      return { status: "READY", engineCommit, manifestVersion, tools: toolNames, supports: { cancellation: true, approvals: false, replay: false, provenance: true } };
+    }
+  }));
+  const health = await runtime.health();
+  assert.equal(health.status, "UNAVAILABLE");
+  assert.match(health.reason ?? "", /capabilities obrigatórias/i);
+  await assert.rejects(() => runtime.createSession(context(), { purpose: "OPERATIONS", patientId: null, encounterId: null }), (error: unknown) => error instanceof DeepSeekBridgeError && error.code === "NATIVE_UNAVAILABLE");
+});
+
 test("DeepSeek bridge rejects malformed native responses", async () => {
   const runtime = bridge(successfulPort({ async createSession(_request: DeepSeekNativeSessionRequest) { return { invalid: true }; } }));
   await assert.rejects(() => runtime.createSession(context(), { purpose: "OPERATIONS", patientId: null, encounterId: null }), (error: unknown) => error instanceof DeepSeekBridgeError && error.code === "INVALID_RESPONSE");
@@ -185,6 +198,51 @@ test("HTTP bridge exposes structured unavailable health and errors without a nat
   assert.equal(error.schemaVersion, 1);
   assert.equal(error.correlationId, "corr-http-session");
   assert.equal(error.error.code, "NATIVE_UNAVAILABLE");
+  created.server.closeAllConnections();
+  await new Promise<void>((resolveClose, rejectClose) => created.server.close((closeError) => closeError ? rejectClose(closeError) : resolveClose()));
+});
+
+test("HTTP bridge requires a bearer token when configured and never accepts caller identity alone", async () => {
+  const created = createDeepSeekBridgeServer({ requireBearerToken: true, resolveBearerToken: async () => "synthetic-bridge-token" });
+  created.server.listen(0, "127.0.0.1");
+  await once(created.server, "listening");
+  const address = created.server.address();
+  assert.ok(address && typeof address === "object");
+  const baseUrl = `http://127.0.0.1:${address.port}`;
+  const body = JSON.stringify({ context: context("corr-auth"), input: { purpose: "OPERATIONS", patientId: null, encounterId: null } });
+  const unauthorized = await fetch(`${baseUrl}/v1/sessions`, { method: "POST", headers: { "content-type": "application/json", "x-cvg-correlation-id": "corr-auth" }, body });
+  const unauthorizedBody = await unauthorized.json() as { error: { code: string } };
+  assert.equal(unauthorized.status, 401);
+  assert.equal(unauthorizedBody.error.code, "UNAUTHENTICATED");
+  const authorized = await fetch(`${baseUrl}/v1/sessions`, { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer synthetic-bridge-token", "x-cvg-correlation-id": "corr-auth" }, body });
+  assert.equal(authorized.status, 503);
+  created.server.closeAllConnections();
+  await new Promise<void>((resolveClose, rejectClose) => created.server.close((closeError) => closeError ? rejectClose(closeError) : resolveClose()));
+});
+
+test("HTTP bridge binds the caller-supplied context to an HMAC and the adapter signs POST and GET calls", async () => {
+  const contextSecret = "synthetic-context-signing-secret";
+  const created = createDeepSeekBridgeServer({ bridge: bridge(successfulPort()), requireContextSignature: true, resolveContextSigningSecret: async () => contextSecret });
+  created.server.listen(0, "127.0.0.1");
+  await once(created.server, "listening");
+  const address = created.server.address();
+  assert.ok(address && typeof address === "object");
+  const baseUrl = `http://127.0.0.1:${address.port}`;
+  const runtimeContext = context("corr-context-signature");
+  const unsigned = await fetch(`${baseUrl}/v1/sessions`, { method: "POST", headers: { "content-type": "application/json", "x-cvg-correlation-id": runtimeContext.correlationId }, body: JSON.stringify({ context: runtimeContext, input: { purpose: "OPERATIONS", patientId: null, encounterId: null } }) });
+  const unsignedBody = await unsigned.json() as { error: { code: string } };
+  assert.equal(unsigned.status, 401);
+  assert.equal(unsignedBody.error.code, "UNAUTHENTICATED");
+  const signedOriginal = createHmac("sha256", contextSecret).update(JSON.stringify({ context: runtimeContext, correlationId: runtimeContext.correlationId }), "utf8").digest("hex");
+  const tamperedContext = { ...runtimeContext, actorId: id("actor-tampered") };
+  const tampered = await fetch(`${baseUrl}/v1/sessions`, { method: "POST", headers: { "content-type": "application/json", "x-cvg-correlation-id": runtimeContext.correlationId, "x-cvg-context-signature": `sha256=${signedOriginal}` }, body: JSON.stringify({ context: tamperedContext, input: { purpose: "OPERATIONS", patientId: null, encounterId: null } }) });
+  assert.equal(tampered.status, 401);
+
+  const adapter = new DeepSeekHarnessAdapter({ baseUrl, expectedEngineCommit: engineCommit, expectedManifestVersion: manifestVersion, expectedToolNames: toolNames, requestTimeoutMs: 1_000, allowInsecureHttp: true, resolveContextSigningSecret: async () => contextSecret });
+  const session = await adapter.createSession(runtimeContext, { purpose: "OPERATIONS", patientId: null, encounterId: null });
+  const replay = await adapter.replay(runtimeContext, session.id);
+  assert.equal(replay.session.id, session.id);
+  await adapter.shutdown();
   created.server.closeAllConnections();
   await new Promise<void>((resolveClose, rejectClose) => created.server.close((closeError) => closeError ? rejectClose(closeError) : resolveClose()));
 });

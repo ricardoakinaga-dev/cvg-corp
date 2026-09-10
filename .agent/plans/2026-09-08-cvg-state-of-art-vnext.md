@@ -23,7 +23,7 @@ O resultado esperado é um produto executável com uma rota completa de desenvol
 
 ## Context and Orientation
 
-O repositório contém uma aplicação TypeScript/Fastify/React com domínio sintético, persistência PostgreSQL e migrations 001–025, Harness local determinístico e testes locais. A revisão observada é `586479c845337c7a4f952987234ff5c6eab2503e`; o worktree desta continuação contém somente a cópia v2 do prompt não commitada.
+O repositório contém uma aplicação TypeScript/Fastify/React com domínio sintético, persistência PostgreSQL e migrations 001–027, Harness local determinístico e testes locais. A revisão base desta continuação é `e3c6c59aebcdd7375ae09c61a1c620ffd9257016`; o worktree estava limpo antes da nova fatia.
 
 O repositório local do DeepSeek Harness está em `/home/ricardo/deepseek-harness`, commit `5dda764ed3`. Ele é uma dependência externa observada e documentada, não uma autoridade de runtime do CVG e não será editado por este plano.
 
@@ -80,12 +80,12 @@ Outbox/inbox/effect ledger têm lease/fencing, retry bounded, backoff, quarantin
 
 ## Concrete Steps
 
-<!-- engineering-framework: active_action_id=CVG-FULL-STATE-OF-THE-ART:SECRETS-AUTH-MFA -->
+<!-- engineering-framework: active_action_id=CVG-FULL-STATE-OF-THE-ART:REMOTE-CI-OBSERVATION -->
 
-1. `CVG-FULL-STATE-OF-THE-ART:SECRETS-AUTH-MFA` — endurecer secret references/Docker seam, MFA/WebAuthn/break-glass fail-closed e readiness, sem autoridade real.
+1. `CVG-FULL-STATE-OF-THE-ART:REMOTE-CI-OBSERVATION` — observar o run remoto do CI para o SHA publicado e registrar conclusões por job, mantendo ausência de acesso/run como `NOT_RUN`/`BLOCKED`.
 2. `CVG-FULL-STATE-OF-THE-ART:DEEPSEEK-NATIVE-ADAPTER` — somente quando houver contrato/authority externos; manter native/LLM como `BLOCKED` sem inventar protocolo.
 3. `CVG-FULL-STATE-OF-THE-ART:PRODUCTION-LIKE-EVIDENCE` — executar somente as evidências production-like que tenham ambiente e autoridade correspondentes; manter os gaps externos como `NOT_RUN` e continuar a evolução local nos maiores gaps reproduzíveis.
-3. `CVG-FULL-STATE-OF-THE-ART:SLO-CONTRACTS-ALERTS` — concluída localmente: tipar targets SLO propostos, avaliar observações somente com amostra explícita e testar alertas/runbooks em harness sintético; não promover medição local a evidência de produção.
+4. `CVG-FULL-STATE-OF-THE-ART:SLO-CONTRACTS-ALERTS` — concluída localmente: tipar targets SLO propostos, avaliar observações somente com amostra explícita e testar alertas/runbooks em harness sintético; não promover medição local a evidência de produção.
 
 ### Onda A — fundamento seguro
 
@@ -354,3 +354,15 @@ O verificador executado contra `/home/ricardo/deepseek-harness` confirmou pelo c
 ## Current checkpoint — 2026-09-09 20:02
 
 `EVT-CVG-20260909-VERIFY-080` e `VER-CVG-052` reexecutam o probe pelo `createDeepSeekBridgeServer` contra o Harness ACP real após o endurecimento do mapeamento de resultados. O gate passou: `READY`, `initialize`, `session/new`, attestation de commit/manifesto, binding de contexto e capacidades fail-closed; `modelTurn` permanece `NOT_RUN_NO_API_KEY`. A evidência segue `REAL-BOUNDARY/PARTIAL`, sem promoção a AAA. O pointer continua `CVG-FULL-STATE-OF-THE-ART:PRODUCTION-LIKE-EVIDENCE`.
+
+## Current checkpoint — 2026-09-09 20:24
+
+`EVT-CVG-20260909-IMPLEMENT-081` e `VER-CVG-053` fecham a lane local de provider loopback: um servidor HTTP real em `127.0.0.1`/host allowlisted recebeu requests do `HttpMessagingProvider`, confirmou replay idempotente, simulou aceite antes de perder a resposta (`OUTCOME_UNKNOWN` sem `providerRequestId`), reconciliou por idempotency key e validou callback HMAC aceito/rejeitado. A prova não expõe o segredo fixture e não faz egress externo; `externalProvider` permanece `NOT_RUN`.
+
+O focused test e o verificador passaram (`sendRequests=4`, `queryRequests=2`, `callbackRequests=2`, `simulatedLostResponses=1`). A crítica independente `I1-ROUND-PROVIDER-RECOVERY` decidiu `PASS_WITH_LIMITATIONS`, confirmando a fronteira local e apontando que provider externo, TLS/secret authority, outbox/worker/inbox/ledger duráveis e AAA continuam sem prova. O sentinel pré-crítica acusou a correção deliberada do texto de contagem deste arquivo de evidência, não uma mutação do crítico; uma nova fotografia imutável será usada na rodada final. O veredito continua `FAIL_WITH_LIMITATIONS`; o próximo pointer é `CVG-FULL-STATE-OF-THE-ART:REMOTE-CI-OBSERVATION`.
+
+## Current checkpoint — 2026-09-09 21:21
+
+`EVT-CVG-20260909-VERIFY-082` e `VER-CVG-053` registram a regressão local final: 111 testes (110 pass, 1 skip), lint 117, typecheck, build, E2E 52 pass + 4 skips, static 42/119, PDP 64/68/6/12, provider loopback, licenses 207, npm audit 0, Compose estrutural e gates fail-closed. A UI anuncia loading, expõe retry degradado, revalida após 403/409 e mantém prioridade/status/ações identificáveis na agenda móvel.
+
+`EVT-CVG-20260909-REVIEW-083` e `VER-CVG-054` registram a tentativa final de crítica independente fresca: Mendel expirou sem relatório após 120s e foi encerrado; o resultado é `NOT_RUN`, não aprovação. O veredito permanece `FAIL_WITH_LIMITATIONS`; o próximo pointer é `CVG-FULL-STATE-OF-THE-ART:REMOTE-CI-OBSERVATION`, condicionado a CI remoto e evidência externa autorizada.

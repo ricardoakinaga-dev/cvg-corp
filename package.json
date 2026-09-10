@@ -41,6 +41,7 @@
     "verify:postgres": "tsx scripts/verify-postgres.ts",
     "verify:postgres:restore": "tsx scripts/verify-postgres-restore.ts",
     "verify:deepseek-acp": "tsx scripts/verify-deepseek-acp.ts",
+    "verify:provider-sandbox": "tsx scripts/verify-provider-sandbox.ts",
     "verify:triplo-aaa": "tsx scripts/verify-triplo-aaa.ts",
     "verify:staging": "tsx scripts/verify-staging.ts",
     "db:migrate": "tsx scripts/db.ts migrate",

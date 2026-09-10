@@ -3,13 +3,14 @@
   "bar_ref": ".gauntlet/bar-v3.json",
   "goal": "CVG-Corp State of the Art / Triplo AAA conforme prompt preservado",
   "scope_ref": "CVG-FULL-STATE-OF-THE-ART",
-  "round": 3,
+  "round": 4,
   "phase": "VERDICT",
   "status": "FAIL_WITH_LIMITATIONS",
-  "largest_gap": "O bridge CVG /v1 e o boundary ACP real (initialize/session/new com commit/manifest attestation), provider/PDP/worker, auth/MFA/break-glass, exporter OTLP e Chromium/Firefox + axe + stress reflow/DPR/touch/reduced-motion têm evidência local, mas nenhum turno LLM DeepSeek/provider/staging/secret authority, Collector/SLO, recovery/load, WebKit/assistive tech/zoom real ou aceite foi provado",
-  "next_action": "CVG-FULL-STATE-OF-THE-ART:PRODUCTION-LIKE-EVIDENCE",
-  "limitations": ["a auditoria arquitetural e os gates locais autorizam apenas desenvolvimento controlado", "o artifact é uma base local sintética; evidência local não satisfaz automaticamente critérios de produção", "o bridge DeepSeek CVG /v1 não prova protocolo nativo nem integração com processo externo", "Docker daemon, staging, provider, secret authority, egress, collector/SLO, carga, recovery distribuído, WebKit/assistive tech/zoom real e aceite humano permanecem bloqueados ou não executados", "Bacon e Hubble produziram críticas frescas read-only negativas; não existe base para promoção AAA"],
+  "largest_gap": "A base local agora prova ACP initialize/session/new com attestation, HMAC de contexto, Tool Gateway/PDP canônico, provider HTTP loopback com OUTCOME_UNKNOWN/reconciliação, auditoria append-only e UI de revalidação; ainda não há turno LLM DeepSeek governado, provider/staging/secret authority, Collector/SLO, PostgreSQL/containers/load/recovery production-like, WebKit/assistive tech/zoom real, CI remoto ou aceite",
+  "next_action": "CVG-FULL-STATE-OF-THE-ART:REMOTE-CI-OBSERVATION",
+  "limitations": ["a auditoria arquitetural e os gates locais autorizam apenas desenvolvimento controlado", "o artifact é uma base local sintética; evidência local não satisfaz automaticamente critérios de produção", "o turno ACP direto permanece bloqueado até existir executor governado pelo ToolGateway", "Docker daemon, staging, provider, secret authority, egress, collector/SLO, PostgreSQL/containers, carga, recovery distribuído, WebKit, assistive tech, zoom real, CI remoto e aceite humano permanecem bloqueados ou não executados", "a crítica final independente de Mendel expirou sem relatório; o parecer fresco válido anterior continua FAIL_WITH_LIMITATIONS e não existe aprovação AAA"],
   "critique_ref": ".gauntlet/critique-v3-fresh.md",
+  "latest_critique_attempt": ".gauntlet/critique-final-attempt-20260909.md",
   "supersedes": ".gauntlet/state-v2-round4.json",
-  "updated_at": "2026-09-09T20:02:06-03:00"
+  "updated_at": "2026-09-09T21:21:30-03:00"
 }

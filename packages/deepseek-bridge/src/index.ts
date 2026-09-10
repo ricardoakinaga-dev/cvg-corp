@@ -8,6 +8,7 @@ export const DEEPSEEK_BRIDGE_ADAPTER_ID = "deepseek-harness-bridge" as const;
 export type DeepSeekBridgeErrorCode =
   | "CAPABILITY_DISABLED"
   | "NATIVE_UNAVAILABLE"
+  | "UNAUTHENTICATED"
   | "CONTRACT_MISMATCH"
   | "INVALID_REQUEST"
   | "INVALID_RESPONSE"
@@ -384,8 +385,13 @@ export class DeepSeekBridge implements AgentRuntime {
       const raw = await this.invoke("health", undefined, signal, (request) => this.native.health(request));
       const data = parseResponse(healthSchema, raw, "health");
       const matches = data.engineCommit === this.config.expectedEngineCommit && data.manifestVersion === this.config.expectedManifestVersion && toolsMatch(data.tools, this.config.expectedToolNames);
-      const status: AgentRuntimeHealth["status"] = matches ? data.status : "UNAVAILABLE";
-      const reason = matches ? data.reason ?? (data.status === "READY" ? null : `Native Harness reportou ${data.status}.`) : "Commit, manifest ou catálogo de tools do DeepSeek não corresponde ao profile aprovado.";
+      const supportsComplete = data.supports.cancellation && data.supports.approvals && data.supports.replay && data.supports.provenance;
+      const status: AgentRuntimeHealth["status"] = matches && supportsComplete ? data.status : "UNAVAILABLE";
+      const reason = !matches
+        ? "Commit, manifest ou catálogo de tools do DeepSeek não corresponde ao profile aprovado."
+        : !supportsComplete
+          ? "O Native Harness não expõe todas as capabilities obrigatórias (cancellation, approvals, replay e provenance)."
+          : data.reason ?? (data.status === "READY" ? null : `Native Harness reportou ${data.status}.`);
       const result: AgentRuntimeHealth = {
         status,
         capabilities: capability(data.engineCommit, data.manifestVersion, data.tools, data.supports),

@@ -48,6 +48,7 @@ const requiredFiles = [
   "db/migrations/024_external_effect_reconciliation_states.sql",
   "db/migrations/025_communication_approval_provenance.sql",
   "db/migrations/026_audit_tamper_evident_chain.sql",
+  "db/migrations/027_append_only_audit_guard.sql",
   "docs/runbooks/deploy.md",
   "docs/runbooks/deployment.md",
   "docs/runbooks/rollback.md",
@@ -95,6 +96,7 @@ const requiredFiles = [
   "scripts/check-contrast.ts",
   "tests/unit/worker.test.ts",
   "tests/integration/faults.test.ts",
+  "tests/integration/provider-sandbox.test.ts",
   ".gauntlet/bar-v3.json",
   ".gauntlet/critique-v3-fresh.md",
   "scripts/verify-production.ts",
@@ -102,6 +104,7 @@ const requiredFiles = [
   "scripts/verify-pdp-coverage.ts",
   "scripts/verify-staging.ts",
   "scripts/verify-deepseek-acp.ts",
+  "scripts/verify-provider-sandbox.ts",
   "docs/deepseek-acp-bridge.md"
 ];
 
@@ -167,6 +170,8 @@ function inspectStaticContracts(): void {
   requireText("docker/observability/grafana/dashboards/cvg-runtime.json", "Outbox depth");
   requireText("docker/nginx/proxy.conf", "Content-Security-Policy");
   requireText("docker/nginx/web.conf", "Content-Security-Policy");
+  requireText("docker/nginx/proxy.conf", "Strict-Transport-Security");
+  requireText("docker/nginx/web.conf", "Strict-Transport-Security");
   requireText("docker/worker.ts", "CvgWorkerApplication");
   requireText("docker/worker.ts", "process.exitCode = 1");
   requireText("apps/worker/src/main.ts", "createConfiguredWorkerSink");
@@ -174,6 +179,7 @@ function inspectStaticContracts(): void {
   requireText("apps/worker/src/worker.ts", "MessagingOutboxSink");
   requireText("packages/config/src/index.ts", "CVG_MESSAGING_PROVIDER_ENDPOINT");
   requireText("packages/config/src/index.ts", "Unknown CVG configuration key");
+  requireText("packages/config/src/index.ts", "deepseekContextSigningSecretRef");
   requireText("packages/config/src/index.ts", "distributed rate-limit backend");
   requireText("apps/api/src/app.ts", "content-security-policy");
   requireText("apps/api/src/app.ts", "MemoryRateLimiter");
@@ -191,6 +197,7 @@ function inspectStaticContracts(): void {
   requireText("db/migrations/024_external_effect_reconciliation_states.sql", "FAILED_FINAL");
   requireText("db/migrations/025_communication_approval_provenance.sql", "approved_by");
   requireText("db/migrations/026_audit_tamper_evident_chain.sql", "previous_hash");
+  requireText("db/migrations/027_append_only_audit_guard.sql", "append-only");
   requireText(".gauntlet/bar-v3.json", "V3-AAA-001");
   requireText(".github/workflows/ci.yml", "npm ci --ignore-scripts");
   requireText(".github/workflows/ci.yml", "npx playwright install --with-deps chromium");
@@ -220,6 +227,8 @@ function inspectStaticContracts(): void {
   requireText("package.json", "tsx scripts/verify-triplo-aaa.ts");
   requireText("package.json", "tsx scripts/verify-staging.ts");
   requireText("package.json", "tsx scripts/verify-deepseek-acp.ts");
+  requireText("package.json", "tsx scripts/verify-provider-sandbox.ts");
+  requireText(".github/workflows/ci.yml", "npm run verify:provider-sandbox");
   requireText(".github/workflows/ci.yml", "docker build --file Dockerfile.api");
   rejectText(".github/workflows/ci.yml", /docker compose up|docker push|npm publish/, "CI must not deploy or publish");
   for (const relative of ["docs/runbooks/deploy.md", "docs/runbooks/rollback.md", "docs/runbooks/backup-incidente.md"]) {
@@ -362,7 +371,7 @@ function inspectComposeConfig(config: ComposeConfig): void {
 function inspectProductionEnvironment(): void {
   if (!process.argv.includes("--production")) return;
   const environment = process.env;
-  const requiredNames = ["DATABASE_URL", "CVG_BOOTSTRAP_PASSWORD", "CVG_WEB_ORIGIN", "CVG_TRUST_PROXY", "CVG_DEEPSEEK_BASE_URL", "CVG_DEEPSEEK_EXPECTED_ENGINE_COMMIT", "CVG_DEEPSEEK_EXPECTED_MANIFEST_VERSION", "CVG_DEEPSEEK_BEARER_TOKEN_REF"];
+  const requiredNames = ["DATABASE_URL", "CVG_BOOTSTRAP_PASSWORD", "CVG_WEB_ORIGIN", "CVG_TRUST_PROXY", "CVG_DEEPSEEK_BASE_URL", "CVG_DEEPSEEK_EXPECTED_ENGINE_COMMIT", "CVG_DEEPSEEK_EXPECTED_MANIFEST_VERSION", "CVG_DEEPSEEK_BEARER_TOKEN_REF", "CVG_DEEPSEEK_CONTEXT_SIGNING_SECRET_REF"];
   for (const name of requiredNames) if (!environment[name]?.trim()) failures.push(`production configuration: ${name} is required`);
   if (!environment.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT?.trim() && !environment.OTEL_EXPORTER_OTLP_ENDPOINT?.trim()) failures.push("production configuration: OTEL_EXPORTER_OTLP_ENDPOINT or OTEL_EXPORTER_OTLP_TRACES_ENDPOINT is required");
   if (environment.NODE_ENV !== "production") failures.push("production configuration: NODE_ENV must be production");
@@ -409,6 +418,7 @@ function runLocalGates(): void {
   runLocalGate("license policy", "npm", ["run", "audit:licenses"]);
   runLocalGate("CycloneDX SBOM", "npm", ["sbom", "--sbom-format", "cyclonedx"]);
   runLocalGate("synthetic benchmark", "npm", ["run", "benchmark:local"]);
+  runLocalGate("provider loopback sandbox", "npm", ["run", "verify:provider-sandbox"]);
   runLocalGate("diff whitespace", "git", ["diff", "--check"]);
 }
 

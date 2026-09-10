@@ -1,3 +1,4 @@
+import { createHmac } from "node:crypto";
 import { z } from "zod";
 import { id } from "@cvg/contracts";
 import type { AiApproval, AiDraft, AiSession, AiTurn, AiTurnInput, CvgContext, OpaqueId } from "@cvg/contracts";
@@ -42,6 +43,8 @@ export interface DeepSeekHarnessConfig {
   requestTimeoutMs: number;
   allowInsecureHttp?: boolean;
   resolveBearerToken?: () => Promise<string | null>;
+  /** HMAC key for binding the serialized CVG context to the authenticated bridge call. */
+  resolveContextSigningSecret?: () => Promise<string | null>;
 }
 
 export interface DeepSeekFetchResponse {
@@ -162,6 +165,10 @@ function rejectBoundary(detail: string): never {
   throw new AgentRuntimeUnavailableError(`O DeepSeek Harness violou a fronteira de autoridade CVG: ${detail}`);
 }
 
+function contextSignaturePayload(context: CvgContext): string {
+  return JSON.stringify({ context, correlationId: context.correlationId });
+}
+
 function assertSessionBinding(session: AiSession, context: CvgContext, expected: Pick<AiTurnInput, "purpose" | "patientId" | "encounterId">, expectedSessionId: OpaqueId | null = null): void {
   if (expectedSessionId && session.id !== expectedSessionId) rejectBoundary("a sessão retornada não corresponde à sessão solicitada");
   if (session.organizationId !== context.organizationId || session.actorId !== context.actorId || session.unitId !== context.unitId || session.workspaceId !== context.workspaceId || session.purpose !== expected.purpose || session.patientId !== expected.patientId || session.encounterId !== expected.encounterId) rejectBoundary("a sessão retornada escapou do ator, escopo ou propósito autenticado");
@@ -276,6 +283,13 @@ export class DeepSeekHarnessAdapter implements AgentRuntime {
       if (body !== undefined && method === "GET") headers["x-cvg-context"] = Buffer.from(JSON.stringify(body), "utf8").toString("base64url");
       if (body !== undefined && method !== "GET") headers["content-type"] = "application/json";
       if (token) headers.authorization = `Bearer ${token}`;
+      const context = body && typeof body === "object" && !Array.isArray(body) && "context" in body ? (body as { context?: unknown }).context : undefined;
+      if (context !== undefined && this.config.resolveContextSigningSecret) {
+        if (!context || typeof context !== "object" || Array.isArray(context) || typeof (context as { correlationId?: unknown }).correlationId !== "string") throw new AgentRuntimeUnavailableError("DeepSeek Harness recebeu contexto inválido; nenhum request foi enviado.");
+        const signingSecret = await this.config.resolveContextSigningSecret();
+        if (!signingSecret?.trim()) throw new AgentRuntimeUnavailableError("DeepSeek Harness sem segredo de assinatura de contexto resolvido; nenhum request foi enviado.");
+        headers["x-cvg-context-signature"] = `sha256=${createHmac("sha256", signingSecret).update(contextSignaturePayload(context as CvgContext), "utf8").digest("hex")}`;
+      }
       const response = await this.fetchImpl(`${this.config.baseUrl.replace(/\/$/, "")}${path}`, { method, headers, ...(body === undefined || method === "GET" ? {} : { body: JSON.stringify(body) }), signal: controller.signal });
       const payload = await response.json();
       if (!response.ok) throw new AgentRuntimeUnavailableError(`DeepSeek Harness respondeu HTTP ${response.status}.`);

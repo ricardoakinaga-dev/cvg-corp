@@ -15,6 +15,7 @@ export interface HealthRouteDependencies {
   secretProviderStatus: SecretProviderStatus;
   authMfaStatus: HealthDependencyStatus;
   deepseekBearerTokenStatus: HealthDependencyStatus;
+  deepseekContextSignatureStatus: HealthDependencyStatus;
   secretProviderRequired: boolean;
   config: { demoMode: boolean; storageMode: "memory" | "postgres" };
 }
@@ -45,7 +46,7 @@ export async function registerHealthRoutes(app: FastifyInstance, dependencies: H
       database,
       policyStore: "READY" as const,
       secretProvider: dependencies.secretProviderStatus,
-      secretReferences: { deepseekBearerToken: dependencies.deepseekBearerTokenStatus },
+      secretReferences: { deepseekBearerToken: dependencies.deepseekBearerTokenStatus, deepseekContextSignature: dependencies.deepseekContextSignatureStatus },
       authMfa: dependencies.authMfaStatus,
       agentRuntime: agentHealth.status,
       outbox: "NOT_CONFIGURED" as const,

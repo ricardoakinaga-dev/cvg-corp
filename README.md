@@ -12,7 +12,7 @@ npm run dev
 
 Abra `http://127.0.0.1:5173`. A demonstração sintética pode ser acessada pelo botão próprio da tela inicial. Para login convencional, use as credenciais geradas em `.local/bootstrap-credentials.json`.
 
-O modo padrão usa memória descartável para permanecer executável sem dependências externas. O adapter PostgreSQL implementa bootstrap, `BEGIN`/`COMMIT`/`ROLLBACK`, lock advisory, CAS de revisão, snapshot JSONB, journal independente com escopo organizacional, ledgers duráveis de auditoria/receipts com cadeia `previous_hash`/`record_hash`, leituras normalizadas de guardians/patients/appointments com escopo de transação, outbox com claim/lease/fencing, ledger idempotente de uso, inbox atômico com assinatura/verificação configurável, ledger de efeitos externos com recibo obrigatório, reconciliação explícita, `ENABLE/FORCE RLS` nas tabelas de domínio e FKs cross-table com proveniência organizacional. As migrations `001_initial.sql`–`026_audit_tamper_evident_chain.sql` são aplicadas em ordem e migrations já aplicadas não devem ser editadas. O drill de restore exporta e verifica snapshot + outbox + usage + inbox + efeitos externos por digest, encapsula o bundle em AES-256-GCM com `keyRef`, rejeita adulteração e restaura em destino temporário quarentenado; inclui um cenário sintético de crash após marcador de dispatch sem reenvio cego. Ele exige migrations aplicadas e conexão acessível. O JSONB ainda é a fonte agregada de reconstrução em transição; PDP universal em todas as rotas/repositories, provider real e consulta externa de reconciliação ainda não foram promovidos. Sem PostgreSQL disponível, `CVG_STORAGE=postgres` falha fechado para não simular durabilidade. Nenhum banco existente é removido por scripts do projeto.
+O modo padrão usa memória descartável para permanecer executável sem dependências externas. O adapter PostgreSQL implementa bootstrap, `BEGIN`/`COMMIT`/`ROLLBACK`, lock advisory, CAS de revisão, snapshot JSONB, journal independente com escopo organizacional, ledgers duráveis de auditoria/receipts com cadeia `previous_hash`/`record_hash`, leituras normalizadas de guardians/patients/appointments com escopo de transação, outbox com claim/lease/fencing, ledger idempotente de uso, inbox atômico com assinatura/verificação configurável, ledger de efeitos externos com recibo obrigatório, reconciliação explícita, `ENABLE/FORCE RLS` nas tabelas de domínio e FKs cross-table com proveniência organizacional. As migrations `001_initial.sql`–`027_append_only_audit_guard.sql` são aplicadas em ordem e migrations já aplicadas não devem ser editadas. O drill de restore exporta e verifica snapshot + outbox + usage + inbox + efeitos externos por digest, encapsula o bundle em AES-256-GCM com `keyRef`, rejeita adulteração e restaura em destino temporário quarentenado; inclui um cenário sintético de crash após marcador de dispatch sem reenvio cego. Ele exige migrations aplicadas e conexão acessível. O JSONB ainda é a fonte agregada de reconstrução em transição; PDP universal em todas as rotas/repositories, provider real e consulta externa de reconciliação ainda não foram promovidos. Sem PostgreSQL disponível, `CVG_STORAGE=postgres` falha fechado para não simular durabilidade. Nenhum banco existente é removido por scripts do projeto.
 
 ## Verificação
 
@@ -32,6 +32,7 @@ npm run audit:contrast
 npm run audit:tokens -- --strict
 npm run benchmark:local
 npm run verify:production
+npm run verify:provider-sandbox
 node --import tsx --test tests/unit/deepseek-bridge.test.ts
 ```
 
@@ -47,7 +48,9 @@ O verificador exercita bootstrap, login, mutation idempotente, commit de journal
 
 O artifact atual demonstra identidade, contexto, agenda, pacientes, atendimento, estoque, financeiro e copiloto governado com dados sintéticos. Provider real, credenciais externas, dados reais, break-glass, exportação e produção são bloqueados na API, não apenas ocultados na UI.
 
-O caminho de IA usa a interface `AgentRuntime`, um adapter Mock determinístico e um adapter DeepSeek opcional. O Mock tem policy, budget, approval, provenance, quarentena de prompt injection e replay. O bridge DeepSeek funciona como uma ponte CVG `/v1` com health/manifest/tool-set estritos, correlation, cancel, timeout e envelopes de erro; seu port nativo default é `UNAVAILABLE`, não há fallback implícito e nenhuma conexão externa é alegada neste workspace. Consulte [`docs/deepseek-production-integration.md`](docs/deepseek-production-integration.md).
+`npm run verify:provider-sandbox` executa uma prova local de transporte HTTP pelo `HttpMessagingProvider`, em loopback e com segredo de fixture não produtivo: replay com a mesma chave, perda de resposta após aceite (`OUTCOME_UNKNOWN`), consulta por idempotência e callback HMAC válido/inválido. Essa prova fortalece o contrato de integração, mas `externalProvider` permanece `NOT_RUN` e não autoriza egress real.
+
+O caminho de IA usa a interface `AgentRuntime`, um adapter Mock determinístico e um adapter DeepSeek opcional. O Mock tem policy, budget, approval, provenance, quarentena de prompt injection e replay. O bridge DeepSeek funciona como uma ponte CVG `/v1` com health/manifest/tool-set estritos, bearer de serviço, assinatura HMAC do contexto, correlation, cancel, timeout e envelopes de erro; seu port nativo default é `UNAVAILABLE`, não há fallback implícito e nenhuma conexão externa é alegada neste workspace. Consulte [`docs/deepseek-production-integration.md`](docs/deepseek-production-integration.md).
 
 ## Estrutura
 

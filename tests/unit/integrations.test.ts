@@ -325,7 +325,7 @@ test("HTTP messaging validates receipts, keeps credentials out of results and ne
     secretResolver: async (reference) => reference === "messaging.token" ? "fixture-secret" : null,
     fetch: async (url, init) => {
       calls.push(init ? { url, init } : { url });
-      return { ok: true, status: 202, json: async () => ({ requestId: "request-1", providerRequestId: "provider-1", status: "ACCEPTED", receipt: { providerRequestId: "provider-1", providerMessageId: "message-1", status: "ACCEPTED", receivedAt: "2026-01-01T00:00:00.000Z" } }) };
+      return { ok: true, status: 200, json: async () => ({ requestId: "request-1", providerRequestId: "provider-1", status: "DELIVERED", receipt: { providerRequestId: "provider-1", providerMessageId: "message-1", status: "DELIVERED", receivedAt: "2026-01-01T00:00:00.000Z" } }) };
     }
   });
   const delivered = await provider.send({ requestId: "request-1", idempotencyKey: "http-message-1", channel: "EMAIL", to: "guardian@example.test", content: "fixture" });
@@ -334,6 +334,24 @@ test("HTTP messaging validates receipts, keeps credentials out of results and ne
   assert.equal(calls.length, 1);
   assert.equal(calls[0]?.url, "https://provider.example.test/api/messages");
   assert.match(String(calls[0]?.init?.headers && (calls[0]?.init?.headers as Record<string, string>).authorization), /Bearer fixture-secret/);
+
+  const accepted = new HttpMessagingProvider({
+    endpoint: "https://provider.example.test",
+    credentialRef: "messaging.token",
+    secretResolver: async () => "fixture-secret",
+    fetch: async () => ({ ok: true, status: 202, json: async () => ({ requestId: "request-accepted", providerRequestId: "provider-accepted", status: "ACCEPTED", receipt: { providerRequestId: "provider-accepted", providerMessageId: "message-accepted", status: "ACCEPTED", receivedAt: "2026-01-01T00:00:00.000Z" } }) })
+  });
+  const acceptedResult = await accepted.send({ requestId: "request-accepted", idempotencyKey: "http-message-accepted", channel: "SMS", recipient: "+5511999999999", body: "fixture" });
+  assert.equal(acceptedResult.status, "OUTCOME_UNKNOWN");
+  assert.equal(acceptedResult.providerRequestId, "provider-accepted");
+
+  const conflict = new HttpMessagingProvider({
+    endpoint: "https://provider.example.test",
+    credentialRef: "messaging.token",
+    secretResolver: async () => "fixture-secret",
+    fetch: async () => ({ ok: false, status: 409, json: async () => ({ error: "IDEMPOTENCY_CONFLICT" }) })
+  });
+  await assert.rejects(() => conflict.send({ idempotencyKey: "http-message-conflict", channel: "SMS", recipient: "+5511999999999", body: "fixture" }), (error: unknown) => error instanceof MessagingProviderError && error.failure === "CONFLICT" && error.code === "IDEMPOTENCY_CONFLICT" && error.outcome === "NOT_SENT");
 
   const unknownProvider = new HttpMessagingProvider({ endpoint: "https://provider.example.test", credentialRef: "messaging.token", secretResolver: async () => "fixture-secret", fetch: async () => new Promise(() => undefined) });
   const unknown = await unknownProvider.send({ idempotencyKey: "http-timeout-1", channel: "SMS", recipient: "+5511999999999", body: "fixture", timeoutMs: 100 });

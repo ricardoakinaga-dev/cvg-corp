@@ -1,6 +1,6 @@
 # Provider externo e efeitos de produção
 
-Status: `PARTIAL/SYNTHETIC_ONLY`. O CVG tem contratos de provider, outbox, inbox, idempotência, recibos, efeitos desconhecidos e reconciliação fail-closed. Nenhum sandbox real de messaging foi executado nesta revisão.
+Status: `PARTIAL/LOCAL-CONTRACT/SYNTHETIC_ONLY`. O CVG tem contratos de provider, outbox, inbox, idempotência, recibos, efeitos desconhecidos e reconciliação fail-closed. `npm run verify:provider-sandbox` executa o `HttpMessagingProvider` contra um servidor HTTP real em loopback e prova replay, perda de resposta após aceite, consulta de reconciliação e callback HMAC. Isso não é um provider externo autorizado: `externalProvider` permanece `NOT_RUN`.
 
 ## Fluxo obrigatório
 
@@ -18,9 +18,11 @@ O scheduler local mantém seis lanes com concorrência em lotes, budgets por lan
 |---|---|---|
 | Stage/approval | implementado e testado com PDP/approval | não executada em sandbox |
 | Outbox/lease/fencing | persistência e testes sintéticos | banco/worker de staging `NOT_RUN` |
-| Provider/receipt | `tests/unit/integrations.test.ts` fecha vertical sintética com `MessagingOutboxSink`, receipt/unknown e idempotência | provider real `BLOCKED` |
-| Callback/inbox | assinatura, dedupe e efeito | callback externo `NOT_RUN` |
-| Reconciliation | claim/lease/fence PostgreSQL + vertical sintética consulta `PROVIDER_QUERY` | reconciliação externa `NOT_RUN` |
+| Provider/receipt | `scripts/verify-provider-sandbox.ts` e `tests/integration/provider-sandbox.test.ts` cruzam HTTP loopback real; testes unitários mantêm a vertical sintética com `MessagingOutboxSink` | provider externo real `BLOCKED` |
+| Callback/inbox | callback HMAC válido/inválido é aceito/rejeitado no sandbox loopback; inbox/dedupe seguem cobertos localmente | callback externo `NOT_RUN` |
+| Reconciliation | resposta perdida no transporte retorna `OUTCOME_UNKNOWN`; consulta HTTP por idempotency key retorna `SUCCEEDED` e receipt | reconciliação externa `NOT_RUN` |
 | Audit/settlement | ledger local e uso | custo/settlement real `NOT_RUN` |
 
 Nenhum dado real, mensagem externa ou cobrança foi autorizada. A passagem de `PROPOSED` para `READY` exige um recibo redigido, callback assinado, replay idempotente, reconciliação de timeout e prova de que uma segunda entrega não produz efeito duplicado.
+
+O bridge DeepSeek segue a mesma disciplina de fronteira: além do bearer de serviço, cada operação que carrega `CvgContext` pode exigir `x-cvg-context-signature: sha256=...`, calculado sobre `{ context, correlationId }`. Em produção a assinatura é obrigatória e o segredo deve ser resolvido por `CVG_DEEPSEEK_CONTEXT_SIGNING_SECRET_REF`; ausência, adulteração ou divergência de correlação retornam `UNAUTHENTICATED` antes do dispatch.

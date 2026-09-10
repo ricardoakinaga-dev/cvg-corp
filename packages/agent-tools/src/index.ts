@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import type { CvgContext, DataClass, OpaqueId, Role } from "@cvg/contracts";
-import { assertPolicyAllowed, type PolicyApprovalMode, type PolicyDecision, type PolicyDecisionPoint, type PolicyResource, type PolicyRisk } from "@cvg/agent-policy";
+import { applicationPolicyFor, assertPolicyAllowed, toolPolicyFor, type PolicyApprovalMode, type PolicyDecision, type PolicyDecisionPoint, type PolicyResource, type PolicyRisk } from "@cvg/agent-policy";
 
 export type ToolEgress = "NONE" | "LOCAL_ONLY" | "EXTERNAL_PROVIDER";
 
@@ -162,6 +162,8 @@ export class ToolGateway {
     if (descriptor.allowedRoles.length === 0 || descriptor.acceptedDataClasses.length === 0 || (descriptor.egress === "NONE" && descriptor.secretRefs.length > 0) || (descriptor.egress === "EXTERNAL_PROVIDER" && descriptor.secretRefs.length === 0)) throw new ToolGatewayError("INVALID_INPUT", "A metadata de role, classe de dados, segredo e egress da tool é inválida.", { name: descriptor.name });
     if ((descriptor.requiresApproval && descriptor.approvalMode === "NONE") || (!descriptor.requiresApproval && descriptor.approvalMode !== "NONE") || ((descriptor.risk === "HIGH" || descriptor.risk === "CRITICAL") && descriptor.approvalMode !== "INDEPENDENT")) throw new ToolGatewayError("INVALID_INPUT", "A combinação de risco e aprovação da tool é inválida.", { name: descriptor.name });
     if (descriptor.idempotency === "REQUIRED" && !descriptor.auditAction.trim()) throw new ToolGatewayError("INVALID_INPUT", "Tool com idempotência obrigatória precisa de auditAction.", { name: descriptor.name });
+    const canonicalRule = toolPolicyFor(descriptor.name);
+    if (!canonicalRule || descriptor.operation !== canonicalRule.operation || descriptor.capability !== canonicalRule.capability || descriptor.risk !== canonicalRule.risk || descriptor.approvalMode !== canonicalRule.approvalMode || descriptor.resourceRequired !== canonicalRule.resourceRequired || descriptor.requiresApproval !== canonicalRule.requiresApproval || descriptor.idempotency !== canonicalRule.idempotency || descriptor.auditAction !== canonicalRule.auditAction || descriptor.egress !== canonicalRule.egress || descriptor.secretRefs.length !== canonicalRule.secretRefs.length || descriptor.allowedRoles.length !== canonicalRule.allowedRoles.length || descriptor.allowedRoles.some((role, index) => role !== canonicalRule.allowedRoles[index]) || descriptor.acceptedDataClasses.length !== canonicalRule.acceptedDataClasses.length || descriptor.acceptedDataClasses.some((dataClass, index) => dataClass !== canonicalRule.acceptedDataClasses[index]) || descriptor.scope !== canonicalRule.scope) throw new ToolGatewayError("CAPABILITY_DISABLED", "O descriptor da tool não corresponde à policy canônica registrada.", { name: descriptor.name, operation: descriptor.operation });
     if (this.descriptors.has(descriptor.name)) throw new ToolGatewayError("INVALID_INPUT", "Tool já registrada.", { name: descriptor.name });
     this.descriptors.set(descriptor.name, descriptor);
   }
@@ -177,6 +179,11 @@ export class ToolGateway {
   authorize(name: string, request: ToolExecutionRequest): AuthorizedToolExecution {
     const descriptor = this.descriptors.get(name);
     if (!descriptor) throw new ToolGatewayError("CAPABILITY_DISABLED", "A tool não está registrada.", { name });
+    const canonicalRule = applicationPolicyFor(descriptor.operation);
+    const toolRule = toolPolicyFor(name);
+    if (!canonicalRule || !toolRule) throw new ToolGatewayError("CAPABILITY_DISABLED", "A operação da tool não possui uma policy canônica registrada.", { name, operation: descriptor.operation });
+    const riskRank: Record<PolicyRisk, number> = { LOW: 0, MEDIUM: 1, HIGH: 2, CRITICAL: 3 };
+    if (descriptor.capability !== canonicalRule.capability || riskRank[descriptor.risk] < riskRank[canonicalRule.risk] || (canonicalRule.requiresApproval && !descriptor.requiresApproval) || (canonicalRule.approvalMode === "INDEPENDENT" && descriptor.approvalMode !== "INDEPENDENT") || descriptor.allowedRoles.some((role) => !canonicalRule.allowedRoles.includes(role)) || descriptor.acceptedDataClasses.some((dataClass) => !canonicalRule.acceptedDataClasses.includes(dataClass))) throw new ToolGatewayError("CAPABILITY_DISABLED", "O descriptor da tool não corresponde à policy canônica.", { name, operation: descriptor.operation });
     if (request.sessionId !== request.context.sessionId || !request.context.sessionId) throw new ToolGatewayError("POLICY_DENIED", "A tool exige uma sessão autenticada vinculada ao contexto.");
     if (!/^[A-Za-z0-9._:-]{1,160}$/.test(request.idempotencyKey)) throw new ToolGatewayError("INVALID_INPUT", "A chave de idempotência da tool é inválida.");
     if (request.resource.organizationId !== request.context.organizationId) throw new ToolGatewayError("POLICY_DENIED", "O recurso da tool pertence a outra organização.");

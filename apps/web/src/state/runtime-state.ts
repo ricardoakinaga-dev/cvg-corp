@@ -20,6 +20,7 @@ export type RuntimeEvent =
   | { type: "NETWORK_ONLINE" }
   | { type: "RECONNECT_STARTED" }
   | { type: "SESSION_VALIDATED" }
+  | { type: "REQUEST_REVALIDATION"; reason: string }
   | { type: "REQUEST_DEGRADED"; reason: string }
   | { type: "CONTEXT_INVALIDATED"; reason: string }
   | { type: "AUTH_REQUIRED"; reason?: string }
@@ -41,13 +42,17 @@ export function runtimeStateReducer(snapshot: RuntimeSnapshot, event: RuntimeEve
     case "NETWORK_OFFLINE":
       return snapshotWith(snapshot, RUNTIME_STATES.OFFLINE_READ_ONLY, "O navegador informou que a conexão foi interrompida.");
     case "NETWORK_ONLINE":
-      return snapshot.state === RUNTIME_STATES.OFFLINE_READ_ONLY
+      return snapshot.state === RUNTIME_STATES.OFFLINE_READ_ONLY || snapshot.state === RUNTIME_STATES.DEGRADED
         ? { state: RUNTIME_STATES.REVALIDATING, reconnectVersion: snapshot.reconnectVersion + 1, reason: "A conexão voltou; sessão e contexto aguardam revalidação." }
         : snapshot;
     case "RECONNECT_STARTED":
       return snapshotWith(snapshot, RUNTIME_STATES.REVALIDATING, "Revalidando sessão e contexto autorizado.");
     case "SESSION_VALIDATED":
       return snapshotWith(snapshot, RUNTIME_STATES.ONLINE);
+    case "REQUEST_REVALIDATION":
+      return snapshot.state === RUNTIME_STATES.OFFLINE_READ_ONLY || snapshot.state === RUNTIME_STATES.CONTEXT_INVALID || snapshot.state === RUNTIME_STATES.REAUTH_REQUIRED || snapshot.state === RUNTIME_STATES.REVALIDATING
+        ? snapshot
+        : { state: RUNTIME_STATES.REVALIDATING, reconnectVersion: snapshot.reconnectVersion + 1, reason: event.reason };
     case "REQUEST_DEGRADED":
       return snapshot.state === RUNTIME_STATES.OFFLINE_READ_ONLY
         ? snapshot

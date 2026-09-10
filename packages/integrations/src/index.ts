@@ -231,7 +231,7 @@ export interface MessagingHttpResponse {
 
 export type MessagingFetch = (input: string, init?: RequestInit) => Promise<MessagingHttpResponse>;
 
-export type MessagingFailure = "CONFIGURATION" | "CREDENTIAL" | "RATE_LIMITED" | "CIRCUIT_OPEN" | "TIMEOUT" | "TRANSPORT" | "INVALID_RESPONSE" | "CANCELLED";
+export type MessagingFailure = "CONFIGURATION" | "CREDENTIAL" | "RATE_LIMITED" | "CIRCUIT_OPEN" | "TIMEOUT" | "TRANSPORT" | "INVALID_RESPONSE" | "CANCELLED" | "CONFLICT";
 export type MessagingFailureOutcome = "NOT_SENT" | "OUTCOME_UNKNOWN";
 
 export function redactMessagingError(error: unknown, sensitiveValues: readonly string[] = []): string {
@@ -261,6 +261,7 @@ function defaultMessagingErrorCode(failure: MessagingFailure): { code: string; s
   if (failure === "CREDENTIAL") return { code: "CREDENTIAL_UNAVAILABLE", statusCode: 503, outcome: "NOT_SENT" };
   if (failure === "RATE_LIMITED") return { code: "RATE_LIMITED", statusCode: 429, outcome: "NOT_SENT" };
   if (failure === "CIRCUIT_OPEN") return { code: "DEPENDENCY_UNAVAILABLE", statusCode: 503, outcome: "NOT_SENT" };
+  if (failure === "CONFLICT") return { code: "IDEMPOTENCY_CONFLICT", statusCode: 409, outcome: "NOT_SENT" };
   if (failure === "CANCELLED") return { code: "OUTCOME_UNKNOWN", statusCode: 499, outcome: "OUTCOME_UNKNOWN" };
   if (failure === "TIMEOUT" || failure === "TRANSPORT") return { code: "OUTCOME_UNKNOWN", statusCode: 503, outcome: "OUTCOME_UNKNOWN" };
   return { code: "INVALID_STATE", statusCode: 502, outcome: "OUTCOME_UNKNOWN" };
@@ -711,6 +712,10 @@ export class HttpMessagingProvider implements MessagingProvider {
       return httpFailureResult(attempt.failure, requestId, null);
     }
     const response = attempt.response;
+    if (response?.status === 409) {
+      this.controls.circuitBreaker?.recordSuccess();
+      throw new MessagingProviderError("CONFLICT", "provider rejected the idempotency key for a different payload", { details: { status: response.status, requestId } });
+    }
     if (!response || !response.ok || response.status < 200 || response.status >= 300) {
       this.controls.circuitBreaker?.recordFailure();
       return { status: "OUTCOME_UNKNOWN", requestId, providerRequestId: null, reason: `provider returned HTTP ${response?.status ?? "unknown"}; query is required` };
@@ -732,7 +737,9 @@ export class HttpMessagingProvider implements MessagingProvider {
     try {
       const receipt = this.normalizeReceipt(responseRecord?.receipt, providerRequestId);
       if (responseRecord?.status !== undefined && responseRecord.status !== "ACCEPTED" && responseRecord.status !== "DELIVERED") throw new MessagingProviderError("INVALID_RESPONSE", "provider response status is invalid");
+      if (responseRecord?.status !== undefined && responseRecord.status !== receipt.status) throw new MessagingProviderError("INVALID_RESPONSE", "provider response status does not match its receipt");
       this.controls.circuitBreaker?.recordSuccess();
+      if (receipt.status === "ACCEPTED") return { status: "OUTCOME_UNKNOWN", requestId, providerRequestId, reason: "provider accepted the request; final delivery requires reconciliation" };
       return { status: "DELIVERED", requestId, providerRequestId, receipt };
     } catch {
       this.controls.circuitBreaker?.recordFailure();
@@ -1126,7 +1133,7 @@ export async function reconcileUnknownExternalEffect(
 export const integrationContracts: IntegrationContract[] = [
   { integrationId: "lab.synthetic", owner: "diagnostico", purpose: "Resultado sintético para testes de cadeia", sourceOfTruth: "CVG DiagnosticRequest/Result", serviceIdentity: "synthetic-only", credentialRef: null, allowedScopes: ["organization", "unit"], endpointAndRegion: null, apiVersion: "fixture-1", timeoutMs: 3_000, retryBudget: 0, idempotencyKey: "externalOrderId+specimenId", dataClasses: ["D3"], killSwitch: false, status: "ENABLED" },
   { integrationId: "payment.real", owner: "financeiro", purpose: "Pagamentos reais", sourceOfTruth: "provider/ledger reconciliation", serviceIdentity: "UNASSIGNED", credentialRef: null, allowedScopes: [], endpointAndRegion: null, apiVersion: null, timeoutMs: 0, retryBudget: 0, idempotencyKey: "paymentIntentId", dataClasses: ["D2"], killSwitch: true, status: "DISABLED" },
-  { integrationId: "messaging.real", owner: "comunicacao", purpose: "Envio de mensagens reais", sourceOfTruth: "provider/message receipt", serviceIdentity: "UNASSIGNED", credentialRef: null, allowedScopes: [], endpointAndRegion: null, apiVersion: null, timeoutMs: 0, retryBudget: 0, idempotencyKey: "messageId", dataClasses: ["D2", "D3"], killSwitch: true, status: "DISABLED" },
+  { integrationId: "messaging.real", owner: "comunicacao", purpose: "Envio de mensagens reais", sourceOfTruth: "provider/message receipt", serviceIdentity: "UNASSIGNED", credentialRef: null, allowedScopes: [], endpointAndRegion: null, apiVersion: null, timeoutMs: 0, retryBudget: 0, idempotencyKey: "durableEffectId", dataClasses: ["D2", "D3"], killSwitch: true, status: "DISABLED" },
   { integrationId: "calendar.real", owner: "agenda", purpose: "Calendário externo", sourceOfTruth: "CONTRACT_REQUIRED", serviceIdentity: "UNASSIGNED", credentialRef: null, allowedScopes: [], endpointAndRegion: null, apiVersion: null, timeoutMs: 0, retryBudget: 0, idempotencyKey: "appointmentId+version", dataClasses: ["D1"], killSwitch: true, status: "DISABLED" }
 ];
 

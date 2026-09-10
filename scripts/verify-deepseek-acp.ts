@@ -7,10 +7,9 @@ if (!configuredPort) {
   console.error("DeepSeek ACP verification skipped: complete CVG_DEEPSEEK_ACP_* and attestation environment is required.");
   process.exitCode = 2;
 } else {
-  // The preliminary factory call only proves that configuration is complete;
-  // the server call below exercises the production wiring that creates the
-  // port from process.env.
-  void configuredPort;
+  // Exercise the real stdio transport separately from the public CVG bridge.
+  // The local ACP adapter currently lacks governed CVG tools/approvals/replay,
+  // so the public bridge must remain unavailable even when ACP itself starts.
   const created = createDeepSeekBridgeServer();
   const controller = new AbortController();
   const context: CvgContext = {
@@ -27,17 +26,23 @@ if (!configuredPort) {
     correlationId: "verify-deepseek-acp"
   };
   try {
-    const health = await created.bridge.health(controller.signal);
-    if (health.status !== "READY") {
-      console.error(JSON.stringify({ verification: "FAIL", health }, null, 2));
+    const transportHealth = await configuredPort.health({ correlationId: "verify-deepseek-acp-transport", signal: controller.signal });
+    if (typeof transportHealth !== "object" || transportHealth === null || !("status" in transportHealth) || transportHealth.status !== "READY") {
+      console.error(JSON.stringify({ verification: "FAIL", boundary: "ACP stdio", transportHealth }, null, 2));
       process.exitCode = 1;
     } else {
-      const session = await created.bridge.createSession(context, { purpose: "SUMMARY", patientId: null, encounterId: null }, controller.signal);
+      const session = await configuredPort.createSession({ correlationId: "verify-deepseek-acp-session", signal: controller.signal, context, input: { purpose: "SUMMARY", patientId: null, encounterId: null } });
+      const bridgeHealth = await created.bridge.health(controller.signal);
+      if (bridgeHealth.status !== "UNAVAILABLE") {
+        console.error(JSON.stringify({ verification: "FAIL", transportHealth, bridgeHealth }, null, 2));
+        process.exitCode = 1;
+      }
       const manifestPath = process.env.CVG_DEEPSEEK_ACP_MANIFEST_PATH;
       const manifestVersion = manifestPath ? await readAcpManifestVersion(manifestPath) : null;
-      console.log(JSON.stringify({ verification: "PASS", boundary: "ACP stdio", health, session, manifestVersion, modelTurn: "NOT_RUN_NO_API_KEY" }, null, 2));
+      console.log(JSON.stringify({ verification: process.exitCode === 1 ? "FAIL" : "PASS", boundary: "ACP stdio transport", transportHealth, bridgeHealth, session, manifestVersion, modelTurn: "NOT_RUN_NO_API_KEY", runtime: "BLOCKED_CAPABILITIES" }, null, 2));
     }
   } finally {
     await created.bridge.shutdown(controller.signal);
+    await configuredPort.shutdown({ correlationId: "verify-deepseek-acp-shutdown", signal: controller.signal });
   }
 }

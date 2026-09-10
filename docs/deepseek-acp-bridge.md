@@ -14,6 +14,8 @@ CVG_DEEPSEEK_ACP_WORKSPACE_ROOT
 CVG_DEEPSEEK_ACP_MANIFEST_PATH
 CVG_DEEPSEEK_EXPECTED_ENGINE_COMMIT
 CVG_DEEPSEEK_EXPECTED_MANIFEST_VERSION
+CVG_DEEPSEEK_BEARER_TOKEN_REF
+CVG_DEEPSEEK_CONTEXT_SIGNING_SECRET_REF
 ```
 
 `CVG_DEEPSEEK_ACP_ARGS_JSON` é uma lista JSON, por exemplo `["--import","tsx/esm","apps/cli/src/bin.ts","--profile","acp"]`. O comando é executado sem shell. `ENGINE_ROOT`, `WORKSPACE_ROOT` e `MANIFEST_PATH` devem ser absolutos.
@@ -33,7 +35,9 @@ O valor do segundo comando deve ser configurado como `sha256:<digest>`. `CVG_DEE
 
 - O transporte é ACP v1 sobre stdio, usando o SDK oficial do protocolo.
 - `initialize` e `session/new` são reais; cada sessão CVG fica vinculada ao `sessionId` ACP, contexto autenticado, commit e digest do profile.
+- O bridge HTTP exige bearer de serviço e assinatura HMAC do contexto em produção; o segredo de assinatura é resolvido por SecretProvider e nunca é transportado no payload.
 - Cancelamento propaga `AbortSignal` para o request ACP. A chave de idempotência é protegida em memória durante o processo e continua sendo governada pela idempotência persistente da aplicação.
+- O método de turno do port ACP está em default-deny enquanto o ToolGateway CVG não estiver conectado ao protocolo nativo; o transporte observado até agora não autoriza prompt direto ao modelo.
 - A callback `session/request_permission` responde sempre `cancelled`. O ACP não é uma ponte de decisão CVG: aprovações, promoção de drafts e replay permanecem `CAPABILITY_DISABLED`.
 - O ACP atual não expõe o catálogo de tools CVG nem provenance de fontes; por isso o adapter anuncia `tools: []`, não anuncia approvals/replay e não fabrica referências.
 - Usage é calculado como delta quando o Harness fornece contadores cumulativos; quando não fornece, fica zero e não é apresentado como medição observada.

@@ -80,5 +80,5 @@ export function App() {
   if (!session.user) return <Login client={client} onLogin={handleLogin} />;
   if (runtime.state === RUNTIME_STATES.REAUTH_REQUIRED || runtime.state === RUNTIME_STATES.CONTEXT_INVALID || !session.context) return <SessionBlockedState runtimeState={runtime.state} onReset={handleReset} />;
 
-  return <Shell client={client} user={session.user} contexts={session.contexts} context={session.context} onContextChange={handleContextChange} view={view} onViewChange={changeView} globalSearchQuery={patientSearchQuery} onGlobalSearchQueryChange={setPatientSearchQuery} patientSearchQuery={patientSearchQuery} onLogout={() => void session.signOut()} toast={toast} notify={notify} runtimeState={runtime.state} composerBuffer={composerBuffer} onComposerBufferChange={setComposerBuffer} />;
+  return <Shell client={client} user={session.user} contexts={session.contexts} context={session.context} onContextChange={handleContextChange} view={view} onViewChange={changeView} globalSearchQuery={patientSearchQuery} onGlobalSearchQueryChange={setPatientSearchQuery} patientSearchQuery={patientSearchQuery} onLogout={() => void session.signOut()} toast={toast} notify={notify} runtimeState={runtime.state} composerBuffer={composerBuffer} onComposerBufferChange={setComposerBuffer} onRetry={() => runtime.transition({ type: "NETWORK_ONLINE" })} />;
 }

@@ -26,7 +26,7 @@ Endpoints do contrato CVG:
 - `GET /v1/sessions/:id/replay`
 - `POST /v1/shutdown`
 
-Falhas retornam `{ schemaVersion, correlationId, error: { code, message, retryable } }`. O bridge não registra bearer token, prompt, resposta, segredo ou stack bruto.
+Falhas retornam `{ schemaVersion, correlationId, error: { code, message, retryable } }`. Em produção, o bridge exige bearer de serviço e assinatura HMAC do contexto, resolvida por `CVG_DEEPSEEK_CONTEXT_SIGNING_SECRET_REF`, antes de aceitar qualquer rota que receba `CvgContext`; isso impede trocar ator, organização, sessão ou escopo somente alterando o JSON. O bridge não registra bearer token, prompt, resposta, segredo ou stack bruto.
 
 ## Matriz de contrato
 
@@ -54,7 +54,7 @@ O teste conhecido-good usa uma implementação injetada e explicitamente sintét
 
 Antes de habilitar `CVG_DEEPSEEK_RUNTIME_ENABLED=true`, ainda são obrigatórios:
 
-1. adapter nativo compatível com a interface `DeepSeekNativeHarnessPort`, acompanhado de commit, manifest, catálogo de tools, perfil e digest aprovados;
+1. adapter nativo compatível com a interface `DeepSeekNativeHarnessPort`, acompanhado de commit, manifest, catálogo de tools, perfil e digest aprovados; o port ACP atual permanece bloqueado para turnos até o ToolGateway governar tools, approval, replay, provenance e egress;
 2. URL HTTPS de staging, token entregue por SecretProvider autorizado, rotação e revogação testadas;
 3. execução do contrato completo em staging com resposta redigida, correlation, replay, cancel, timeout, refusal, partial, approval e provenance;
 4. evidência de OTel, SLO, carga, recovery e revisão independente para o mesmo commit;

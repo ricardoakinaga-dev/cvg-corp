@@ -6,10 +6,10 @@ Este diretório contém a documentação da arquitetura-alvo de um programa de g
 
 | Campo | Estado |
 |---|---|
-| Fase | BUILD vNext; fundação de runtime/policy/tools, API e web modulares, worker separado, migrations 001–026, boundary local de autenticação, provider/reconciliação fail-closed, cadeia de auditoria local e verificação determinística |
+| Fase | BUILD vNext; fundação de runtime/policy/tools, API e web modulares, worker separado, migrations 001–027, boundary local de autenticação, provider/reconciliação fail-closed, cadeia de auditoria local e verificação determinística |
 | Escopo desta fase | Evolução brownfield controlada; mock/sintético e PostgreSQL local continuam permitidos; aceite operacional independente e produção continuam pendentes |
 | Motor proposto | `AgentRuntime` com adapter Mock e bridge DeepSeek `/v1` opcional; port nativo e protocolo externo ainda não provados |
-| Qualidade | barra v3 `FAIL_WITH_LIMITATIONS`; `verify:triplo-aaa`/`verify:staging` fail-closed, recorte local executável, produção bloqueada |
+| Qualidade | barra v3 `FAIL_WITH_LIMITATIONS`; `verify:triplo-aaa`/`verify:staging` fail-closed, recorte local executável incluindo sandbox HTTP de provider, produção bloqueada |
 | Fonte de verdade clínica | O domínio transacional do CVG, não a conversa do agente |
 | Próximo gate | PostgreSQL/Docker production-like, provider/consulta externa real, secret authority, observabilidade/carga/recovery, matriz de browsers/acessibilidade e aceite independente |
 

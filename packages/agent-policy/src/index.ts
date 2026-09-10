@@ -114,7 +114,14 @@ export class StaticPolicyDecisionPoint implements PolicyDecisionPoint {
     if (request.sessionId === null || context.sessionId === null || request.sessionId !== context.sessionId) return deny(this.revision, "A sessão da solicitação não corresponde ao contexto autenticado.");
     if (!request.constraints || typeof request.constraints !== "object" || Array.isArray(request.constraints)) return deny(this.revision, "As constraints da policy são inválidas.");
     const registeredRule = applicationPolicyFor(request.operation);
-    if (registeredRule && registeredRule.capability !== request.capability) return deny(this.revision, "A capability não corresponde à operação registrada.");
+    if (!registeredRule) return deny(this.revision, `A operação ${request.operation} não possui uma policy canônica registrada.`);
+    if (registeredRule.capability !== request.capability) return deny(this.revision, "A capability não corresponde à operação registrada.");
+    const riskRank: Record<PolicyRisk, number> = { LOW: 0, MEDIUM: 1, HIGH: 2, CRITICAL: 3 };
+    if (riskRank[request.risk] < riskRank[registeredRule.risk]) return deny(this.revision, "O risco declarado não pode ser menor que o risco da policy canônica.");
+    if (registeredRule.requiresApproval && !request.requiresApproval) return deny(this.revision, "A policy canônica exige aprovação humana.");
+    if (registeredRule.approvalMode === "INDEPENDENT" && request.approvalMode !== "INDEPENDENT") return deny(this.revision, "A policy canônica exige aprovação independente.");
+    if (request.allowedRoles.some((role) => !registeredRule.allowedRoles.includes(role))) return deny(this.revision, "O descriptor declara uma role fora da policy canônica.");
+    if (request.acceptedDataClasses.some((dataClass) => !registeredRule.acceptedDataClasses.includes(dataClass))) return deny(this.revision, "O descriptor declara uma classe de dados fora da policy canônica.");
     if (resource.resourceId !== null && typeof resource.resourceId !== "string") return deny(this.revision, "O recurso-alvo da policy é inválido.");
     if (request.constraints.resourceRequired === true && resource.resourceId === null) return deny(this.revision, "A operação exige um recurso-alvo explícito.");
     if (request.operation === "patients.read" && context.patientId !== null && resource.resourceId !== context.patientId) return deny(this.revision, "O paciente-alvo não corresponde ao contexto revalidado.");
@@ -171,6 +178,25 @@ export interface ApplicationPolicyAuthorizationOptions {
   resourceRequired?: boolean;
 }
 
+export type ToolEgressPolicy = "NONE" | "LOCAL_ONLY" | "EXTERNAL_PROVIDER";
+
+export interface ToolPolicyRule {
+  toolName: string;
+  operation: string;
+  capability: string;
+  risk: PolicyRisk;
+  approvalMode: PolicyApprovalMode;
+  allowedRoles: readonly Role[];
+  acceptedDataClasses: readonly DataClass[];
+  scope: "ORGANIZATION" | "UNIT" | "WORKSPACE";
+  resourceRequired: boolean;
+  requiresApproval: boolean;
+  idempotency: "REQUIRED" | "OPTIONAL";
+  auditAction: string;
+  secretRefs: readonly string[];
+  egress: ToolEgressPolicy;
+}
+
 const allApplicationRoles: readonly Role[] = ["admin", "veterinario", "recepcao", "operador", "financeiro", "estoque", "workspace_manager"];
 const clinicalRoles: readonly Role[] = ["admin", "veterinario"];
 const receptionRoles: readonly Role[] = ["admin", "recepcao", "veterinario"];
@@ -219,6 +245,7 @@ export const APPLICATION_POLICY_REGISTRY: readonly ApplicationPolicyRule[] = [
   applicationRule("encounters.create", "encounters:create", clinicalRoles, d3, "MEDIUM"),
   applicationRule("clinical.read", "clinical:read", clinicalRoles, d3),
   applicationRule("clinical.write", "clinical:write", clinicalRoles, d3, "MEDIUM"),
+  applicationRule("clinical.draft", "clinical:draft", clinicalRoles, d3, "MEDIUM"),
   applicationRule("clinical.sign", "clinical:sign", ["veterinario"], d3, "MEDIUM"),
   applicationRule("clinical.addendum", "clinical:addendum", ["veterinario"], d3, "MEDIUM"),
   applicationRule("diagnostics.read", "diagnostics:read", ["veterinario"], d3),
@@ -229,6 +256,7 @@ export const APPLICATION_POLICY_REGISTRY: readonly ApplicationPolicyRule[] = [
   applicationRule("diagnostics.results.read", "diagnostics:results:read", ["veterinario"], d3),
   applicationRule("stock.read", "stock:read", ["admin", "estoque", "veterinario"], d2),
   applicationRule("stock.write", "stock:write", ["admin", "estoque"], d2, "MEDIUM"),
+  applicationRule("stock.dispense", "stock:write", ["admin", "estoque"], d2, "CRITICAL"),
   applicationRule("hospitalization.beds.read", "hospitalization:beds-read", clinicalRoles, d3),
   applicationRule("hospitalization.read", "hospitalization:read", clinicalRoles, d3),
   applicationRule("hospitalization.create", "hospitalization:create", ["veterinario"], d3, "MEDIUM"),
@@ -261,11 +289,41 @@ export const APPLICATION_POLICY_REGISTRY: readonly ApplicationPolicyRule[] = [
   applicationRule("ops.restore", "ops:restore", ["admin"], d4, "MEDIUM")
 ];
 
+const toolPolicy = (
+  toolName: string,
+  operation: string,
+  capability: string,
+  risk: PolicyRisk,
+  approvalMode: PolicyApprovalMode,
+  allowedRoles: readonly Role[],
+  acceptedDataClasses: readonly DataClass[],
+  scope: ToolPolicyRule["scope"],
+  resourceRequired: boolean,
+  requiresApproval: boolean
+): ToolPolicyRule => ({ toolName, operation, capability, risk, approvalMode, allowedRoles, acceptedDataClasses, scope, resourceRequired, requiresApproval, idempotency: "REQUIRED", auditAction: operation, secretRefs: [], egress: "LOCAL_ONLY" });
+
+/** Exact metadata for the model-visible tool registry. A tool cannot be
+ * registered or executed by merely declaring a looser descriptor. */
+export const TOOL_POLICY_REGISTRY: readonly ToolPolicyRule[] = [
+  toolPolicy("cvg.patient.read", "patients.read", "patients:read", "LOW", "NONE", ["admin", "veterinario", "recepcao"], d3, "WORKSPACE", true, false),
+  toolPolicy("cvg.agenda.read", "appointments.read", "appointments:read", "LOW", "NONE", ["admin", "veterinario", "recepcao"], d2, "WORKSPACE", false, false),
+  toolPolicy("cvg.clinical.draft", "clinical.draft", "clinical:draft", "MEDIUM", "NONE", ["admin", "veterinario"], d3, "WORKSPACE", true, false),
+  toolPolicy("cvg.communication.stage", "communication.stage", "communication:stage", "MEDIUM", "SAME_ACTOR", ["admin", "veterinario", "recepcao"], d2, "WORKSPACE", false, true),
+  toolPolicy("cvg.stock.dispense", "stock.dispense", "stock:write", "CRITICAL", "INDEPENDENT", ["admin", "estoque"], d2, "UNIT", true, true),
+  toolPolicy("cvg.finance.refund", "finance.refund", "finance:refund", "CRITICAL", "INDEPENDENT", ["admin", "financeiro"], d2, "UNIT", true, true)
+];
+
 const applicationPolicyByOperation = new Map(APPLICATION_POLICY_REGISTRY.map((rule) => [rule.operation, rule]));
 
 export function applicationPolicyFor(operation: string): ApplicationPolicyRule | null {
   if (operation.startsWith("ai.turn.")) return applicationPolicyByOperation.get("ai.turn") ?? null;
   return applicationPolicyByOperation.get(operation) ?? null;
+}
+
+const toolPolicyByName = new Map(TOOL_POLICY_REGISTRY.map((rule) => [rule.toolName, rule]));
+
+export function toolPolicyFor(toolName: string): ToolPolicyRule | null {
+  return toolPolicyByName.get(toolName) ?? null;
 }
 
 export function authorizeApplicationRequest(context: CvgContext, operation: string, options: ApplicationPolicyAuthorizationOptions = {}): PolicyDecision {

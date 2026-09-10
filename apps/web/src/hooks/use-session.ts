@@ -21,19 +21,22 @@ export function useSession(client: ApiClient, runtime: SessionRuntime): SessionC
   const snapshotRef = useRef(snapshot);
   const initialValidationStarted = useRef(false);
   const handledReconnectVersion = useRef(0);
+  const validationSequence = useRef(0);
 
   const updateSnapshot = useCallback((next: SessionSnapshot) => {
     snapshotRef.current = next;
     setSnapshot(next);
   }, []);
 
-  const validate = useCallback(async (mode: "initial" | "reconnect") => {
+  const validate = useCallback(async (mode: "initial" | "reconnect", requestedContext: SessionSnapshot["context"] = null) => {
+    const sequence = ++validationSequence.current;
     const previous = snapshotRef.current;
-    const currentContext = mode === "reconnect" ? previous.context : null;
+    const currentContext = mode === "reconnect" ? requestedContext ?? previous.context : null;
     let me: Awaited<ReturnType<typeof fetchSessionAndContexts>>["me"] | null = null;
     try {
       if (mode === "reconnect") transition({ type: "RECONNECT_STARTED" });
       const result = await fetchSessionAndContexts(client, currentContext);
+      if (sequence !== validationSequence.current) return;
       me = result.me;
       const nextContext = selectContext(result.contexts, result.me.context, currentContext);
       if (!nextContext) throw new ContextInvalidError("Nenhum contexto autorizado foi devolvido para esta sessão.");
@@ -41,6 +44,7 @@ export function useSession(client: ApiClient, runtime: SessionRuntime): SessionC
       updateSnapshot({ status: "ready", user: result.me.user, contexts: result.contexts, context: nextContext });
       transition({ type: "SESSION_VALIDATED" });
     } catch (reason) {
+      if (sequence !== validationSequence.current) return;
       const message = reason instanceof Error ? reason.message : "Não foi possível revalidar sessão e contexto.";
       if (isAuthenticationError(reason)) {
         updateSnapshot(emptySession());
@@ -76,6 +80,7 @@ export function useSession(client: ApiClient, runtime: SessionRuntime): SessionC
   }, [reconnectVersion, validate]);
 
   const signIn = useCallback((user: User, contexts: ContextOption[]) => {
+    validationSequence.current += 1;
     const nextContext = contexts[0] ?? null;
     updateSnapshot({ status: "ready", user, contexts, context: nextContext });
     transition({ type: "SIGNED_IN" });
@@ -84,10 +89,12 @@ export function useSession(client: ApiClient, runtime: SessionRuntime): SessionC
 
   const changeContext = useCallback((nextContext: ContextOption) => {
     const current = snapshotRef.current;
-    if (!current.context || !sameContext(current.context, nextContext)) updateSnapshot({ ...current, context: nextContext });
-  }, [updateSnapshot]);
+    if (!current.context || sameContext(current.context, nextContext)) return;
+    void validate("reconnect", nextContext);
+  }, [validate]);
 
   const reset = useCallback(() => {
+    validationSequence.current += 1;
     updateSnapshot(emptySession());
     transition({ type: "SIGNED_OUT" });
   }, [transition, updateSnapshot]);

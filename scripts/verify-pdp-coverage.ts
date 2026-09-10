@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
-import { applicationPolicyFor, APPLICATION_POLICY_REGISTRY } from "@cvg/agent-policy";
+import { applicationPolicyFor, APPLICATION_POLICY_REGISTRY, toolPolicyFor, TOOL_POLICY_REGISTRY } from "@cvg/agent-policy";
+import { TOOL_REGISTRY } from "@cvg/harness";
 
 const failures: string[] = [];
 const apiSources = await Promise.all([
@@ -31,9 +32,44 @@ for (const rule of APPLICATION_POLICY_REGISTRY) {
   if (rule.allowedRoles.length === 0 || rule.acceptedDataClasses.length === 0) failures.push(`incomplete role/data-class policy for ${rule.operation}`);
 }
 
+function toolRisk(risk: (typeof TOOL_REGISTRY)[number]["risk"]): "LOW" | "MEDIUM" | "CRITICAL" {
+  if (risk === "READ_ONLY") return "LOW";
+  if (risk === "DRAFT" || risk === "REVERSIBLE") return "MEDIUM";
+  return "CRITICAL";
+}
+
+function sameList(left: readonly unknown[], right: readonly unknown[]): boolean {
+  return left.length === right.length && left.every((value, index) => value === right[index]);
+}
+
+const toolNames = TOOL_REGISTRY.map((tool) => tool.name);
+if (new Set(toolNames).size !== toolNames.length) failures.push("harness tool registry contains duplicate names");
+if (TOOL_POLICY_REGISTRY.length !== TOOL_REGISTRY.length) failures.push("canonical tool policy registry and harness tool registry have different sizes");
+for (const tool of TOOL_REGISTRY) {
+  const rule = toolPolicyFor(tool.name);
+  if (!rule) {
+    failures.push(`tool ${tool.name} has no canonical tool policy`);
+    continue;
+  }
+  if (rule.operation !== tool.operation) failures.push(`tool ${tool.name} operation diverges from canonical policy`);
+  if (rule.capability !== tool.capability) failures.push(`tool ${tool.name} capability diverges from canonical policy`);
+  if (rule.risk !== toolRisk(tool.risk)) failures.push(`tool ${tool.name} risk diverges from canonical policy`);
+  if (rule.approvalMode !== tool.approvalMode || rule.requiresApproval !== tool.requiresApproval) failures.push(`tool ${tool.name} approval metadata diverges from canonical policy`);
+  if (!sameList(rule.allowedRoles, tool.allowedRoles)) failures.push(`tool ${tool.name} role allowlist diverges from canonical policy`);
+  if (!sameList(rule.acceptedDataClasses, tool.acceptedDataClasses)) failures.push(`tool ${tool.name} data-class allowlist diverges from canonical policy`);
+  if (rule.scope !== tool.scope || rule.resourceRequired !== tool.resourceRequired) failures.push(`tool ${tool.name} resource scope diverges from canonical policy`);
+  if (rule.idempotency !== tool.idempotency || rule.auditAction !== tool.auditAction || !sameList(rule.secretRefs, tool.secretRefs) || rule.egress !== "LOCAL_ONLY") failures.push(`tool ${tool.name} execution controls diverge from canonical policy`);
+  if (!applicationPolicyFor(tool.operation)) failures.push(`tool ${tool.name} operation has no application PDP rule`);
+}
+const canonicalToolNames = TOOL_POLICY_REGISTRY.map((rule) => rule.toolName);
+if (new Set(canonicalToolNames).size !== canonicalToolNames.length) failures.push("canonical tool policy registry contains duplicate names");
+for (const rule of TOOL_POLICY_REGISTRY) {
+  if (!TOOL_REGISTRY.some((tool) => tool.name === rule.toolName)) failures.push(`canonical tool policy ${rule.toolName} has no harness implementation`);
+}
+
 if (failures.length > 0) {
   for (const failure of failures) process.stderr.write(`FAIL ${failure}\n`);
   process.exitCode = 1;
 } else {
-  process.stdout.write(`PDP coverage passed: ${operations.size} request-bound operations, ${APPLICATION_POLICY_REGISTRY.length} registered rules, ${requiredDomains.length} critical domains\n`);
+  process.stdout.write(`PDP coverage passed: ${operations.size} request-bound operations, ${APPLICATION_POLICY_REGISTRY.length} registered rules, ${TOOL_POLICY_REGISTRY.length} canonical tool policies, ${requiredDomains.length} critical domains\n`);
 }

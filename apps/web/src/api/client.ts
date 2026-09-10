@@ -4,7 +4,7 @@ import type { ContextOption } from "../state/types";
 type ApiErrorPayload = { code: string; message: string; details?: Record<string, unknown> };
 type ApiEnvelope<T> = { schemaVersion: number; data?: T; error?: ApiErrorPayload; correlationId: string };
 
-const API = import.meta.env.VITE_API_URL ?? "";
+const API = import.meta.env?.VITE_API_URL ?? "";
 const WRITE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 const PUBLIC_AUTH_WRITES = new Set(["/auth/login", "/auth/demo"]);
 
@@ -41,6 +41,10 @@ export type ApiClient = {
 
 export function isAuthenticationError(error: unknown): boolean {
   return error instanceof ApiError && (error.status === 401 || error.code === "UNAUTHENTICATED" || error.code === "UNAUTHORIZED");
+}
+
+export function isContextRevalidationError(error: unknown): boolean {
+  return error instanceof ApiError && (error.status === 403 || error.status === 409 || error.code === "POLICY_DENIED" || error.code === "CONTEXT_INVALID");
 }
 
 export function isDegradedRequestError(error: unknown): boolean {

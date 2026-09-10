@@ -9,6 +9,7 @@ import { DeepSeekHarnessAdapter, MockHarnessAdapter } from "@cvg/harness-adapter
 import { ConfigError, loadCvgConfig } from "@cvg/config";
 import { createRuntime, MemoryRateLimiter } from "@cvg/api";
 import { EnvironmentSecretProvider } from "@cvg/integrations";
+import { ApiError, isContextRevalidationError } from "../../apps/web/src/api/client.ts";
 import { canRenderContextData, isWriteAllowed, RUNTIME_STATES, runtimeStateReducer, type RuntimeSnapshot } from "../../apps/web/src/state/runtime-state.ts";
 
 function contextFor(store: CvgStore, purpose: string) {
@@ -20,34 +21,34 @@ function contextFor(store: CvgStore, purpose: string) {
 
 test("vNext PDP rejects foreign scope and requires independent approval", async () => {
   const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
-  const context = contextFor(store, "communication.stage");
+  const context = contextFor(store, "stock.dispense");
   const policy = new StaticPolicyDecisionPoint(context.policyRevision);
   const gateway = new ToolGateway(policy, new InMemoryToolExecutionLedger());
   const descriptor: ToolDescriptor<{ message: string }> = {
-    name: "cvg.test.high-impact",
+    name: "cvg.stock.dispense",
     version: "1.0.0",
     description: "tool fixture",
-    operation: "communication.stage",
-    capability: "communication:stage",
-    risk: "HIGH",
+    operation: "stock.dispense",
+    capability: "stock:write",
+    risk: "CRITICAL",
     approvalMode: "INDEPENDENT",
-    allowedRoles: ["admin"],
+    allowedRoles: ["admin", "estoque"],
     acceptedDataClasses: ["D2"],
-    scope: "WORKSPACE",
-    resourceRequired: false,
+    scope: "UNIT",
+    resourceRequired: true,
     requiresApproval: true,
     idempotency: "REQUIRED",
-    auditAction: "test.high-impact",
+    auditAction: "stock.dispense",
     secretRefs: [],
     timeoutMs: 1_000,
-    egress: "NONE",
+    egress: "LOCAL_ONLY",
     parseInput: (value) => {
       if (typeof value !== "object" || value === null || typeof (value as { message?: unknown }).message !== "string") throw new Error("message required");
       return value as { message: string };
     }
   };
   gateway.register(descriptor);
-  const resource = { organizationId: context.organizationId, unitId: context.unitId, workspaceId: context.workspaceId, resourceId: null, dataClass: "D2" as const };
+  const resource = { organizationId: context.organizationId, unitId: context.unitId, workspaceId: context.workspaceId, resourceId: id("resource-1"), dataClass: "D2" as const };
   let calls = 0;
   await assert.rejects(() => gateway.execute(descriptor.name, { context, sessionId: id("00000000-0000-4000-8000-000000000990"), resource, input: { message: "send" }, idempotencyKey: "session-conflict" }, async () => { calls += 1; return true; }), (error: unknown) => error instanceof ToolGatewayError && error.code === "POLICY_DENIED");
   await assert.rejects(() => gateway.execute(descriptor.name, { context, sessionId: context.sessionId!, resource, input: { message: "send" }, idempotencyKey: "digest-conflict", requestDigest: "0".repeat(64) }, async () => { calls += 1; return true; }), (error: unknown) => error instanceof ToolGatewayError && error.code === "IDEMPOTENCY_CONFLICT");
@@ -131,6 +132,13 @@ test("tool registry digest excludes parser functions and remains deterministic",
   const parser = () => ({ ok: true });
   const descriptor = { name: "cvg.test.read", version: "1.0.0", description: "read", operation: "test.read", capability: "test:read", risk: "LOW" as const, approvalMode: "NONE" as const, allowedRoles: ["admin"] as const, acceptedDataClasses: ["D0"] as const, scope: "ORGANIZATION" as const, resourceRequired: false, requiresApproval: false, idempotency: "REQUIRED" as const, auditAction: "test.read", secretRefs: [] as const, timeoutMs: 1_000, egress: "NONE" as const, parseInput: parser };
   assert.equal(toolRegistryDigest([descriptor]), toolRegistryDigest([{ ...descriptor, parseInput: () => ({ ok: true }) }]));
+});
+
+test("ToolGateway denies a descriptor outside the canonical tool policy before registration", () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const context = contextFor(store, "operations.unknown");
+  const gateway = new ToolGateway(new StaticPolicyDecisionPoint(context.policyRevision), new InMemoryToolExecutionLedger());
+  assert.throws(() => gateway.register({ name: "cvg.test.unregistered", version: "1.0.0", description: "unregistered fixture", operation: "operations.unknown", capability: "operations:unknown", risk: "LOW", approvalMode: "NONE", allowedRoles: ["admin"], acceptedDataClasses: ["D0"], scope: "ORGANIZATION", resourceRequired: false, requiresApproval: false, idempotency: "REQUIRED", auditAction: "operations.unknown", secretRefs: [], timeoutMs: 1_000, egress: "NONE", parseInput: (value: unknown) => value }), (error: unknown) => error instanceof ToolGatewayError && error.code === "CAPABILITY_DISABLED");
 });
 
 test("API catalog covers the versioned surface without duplicate route keys", () => {
@@ -230,8 +238,8 @@ test("tool gateway reports an unknown outcome when an executor exceeds its deadl
   const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
   const context = contextFor(store, "timeout.test");
   const gateway = new ToolGateway(new StaticPolicyDecisionPoint(context.policyRevision), new InMemoryToolExecutionLedger());
-  gateway.register({ name: "cvg.test.timeout", version: "1.0.0", description: "timeout fixture", operation: "timeout.test", capability: "test:timeout", risk: "LOW", approvalMode: "NONE", allowedRoles: ["admin"], acceptedDataClasses: ["D0"], scope: "WORKSPACE", resourceRequired: false, requiresApproval: false, idempotency: "REQUIRED", auditAction: "test.timeout", secretRefs: [], timeoutMs: 100, egress: "NONE", parseInput: (value: unknown) => value });
-  await assert.rejects(() => gateway.execute("cvg.test.timeout", { context, sessionId: context.sessionId!, resource: { organizationId: context.organizationId, unitId: context.unitId, workspaceId: context.workspaceId, resourceId: null, dataClass: "D0" }, input: {}, idempotencyKey: "timeout-1" }, async (_input, signal) => new Promise<boolean>((resolve) => setTimeout(() => resolve(signal.aborted), 500))), (error: unknown) => error instanceof ToolGatewayError && error.code === "OUTCOME_UNKNOWN");
+  gateway.register({ name: "cvg.agenda.read", version: "1.0.0", description: "timeout fixture", operation: "appointments.read", capability: "appointments:read", risk: "LOW", approvalMode: "NONE", allowedRoles: ["admin", "veterinario", "recepcao"], acceptedDataClasses: ["D2"], scope: "WORKSPACE", resourceRequired: false, requiresApproval: false, idempotency: "REQUIRED", auditAction: "appointments.read", secretRefs: [], timeoutMs: 100, egress: "LOCAL_ONLY", parseInput: (value: unknown) => value });
+  await assert.rejects(() => gateway.execute("cvg.agenda.read", { context, sessionId: context.sessionId!, resource: { organizationId: context.organizationId, unitId: context.unitId, workspaceId: context.workspaceId, resourceId: null, dataClass: "D2" }, input: {}, idempotencyKey: "timeout-1" }, async (_input, signal) => new Promise<boolean>((resolve) => setTimeout(() => resolve(signal.aborted), 500))), (error: unknown) => error instanceof ToolGatewayError && error.code === "OUTCOME_UNKNOWN");
 });
 
 test("secret providers resolve only approved references", async () => {
@@ -255,10 +263,30 @@ test("web runtime state machine never grants writes during reconnect or context 
   assert.equal(isWriteAllowed(reconnecting.state), false);
   assert.equal(canRenderContextData(reconnecting.state), false);
 
+  const degraded = runtimeStateReducer(initial, { type: "REQUEST_DEGRADED", reason: "API indisponível" });
+  const retrying = runtimeStateReducer(degraded, { type: "NETWORK_ONLINE" });
+  assert.equal(retrying.state, RUNTIME_STATES.REVALIDATING);
+  assert.equal(retrying.reconnectVersion, 1);
+  assert.equal(isWriteAllowed(retrying.state), false);
+  assert.equal(canRenderContextData(retrying.state), false);
+
   const invalid = runtimeStateReducer(reconnecting, { type: "CONTEXT_INVALIDATED", reason: "scope changed" });
   assert.equal(invalid.state, RUNTIME_STATES.CONTEXT_INVALID);
   assert.equal(isWriteAllowed(invalid.state), false);
   const reauthenticated = runtimeStateReducer(invalid, { type: "SESSION_VALIDATED" });
   assert.equal(reauthenticated.state, RUNTIME_STATES.ONLINE);
   assert.equal(isWriteAllowed(reauthenticated.state), true);
+});
+
+test("context authorization failures force a safe revalidation boundary", () => {
+  const initial: RuntimeSnapshot = { state: RUNTIME_STATES.ONLINE, reconnectVersion: 2 };
+  assert.equal(isContextRevalidationError(new ApiError("forbidden", { status: 403, code: "FORBIDDEN", correlationId: "corr-1", details: null })), true);
+  assert.equal(isContextRevalidationError(new ApiError("conflict", { status: 409, code: "CONFLICT", correlationId: "corr-2", details: null })), true);
+  assert.equal(isContextRevalidationError(new ApiError("policy", { status: 400, code: "POLICY_DENIED", correlationId: "corr-3", details: null })), true);
+  const revalidating = runtimeStateReducer(initial, { type: "REQUEST_REVALIDATION", reason: "context authority changed" });
+  assert.equal(revalidating.state, RUNTIME_STATES.REVALIDATING);
+  assert.equal(revalidating.reconnectVersion, 3);
+  assert.equal(runtimeStateReducer(revalidating, { type: "REQUEST_REVALIDATION", reason: "duplicate" }), revalidating);
+  const blocked = runtimeStateReducer(revalidating, { type: "CONTEXT_INVALIDATED", reason: "revalidation failed" });
+  assert.equal(runtimeStateReducer(blocked, { type: "REQUEST_REVALIDATION", reason: "retry later" }), blocked);
 });

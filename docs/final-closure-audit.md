@@ -1,12 +1,14 @@
 # Auditoria de fechamento — CVG-Corp State of the Art / Triplo AAA
 
 **Auditoria:** F0-2026-09-09-v2
-**Revisão do CVG:** `fdfd408a8f91f2c7e4b84f850e6bb783aa172959`
+**Revisão de referência do CVG:** `e3c6c59aebcdd7375ae09c61a1c620ffd9257016` (baseline desta rodada; o checkpoint final local será o commit que contém esta auditoria e será informado no handoff)
 **Revisão observada do DeepSeek Harness:** `5dda764ed3aa172535a7967b06ff95d9cbfe536a`
 **Probe ACP local:** `READY`; `initialize` + `session/new` passaram pelo processo real via stdio; turno de modelo deliberadamente não executado sem API key.
 **Prompt normativo:** [prompt v2](prompt-state-of-the-art-triplo-aaa-2026-09-09-v2.txt), SHA-256 `34e886f59adacf8fda46d8d54bdede259705adc6e1521590cd3c281509b0e0d9`
 **Ambiente:** workspace local, Node 24.20.0, npm 11.19.0; Docker CLI/Compose presentes, daemon sem permissão; sem URL de staging, credencial, secret authority, provider, dados reais ou autorização de release.
 **Estado da auditoria:** a fotografia F0 foi revalidada durante o worktree atual; além da cópia v2, o bridge/contrato local, a boundary de secrets/auth/MFA/break-glass e o exporter OTLP protobuf foram implementados/testados sem credencial, egress, dado real ou release.
+
+**Checkpoint local final — 2026-09-09 21:21:** a rodada revalidou `111` testes (`110 pass`, `1 skip`), lint, typecheck, build, E2E Chromium/Firefox (`52 pass`, `4 skips`), `verify:pdp` (`64` operações, `68` regras, `6` policies canônicas, `12` domínios), provider HTTP loopback, licenças, `npm audit`, Compose estrutural e os gates fail-closed. A tentativa de crítica independente fresca expirou sem relatório e está registrada como `NOT_RUN`; não altera o veredito.
 
 ## 1. Escopo, método e veredito
 
@@ -37,7 +39,7 @@ HTTP/Fastify
   -> normalized reads, receipts, outbox, inbox and effect ledgers
 ```
 
-Há migrations aditivas 001–026, papel de runtime não-superusuário, RLS, escopo organizacional/unidade/workspace, leases/fencing, cadeia local de auditoria e restore em quarentena. O snapshot JSONB ainda participa da reconstrução; repositories normalizados existem para uma parte dos caminhos, não para todos os bounded contexts exigidos pelo prompt.
+Há migrations aditivas 001–027, papel de runtime não-superusuário, RLS, escopo organizacional/unidade/workspace, leases/fencing, cadeia local de auditoria com guard append-only e restore em quarentena. O snapshot JSONB ainda participa da reconstrução; repositories normalizados existem para uma parte dos caminhos, não para todos os bounded contexts exigidos pelo prompt.
 
 ### 2.2 Caminho de IA e Harness
 
@@ -69,7 +71,7 @@ communication.stage
   -> audit
 ```
 
-Existe `SyntheticMessagingProvider`, `HttpMessagingProvider`, HMAC de callback, allowlist/SSRF, timeout, circuit breaker, rate limit local, receipt validation, `OUTCOME_UNKNOWN`, consulta e reconciliação sem retry cego. O sink externo exige ledger durável. Nenhuma transação sandbox real, callback real ou consulta de provider foi executada.
+Existe `SyntheticMessagingProvider`, `HttpMessagingProvider`, HMAC de callback, allowlist/SSRF, timeout, circuit breaker, rate limit local, receipt validation, `OUTCOME_UNKNOWN`, consulta e reconciliação sem retry cego. O sink externo exige ledger durável. `npm run verify:provider-sandbox` agora cruza o transporte HTTP real em loopback e prova replay, resposta perdida após aceite, consulta por idempotency key e callback HMAC válido/inválido; provider externo, callback externo e settlement continuam não executados.
 
 ### 2.4 Caminho operacional
 
@@ -87,7 +89,7 @@ API e worker são processos separados. O worker nomeia seis lanes (`outbox`, `jo
 | Fail-closed | config production, secret/provider ausente, Tool Gateway, approvals, worker e staging/AAA bloqueiam | o bloqueio real de cada deployment depende de startup production-like |
 | Tool Gateway | sessão, alvo, escopo, digest, idempotência, approval e ledger durável | concorrência/distribuição PostgreSQL real não executada |
 | Efeitos externos | outbox/inbox/effect ledger, receipt, unknown outcome e reconciliação | provider e callback reais ausentes |
-| Dados | migrations 001–025, RLS, CAS, locks, runtime role, restore manifest/quarantine | volume, mixed-version, backup gerenciado e restore operacional ausentes |
+| Dados | migrations 001–027, RLS, CAS, locks, runtime role, restore manifest/quarantine e guard append-only | volume, mixed-version, backup gerenciado e restore operacional ausentes |
 | Identidade | password policy, lockout, TOTP, recuperação, rotação e revogação local | secret authority, WebAuthn real e sessão distribuída ausentes |
 | Supply chain | actions pinadas, SBOM, licença, npm audit e Compose estrutural | execução remota e imagem/Trivy reais não observadas |
 | UI | shell modular, estados offline, E2E Chromium/Firefox, projeto stress de reflow/DPR/touch/reduced-motion, axe e screenshots reais | WebKit/assistive tech/zoom real/baseline visual ausentes |
@@ -99,11 +101,11 @@ API e worker são processos separados. O worker nomeia seis lanes (`outbox`, `jo
 | 0 Reaudit | **VERIFIED local / FAIL overall** | este documento, HEAD, control plane, código, CI, migrations e testes inspecionados | manter auditoria sincronizada após cada onda |
 | 1 DeepSeek Harness real | **PARTIAL/REAL-BOUNDARY** | port ACP explícito, attestation de commit/manifesto/agente e probe real `initialize` + `session/new` (`npm run verify:deepseek-acp`) | prompt/turno real, provider, secret authority, catálogo de tools CVG e staging autorizados |
 | 2 Contract matrix DeepSeek | **PARTIAL/SYNTHETIC_ONLY** | testes HTTP/port known-good/known-bad, timeout/cancel/approval/replay/provenance/mismatch + ACP real sem modelo | executar refusal/partial/model failure e a matriz completa contra Harness com credencial autorizada |
-| 3 Vertical provider | **SYNTHETIC_ONLY** | `tests/unit/integrations.test.ts` fecha outbox → effect ledger → provider → `OUTCOME_UNKNOWN` → reconciliação/receipt sem resend cego | provider sandbox autorizado, callback externo e settlement observados |
-| 4 Provider contract | **SYNTHETIC_ONLY** | interfaces e HTTP provider com fake fetch | contrato externo real, idempotency, status e assinatura |
-| 5 Unknown outcome | **SYNTHETIC_ONLY** | timeout/query/claim e vertical sintética preservam `providerRequestId`, consultam e finalizam o efeito | prova externa de timeout após efeito e query autoritativa |
+| 3 Vertical provider | **PARTIAL/LOCAL-CONTRACT** | `tests/unit/integrations.test.ts` mantém outbox → effect ledger → provider; `scripts/verify-provider-sandbox.ts` cruza HTTP loopback, receipt, callback e unknown/reconciliation sem resend cego | provider sandbox externo autorizado, callback externo e settlement observados |
+| 4 Provider contract | **PARTIAL/LOCAL-CONTRACT** | `HttpMessagingProvider` foi exercitado por transporte HTTP real em loopback com headers, replay e HMAC; testes negativos mantêm schema/SSRF/falhas | contrato externo real, idempotency/status/assinatura do provider autorizado |
+| 5 Unknown outcome | **PARTIAL/LOCAL-CONTRACT** | resposta perdida após o provider já possuir o efeito retorna `OUTCOME_UNKNOWN`; consulta posterior pela chave recupera `SUCCEEDED` e receipt | prova externa de timeout após efeito e query autoritativa |
 | 6 Durable idempotency | **PARTIAL/SYNTHETIC_ONLY** | ledger e testes de restart/fake persistence | concorrência multi-processo e PostgreSQL real com mesma chave/digest |
-| 7 PDP universal | **PARTIAL/LOCAL-GUARDED** | `npm run verify:pdp`: 62 operações, 64 regras, 12 domínios; PDP target-bound e negative tests de patient detail/tool | jobs/repositories/export e cobertura universal de mutation ainda precisam de prova; guard não substitui teste de runtime |
+| 7 PDP universal | **PARTIAL/LOCAL-GUARDED** | `npm run verify:pdp`: 64 operações, 68 regras de aplicação, 6 policies de tools, 12 domínios; catálogo de tools comparado com metadados canônicos e negative tests target-bound | jobs/repositories/export e cobertura universal de mutation ainda precisam de prova; guard não substitui teste de runtime |
 | 8 Repositories normalizados | **PARTIAL** | leituras normalizadas de alguns contextos | repositories tipados para guardian/patient/appointment/encounter/clinical/diagnostic/hospitalization/medication/stock/finance/communication/audit |
 | 9 Worker AAA | **PARTIAL/LOCAL-GUARDED** | seis lanes, lease/fencing, budgets, concorrência limitada, backpressure antes do claim, poison metrics, heartbeat e shutdown cooperativo; testes unitários locais | execução em container/worker real, dead-letter operacional, métricas/heartbeat observados e SLO de backlog |
 | 10 Secrets | **PARTIAL/LOCAL-GUARDED** | providers de ambiente/diretório/Docker, refs aprovadas, verificação sem material, readiness fail-closed para provider degradado e token DeepSeek | Docker secret em container, Vault/cloud authority, rotação real e prova operacional de não exposição |
@@ -124,28 +126,28 @@ API e worker são processos separados. O worker nomeia seis lanes (`outbox`, `jo
 | 25 Chaos | **SYNTHETIC_ONLY/PARTIAL** | fault harness local | kill/restart/partition/secret/provider/DeepSeek/restore em ambiente real |
 | 26 Recovery | **PARTIAL/SYNTHETIC_ONLY** | bundle manifest, encryption, quarantine e restore tests | RPO/RTO e restore/replay real com ledgers preservados |
 | 27 Backup | **NOT_RUN** | runbooks e bundle local | pipeline encrypted/checksum/retention/rotation + restore periódico real |
-| 28 Audit tamper evidence | **PARTIAL/LOCAL-GUARDED** | migration 026 e domínio/persistência validam `chainVersion=2`, `previousHash` e `recordHash`; teste de adulteração local | WORM/assinatura externa, verificador operacional e restore/replicação da cadeia em produção |
+| 28 Audit tamper evidence | **PARTIAL/LOCAL-GUARDED** | migrations 026–027 e domínio/persistência validam `chainVersion=2`, `previousHash`/`recordHash`, INSERT-only e bloqueio de UPDATE/DELETE; teste de adulteração local | WORM/assinatura externa, verificador operacional e restore/replicação da cadeia em produção |
 | 29 Export governado | **PARTIAL/BLOCKED** | escopos e bloqueios existentes | export autorizado com purpose/expiry/audit/encryption e teste de não bypass |
 | 30 Supply chain | **PARTIAL** | SHA actions, SBOM, licenses, npm audit, Trivy declarado | remote CI e container scan executados no commit exato |
 | 31 Containers | **PARTIAL** | read-only, cap drop, no-new-privileges, resource limits, healthchecks | build/startup/scan real e pids limits verificadas no runtime |
 | 32 Database hardening | **PARTIAL** | pool/config/runtime role/timeout seams | PostgreSQL real: pool exhaustion, slow queries, locks/deadlocks, statement/transaction timeout |
-| 33 Migration safety | **PARTIAL** | append-only 001–025, checksums/guards e scripts | dry-run, mixed-version, interruption/restart, volume representativo e forward-fix |
+| 33 Migration safety | **PARTIAL** | migrations append-only 001–027, checksums/guards e scripts | dry-run, mixed-version, interruption/restart, volume representativo e forward-fix |
 | 34 AI red team | **SYNTHETIC_ONLY** | prompt injection, scope/approval/secret negative tests | indirect injection/RAG/tool confusion/exfiltration em harness real e corpus aprovado |
 | 35 AI provenance | **PARTIAL/SYNTHETIC_ONLY** | adapter/commit/manifest/model/provider/policy/correlation/reference | persistir usage/provenance real por execução e replay verificável |
 | 36 Cost/usage ledger | **PARTIAL** | usage ledger local e budgets | input/output/model/provider/budget/reservation/settlement/custo real |
 | 37 Frontend failure states | **PARTIAL** | offline, reconnect, context invalid e session blocked | DeepSeek/provider/stale/permission/error states observados em rota real |
 | 38 CI remoto | **NOT_RUN** | workflow declarativo com jobs e actions pinadas | green run do SHA, jobs obrigatórios, containers/Postgres/restore/E2E/SBOM/scan |
 | 39 Quality gates | **PARTIAL/VERIFIED local** | scripts AAA/staging/production existem e falham fechado | ingestão de evidência externa e promoção somente com todos os gates |
-| 40 Final Gauntlet | **FAIL_WITH_LIMITATIONS** | Bacon/Hubble/Popper/Epicurus rejeitaram em I1; dois critics I2 foram iniciados após a onda, excederam timeout e foram encerrados sem parecer | critics frescos concluídos por domínio, repair/retest e final critic sem blocker |
+| 40 Final Gauntlet | **FAIL_WITH_LIMITATIONS** | críticos I1 desta rodada encontraram gaps em ACP/tools, PDP/auth, provider/recovery e frontend/a11y; findings corrigíveis foram endurecidos e revalidados localmente, mas a crítica fresca final expirou sem relatório e não há aprovação AAA | eliminar blockers externos, executar staging/CI e obter parecer independente concluído sem blocker |
 
 ## 5. Blockers e risco ordenado
 
 ### Crítico
 
-1. **Turno DeepSeek real ainda não executado:** o boundary ACP real e `session/new` foram provados localmente com attestation, mas não há prompt/LLM/provider nem execução de tools. Risco: declarar integração completa sem provar resposta, refusal, usage, proveniência e falhas de modelo.
+1. **Turno DeepSeek real ainda não executado:** o boundary ACP real e `session/new` foram provados localmente com attestation, mas não há prompt/LLM/provider nem execução de tools; o método de turno nativo está bloqueado até o ToolGateway governar o dispatch. Risco: declarar integração completa sem provar resposta, refusal, usage, proveniência e falhas de modelo.
 2. **Staging/provider/secret authority não disponíveis:** sem esses recursos não há prova de egress seguro, receipt, callback, reconciliação, TLS, rotação ou dados operacionais.
 3. **Recovery/load/observability remotos não executados:** não há RTO/RPO, capacidade, error budget, collector ou diagnóstico operacional medidos.
-4. **Critics independentes finais negativos/ausentes:** os pareceres I1 rejeitam AAA; os I2 tentados nesta onda expiraram sem relatório. Não existe aprovação independente para promoção AAA.
+4. **Critics independentes finais negativos/ausentes:** os pareceres I1 rejeitam AAA; a tentativa final fresca de Mendel expirou sem relatório (`.gauntlet/critique-final-attempt-20260909.md`). Não existe aprovação independente para promoção AAA.
 
 ### Alto
 
@@ -243,7 +245,9 @@ local correctness
 
 **Sinal observado:** contrato do bridge documentado, bridge thin conectado somente a interfaces CVG, matriz conhecida-bom/conhecida-ruim executada localmente e adapter sem fallback permissivo; integração externa continua marcada `NOT_RUN/BLOCKED` até endpoint/autoridade reais.
 
-**Próxima ação:** `CVG-FULL-STATE-OF-THE-ART:SECRETS-AUTH-MFA`, mantendo autoridade de segredo, provider real e egress bloqueados.
+**Ação concluída localmente:** `CVG-FULL-STATE-OF-THE-ART:PROVIDER-LOOPBACK-SANDBOX`. O verificador e o teste de integração atravessaram HTTP loopback real, com replay idempotente, aceite antes de resposta perdida, `OUTCOME_UNKNOWN`, reconciliação por chave e callback HMAC válido/inválido; `externalProvider` permanece `NOT_RUN`.
+
+**Próxima ação:** `CVG-FULL-STATE-OF-THE-ART:REMOTE-CI-OBSERVATION`, observando somente o run do SHA publicado; sem run/acesso, registrar `NOT_RUN`/`BLOCKED` e manter os gaps externos.
 
 **Owner:** Lead/integrator do repositório.
 **Dependências:** contrato observável do DeepSeek Harness; nenhuma credencial ou efeito externo é necessária para a etapa local.

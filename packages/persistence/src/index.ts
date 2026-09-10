@@ -1348,11 +1348,19 @@ export class PostgresPersistence {
           "insert into audit_records(id, organization_id, actor_id, unit_id, workspace_id, action, resource_type, resource_id, result, reason, correlation_id, metadata, chain_version, previous_hash, record_hash, created_at) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::jsonb, $13, $14, $15, $16) on conflict (id) do nothing",
           [audit.id, audit.organizationId, audit.actorId, audit.unitId, audit.workspaceId, audit.action, audit.resourceType, audit.resourceId, audit.result, audit.reason, audit.correlationId, JSON.stringify(audit.metadata), audit.chainVersion, audit.previousHash, audit.recordHash, audit.createdAt]
         );
+        const auditDigest = digest(audit);
         const result = await client.query<{ audit_id: string }>(
-          "insert into cvg_audit_ledger(audit_id, organization_id, record, record_digest, previous_hash, record_hash, chain_version) values ($1, $2, $3::jsonb, $4, $5, $6, $7) on conflict (audit_id) do update set record_digest = cvg_audit_ledger.record_digest where cvg_audit_ledger.record_digest = excluded.record_digest and cvg_audit_ledger.previous_hash is not distinct from excluded.previous_hash and cvg_audit_ledger.record_hash = excluded.record_hash and cvg_audit_ledger.chain_version = excluded.chain_version returning audit_id",
-          [audit.id, audit.organizationId, JSON.stringify(audit), digest(audit), audit.previousHash, audit.recordHash, audit.chainVersion]
+          "insert into cvg_audit_ledger(audit_id, organization_id, record, record_digest, previous_hash, record_hash, chain_version) values ($1, $2, $3::jsonb, $4, $5, $6, $7) on conflict (audit_id) do nothing returning audit_id",
+          [audit.id, audit.organizationId, JSON.stringify(audit), auditDigest, audit.previousHash, audit.recordHash, audit.chainVersion]
         );
-        if (!result.rows[0]) throw new PersistenceCorruptionError(`audit record ${audit.id} changed after it was durably recorded`);
+        if (!result.rows[0]) {
+          const existing = await client.query<{ record_digest: string; previous_hash: string | null; record_hash: string; chain_version: number }>(
+            "select record_digest, previous_hash, record_hash, chain_version from cvg_audit_ledger where audit_id = $1",
+            [audit.id]
+          );
+          const row = existing.rows[0];
+          if (!row || row.record_digest !== auditDigest || row.previous_hash !== audit.previousHash || row.record_hash !== audit.recordHash || row.chain_version !== audit.chainVersion) throw new PersistenceCorruptionError("audit record " + audit.id + " changed after it was durably recorded");
+        }
         previousAuditHash = audit.recordHash;
       }
       for (const receipt of input.commandReceipts ?? []) {

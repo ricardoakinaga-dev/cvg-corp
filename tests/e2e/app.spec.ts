@@ -118,6 +118,8 @@ test("captura os limites visuais principais", async ({ page }, testInfo) => {
   await page.goto("/");
   await page.getByRole("button", { name: /Abrir demonstração sintética/i }).click();
   await expect(page.getByRole("heading", { name: "Bom dia, Ricardo." })).toBeVisible();
+  await expect(page.getByText("Hoje na agenda", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Próximos atendimentos", exact: true })).toBeVisible();
   await page.screenshot({ path: `artifacts/runs/${testInfo.project.name}-dashboard.png`, fullPage: false });
 });
 

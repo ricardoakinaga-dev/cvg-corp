@@ -37,6 +37,7 @@
   "include": [
     "apps/**/*.ts",
     "apps/**/*.tsx",
+    "docker/**/*.ts",
     "packages/**/*.ts",
     "scripts/**/*.ts",
     "tests/**/*.ts",

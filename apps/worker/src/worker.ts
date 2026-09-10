@@ -73,6 +73,24 @@ export interface WorkerDependencies {
   maxOutstandingJobs?: number;
 }
 
+type ConfiguredWorkerSink = ReturnType<typeof createConfiguredWorkerSink>;
+
+/** Keeps the two production entrypoints on one fail-closed dependency contract. */
+export function createWorkerDependencies(
+  persistence: WorkerDependencies["persistence"],
+  config: Pick<CvgConfig, "workerMaxOutstandingOutbox">,
+  configuredSink: ConfiguredWorkerSink
+): WorkerDependencies {
+  return {
+    persistence,
+    sink: configuredSink.sink,
+    sinkMode: configuredSink.sinkMode,
+    maxOutstandingOutbox: config.workerMaxOutstandingOutbox,
+    maxOutstandingJobs: config.workerMaxOutstandingOutbox,
+    ...(configuredSink.queryAdapter ? { reconciliationAdapter: configuredSink.queryAdapter } : {})
+  };
+}
+
 class WorkerLaneFailure extends Error {
   constructor(public readonly processed: number, public readonly failed: number, public readonly quarantined: number, message: string) {
     super(message);

@@ -1,7 +1,7 @@
 import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
 
-const roots = ["apps", "packages", "scripts", "db"];
+const roots = ["apps", "packages", "scripts", "db", "docker"];
 const sourceExtensions = /\.(ts|tsx|sql|css|json)$/;
 const ignoredDirectories = new Set([".git", "artifacts", "dist", "node_modules", ".vite"]);
 const failures: string[] = [];

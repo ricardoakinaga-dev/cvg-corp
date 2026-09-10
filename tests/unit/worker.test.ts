@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { id, type OpaqueId } from "@cvg/contracts";
 import { DomainError } from "@cvg/domain";
-import { blockedWorkerSink, CvgWorkerApplication, WORKER_LANES, type WorkerLane } from "../../apps/worker/src/worker.ts";
+import { blockedWorkerSink, createWorkerDependencies, CvgWorkerApplication, WORKER_LANES, type WorkerLane } from "../../apps/worker/src/worker.ts";
 import type { DurableOutboxRecord, DurableWorkerHeartbeatInput, DurableWorkerHeartbeatRecord, DurableWorkerJobRecord, DurableWorkerLane } from "@cvg/persistence";
 
 const organizationId = id("00000000-0000-4000-0000-000000000010");
@@ -77,6 +77,13 @@ function persistence(overrides: Partial<{
     ...(overrides.recordWorkerHeartbeat ? { recordWorkerHeartbeat: overrides.recordWorkerHeartbeat } : {})
   };
 }
+
+test("worker entrypoint composition applies the configured limit to every durable lane", () => {
+  const dependencies = createWorkerDependencies(persistence(), { workerMaxOutstandingOutbox: 37 }, { sink: blockedWorkerSink, sinkMode: "quarantine" });
+  assert.equal(dependencies.maxOutstandingOutbox, 37);
+  assert.equal(dependencies.maxOutstandingJobs, 37);
+  assert.equal(dependencies.sinkMode, "quarantine");
+});
 
 test("separate worker exposes health, quarantine and stopped lifecycle", async () => {
   let quarantinedClaims = 0;

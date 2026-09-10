@@ -2,7 +2,7 @@ import { loadCvgConfig } from "@cvg/config";
 import { id } from "@cvg/contracts";
 import { createOpenTelemetryRuntime, OpsTelemetry } from "@cvg/ops";
 import { PostgresPersistence } from "@cvg/persistence";
-import { createConfiguredWorkerSink, CvgWorkerApplication } from "./worker.ts";
+import { createConfiguredWorkerSink, createWorkerDependencies, CvgWorkerApplication } from "./worker.ts";
 
 const config = loadCvgConfig();
 if (config.storageMode !== "postgres") throw new Error("@cvg/worker requires CVG_STORAGE=postgres");
@@ -10,7 +10,7 @@ if (!config.workerOrganizationId) throw new Error("CVG_WORKER_ORGANIZATION_ID is
 
 const persistence = new PostgresPersistence({ connectionString: config.databaseUrl });
 const configuredSink = createConfiguredWorkerSink(config);
-const worker = new CvgWorkerApplication({ persistence, sink: configuredSink.sink, sinkMode: configuredSink.sinkMode, maxOutstandingOutbox: config.workerMaxOutstandingOutbox, maxOutstandingJobs: config.workerMaxOutstandingOutbox, ...(configuredSink.queryAdapter ? { reconciliationAdapter: configuredSink.queryAdapter } : {}) });
+const worker = new CvgWorkerApplication(createWorkerDependencies(persistence, config, configuredSink));
 const otelRuntime = createOpenTelemetryRuntime({ serviceName: "cvg-worker", requireTls: config.nodeEnv === "production" });
 if (config.nodeEnv === "production" && otelRuntime.status !== "READY") throw new Error("Produção exige exportação OTLP OpenTelemetry pronta para o worker.");
 const telemetry = new OpsTelemetry({

@@ -4,11 +4,12 @@ import { loadCvgConfig } from "@cvg/config";
 import { id } from "@cvg/contracts";
 import { createOpenTelemetryRuntime, OpsTelemetry } from "@cvg/ops";
 import { PostgresPersistence } from "@cvg/persistence";
-import { createConfiguredWorkerSink, CvgWorkerApplication } from "../apps/worker/src/worker.ts";
+import { createConfiguredWorkerSink, createWorkerDependencies, CvgWorkerApplication } from "../apps/worker/src/worker.ts";
 
 const config = loadCvgConfig();
 if (config.storageMode !== "postgres") throw new Error("@cvg/worker requires CVG_STORAGE=postgres");
 if (!config.workerOrganizationId) throw new Error("CVG_WORKER_ORGANIZATION_ID is required before a worker can claim outbox records");
+const workerOrganizationId = config.workerOrganizationId;
 const otelRuntime = createOpenTelemetryRuntime({ serviceName: "cvg-worker", requireTls: config.nodeEnv === "production" });
 if (config.nodeEnv === "production" && otelRuntime.status !== "READY") throw new Error("Produção exige exportação OTLP OpenTelemetry pronta para o worker.");
 const telemetry = new OpsTelemetry({
@@ -34,17 +35,17 @@ async function main(): Promise<void> {
   await mkdir(dirname(config.workerHeartbeatFile), { recursive: true, mode: 0o700 });
   const persistence = new PostgresPersistence({ connectionString: config.databaseUrl, max: 2, connectionTimeoutMillis: 2_500, idleTimeoutMillis: 30_000 });
   const configuredSink = createConfiguredWorkerSink(config);
-  const worker = new CvgWorkerApplication({ persistence, sink: configuredSink.sink, sinkMode: configuredSink.sinkMode, maxOutstandingOutbox: config.workerMaxOutstandingOutbox, maxOutstandingJobs: config.workerMaxOutstandingOutbox, ...(configuredSink.queryAdapter ? { reconciliationAdapter: configuredSink.queryAdapter } : {}) });
+  const worker = new CvgWorkerApplication(createWorkerDependencies(persistence, config, configuredSink));
   activeWorker = worker;
   try {
     const health = await worker.health();
     if (health.status === "UNAVAILABLE") throw new Error(health.reason ?? "worker persistence is unavailable");
-    if (!await persistence.loadLatest(id(config.workerOrganizationId))) throw new Error("the configured organization has not been bootstrapped");
+    if (!await persistence.loadLatest(id(workerOrganizationId))) throw new Error("the configured organization has not been bootstrapped");
     while (!stopping) {
       const span = telemetry.startSpan("cvg.worker.run_cycle", { workerId: config.workerId, organizationId: config.workerOrganizationId });
       let result: Awaited<ReturnType<typeof worker.runCycle>>;
       try {
-        result = await worker.runCycle(id(config.workerOrganizationId), config.workerId, { limit: 10, leaseSeconds: 30, maxAttempts: 5 });
+        result = await worker.runCycle(id(workerOrganizationId), config.workerId, { limit: 10, leaseSeconds: 30, maxAttempts: 5 });
         telemetry.finishSpan(span, result.status === "FAILED" ? 500 : result.status === "DEGRADED" ? 503 : 200);
       } catch (error) {
         telemetry.finishSpan(span, 503);

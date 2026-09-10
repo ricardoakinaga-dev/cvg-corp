@@ -48,12 +48,12 @@ type AuthenticatedContext = {
   workspaceId: string;
 };
 
-async function login(runtime: CvgServerRuntime): Promise<AuthenticatedContext> {
+async function login(runtime: CvgServerRuntime, credentials: { login: string; password: string } = { login: "admin@cvg.local", password: bootstrapPassword }): Promise<AuthenticatedContext> {
   const result = await runtime.app.inject({
     method: "POST",
     url: "/api/v1/auth/login",
     headers: { "content-type": "application/json" },
-    payload: JSON.stringify({ login: "admin@cvg.local", password: bootstrapPassword })
+    payload: JSON.stringify(credentials)
   });
   if (result.statusCode !== 200) throw new Error(`login failed with ${result.statusCode}: ${result.body}`);
   const body = JSON.parse(result.body) as { data: { csrfToken: string; contexts: Array<{ unit: { id: string }; workspace: { id: string } }> } };
@@ -96,7 +96,8 @@ async function exercise(runtime: CvgServerRuntime): Promise<{ receiptId: string;
   return { receiptId: body.data.receiptId, guardianId: body.data.guardian.id, auth };
 }
 
-async function exerciseDiagnosticRequest(runtime: CvgServerRuntime, auth: AuthenticatedContext, patientId: string): Promise<{ requestId: string; encounterId: string }> {
+async function exerciseDiagnosticRequest(runtime: CvgServerRuntime, patientId: string): Promise<{ requestId: string; encounterId: string; auth: AuthenticatedContext }> {
+  const auth = await login(runtime, { login: "ana.vet@cvg.local", password: "veterinario-synthetic-0002" });
   const fail = (message: string): never => {
     const telemetry = runtime.telemetry.logs.slice(-8).map((entry) => ({ event: entry.event, level: entry.level, metadata: entry.metadata }));
     const diagnostic = `${message}; telemetry=${JSON.stringify(telemetry)}`;
@@ -133,7 +134,7 @@ async function exerciseDiagnosticRequest(runtime: CvgServerRuntime, auth: Authen
   if (replay.statusCode !== 201) fail(`diagnostic verification replay failed with ${replay.statusCode}: ${replay.body}`);
   const replayBody = JSON.parse(replay.body) as { data: { request: { id: string }; receiptId: string } };
   if (replayBody.data.request.id !== body.data.request.id || replayBody.data.receiptId !== body.data.receiptId) fail("diagnostic verification replay returned a different request or receipt");
-  return { requestId: body.data.request.id, encounterId };
+  return { requestId: body.data.request.id, encounterId, auth };
 }
 
 const first = await createRuntime({ config: runtimeConfig, persistence: newDurablePersistence(), providerQueryAdapter: syntheticProviderQueryAdapter });
@@ -168,7 +169,7 @@ try {
   if (appointments.statusCode !== 200) throw new Error(`normalized appointment read failed with ${appointments.statusCode}: ${appointments.body}`);
   const appointmentsBody = JSON.parse(appointments.body) as { data: { items: Array<{ id: string; workspaceId: string; patient?: { name: string }; provider: string | null }> } };
   if (!appointmentsBody.data.items.some((item) => item.workspaceId === auth.workspaceId && item.patient?.name === "Luna" && item.provider === "Dra. Ana Martins")) throw new Error("normalized appointment read did not honor the selected workspace projection");
-  const diagnosticVerification = await exerciseDiagnosticRequest(second, auth, luna.id);
+  const diagnosticVerification = await exerciseDiagnosticRequest(second, luna.id);
 
   const organizationId = second.store.bootstrapCredentials.organizationId;
   const outboxId = id(randomUUID());
@@ -386,7 +387,7 @@ try {
     "select unit_id::text as unit_id, workspace_id::text as workspace_id from diagnostic_requests where id = $1",
     [diagnosticVerification.requestId]
   )).rows[0];
-  if (diagnosticScope?.unit_id !== auth.unitId || diagnosticScope.workspace_id !== auth.workspaceId) throw new Error("authoritative diagnostic request did not persist the encounter-derived scope");
+  if (diagnosticScope?.unit_id !== diagnosticVerification.auth.unitId || diagnosticScope.workspace_id !== diagnosticVerification.auth.workspaceId) throw new Error("authoritative diagnostic request did not persist the encounter-derived scope");
   counts = (await client.query<{ snapshots: number; journal: number; audits: number; auditLedger: number; receipts: number; receiptLedger: number; guardians: number; diagnosticRequests: number; outbox: number; usageLedger: number; inbox: number; externalEffects: number; breakGlass: number }>(
     "select (select count(*)::int from cvg_state_snapshots) as snapshots, (select count(*)::int from cvg_event_journal) as journal, (select count(*)::int from audit_records) as audits, (select count(*)::int from cvg_audit_ledger) as \"auditLedger\", (select count(*)::int from command_receipts) as receipts, (select count(*)::int from cvg_command_receipt_ledger) as \"receiptLedger\", (select count(*)::int from guardians) as guardians, (select count(*)::int from diagnostic_requests) as \"diagnosticRequests\", (select count(*)::int from outbox_records) as outbox, (select count(*)::int from ai_usage_ledger) as \"usageLedger\", (select count(*)::int from integration_inbox_records) as inbox, (select count(*)::int from external_effects) as \"externalEffects\", (select count(*)::int from break_glass_grants) as \"breakGlass\""
   )).rows[0];

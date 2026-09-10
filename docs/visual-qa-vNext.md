@@ -32,6 +32,23 @@ API, mas era renderizado como `contagem × R$220`. O dashboard agora rotula o
 KPI como `Cobranças em aberto` e mostra a quantidade no contexto. Não existe
 mais um valor monetário derivado sem um agregado financeiro real.
 
-Os demais achados do snapshot — loading inicial de sessão, seleção de outro
-contexto, foco após navegação SPA, empty states secundários e cobertura visual
-de rotas/estados — permanecem backlog; não foram mascarados por esta correção.
+Os achados de empty states secundários e cobertura visual de rotas/estados
+permanecem backlog; não foram mascarados pelas correções abaixo.
+
+## Correções de estado e navegação — 2026-09-10
+
+- A aplicação agora mantém uma tela explícita de validação enquanto `/me` e
+  `/contexts` resolvem, evitando o flash de login para uma sessão que ainda
+  não foi confirmada.
+- O estado `PERMISSION_DENIED` expõe os contextos autorizados disponíveis para
+  troca e revalidação, quando houver mais de um, em vez de prometer uma ação
+  de contexto alternativo inexistente.
+- A navegação SPA move o foco para o `main` da nova rota; no mobile, selecionar
+  uma rota fecha o menu sem roubar esse foco de volta para o botão de abertura.
+- O teste de rotas verifica explicitamente foco no conteúdo e ausência de
+  overflow nos seis projetos Chromium/Firefox executáveis.
+
+Evidência: typecheck e lint passaram; `npm run test:e2e` passou 64 testes com
+4 skips condicionais intencionais. WebKit, leitor de tela, zoom real de 200%,
+baseline visual e operação de contexto autorizado continuam fora da evidência
+executável deste host.

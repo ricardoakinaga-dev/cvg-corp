@@ -70,3 +70,17 @@ WebKit/assistive-tech/zoom real, PostgreSQL concorrente fora do CI, todas as
 outras mutações normalizadas, replay seguro de `ops.restore` e aceite humano
 continuam sem prova. Nenhuma promoção, credencial, dado real, egress ou
 release foi acionado.
+
+## Observação CI remota no SHA exato
+
+O commit publicado `0f4018fc6143b179f49a1f7ad97b37b4fd0fea04` foi observado no
+GitHub Actions pelo run `34466375415` e terminou `success`. O job principal
+`102835822550` e o job de imagens `102837781437` concluíram com sucesso; o
+pipeline cobriu testes, Browser E2E, migrations/PostgreSQL/RLS, restore,
+Compose/release, performance sintética, SBOM, builds e scans. A observação
+está vinculada ao SHA exato e não transforma CI em staging, provider real,
+Collector/SLO operacional ou aceite humano.
+
+Após essa observação, a correção visual de sessão/navegação foi verificada
+localmente em 64 testes E2E (4 skips intencionais), typecheck, lint e build;
+ela ainda aguarda seu próprio commit e observação de CI.

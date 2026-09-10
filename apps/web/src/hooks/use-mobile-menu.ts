@@ -7,9 +7,9 @@ export function useMobileMenu() {
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
   const menuToggleRef = useRef<HTMLButtonElement | null>(null);
 
-  const closeMobileMenu = useCallback(() => {
+  const closeMobileMenu = useCallback((restoreFocus = true) => {
     setMobileMenu(false);
-    if (mobileViewport) window.setTimeout(() => menuToggleRef.current?.focus(), 0);
+    if (mobileViewport && restoreFocus) window.setTimeout(() => menuToggleRef.current?.focus(), 0);
   }, [mobileViewport]);
 
   useEffect(() => {

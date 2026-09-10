@@ -564,6 +564,10 @@ a { color: inherit; }
 .context-loading .spinner { margin-bottom: var(--space-009); }
 .context-loading strong { color: var(--ink-900); font-size: var(--type-028); }
 .context-loading p { max-width: var(--space-px-410); margin: var(--space-zero); color: var(--ink-500); font-size: var(--type-013); }
+.content:focus { outline: none; }
+.blocked-context-picker { display: grid; gap: var(--space-009); width: min(100%, 420px); margin: var(--space-051) auto 0; color: var(--ink-700); font-size: var(--type-013); font-weight: var(--type-004); text-align: left; }
+.blocked-context-picker select { width: 100%; min-height: 42px; padding: var(--space-zero) var(--space-012); border: 1px solid var(--ink-200); border-radius: var(--radius-004); color: var(--ink-900); background: var(--surface); font: inherit; }
+.blocked-context-picker select:focus-visible { border-color: var(--teal-500); }
 .admin-user-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-009); }
 .dialog-backdrop { display: grid; place-items: center; position: fixed; z-index: 40; inset: var(--space-zero); padding: var(--space-043); background: var(--color-084); }
 .dialog-card { width: min(100%, var(--space-px-530)); padding: var(--space-051); border: 1px solid var(--ink-200); border-radius: var(--radius-md); background: var(--surface); box-shadow: var(--shadow-md); }

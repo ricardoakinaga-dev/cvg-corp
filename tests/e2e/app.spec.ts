@@ -15,6 +15,7 @@ test("demonstração local atravessa login, dashboard e pacientes", async ({ pag
 
 test("rotas e controles permanecem utilizáveis sem overflow", async ({ page }, testInfo) => {
   await page.goto("/");
+  await expect(page.getByRole("heading", { name: "O cuidado em foco." })).toBeVisible();
   await page.keyboard.press("Tab");
   await expect(page.locator("#login")).toBeFocused();
   await page.getByRole("button", { name: /Abrir demonstração sintética/i }).click();
@@ -37,6 +38,7 @@ test("rotas e controles permanecem utilizáveis sem overflow", async ({ page }, 
     await openMenuIfNeeded();
     await page.locator('nav[aria-label="Navegação principal"]').getByRole("button", { name: label }).click();
     await expect(page.getByRole("heading", { name: heading, exact: true })).toBeVisible();
+    await expect(page.locator("main.content")).toBeFocused();
     await assertNoOverflow();
   };
 

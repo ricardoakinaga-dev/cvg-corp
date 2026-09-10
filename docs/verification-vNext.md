@@ -182,3 +182,24 @@ observability/SLO, load/chaos/recovery production-like, WebKit/assistive
 technology/real zoom, remaining mutating domains, safe `ops.restore` replay and
 human acceptance remain unproven; verdict stays `FAIL_WITH_LIMITATIONS` /
 `AAA_NOT_PROVEN`.
+
+## Remote CI observation — authoritative encounter write
+
+Commit `0f4018fc6143b179f49a1f7ad97b37b4fd0fea04` was published to
+`origin/main`. GitHub Actions run `34466375415` completed with `success`:
+main job `102835822550` and image job `102837781437` passed the public checks,
+Browser E2E, migrations/PostgreSQL/RLS, restore, release/Compose, synthetic
+performance, SBOM, image builds and scans. This is exact-SHA CI evidence only;
+staging, external provider/DeepSeek, secret authority, operational telemetry,
+production-like load/chaos/recovery, complete browser/assistive/zoom evidence,
+fresh approving critique and human acceptance remain unproven.
+
+## Current checkpoint — session and navigation truth
+
+The web now renders an explicit initial session-validation state, exposes an
+available alternate authorized context after `PERMISSION_DENIED`, and moves
+focus to the new `main` after SPA route navigation. Mobile menu navigation no
+longer restores focus to the menu trigger after a route selection. Local
+typecheck, lint, build and E2E passed (64 pass, 4 intentional skips). The
+candidate is not yet observed in remote CI; verdict remains
+`FAIL_WITH_LIMITATIONS` / `AAA_NOT_PROVEN`.

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createApiClient } from "../api/client";
 import { Login } from "../components/Login";
 import { SessionBlockedState } from "../components/SessionBlockedState";
+import { StatePanel } from "../components/ui";
 import { useRuntimeState } from "../hooks/use-runtime-state";
 import { useSession } from "../hooks/use-session";
 import { useToast } from "../hooks/use-toast";
@@ -85,10 +86,11 @@ export function App() {
     runtime.transition({ type: "NETWORK_ONLINE" });
   };
 
-  if (runtime.state === RUNTIME_STATES.REAUTH_REQUIRED) return <SessionBlockedState runtimeState={runtime.state} onReset={handleReset} />;
-  if (runtime.state === RUNTIME_STATES.PERMISSION_DENIED) return <SessionBlockedState runtimeState={runtime.state} onReset={handlePermissionRecovery} />;
+  if (runtime.state === RUNTIME_STATES.REAUTH_REQUIRED) return <SessionBlockedState runtimeState={runtime.state} contexts={session.contexts} context={session.context} onContextChange={handleContextChange} onReset={handleReset} />;
+  if (runtime.state === RUNTIME_STATES.PERMISSION_DENIED) return <SessionBlockedState runtimeState={runtime.state} contexts={session.contexts} context={session.context} onContextChange={handleContextChange} onReset={handlePermissionRecovery} />;
+  if (session.status === "loading") return <main className="context-loading" aria-label="Validação da sessão"><StatePanel kind="loading" title="Confirmando sua sessão" body="Validando identidade, espaços autorizados e policy antes de exibir dados." /></main>;
   if (!session.user) return <Login client={client} onLogin={handleLogin} />;
-  if (runtime.state === RUNTIME_STATES.CONTEXT_INVALID || !session.context) return <SessionBlockedState runtimeState={runtime.state} onReset={handleReset} />;
+  if (runtime.state === RUNTIME_STATES.CONTEXT_INVALID || !session.context) return <SessionBlockedState runtimeState={runtime.state} contexts={session.contexts} context={session.context} onContextChange={handleContextChange} onReset={handleReset} />;
 
   return <Shell client={client} user={session.user} contexts={session.contexts} context={session.context} onContextChange={handleContextChange} view={view} onViewChange={changeView} globalSearchQuery={patientSearchQuery} onGlobalSearchQueryChange={setPatientSearchQuery} patientSearchQuery={patientSearchQuery} onLogout={() => void session.signOut()} toast={toast} notify={notify} runtimeState={runtime.state} composerBuffer={composerBuffer} onComposerBufferChange={setComposerBuffer} onRetry={() => runtime.transition({ type: "NETWORK_ONLINE" })} />;
 }

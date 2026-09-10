@@ -421,3 +421,20 @@ DeepSeek/secret authority, Collector/SLO operacional, carga/chaos/recovery,
 WebKit/assistive-tech/zoom real, demais mutações, replay seguro de
 `ops.restore` ou aceite humano. O veredito global permanece
 `FAIL_WITH_LIMITATIONS` / `AAA_NOT_PROVEN`.
+
+## Observação CI e correção visual — 2026-09-10
+
+O commit técnico `0f4018fc6143b179f49a1f7ad97b37b4fd0fea04` foi publicado em
+`origin/main` e o run GitHub Actions `34466375415` terminou `success`; os jobs
+`102835822550` (checks/release) e `102837781437` (imagens) passaram. Isso
+confirma o pipeline para o SHA exato, sem provar staging, provider/DeepSeek,
+autoridade de segredos, observabilidade operacional, carga/chaos/recovery ou
+aceite humano.
+
+Na sequência, a web recebeu uma correção local de verdade de estado e foco:
+validação inicial não mostra login antes de confirmar a sessão, permissão
+negada oferece seleção de contexto autorizado quando disponível e navegação
+SPA entrega foco ao `main` inclusive após fechar o menu móvel. Typecheck, lint,
+build e E2E 64/4 passaram localmente; a nova fatia ainda precisa de seu SHA e
+CI próprios. O veredito permanece `FAIL_WITH_LIMITATIONS` /
+`AAA_NOT_PROVEN`.

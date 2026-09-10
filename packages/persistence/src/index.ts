@@ -121,6 +121,16 @@ export interface DurableCommitInput {
    * audit and receipt may still advance without issuing another guardian DML.
    */
   normalizedGuardianReplayId?: OpaqueId;
+  /**
+   * A diagnostic request command's authoritative normalized row. Its unit and
+   * workspace scope are derived from the bound encounter, never the payload.
+   */
+  normalizedDiagnosticRequestWrite?: DiagnosticRequest;
+  /**
+   * A replay already materialized the diagnostic request. The canonical
+   * snapshot and receipt may advance without issuing another diagnostic DML.
+   */
+  normalizedDiagnosticRequestReplayId?: OpaqueId;
   eventId?: string;
 }
 
@@ -1679,8 +1689,20 @@ async function writeAuthoritativeGuardian(client: PoolClient, guardian: Guardian
   if (!result.rows[0]) throw new PersistenceCorruptionError(`authoritative guardian ${guardian.id} conflicts with an existing normalized row`);
 }
 
-async function projectDomain(client: PoolClient, snapshot: StoreSnapshot, normalizedPatientWrite: AnimalPatient | null = null, normalizedAppointmentWrite: Appointment | null = null, normalizedEncounterWrite: Encounter | null = null, normalizedClinicalSignWrite: ClinicalDocument | null = null, normalizedClinicalSignReplayId: OpaqueId | null = null, normalizedGuardianWrite: Guardian | null = null, normalizedGuardianReplayId: OpaqueId | null = null): Promise<void> {
+async function writeAuthoritativeDiagnosticRequest(client: PoolClient, request: DiagnosticRequest, encounter: Encounter): Promise<void> {
+  if (!encounter.unitId || !encounter.workspaceId) throw new PersistenceCorruptionError(`diagnostic request ${request.id} has no complete encounter scope for authoritative write`);
+  await client.query("select set_config('cvg.unit_id', $1, true)", [encounter.unitId]);
+  await client.query("select set_config('cvg.workspace_id', $1, true)", [encounter.workspaceId]);
+  const result = await client.query<{ id: string }>(
+    "insert into diagnostic_requests(id, organization_id, unit_id, workspace_id, patient_id, encounter_id, test_name, priority, status, requested_by, created_at) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) on conflict (id) do update set organization_id = excluded.organization_id, unit_id = excluded.unit_id, workspace_id = excluded.workspace_id, patient_id = excluded.patient_id, encounter_id = excluded.encounter_id, test_name = excluded.test_name, priority = excluded.priority, status = excluded.status, requested_by = excluded.requested_by where diagnostic_requests.organization_id = excluded.organization_id and diagnostic_requests.unit_id = excluded.unit_id and diagnostic_requests.workspace_id = excluded.workspace_id and diagnostic_requests.patient_id = excluded.patient_id and diagnostic_requests.encounter_id is not distinct from excluded.encounter_id and diagnostic_requests.test_name = excluded.test_name and diagnostic_requests.priority = excluded.priority and diagnostic_requests.status = excluded.status and diagnostic_requests.requested_by = excluded.requested_by and diagnostic_requests.created_at = excluded.created_at returning id::text",
+    [request.id, request.organizationId, encounter.unitId, encounter.workspaceId, request.patientId, request.encounterId, request.testName, request.priority, request.status, request.requestedBy, request.createdAt]
+  );
+  if (!result.rows[0]) throw new PersistenceCorruptionError(`authoritative diagnostic request ${request.id} conflicts with an existing normalized row`);
+}
+
+async function projectDomain(client: PoolClient, snapshot: StoreSnapshot, normalizedPatientWrite: AnimalPatient | null = null, normalizedAppointmentWrite: Appointment | null = null, normalizedEncounterWrite: Encounter | null = null, normalizedClinicalSignWrite: ClinicalDocument | null = null, normalizedClinicalSignReplayId: OpaqueId | null = null, normalizedGuardianWrite: Guardian | null = null, normalizedGuardianReplayId: OpaqueId | null = null, normalizedDiagnosticRequestWrite: DiagnosticRequest | null = null, normalizedDiagnosticRequestReplayId: OpaqueId | null = null): Promise<void> {
   if (normalizedGuardianWrite && normalizedGuardianReplayId) throw new PersistenceCorruptionError("authoritative guardian write and replay cannot be requested together");
+  if (normalizedDiagnosticRequestWrite && normalizedDiagnosticRequestReplayId) throw new PersistenceCorruptionError("authoritative diagnostic request write and replay cannot be requested together");
   let guardians = snapshot.guardians;
   if (normalizedGuardianWrite) {
     const snapshotGuardian = snapshot.guardians.find((guardian) => guardian.id === normalizedGuardianWrite.id);
@@ -1820,11 +1842,39 @@ async function projectDomain(client: PoolClient, snapshot: StoreSnapshot, normal
   );
   await client.query("select set_config('cvg.unit_id', '', true)");
   await client.query("select set_config('cvg.workspace_id', '', true)");
-  await writeRows(client,
-    "insert into diagnostic_requests(id, organization_id, patient_id, encounter_id, test_name, priority, status, requested_by, created_at) values ($1, $2, $3, $4, $5, $6, $7, $8, $9) on conflict (id) do update set organization_id = excluded.organization_id, patient_id = excluded.patient_id, encounter_id = excluded.encounter_id, test_name = excluded.test_name, priority = excluded.priority, status = excluded.status, requested_by = excluded.requested_by",
-    snapshot.diagnosticRequests,
-    (request) => [request.id, request.organizationId, request.patientId, request.encounterId, request.testName, request.priority, request.status, request.requestedBy, request.createdAt]
-  );
+  let diagnosticRequests = snapshot.diagnosticRequests;
+  if (normalizedDiagnosticRequestWrite) {
+    const snapshotRequest = snapshot.diagnosticRequests.find((request) => request.id === normalizedDiagnosticRequestWrite.id);
+    const patient = snapshot.patients.find((candidate) => candidate.id === normalizedDiagnosticRequestWrite.patientId);
+    const encounter = normalizedDiagnosticRequestWrite.encounterId ? snapshot.encounters.find((candidate) => candidate.id === normalizedDiagnosticRequestWrite.encounterId) : null;
+    const requester = snapshot.users.find((candidate) => candidate.id === normalizedDiagnosticRequestWrite.requestedBy);
+    if (!snapshotRequest || digest(snapshotRequest) !== digest(normalizedDiagnosticRequestWrite)) throw new PersistenceCorruptionError(`authoritative diagnostic request ${normalizedDiagnosticRequestWrite.id} is not identical to the canonical snapshot`);
+    if (!patient || patient.organizationId !== normalizedDiagnosticRequestWrite.organizationId || !encounter || encounter.organizationId !== normalizedDiagnosticRequestWrite.organizationId || encounter.patientId !== normalizedDiagnosticRequestWrite.patientId || patient.unitId !== encounter.unitId || patient.workspaceId !== encounter.workspaceId || !encounter.unitId || !encounter.workspaceId || !requester || requester.organizationId !== normalizedDiagnosticRequestWrite.organizationId) {
+      throw new PersistenceCorruptionError(`authoritative diagnostic request ${normalizedDiagnosticRequestWrite.id} has unresolved organization or scope dependencies`);
+    }
+    await writeAuthoritativeDiagnosticRequest(client, normalizedDiagnosticRequestWrite, encounter);
+    diagnosticRequests = snapshot.diagnosticRequests.filter((request) => request.id !== normalizedDiagnosticRequestWrite.id);
+  }
+  if (normalizedDiagnosticRequestReplayId) {
+    const replayed = snapshot.diagnosticRequests.find((request) => request.id === normalizedDiagnosticRequestReplayId);
+    const encounter = replayed?.encounterId ? snapshot.encounters.find((candidate) => candidate.id === replayed.encounterId) : null;
+    if (!replayed || !encounter || !encounter.unitId || !encounter.workspaceId) throw new PersistenceCorruptionError(`diagnostic request replay ${normalizedDiagnosticRequestReplayId} has no durable scoped state`);
+    diagnosticRequests = snapshot.diagnosticRequests.filter((request) => request.id !== normalizedDiagnosticRequestReplayId);
+  }
+  for (const request of diagnosticRequests) {
+    const encounter = request.encounterId ? encounterById.get(request.encounterId) : null;
+    if (request.encounterId && (!encounter || !encounter.unitId || !encounter.workspaceId || encounter.organizationId !== request.organizationId || encounter.patientId !== request.patientId)) {
+      throw new PersistenceCorruptionError(`diagnostic request ${request.id} has no organization-bound encounter scope`);
+    }
+    await client.query("select set_config('cvg.unit_id', $1, true)", [encounter?.unitId ?? ""]);
+    await client.query("select set_config('cvg.workspace_id', $1, true)", [encounter?.workspaceId ?? ""]);
+    await client.query(
+      "insert into diagnostic_requests(id, organization_id, unit_id, workspace_id, patient_id, encounter_id, test_name, priority, status, requested_by, created_at) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) on conflict (id) do update set organization_id = excluded.organization_id, unit_id = excluded.unit_id, workspace_id = excluded.workspace_id, patient_id = excluded.patient_id, encounter_id = excluded.encounter_id, test_name = excluded.test_name, priority = excluded.priority, status = excluded.status, requested_by = excluded.requested_by",
+      [request.id, request.organizationId, encounter?.unitId ?? null, encounter?.workspaceId ?? null, request.patientId, request.encounterId, request.testName, request.priority, request.status, request.requestedBy, request.createdAt]
+    );
+  }
+  await client.query("select set_config('cvg.unit_id', '', true)");
+  await client.query("select set_config('cvg.workspace_id', '', true)");
   await writeRows(client,
     "insert into specimens(id, organization_id, request_id, patient_id, label, collected_at, status) values ($1, $2, $3, $4, $5, $6, $7) on conflict (id) do update set organization_id = excluded.organization_id, request_id = excluded.request_id, patient_id = excluded.patient_id, label = excluded.label, collected_at = excluded.collected_at, status = excluded.status",
     snapshot.specimens,
@@ -2273,7 +2323,7 @@ export class PostgresPersistence {
       const snapshotJson = canonicalSnapshot(input.snapshot);
       const snapshotDigest = digest(snapshotJson);
       await projectIdentity(client, input.snapshot);
-      await projectDomain(client, input.snapshot, input.normalizedPatientWrite ?? null, input.normalizedAppointmentWrite ?? null, input.normalizedEncounterWrite ?? null, input.normalizedClinicalSignWrite ?? null, input.normalizedClinicalSignReplayId ?? null, input.normalizedGuardianWrite ?? null, input.normalizedGuardianReplayId ?? null);
+      await projectDomain(client, input.snapshot, input.normalizedPatientWrite ?? null, input.normalizedAppointmentWrite ?? null, input.normalizedEncounterWrite ?? null, input.normalizedClinicalSignWrite ?? null, input.normalizedClinicalSignReplayId ?? null, input.normalizedGuardianWrite ?? null, input.normalizedGuardianReplayId ?? null, input.normalizedDiagnosticRequestWrite ?? null, input.normalizedDiagnosticRequestReplayId ?? null);
       await projectOutbox(client, organizationId, input.outboxRecords ?? []);
       await projectRecoveredOutbox(client, organizationId, input.recoveredOutboxRecords ?? []);
       await projectRecoveredUsage(client, organizationId, input.recoveredUsageRecords ?? []);

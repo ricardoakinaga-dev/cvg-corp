@@ -39,6 +39,15 @@ Os testes usam pool sintético e comprovam o contrato SQL, escopo, replay sem
 segundo Guardian DML, divergência e boundary HTTP. Eles não substituem a
 concorrência PostgreSQL/RLS de processos reais.
 
+## CI remoto — SHA exato
+
+A lane foi integrada em `1486a8c749e7f2121aed4038f98dcd2a357fdf18` e observada
+no CVG CI #77 (`34496670076`). O job principal
+(`102936758677`) e o job de imagens (`102939189944`) terminaram com sucesso;
+foram publicados os artifacts
+`cvg-verification-1486a8c749e7f2121aed4038f98dcd2a357fdf18` e
+`cvg-browser-e2e-1486a8c749e7f2121aed4038f98dcd2a357fdf18`.
+
 ## Resultado e limites
 
 Esta fatia é `PASS_WITH_LIMITATIONS` enquanto a regressão completa e o CI do

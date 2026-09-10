@@ -741,3 +741,39 @@ sem sessão foi corrigida com uma sessão autenticada de fixture e revalidada po
 `VER-CVG-145`. O critic fresh não completou e não aprovou. A integração local
 aguarda commit e observação do SHA exato; o global continua
 `FAIL_WITH_LIMITATIONS` / `AAA_NOT_PROVEN`.
+
+## Guardian — publicação e observação exata — 2026-09-10 13:07
+
+A lane de escrita normalizada autoritativa de Guardian foi publicada no SHA
+`1486a8c749e7f2121aed4038f98dcd2a357fdf18`. O CVG CI #77 (`34496670076`)
+terminou `success`, com job principal `102936758677`, job de imagens
+`102939189944` e artifacts de verificação/E2E publicados. O CI remoto confirma
+os gates daquele SHA, mas não é staging, provider/DeepSeek, Collector/SLO ou
+aceite humano. Evidência: `VER-CVG-149`.
+
+## Diagnostics request — escopo e escrita autoritativa — 2026-09-10 13:14
+
+Após o scout `VER-CVG-144`, a próxima fatia foi limitada a
+`POST /api/v1/diagnostics/requests`. O application service/repository tipado
+aplica PDP; o commit valida snapshot, paciente, encounter e requester, deriva
+unit/workspace do encounter, executa UPSERT condicionado com `RETURNING`,
+remove o request da projeção genérica e faz replay sem segundo DML.
+
+A migration `032_diagnostic_request_scope.sql` adiciona colunas de escopo
+derivadas, shape check, FKs compostas e policies DML exatas para que o banco
+seja um backstop independente. `verify-postgres` exercita criação/replay no
+PostgreSQL efêmero do CI, confirma as colunas e testa isolamento por workspace
+e unidade. A regressão local final passou foco 60/60, `npm test` 167 (166/1
+skip), database 44/44, fault 17/17, E2E 64/4 skips na repetição,
+lint/typecheck/build/PDP/static/production/benchmark/diff. Evidência:
+`VER-CVG-150`.
+
+Beauvoir retornou achados acionáveis sem aprovação; migration, gate real,
+inventários e contagens foram atualizados. Cicero foi iniciado como segunda
+crítica fresh após as correções, mas encerrou como `NOT_COMPLETED` sem relatório
+após janelas bounded. Evidência: `VER-CVG-151` e
+`.gauntlet/critique-diagnostic-request-scope-20260910.md`. A lane aguarda
+integração, commit e observação do SHA exato. Contextos normalizados restantes,
+staging, provider/DeepSeek/segredos, Collector/SLO, carga/chaos/recovery,
+matriz assistiva completa e aceite humano mantêm o programa em
+`FAIL_WITH_LIMITATIONS` / `AAA_NOT_PROVEN`.

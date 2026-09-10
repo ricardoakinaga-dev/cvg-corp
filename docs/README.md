@@ -6,7 +6,7 @@ Este diretório contém a documentação da arquitetura-alvo de um programa de g
 
 | Campo | Estado |
 |---|---|
-| Fase | BUILD vNext; fundação de runtime/policy/tools, API e web modulares, worker separado, migrations 001–031, fila/heartbeats duráveis, boundary local de autenticação, provider/reconciliação fail-closed, cadeia de auditoria local, repositories normalizados e verificação determinística |
+| Fase | BUILD vNext; fundação de runtime/policy/tools, API e web modulares, worker separado, migrations 001–032, fila/heartbeats duráveis, boundary local de autenticação, provider/reconciliação fail-closed, cadeia de auditoria local, repositories normalizados e verificação determinística |
 | Escopo desta fase | Evolução brownfield controlada; mock/sintético e PostgreSQL local continuam permitidos; aceite operacional independente e produção continuam pendentes |
 | Motor proposto | `AgentRuntime` com adapter Mock e bridge DeepSeek `/v1` opcional; port nativo e protocolo externo ainda não provados |
 | Qualidade | barra v3 `FAIL_WITH_LIMITATIONS`; `verify:triplo-aaa`/`verify:staging` fail-closed, recorte local executável incluindo sandbox HTTP de provider, produção bloqueada |
@@ -56,6 +56,8 @@ Este diretório contém a documentação da arquitetura-alvo de um programa de g
 36. [`deepseek-integration-vNext.md`](deepseek-integration-vNext.md), [`provider-integration-vNext.md`](provider-integration-vNext.md) — boundaries históricos de runtime e provider com fail-closed.
 37. [`observability-vNext.md`](observability-vNext.md), [`staging-vNext.md`](staging-vNext.md), [`recovery-vNext.md`](recovery-vNext.md), [`performance-vNext.md`](performance-vNext.md) — evidência, execução e limites operacionais históricos.
 38. [`adr/019-universal-durable-command-idempotency.md`](adr/019-universal-durable-command-idempotency.md), [`verification-2026-09-10-durable-idempotency.md`](verification-2026-09-10-durable-idempotency.md) — fronteira de idempotência durável para comandos retryable e evidência desta lane.
+39. [`adr/021-authoritative-normalized-guardian-write.md`](adr/021-authoritative-normalized-guardian-write.md), [`verification-2026-09-10-guardian-source-write.md`](verification-2026-09-10-guardian-source-write.md) — escrita normalizada autoritativa de Guardian, com replay e escopo contextual.
+40. [`adr/022-authoritative-diagnostic-request-write.md`](adr/022-authoritative-diagnostic-request-write.md), [`verification-2026-09-10-diagnostic-request-source-write.md`](verification-2026-09-10-diagnostic-request-source-write.md) — escrita autoritativa de pedido de exame e backstop de escopo PostgreSQL.
 
 Os procedimentos operacionais estão em [`runbooks/`](runbooks/), incluindo deploy, rollback, backup/restore, incidentes de banco e segurança, indisponibilidade de provider/DeepSeek, rotação de credenciais, backlog do worker, quarentena e o break-glass ainda bloqueado. O SDK/exporter OTLP está conectado em API, worker e bridge; o stack declarado de observabilidade está em [`docker-compose.observability.yml`](../docker-compose.observability.yml) e permanece `NOT_RUN` fora da prova local do exporter.
 

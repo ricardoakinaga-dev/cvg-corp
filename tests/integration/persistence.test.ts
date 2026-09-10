@@ -13,7 +13,7 @@ import { createRecoveryBundleManifest, decryptRecoveryBundle, encryptRecoveryBun
 
 type QueryResult = { rows: Array<Record<string, unknown>> };
 
-function fakePool(options: { revision?: string; failSnapshotInsert?: boolean; auditLedgerConflict?: boolean; clinicalSignUpdateRows?: boolean; guardianWriteRows?: boolean } = {}): { pool: Pool; statements: string[] } {
+function fakePool(options: { revision?: string; failSnapshotInsert?: boolean; auditLedgerConflict?: boolean; clinicalSignUpdateRows?: boolean; guardianWriteRows?: boolean; diagnosticRequestWriteRows?: boolean } = {}): { pool: Pool; statements: string[] } {
   let revision = options.revision ?? "0";
   let auditTail: string | null = null;
   const durableReceipts = new Map<string, Record<string, unknown>>();
@@ -24,6 +24,7 @@ function fakePool(options: { revision?: string; failSnapshotInsert?: boolean; au
       if (sql.includes("select revision::text")) return { rows: revision === "0" ? [] : [{ revision }] };
       if (sql.startsWith("insert into ai_usage_ledger")) return { rows: [{ id: String(params[0]) }] };
       if (sql.startsWith("insert into guardians") && sql.includes("returning id::text")) return options.guardianWriteRows === false ? { rows: [] } : { rows: [{ id: String(params[0]) }] };
+      if (sql.startsWith("insert into diagnostic_requests") && sql.includes("returning id::text")) return options.diagnosticRequestWriteRows === false ? { rows: [] } : { rows: [{ id: String(params[0]) }] };
       if (sql.startsWith("insert into patients") && sql.includes("returning id::text")) return { rows: [{ id: String(params[0]) }] };
       if (sql.startsWith("insert into appointments") && sql.includes("returning id::text")) return { rows: [{ id: String(params[0]) }] };
       if (sql.startsWith("insert into encounters") && sql.includes("returning id::text")) return { rows: [{ id: String(params[0]) }] };
@@ -252,6 +253,97 @@ test("guardian replay advances the audit/receipt snapshot without issuing a seco
 
   assert.equal(fake.statements.filter((statement) => statement.startsWith("insert into guardians") && statement.includes("returning id::text")).length, 0);
   assert.equal(fake.statements.filter((statement) => statement.startsWith("insert into guardians")).length, store.snapshot().guardians.length - 1);
+});
+
+test("diagnostic request creation can own one authoritative normalized write inside the durable commit", async () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const vetId = [...store.users.values()].find((user) => user.login.startsWith("ana."))?.id;
+  const option = vetId ? store.contextOptions(vetId)[0] : undefined;
+  assert.ok(vetId && option);
+  const context = store.resolveContext(vetId, { unitId: option.unit.id, workspaceId: option.workspace.id }, "diagnostics.create", "diagnostic-source-write");
+  const patient = [...store.patients.values()].find((candidate) => candidate.unitId === context.unitId && candidate.workspaceId === context.workspaceId);
+  assert.ok(patient);
+  const encounterContext = store.resolveContext(vetId, { unitId: option.unit.id, workspaceId: option.workspace.id }, "encounters.create", "diagnostic-source-write-encounter");
+  const encounter = store.createEncounter(encounterContext, { patientId: patient.id, appointmentId: null, chiefComplaint: "pedido de exame", urgency: "ROUTINE" });
+  const request = store.createDiagnosticRequest(context, { patientId: patient.id, encounterId: encounter.id, testName: "Perfil hematológico sintético", priority: "ROUTINE" });
+  const fake = fakePool();
+  const persistence = new PostgresPersistence({ connectionString: "postgres://synthetic.invalid", pool: fake.pool });
+
+  await persistence.commit({ ...commitInput(store), snapshot: store.snapshot(), normalizedDiagnosticRequestWrite: request });
+
+  const authoritative = fake.statements.filter((statement) => statement.startsWith("insert into diagnostic_requests") && statement.includes("returning id::text"));
+  assert.equal(authoritative.length, 1);
+  assert.match(authoritative[0]!, /insert into diagnostic_requests\(id, organization_id, unit_id, workspace_id, patient_id/);
+  assert.match(authoritative[0]!, /on conflict \(id\) do update/);
+  assert.match(authoritative[0]!, /diagnostic_requests\.unit_id = excluded\.unit_id/);
+  assert.match(authoritative[0]!, /diagnostic_requests\.workspace_id = excluded\.workspace_id/);
+  assert.match(authoritative[0]!, /diagnostic_requests\.created_at = excluded\.created_at/);
+  assert.ok(fake.statements.some((statement) => statement === "select set_config('cvg.unit_id', $1, true)"));
+  assert.ok(fake.statements.some((statement) => statement === "select set_config('cvg.workspace_id', $1, true)"));
+});
+
+test("authoritative diagnostic request writes fail closed when PostgreSQL returns no normalized row", async () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const vetId = [...store.users.values()].find((user) => user.login.startsWith("ana."))?.id;
+  const option = vetId ? store.contextOptions(vetId)[0] : undefined;
+  assert.ok(vetId && option);
+  const context = store.resolveContext(vetId, { unitId: option.unit.id, workspaceId: option.workspace.id }, "diagnostics.create", "diagnostic-source-no-returning");
+  const patient = [...store.patients.values()].find((candidate) => candidate.unitId === context.unitId && candidate.workspaceId === context.workspaceId);
+  assert.ok(patient);
+  const encounterContext = store.resolveContext(vetId, { unitId: option.unit.id, workspaceId: option.workspace.id }, "encounters.create", "diagnostic-source-no-returning-encounter");
+  const encounter = store.createEncounter(encounterContext, { patientId: patient.id, appointmentId: null, chiefComplaint: "pedido de exame sem retorno", urgency: "ROUTINE" });
+  const request = store.createDiagnosticRequest(context, { patientId: patient.id, encounterId: encounter.id, testName: "Exame sem retorno", priority: "ROUTINE" });
+  const fake = fakePool({ diagnosticRequestWriteRows: false });
+  const persistence = new PostgresPersistence({ connectionString: "postgres://synthetic.invalid", pool: fake.pool });
+
+  await assert.rejects(
+    () => persistence.commit({ ...commitInput(store), snapshot: store.snapshot(), normalizedDiagnosticRequestWrite: request }),
+    (error: unknown) => error instanceof PersistenceCorruptionError && error.message.includes("conflicts with an existing normalized row")
+  );
+  assert.equal(fake.statements.filter((statement) => statement.startsWith("insert into diagnostic_requests") && statement.includes("returning id::text")).length, 1);
+  assert.ok(fake.statements.includes("ROLLBACK"));
+});
+
+test("authoritative diagnostic request writes fail closed when the candidate diverges from the canonical snapshot", async () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const vetId = [...store.users.values()].find((user) => user.login.startsWith("ana."))?.id;
+  const option = vetId ? store.contextOptions(vetId)[0] : undefined;
+  assert.ok(vetId && option);
+  const context = store.resolveContext(vetId, { unitId: option.unit.id, workspaceId: option.workspace.id }, "diagnostics.create", "diagnostic-source-corruption");
+  const patient = [...store.patients.values()].find((candidate) => candidate.unitId === context.unitId && candidate.workspaceId === context.workspaceId);
+  assert.ok(patient);
+  const encounterContext = store.resolveContext(vetId, { unitId: option.unit.id, workspaceId: option.workspace.id }, "encounters.create", "diagnostic-source-corruption-encounter");
+  const encounter = store.createEncounter(encounterContext, { patientId: patient.id, appointmentId: null, chiefComplaint: "pedido de exame", urgency: "ROUTINE" });
+  const request = store.createDiagnosticRequest(context, { patientId: patient.id, encounterId: encounter.id, testName: "Exame canônico", priority: "ROUTINE" });
+  const fake = fakePool();
+  const persistence = new PostgresPersistence({ connectionString: "postgres://synthetic.invalid", pool: fake.pool });
+
+  await assert.rejects(
+    () => persistence.commit({ ...commitInput(store), normalizedDiagnosticRequestWrite: { ...request, testName: "Exame divergente" } }),
+    (error: unknown) => error instanceof PersistenceCorruptionError && error.message.includes("not identical to the canonical snapshot")
+  );
+  assert.ok(fake.statements.includes("ROLLBACK"));
+  assert.equal(fake.statements.filter((statement) => statement.startsWith("insert into diagnostic_requests") && statement.includes("returning id::text")).length, 0);
+});
+
+test("diagnostic request replay advances the audit/receipt snapshot without issuing a second diagnostic DML", async () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const vetId = [...store.users.values()].find((user) => user.login.startsWith("ana."))?.id;
+  const option = vetId ? store.contextOptions(vetId)[0] : undefined;
+  assert.ok(vetId && option);
+  const context = store.resolveContext(vetId, { unitId: option.unit.id, workspaceId: option.workspace.id }, "diagnostics.create", "diagnostic-replay");
+  const patient = [...store.patients.values()].find((candidate) => candidate.unitId === context.unitId && candidate.workspaceId === context.workspaceId);
+  assert.ok(patient);
+  const encounterContext = store.resolveContext(vetId, { unitId: option.unit.id, workspaceId: option.workspace.id }, "encounters.create", "diagnostic-replay-encounter");
+  const encounter = store.createEncounter(encounterContext, { patientId: patient.id, appointmentId: null, chiefComplaint: "pedido de exame", urgency: "ROUTINE" });
+  const request = store.createDiagnosticRequest(context, { patientId: patient.id, encounterId: encounter.id, testName: "Exame já persistido", priority: "ROUTINE" });
+  const fake = fakePool();
+  const persistence = new PostgresPersistence({ connectionString: "postgres://synthetic.invalid", pool: fake.pool });
+
+  await persistence.commit({ ...commitInput(store), snapshot: store.snapshot(), normalizedDiagnosticRequestReplayId: request.id });
+
+  assert.equal(fake.statements.filter((statement) => statement.startsWith("insert into diagnostic_requests") && statement.includes("returning id::text")).length, 0);
+  assert.equal(fake.statements.filter((statement) => statement.startsWith("insert into diagnostic_requests")).length, store.snapshot().diagnosticRequests.length - 1);
 });
 
 test("appointment creation can own one authoritative normalized write inside the durable commit", async () => {
@@ -764,6 +856,41 @@ test("PostgreSQL guardian creation commits one normalized row and replays withou
     assert.equal(replay.statusCode, 201, replay.body);
     assert.equal(fake.statements.filter((statement) => statement.startsWith("insert into guardians") && statement.includes("returning id::text")).length, 1);
     assert.equal(fake.statements.filter((statement) => statement.startsWith("insert into command_receipts") && statement.includes("on conflict (idempotency_lookup)")).length, 2);
+  } finally {
+    await runtime.app.close();
+  }
+});
+
+test("PostgreSQL diagnostic request creation commits one normalized row and replays without a second diagnostic DML", async () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const fake = fakePool();
+  const persistence = new PostgresPersistence({ connectionString: "postgres://synthetic.invalid", pool: fake.pool });
+  const runtime = await createRuntime({ store, persistence, config: { storageMode: "postgres", demoMode: true } });
+  try {
+    const login = await runtime.app.inject({ method: "POST", url: "/api/v1/auth/login", headers: { "content-type": "application/json" }, payload: JSON.stringify({ login: "ana.vet@cvg.local", password: "veterinario-synthetic-0002" }) });
+    assert.equal(login.statusCode, 200, login.body);
+    const cookieValues = (Array.isArray(login.headers["set-cookie"]) ? login.headers["set-cookie"] : [login.headers["set-cookie"]]).filter((value): value is string => typeof value === "string");
+    const cookiePairs = cookieValues.map((value) => value.split(";")[0]).filter((value): value is string => Boolean(value));
+    const cookie = cookiePairs.join("; ");
+    const csrfCookie = cookiePairs.find((pair) => pair.startsWith("cvg_csrf="));
+    assert.ok(csrfCookie);
+    const csrf = decodeURIComponent(csrfCookie.slice("cvg_csrf=".length));
+    const unit = [...runtime.store.units.values()][0];
+    const workspace = [...runtime.store.workspaces.values()][0];
+    const patient = [...runtime.store.patients.values()].find((candidate) => candidate.unitId === unit?.id && candidate.workspaceId === workspace?.id);
+    assert.ok(unit && workspace && patient);
+    const headers = { cookie, "x-csrf-token": csrf, "x-cvg-unit-id": unit.id, "x-cvg-workspace-id": workspace.id, "idempotency-key": "diagnostic-http-source-001", "content-type": "application/json" };
+    const encounterResponse = await runtime.app.inject({ method: "POST", url: "/api/v1/encounters", headers: { ...headers, "idempotency-key": "diagnostic-http-encounter-001" }, payload: JSON.stringify({ patientId: patient.id, appointmentId: null, chiefComplaint: "pedido de exame HTTP", urgency: "ROUTINE" }) });
+    assert.equal(encounterResponse.statusCode, 201, encounterResponse.body);
+    const encounterId = (encounterResponse.json() as { data: { encounter: { id: string } } }).data.encounter.id;
+    const claimsBeforeDiagnostic = fake.statements.filter((statement) => statement.startsWith("insert into command_receipts") && statement.includes("on conflict (idempotency_lookup)")).length;
+    const payload = JSON.stringify({ patientId: patient.id, encounterId, testName: "Perfil hematológico HTTP", priority: "ROUTINE" });
+    const created = await runtime.app.inject({ method: "POST", url: "/api/v1/diagnostics/requests", headers, payload });
+    assert.equal(created.statusCode, 201, created.body);
+    const replay = await runtime.app.inject({ method: "POST", url: "/api/v1/diagnostics/requests", headers, payload });
+    assert.equal(replay.statusCode, 201, replay.body);
+    assert.equal(fake.statements.filter((statement) => statement.startsWith("insert into diagnostic_requests") && statement.includes("returning id::text")).length, 1);
+    assert.equal(fake.statements.filter((statement) => statement.startsWith("insert into command_receipts") && statement.includes("on conflict (idempotency_lookup)")).length - claimsBeforeDiagnostic, 2);
   } finally {
     await runtime.app.close();
   }

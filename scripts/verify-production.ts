@@ -31,6 +31,7 @@ const requiredFiles = [
   "docker/nginx/proxy.tls.conf",
   "docker/worker.ts",
   "apps/api/src/app.ts",
+  "apps/api/src/application/diagnostic-service.ts",
   "apps/api/src/application/guardian-service.ts",
   "apps/api/src/application/export-service.ts",
   "apps/api/src/application/idempotency-service.ts",
@@ -61,6 +62,7 @@ const requiredFiles = [
   "db/migrations/029_ai_turn_provenance_usage_and_dml_scope.sql",
   "db/migrations/030_break_glass_durable_lifecycle.sql",
   "db/migrations/031_worker_jobs_and_heartbeats.sql",
+  "db/migrations/032_diagnostic_request_scope.sql",
   "docs/runbooks/deploy.md",
   "docs/runbooks/deployment.md",
   "docs/runbooks/rollback.md",
@@ -97,6 +99,9 @@ const requiredFiles = [
   "docs/pdp-universal-coverage.md",
   "docs/adr/021-authoritative-normalized-guardian-write.md",
   "docs/verification-2026-09-10-guardian-source-write.md",
+  "docs/adr/022-authoritative-diagnostic-request-write.md",
+  "docs/verification-2026-09-10-diagnostic-request-source-write.md",
+  ".gauntlet/critique-diagnostic-request-scope-20260910.md",
   "docs/observability-production.md",
   "docs/staging.md",
   "docs/load-and-chaos.md",
@@ -241,6 +246,8 @@ function inspectStaticContracts(): void {
   requireText("db/migrations/031_worker_jobs_and_heartbeats.sql", "cvg_worker_jobs");
   requireText("db/migrations/031_worker_jobs_and_heartbeats.sql", "cvg_worker_heartbeats");
   requireText("db/migrations/031_worker_jobs_and_heartbeats.sql", "force row level security");
+  requireText("db/migrations/032_diagnostic_request_scope.sql", "diagnostic_requests_organization_encounter_scope_fk");
+  requireText("db/migrations/032_diagnostic_request_scope.sql", "cvg_request_dml_scope_allows(unit_id, workspace_id)");
   requireText("packages/persistence/src/index.ts", "claimWorkerJobs");
   requireText("packages/persistence/src/index.ts", "recordWorkerHeartbeat");
   requireText("apps/worker/src/worker.ts", "defaultDurableJobRunner");

@@ -592,3 +592,37 @@ não substitui staging, provider/DeepSeek/segredos, Collector/SLO,
 carga/chaos/recovery, matriz completa de browser/assistive tech/zoom ou
 aceite humano; o veredito global continua `FAIL_WITH_LIMITATIONS` /
 `AAA_NOT_PROVEN`.
+
+## Current action — 2026-09-10 10:01
+
+A próxima lacuna local reproduzível é o restore durável de `auditRecords` e
+`commandReceipts`. Esses recursos fazem parte do snapshot canônico e já têm
+projeção append-only no commit durável, mas o script de restore não os repassa
+explicitamente ao `PostgresPersistence.commit` nem confere os ledgers
+correspondentes no banco destino.
+
+Contrato congelado: o restore continuará criando um banco novo, invalidando
+sessões e entrando em quarentena; deve inserir a cadeia de auditoria na ordem
+do snapshot, preservar recibos por identidade/idempotência, verificar os
+digests dos ledgers no destino e provar que a origem não foi alterada. Não
+serão habilitados dados reais, provider, staging ou promoção.
+
+Escopo previsto: `scripts/verify-postgres-restore.ts`, guardas estruturais,
+regressão de persistência e ADR/evidência específica. Depois da escrita,
+executar bateria local, crítico fresh read-only com sentinel, integração e CI
+exato. O veredito global continua `FAIL_WITH_LIMITATIONS` /
+`AAA_NOT_PROVEN`.
+## Restore durability repair / final review — 2026-09-10 10:17
+
+O drill foi reforçado após três achados LOW do crítico: os registros canônicos
+agora são associados aos ledgers por `JOIN` e comparados na ordem de
+`sequence_id`; os digests dos ledgers preservam a ordem de inserção; e o
+snapshot exportado do destino comprova, após a persistência, quarentena e
+ausência de sessões ativas. `verify:static` passou a proteger esses contratos.
+
+Após a reparação, `test:database` 35/35, typecheck, build, lint, static e diff
+check passaram. A crítica fresh Gibbs retornou `REVIEW_ONLY_NO_BLOCKER` com
+fingerprint match. A execução PostgreSQL do drill segue reservada ao CI/ambiente
+explicitamente identificado, pois `DATABASE_URL` não está configurada localmente.
+O lane está pronto para integração; o veredito global permanece
+`FAIL_WITH_LIMITATIONS` / `AAA_NOT_PROVEN`.

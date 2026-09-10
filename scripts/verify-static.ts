@@ -21,6 +21,7 @@ if (!docs.includes("Quality") && !docs.includes("qualidade")) failures.push("doc
 const workerMain = await readFile("apps/worker/src/main.ts", "utf8");
 const dockerWorker = await readFile("docker/worker.ts", "utf8");
 const workerComposition = await readFile("apps/worker/src/worker.ts", "utf8");
+const restoreScript = await readFile("scripts/verify-postgres-restore.ts", "utf8");
 const tsconfig = await readFile("tsconfig.json", "utf8");
 const lintConfig = await readFile("scripts/lint.ts", "utf8");
 const configuredWorkerConstruction = /new CvgWorkerApplication\(createWorkerDependencies\(persistence, config, configuredSink\)\)/;
@@ -28,6 +29,11 @@ if (!configuredWorkerConstruction.test(workerMain)) failures.push("apps/worker/s
 if (!configuredWorkerConstruction.test(dockerWorker)) failures.push("docker/worker.ts: configured worker construction contract is missing");
 if (!workerComposition.includes("const effects = hasDurableEffectLedger(persistence) ? persistence : null")) failures.push("apps/worker/src/worker.ts: production composition must connect a complete durable effect ledger or remain fail-closed");
 if (!workerComposition.includes("effects,")) failures.push("apps/worker/src/worker.ts: worker dependencies must expose the composed effect ledger");
+if (!restoreScript.includes("auditRecords: restoredSnapshot.auditRecords")) failures.push("scripts/verify-postgres-restore.ts: restore must project the canonical audit records into the quarantine target");
+if (!restoreScript.includes("commandReceipts: restoredSnapshot.commandReceipts")) failures.push("scripts/verify-postgres-restore.ts: restore must project the canonical command receipts into the quarantine target");
+if (!restoreScript.includes("cvg_audit_ledger") || !restoreScript.includes("cvg_command_receipt_ledger")) failures.push("scripts/verify-postgres-restore.ts: restore must verify append-only audit and receipt ledgers in the target");
+if (!restoreScript.includes("order by ledger.sequence_id")) failures.push("scripts/verify-postgres-restore.ts: restore must compare canonical records in append-only ledger order");
+if (!restoreScript.includes("targetBundle.snapshot.sessions.some")) failures.push("scripts/verify-postgres-restore.ts: restore must verify revoked sessions after target persistence");
 if (!tsconfig.includes('"docker/**/*.ts"')) failures.push("tsconfig.json: docker worker entrypoint is outside the typecheck include");
 if (!lintConfig.includes('"docker"')) failures.push("scripts/lint.ts: docker is outside the lint roots");
 const routeSources = await Promise.all([readFile("apps/api/src/app.ts", "utf8"), readFile("apps/api/src/routes/health.ts", "utf8")]);

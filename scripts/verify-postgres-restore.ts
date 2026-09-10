@@ -1,7 +1,7 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
-import pg from "pg";
+import pg, { type Client as PgClient } from "pg";
 import { CvgStore, digest } from "@cvg/domain";
 import { createRuntime } from "@cvg/api";
 import { decryptRecoveryBundle, encryptRecoveryBundle, PersistenceCorruptionError, PostgresPersistence, validateRecoveryBundle } from "@cvg/persistence";
@@ -90,6 +90,7 @@ const sourcePersistence = new PostgresPersistence({ connectionString: sourceUrl 
 const sourceOrganizationId = new CvgStore({ bootstrapPassword }).bootstrapCredentials.organizationId;
 const admin = new Client({ connectionString: maintenanceConnectionString, connectionTimeoutMillis: 2_500 });
 let targetPersistence: PostgresPersistence | null = null;
+let targetLedgerClient: PgClient | null = null;
 let runtime: Awaited<ReturnType<typeof createRuntime>> | null = null;
 let created = false;
 let adminConnected = false;
@@ -107,7 +108,7 @@ try {
   const encryptedBackup = encryptRecoveryBundle(sourceBefore, backupKey, "synthetic-kms-key");
   const restoredBundle = decryptRecoveryBundle(encryptedBackup, backupKey);
   validateRecoveryBundle(restoredBundle, { expectedMigrationFingerprint: sourceMigrationFingerprint });
-  if (restoredBundle.revision !== sourceBefore.revision || restoredBundle.eventId !== sourceBefore.eventId || restoredBundle.snapshotDigest !== sourceBefore.snapshotDigest || restoredBundle.outboxRecords.length !== sourceBefore.outboxRecords.length || restoredBundle.usageRecords.length !== sourceBefore.usageRecords.length || restoredBundle.inboxRecords.length !== sourceBefore.inboxRecords.length || restoredBundle.externalEffects.length !== sourceBefore.externalEffects.length || (restoredBundle.workerJobs?.length ?? 0) !== (sourceBefore.workerJobs?.length ?? 0)) throw new Error("encrypted recovery bundle round-trip changed durable recovery state");
+  if (restoredBundle.revision !== sourceBefore.revision || restoredBundle.eventId !== sourceBefore.eventId || restoredBundle.snapshotDigest !== sourceBefore.snapshotDigest || restoredBundle.snapshot.auditRecords.length !== sourceBefore.snapshot.auditRecords.length || restoredBundle.snapshot.commandReceipts.length !== sourceBefore.snapshot.commandReceipts.length || restoredBundle.outboxRecords.length !== sourceBefore.outboxRecords.length || restoredBundle.usageRecords.length !== sourceBefore.usageRecords.length || restoredBundle.inboxRecords.length !== sourceBefore.inboxRecords.length || restoredBundle.externalEffects.length !== sourceBefore.externalEffects.length || (restoredBundle.workerJobs?.length ?? 0) !== (sourceBefore.workerJobs?.length ?? 0)) throw new Error("encrypted recovery bundle round-trip changed durable recovery state");
   const tamperedCiphertext = Buffer.from(encryptedBackup.ciphertext, "base64");
   tamperedCiphertext[0] = (tamperedCiphertext[0] ?? 0) ^ 1;
   let tamperRejected = false;
@@ -172,7 +173,9 @@ try {
     correlationId: "verify-postgres-restore",
     aggregateType: "Restore",
     aggregateId: null,
-    payload: { synthetic: true, sourceRevision: restoredBundle.revision.toString(), sourceEventId: restoredBundle.eventId, quarantine: true, recoveredOutbox: restoredBundle.outboxRecords.length, recoveredUsage: restoredBundle.usageRecords.length, recoveredInbox: restoredBundle.inboxRecords.length, recoveredExternalEffects: restoredBundle.externalEffects.length, recoveredWorkerJobs: restoredBundle.workerJobs?.length ?? 0 },
+    payload: { synthetic: true, sourceRevision: restoredBundle.revision.toString(), sourceEventId: restoredBundle.eventId, quarantine: true, recoveredAuditRecords: restoredSnapshot.auditRecords.length, recoveredCommandReceipts: restoredSnapshot.commandReceipts.length, recoveredOutbox: restoredBundle.outboxRecords.length, recoveredUsage: restoredBundle.usageRecords.length, recoveredInbox: restoredBundle.inboxRecords.length, recoveredExternalEffects: restoredBundle.externalEffects.length, recoveredWorkerJobs: restoredBundle.workerJobs?.length ?? 0 },
+    auditRecords: restoredSnapshot.auditRecords,
+    commandReceipts: restoredSnapshot.commandReceipts,
     recoveredOutboxRecords: restoredBundle.outboxRecords,
     recoveredUsageRecords: restoredBundle.usageRecords,
     recoveredInboxRecords: restoredBundle.inboxRecords,
@@ -186,7 +189,20 @@ try {
   const targetBundle = await targetPersistence.exportRecoveryBundle(sourceOrganizationId);
   if (!targetBundle) throw new Error("quarantined restore has no recovery bundle");
   validateRecoveryBundle(targetBundle, { expectedMigrationFingerprint: targetMigrationFingerprint });
+  if (targetBundle.snapshot.healthStatus !== "QUARANTINED" || targetBundle.snapshot.sessions.some((session) => session.revokedAt === null)) throw new Error("restore target recovery bundle retained active authority");
+  targetLedgerClient = new Client({ connectionString: targetMigrationUrl, connectionTimeoutMillis: 2_500 });
+  await targetLedgerClient.connect();
+  const targetAuditRows = await targetLedgerClient.query<{ id: string }>("select audit.id::text as id from cvg_audit_ledger as ledger join audit_records as audit on audit.id = ledger.audit_id and audit.organization_id = ledger.organization_id where ledger.organization_id = $1 order by ledger.sequence_id", [sourceOrganizationId]);
+  const targetReceiptRows = await targetLedgerClient.query<{ id: string }>("select receipt.id::text as id from cvg_command_receipt_ledger as ledger join command_receipts as receipt on receipt.id = ledger.receipt_id and receipt.organization_id = ledger.organization_id where ledger.organization_id = $1 order by ledger.sequence_id", [sourceOrganizationId]);
+  const targetAuditLedger = await targetLedgerClient.query<{ record_digest: string }>("select record_digest from cvg_audit_ledger where organization_id = $1 order by sequence_id", [sourceOrganizationId]);
+  const targetReceiptLedger = await targetLedgerClient.query<{ record_digest: string }>("select record_digest from cvg_command_receipt_ledger where organization_id = $1 order by sequence_id", [sourceOrganizationId]);
+  const sourceAuditDigests = (values: readonly unknown[]): string[] => values.map((value) => digest(value)).sort();
+  if (JSON.stringify(targetAuditRows.rows.map((row: { id: string }) => row.id)) !== JSON.stringify(sourceBefore.snapshot.auditRecords.map((record) => record.id)) || JSON.stringify(targetReceiptRows.rows.map((row: { id: string }) => row.id)) !== JSON.stringify(sourceBefore.snapshot.commandReceipts.map((receipt) => receipt.id))) throw new Error("restore did not preserve the canonical audit or command receipt rows in ledger order");
+  if (JSON.stringify(targetAuditLedger.rows.map((row: { record_digest: string }) => row.record_digest)) !== JSON.stringify(sourceBefore.snapshot.auditRecords.map((record) => digest(record)))) throw new Error("restore did not preserve the audit ledger records in chain order");
+  if (JSON.stringify(targetReceiptLedger.rows.map((row: { record_digest: string }) => row.record_digest)) !== JSON.stringify(sourceBefore.snapshot.commandReceipts.map((receipt) => digest(receipt)))) throw new Error("restore did not preserve the command receipt ledger records in append order");
   const sortedDigests = (values: Array<{ recordDigest: string }>): string[] => values.map((value) => value.recordDigest).sort();
+  if (JSON.stringify(targetBundle.snapshot.auditRecords.map((record) => digest(record))) !== JSON.stringify(sourceBefore.snapshot.auditRecords.map((record) => digest(record)))) throw new Error("restore did not preserve the audit snapshot records in order");
+  if (JSON.stringify(targetBundle.snapshot.commandReceipts.map((receipt) => digest(receipt))) !== JSON.stringify(sourceBefore.snapshot.commandReceipts.map((receipt) => digest(receipt)))) throw new Error("restore did not preserve the command receipt snapshot records in order");
   if (JSON.stringify(sortedDigests(targetBundle.outboxRecords)) !== JSON.stringify(sortedDigests(sourceBefore.outboxRecords))) throw new Error("restore did not preserve the outbox recovery ledger");
   if (JSON.stringify(sortedDigests(targetBundle.usageRecords)) !== JSON.stringify(sortedDigests(sourceBefore.usageRecords))) throw new Error("restore did not preserve the usage recovery ledger");
   if (JSON.stringify(targetBundle.inboxRecords.map((record) => record.recordDigest).sort()) !== JSON.stringify(sourceBefore.inboxRecords.map((record) => record.recordDigest).sort())) throw new Error("restore did not preserve the inbox recovery ledger");
@@ -200,12 +216,13 @@ try {
   if (ready.statusCode !== 503) throw new Error(`quarantined restore reported ready with status ${ready.statusCode}`);
 
   const sourceAfter = await sourcePersistence.exportRecoveryBundle(sourceOrganizationId);
-  if (!sourceAfter || sourceAfter.revision !== sourceBefore.revision || sourceAfter.eventId !== sourceBefore.eventId) throw new Error("restore drill changed the source database");
+  if (!sourceAfter || sourceAfter.revision !== sourceBefore.revision || sourceAfter.eventId !== sourceBefore.eventId || JSON.stringify(sourceAuditDigests(sourceAfter.snapshot.auditRecords)) !== JSON.stringify(sourceAuditDigests(sourceBefore.snapshot.auditRecords)) || JSON.stringify(sourceAuditDigests(sourceAfter.snapshot.commandReceipts)) !== JSON.stringify(sourceAuditDigests(sourceBefore.snapshot.commandReceipts))) throw new Error("restore drill changed the source database");
   if (JSON.stringify(sortedDigests(sourceAfter.outboxRecords)) !== JSON.stringify(sortedDigests(sourceBefore.outboxRecords)) || JSON.stringify(sortedDigests(sourceAfter.usageRecords)) !== JSON.stringify(sortedDigests(sourceBefore.usageRecords)) || JSON.stringify(sourceAfter.inboxRecords.map((record) => record.recordDigest).sort()) !== JSON.stringify(sourceBefore.inboxRecords.map((record) => record.recordDigest).sort()) || JSON.stringify(sourceAfter.externalEffects.map((record) => record.requestDigest).sort()) !== JSON.stringify(sourceBefore.externalEffects.map((record) => record.requestDigest).sort()) || JSON.stringify((sourceAfter.workerJobs ?? []).map((record) => record.recordDigest).sort()) !== JSON.stringify((sourceBefore.workerJobs ?? []).map((record) => record.recordDigest).sort())) throw new Error("restore drill changed the source recovery ledgers");
-  console.log(JSON.stringify({ restore: "PASS", encryptedBackup: true, backupAlgorithm: encryptedBackup.algorithm, tamperRejected, partialRejected, staleRejected, migrationMismatchRejected, sourceRevision: sourceBefore.revision.toString(), targetDatabase: restoreDatabase, targetRevision: targetLatest.revision.toString(), targetStatus: targetLatest.snapshot.healthStatus, recoveredOutbox: targetBundle.outboxRecords.length, recoveredUsage: targetBundle.usageRecords.length, recoveredInbox: targetBundle.inboxRecords.length, recoveredExternalEffects: targetBundle.externalEffects.length, recoveredWorkerJobs: targetBundle.workerJobs?.length ?? 0, loginBlocked: true, readinessBlocked: true, sourceUnchanged: true }, null, 2));
+  console.log(JSON.stringify({ restore: "PASS", encryptedBackup: true, backupAlgorithm: encryptedBackup.algorithm, tamperRejected, partialRejected, staleRejected, migrationMismatchRejected, sourceRevision: sourceBefore.revision.toString(), targetDatabase: restoreDatabase, targetRevision: targetLatest.revision.toString(), targetStatus: targetLatest.snapshot.healthStatus, recoveredAuditRecords: targetBundle.snapshot.auditRecords.length, recoveredCommandReceipts: targetBundle.snapshot.commandReceipts.length, recoveredOutbox: targetBundle.outboxRecords.length, recoveredUsage: targetBundle.usageRecords.length, recoveredInbox: targetBundle.inboxRecords.length, recoveredExternalEffects: targetBundle.externalEffects.length, recoveredWorkerJobs: targetBundle.workerJobs?.length ?? 0, loginBlocked: true, readinessBlocked: true, sourceUnchanged: true }, null, 2));
 } finally {
   if (runtime) await runtime.app.close().catch(() => undefined);
   await targetPersistence?.close().catch(() => undefined);
+  await targetLedgerClient?.end().catch(() => undefined);
   await sourcePersistence.close().catch(() => undefined);
   if (adminConnected) await admin.end().catch(() => undefined);
   if (created) {

@@ -1,6 +1,6 @@
 # Verification vNext
 
-**Data:** 2026-09-10 — fotografia local após Tool Gateway universal no harness, estados de falha frontend, métricas privadas, migration 030, ciclo durável de break-glass, `AuditRepository` e reads clínicos normalizados (`6b3df2f`)
+**Data:** 2026-09-10 — fotografia local após Tool Gateway universal no harness, estados de falha frontend, métricas privadas, migration 030, ciclo durável de break-glass e repositories normalizados de domínio (`bf0cc50`)
 
 ## Passe local atual
 
@@ -10,9 +10,9 @@
 | `npm run typecheck` | PASS | TypeScript sem emissão |
 | `npm run test:contract` | PASS | Envelopes e descriptors versionados |
 | `npm run test:security` | PASS | Auth, policy, gateway e fault-deny |
-| `npm run test:database` | PASS — 16/16 | Persistência/recovery sintéticos, leituras de auditoria/encounters/clinical normalizadas e rotas PostgreSQL-fake |
+| `npm run test:database` | PASS — 20/20 | Persistência/recovery sintéticos, repositories normalizados de domínio e rotas PostgreSQL-fake |
 | `npm run test:fault` | PASS | Worker e fault harness local |
-| `npm test` | PASS — 122 testes (121 pass, 1 skip condicional) | Unitário + integração, incluindo MFA, lockout, rotação, recovery manifest, PDP target-bound, Tool Gateway/ledger, harness assíncrono com execução universal, usage/provenance e exportação governada cifrada, provider loopback/reconciliação, break-glass durável, repositories de auditoria/encounters/clinical normalizados, assinatura HMAC de contexto, scheduler/lifecycle do worker, OTLP redaction, fault harness, projeção RLS fail-closed e estados frontend |
+| `npm test` | PASS — 126 testes (125 pass, 1 skip condicional) | Unitário + integração, incluindo MFA, lockout, rotação, recovery manifest, PDP target-bound, Tool Gateway/ledger, harness assíncrono com execução universal, usage/provenance e exportação governada cifrada, provider loopback/reconciliação, break-glass durável, repositories normalizados de diagnostics/care/finance/communication/knowledge/queue/AI, assinatura HMAC de contexto, scheduler/lifecycle do worker, OTLP redaction, fault harness, projeção RLS fail-closed e estados frontend |
 | `npm run build` | PASS | Vite web + typecheck |
 | `npm run verify:static` | PASS | 46 artefatos e 123 arquivos-fonte |
 | recovery bundle manifest | PASS — bundle completo + 5 rejeições | watermark, tenant, digests de ledgers, partial, stale, migration mismatch, ciphertext adulterado e chave errada |
@@ -64,3 +64,9 @@ O passe demonstra uma base compilável, testável e com controles locais de supp
 `VER-CVG-084` registra o commit `6b3df2f424ebfbe77acc4b332e4c55fbcb734321`: as rotas de encounters e clinical documents agora usam `ReadApplicationService` e adapters de repositório; o caminho PostgreSQL aplica transação `READ ONLY`, organização, unit/workspace e validação fail-closed de linhas. `VER-CVG-085` registra `npm test` 122 (`121 pass`, `1 skip`), `test:database` 16/16, typecheck, lint, build, static, PDP, `verify:production` estrutural e diff check. `VER-CVG-086` registra tentativa de critic fresh sem relatório; mutation sentinel permaneceu estável e nenhuma aprovação foi inferida.
 
 O incremento reduz o bypass de snapshot nesta fatia, mas não fecha V3-DATA-001: diagnostics, hospitalization, medication, stock, finance, communication, jobs e a prova PostgreSQL concorrente permanecem abertos. `verify:triplo-aaa`, staging, ACP/DeepSeek real, provider, secret authority, collector/SLO, carga/chaos/recovery, browsers/assistive tech e aceite humano continuam sem evidência necessária.
+
+## Current checkpoint — 2026-09-10 operational read closure
+
+`VER-CVG-087`–`VER-CVG-089` registram o commit `bf0cc506ff2fbbb99c77d334cfa60ba5921ffb22`: diagnostics, hospitalization, medication, stock, finance, communication, knowledge, queue e AI sessions foram extraídos para repositories tipados, com adapters PostgreSQL `READ ONLY`, escopo contextual, joins explícitos e validação fail-closed; as rotas e o resumo operacional não acessam essas coleções diretamente. A regressão passou `npm test` 126 (`125 pass`, `1 skip`), `test:database` 20/20, typecheck, lint, build, static, PDP, `verify:production` estrutural e diff check.
+
+Esta evidência continua local/sintética; não há PostgreSQL concorrente, staging, provider/DeepSeek, secret authority, collector/SLO, carga/chaos/recovery production-like, WebKit/assistive tech/zoom real, crítica independente aprovadora ou aceite humano. O CI remoto do SHA `bf0cc50` ainda precisa ser observado; o veredito permanece `FAIL_WITH_LIMITATIONS`/`AAA_NOT_PROVEN`.

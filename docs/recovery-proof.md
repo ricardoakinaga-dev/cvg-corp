@@ -8,6 +8,7 @@ Status: `PARTIAL/SYNTHETIC_ONLY`. O projeto valida localmente manifesto/digests,
 - bundle parcial, stale, migration mismatch, watermark divergente, ciphertext ou chave inválida falham fechado;
 - destino restaurado inicia em quarentena e sem login/readiness;
 - outbox, inbox, efeitos externos, usage, auditoria e `workerJobs` conservam digest/watermark; jobs preservam tentativas, limite, estado e fence token;
+- `scripts/verify-postgres-restore.ts` reaplica `workerJobs` no destino e compara os digests do ledger restaurado e da origem antes de declarar o drill sintético como bem-sucedido;
 - heartbeats não são restaurados como prova de liveness antiga: o destino exige um heartbeat novo do worker autorizado;
 - unknown outcome exige reconciliação ou revisão manual, nunca reenvio cego;
 - liberação só ocorre após validação de migrations, integridade, escopo, proveniência e aprovação.

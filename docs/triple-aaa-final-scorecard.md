@@ -27,4 +27,8 @@ Resultado: `FAIL_WITH_LIMITATIONS`; Triplo AAA não provado. A escala abaixo (0�
 
 ## Veredito
 
+## Checkpoint atual — 2026-09-10
+
+O commit `c6048e4eb2b3714d4eb4ffc9603727b0cd2fe586` adiciona ao drill de recovery a reaplicação e comparação do ledger `workerJobs` no destino quarentenado e a verificação de invariância da origem. A bateria local permanece verde, mas o script PostgreSQL real, concorrência, RTO/RPO, provider/staging/DeepSeek, observabilidade, handlers de negócio, crítica aprovadora e aceite humano continuam sem evidência; score e veredito não mudam.
+
 Os pontos fortes locais são reais e reproduzíveis. O harness sintético atravessa o `ToolGateway`, usage/provenance e exportação governada têm persistência/envelope cifrado local, o contexto do bridge é autenticado por HMAC, as leituras clínicas e operacionais sensíveis têm adapters normalizados, jobs têm admission/claim/heartbeat duráveis e a UI separa 401/403/stale; a topologia TLS de produção é estruturalmente validada. Ainda assim, os bloqueadores críticos continuam sendo turno DeepSeek/provider/secret/staging reais, PostgreSQL concorrente e handlers production-like, observabilidade, WebKit/assistive tech, carga/chaos, recovery operacional, CI do commit auditado, crítica aprovadora e aceite humano. Não existe aprovação AAA. O próximo gate só pode mudar o veredito com evidência correspondente ao mesmo commit, não com documentação adicional isolada.

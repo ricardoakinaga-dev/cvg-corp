@@ -28,6 +28,7 @@ const requiredFiles = [
   "docker/nginx/proxy.conf",
   "docker/worker.ts",
   "apps/api/src/app.ts",
+  "apps/api/src/application/export-service.ts",
   "apps/api/src/server.ts",
   "apps/worker/src/main.ts",
   "apps/worker/src/worker.ts",
@@ -50,6 +51,7 @@ const requiredFiles = [
   "db/migrations/026_audit_tamper_evident_chain.sql",
   "db/migrations/027_append_only_audit_guard.sql",
   "db/migrations/028_append_only_lock_privileges.sql",
+  "db/migrations/029_ai_turn_provenance_usage_and_dml_scope.sql",
   "docs/runbooks/deploy.md",
   "docs/runbooks/deployment.md",
   "docs/runbooks/rollback.md",
@@ -200,6 +202,11 @@ function inspectStaticContracts(): void {
   requireText("db/migrations/026_audit_tamper_evident_chain.sql", "previous_hash");
   requireText("db/migrations/027_append_only_audit_guard.sql", "append-only");
   requireText("db/migrations/028_append_only_lock_privileges.sql", "grant update");
+  requireText("db/migrations/029_ai_turn_provenance_usage_and_dml_scope.sql", "usage_record_id");
+  requireText("db/migrations/029_ai_turn_provenance_usage_and_dml_scope.sql", "provenance_json");
+  requireText("db/migrations/029_ai_turn_provenance_usage_and_dml_scope.sql", "cvg_request_dml_scope_allows");
+  requireText("apps/api/src/application/export-service.ts", "encryptRecoveryBundle");
+  requireText("apps/api/src/application/export-service.ts", "idempotentAsync");
   requireText(".gauntlet/bar-v3.json", "V3-AAA-001");
   requireText(".github/workflows/ci.yml", "npm ci --ignore-scripts");
   requireText(".github/workflows/ci.yml", "npx playwright install --with-deps chromium");
@@ -373,7 +380,7 @@ function inspectComposeConfig(config: ComposeConfig): void {
 function inspectProductionEnvironment(): void {
   if (!process.argv.includes("--production")) return;
   const environment = process.env;
-  const requiredNames = ["DATABASE_URL", "CVG_BOOTSTRAP_PASSWORD", "CVG_WEB_ORIGIN", "CVG_TRUST_PROXY", "CVG_DEEPSEEK_BASE_URL", "CVG_DEEPSEEK_EXPECTED_ENGINE_COMMIT", "CVG_DEEPSEEK_EXPECTED_MANIFEST_VERSION", "CVG_DEEPSEEK_BEARER_TOKEN_REF", "CVG_DEEPSEEK_CONTEXT_SIGNING_SECRET_REF"];
+  const requiredNames = ["DATABASE_URL", "CVG_BOOTSTRAP_PASSWORD", "CVG_WEB_ORIGIN", "CVG_TRUST_PROXY", "CVG_DEEPSEEK_BASE_URL", "CVG_DEEPSEEK_EXPECTED_ENGINE_COMMIT", "CVG_DEEPSEEK_EXPECTED_MANIFEST_VERSION", "CVG_DEEPSEEK_BEARER_TOKEN_REF", "CVG_DEEPSEEK_CONTEXT_SIGNING_SECRET_REF", "CVG_RECOVERY_ENCRYPTION_KEY_REF"];
   for (const name of requiredNames) if (!environment[name]?.trim()) failures.push(`production configuration: ${name} is required`);
   if (!environment.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT?.trim() && !environment.OTEL_EXPORTER_OTLP_ENDPOINT?.trim()) failures.push("production configuration: OTEL_EXPORTER_OTLP_ENDPOINT or OTEL_EXPORTER_OTLP_TRACES_ENDPOINT is required");
   if (environment.NODE_ENV !== "production") failures.push("production configuration: NODE_ENV must be production");

@@ -58,6 +58,7 @@ export const CAPABILITY_ROLES = Object.freeze({
   "ai:sessions:read": ["admin", "veterinario", "recepcao"],
   "metrics:read": ["admin", "operador"],
   "ops:snapshot": ["admin"],
+  "ops:export": ["admin"],
   "ops:restore": ["admin"]
 } as const satisfies Record<string, readonly Role[]>);
 

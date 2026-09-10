@@ -1,6 +1,6 @@
 import type { CvgContext, OpaqueId } from "@cvg/contracts";
 import type { CvgStore, StoreSnapshot } from "@cvg/domain";
-import { assertPolicyAllowed, authorizeApplicationRequest } from "@cvg/agent-policy";
+import { enforceApplicationPolicy } from "@cvg/agent-policy";
 
 /**
  * Application command boundary for the domain. The HTTP layer may select and
@@ -122,7 +122,7 @@ export class DomainCommandService {
   }
 
   private authorize(context: CvgContext, operation: string): void {
-    assertPolicyAllowed(authorizeApplicationRequest(context, operation));
+    enforceApplicationPolicy(context, operation);
     this.store.validateContext(context);
   }
 }

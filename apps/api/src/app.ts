@@ -23,6 +23,7 @@ import {
   dispensationInputSchema,
   diagnosticRequestInputSchema,
   failure,
+  governedExportInputSchema,
   hospitalEpisodeInputSchema,
   id,
   idSchema,
@@ -81,6 +82,7 @@ import { AgentApplicationService } from "./application/agent-service.ts";
 import { PatientApplicationService, PostgresPatientRepository, StorePatientRepository } from "./application/patient-service.ts";
 import { createReadApplicationService } from "./application/read-services.ts";
 import { DomainCommandService } from "./application/domain-command-service.ts";
+import { ExportApplicationService, governedExportDigest } from "./application/export-service.ts";
 
 const SESSION_COOKIE = "cvg_session";
 const CSRF_COOKIE = "cvg_csrf";
@@ -115,6 +117,7 @@ export interface ServerConfig {
   deepseekExpectedManifestVersion: string | null;
   deepseekBearerTokenRef: string | null;
   deepseekContextSigningSecretRef: string | null;
+  recoveryEncryptionKeyRef: string | null;
   secretDir: string;
   workerOrganizationId: string | null;
   secretProvider: "none" | "env" | "file" | "docker" | "vault" | "aws" | "gcp" | "azure" | "kubernetes";
@@ -263,6 +266,7 @@ function getConfig(overrides: Partial<ServerConfig> = {}): ServerConfig {
     deepseekExpectedManifestVersion: overrides.deepseekExpectedManifestVersion ?? typed.deepseekExpectedManifestVersion,
     deepseekBearerTokenRef: overrides.deepseekBearerTokenRef ?? typed.deepseekBearerTokenRef,
     deepseekContextSigningSecretRef: overrides.deepseekContextSigningSecretRef ?? typed.deepseekContextSigningSecretRef,
+    recoveryEncryptionKeyRef: overrides.recoveryEncryptionKeyRef ?? typed.recoveryEncryptionKeyRef,
     secretDir: overrides.secretDir ?? typed.secretDir,
     workerOrganizationId: overrides.workerOrganizationId ?? typed.workerOrganizationId,
     secretProvider: overrides.secretProvider ?? typed.secretProvider,
@@ -270,7 +274,7 @@ function getConfig(overrides: Partial<ServerConfig> = {}): ServerConfig {
     rateLimitRequestsPerWindow: overrides.rateLimitRequestsPerWindow ?? typed.rateLimitRequestsPerWindow,
     rateLimitWindowSeconds: overrides.rateLimitWindowSeconds ?? typed.rateLimitWindowSeconds
   });
-  return { nodeEnv: validated.nodeEnv, host: validated.host, trustProxy: validated.trustProxy, port: validated.apiPort, webOrigin: validated.webOrigin, storageMode: validated.storageMode, demoMode: validated.demoMode, sessionTtlMinutes: validated.sessionTtlMinutes, authMfaMode: validated.authMfaMode, passwordMinLength: validated.passwordMinLength, passwordMaxAgeDays: validated.passwordMaxAgeDays, authMaxFailedAttempts: validated.authMaxFailedAttempts, authLockoutMinutes: validated.authLockoutMinutes, authChallengeTtlSeconds: validated.authChallengeTtlSeconds, authMaxChallengeAttempts: validated.authMaxChallengeAttempts, databaseUrl: validated.databaseUrl, bootstrapPassword: validated.bootstrapPassword, deepseekBaseUrl: validated.deepseekBaseUrl, deepseekRuntimeEnabled: validated.deepseekRuntimeEnabled, deepseekExpectedEngineCommit: validated.deepseekExpectedEngineCommit, deepseekExpectedManifestVersion: validated.deepseekExpectedManifestVersion, deepseekBearerTokenRef: validated.deepseekBearerTokenRef, deepseekContextSigningSecretRef: validated.deepseekContextSigningSecretRef, secretDir: validated.secretDir, workerOrganizationId: validated.workerOrganizationId, secretProvider: validated.secretProvider, rateLimitBackend: validated.rateLimitBackend, rateLimitRequestsPerWindow: validated.rateLimitRequestsPerWindow, rateLimitWindowSeconds: validated.rateLimitWindowSeconds };
+  return { nodeEnv: validated.nodeEnv, host: validated.host, trustProxy: validated.trustProxy, port: validated.apiPort, webOrigin: validated.webOrigin, storageMode: validated.storageMode, demoMode: validated.demoMode, sessionTtlMinutes: validated.sessionTtlMinutes, authMfaMode: validated.authMfaMode, passwordMinLength: validated.passwordMinLength, passwordMaxAgeDays: validated.passwordMaxAgeDays, authMaxFailedAttempts: validated.authMaxFailedAttempts, authLockoutMinutes: validated.authLockoutMinutes, authChallengeTtlSeconds: validated.authChallengeTtlSeconds, authMaxChallengeAttempts: validated.authMaxChallengeAttempts, databaseUrl: validated.databaseUrl, bootstrapPassword: validated.bootstrapPassword, deepseekBaseUrl: validated.deepseekBaseUrl, deepseekRuntimeEnabled: validated.deepseekRuntimeEnabled, deepseekExpectedEngineCommit: validated.deepseekExpectedEngineCommit, deepseekExpectedManifestVersion: validated.deepseekExpectedManifestVersion, deepseekBearerTokenRef: validated.deepseekBearerTokenRef, deepseekContextSigningSecretRef: validated.deepseekContextSigningSecretRef, recoveryEncryptionKeyRef: validated.recoveryEncryptionKeyRef, secretDir: validated.secretDir, workerOrganizationId: validated.workerOrganizationId, secretProvider: validated.secretProvider, rateLimitBackend: validated.rateLimitBackend, rateLimitRequestsPerWindow: validated.rateLimitRequestsPerWindow, rateLimitWindowSeconds: validated.rateLimitWindowSeconds };
 }
 
 function tokenDigest(value: string): string {
@@ -376,7 +380,8 @@ const commandOperationByAuditAction: Record<string, string> = {
   "ai.turn": "ai.turn",
   "ai.approval": "ai.approval",
   "ai.approval.retry": "ai.approval.retry",
-  "ai.draft.promote": "ai.draft.promote"
+  "ai.draft.promote": "ai.draft.promote",
+  "ops.export": "ops.export"
 };
 
 export async function createRuntime(options: ServerOptions = {}): Promise<CvgServerRuntime> {
@@ -486,6 +491,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
   const patientApplication = new PatientApplicationService(persistence ? new PostgresPatientRepository(persistence, store) : new StorePatientRepository(store));
   const readApplication = createReadApplicationService(store, persistence);
   const domainCommands = new DomainCommandService(store);
+  const exportApplication = new ExportApplicationService(store, persistence, secretProvider, config.recoveryEncryptionKeyRef);
   const app = Fastify({ logger: false, bodyLimit: 256 * 1024, requestIdHeader: "x-request-id", trustProxy: config.trustProxy });
   app.addHook("onClose", async () => { await agentRuntime.shutdown(); });
   app.addHook("onClose", async () => { await otelRuntime?.shutdown(); });
@@ -968,15 +974,14 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
   });
 
   app.post("/api/v1/auth/logout", async (request, reply) => {
-    const session = requireSession(request);
+    const { session, context } = requestContext(request, "auth.logout", null, null, true, false);
     requireCsrf(request, session);
-    const corr = correlationId(request);
     store.revokeSession(session);
-    store.recordAudit({ organizationId: session.organizationId, actorId: session.userId, unitId: null, workspaceId: null, action: "auth.logout", resourceType: "Session", resourceId: session.id, result: "ALLOWED", reason: null, correlationId: corr, metadata: {} });
+    audit(context, "auth.logout", "Session", session.id, "ALLOWED");
     reply.clearCookie(SESSION_COOKIE, { path: "/" });
     reply.clearCookie(CSRF_COOKIE, { path: "/" });
     telemetry.sessionClosed();
-    return response(reply, success({ loggedOut: true }, corr));
+    return response(reply, success({ loggedOut: true }, context.correlationId));
   });
 
   app.get("/api/v1/me", async (request, reply) => {
@@ -1512,7 +1517,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const approvalId = id(parse(idSchema, (request.params as { id: string }).id));
     const input = parse(aiTurnInputSchema, request.body);
     if (input.approvalId !== approvalId) throw new DomainError("INVALID_INPUT", "approvalId deve corresponder à aprovação da rota.", 400);
-    const { context } = requestContext(request, `ai.turn.${input.purpose}`, input.patientId, input.encounterId, false, true, input.resourceId ?? approvalId);
+    const { context } = requestContext(request, "ai.approval.retry", input.patientId, input.encounterId, false, true, input.resourceId ?? approvalId);
     const result = await agentApplication.retryTurn(context, input, approvalId);
     const turnResult = result.value;
     audit(context, "ai.approval.retry", "AiTurn", turnResult.turn.id, "ALLOWED", "dispatch revalidado após approval", { provider: turnResult.provenance.provider, replay: result.replayed });
@@ -1643,6 +1648,17 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const serialized = JSON.parse(serializeSnapshot(snapshot)) as StoreSnapshot;
     audit(context, "ops.snapshot", "Snapshot", null, "ALLOWED");
     return response(reply, success({ schemaVersion: 1, createdAt: now(), digest: digest(serialized), redacted: true, snapshot: { organizations: serialized.organizations.map((organization) => ({ id: organization.id, name: organization.name, status: organization.status, authorizationRevision: organization.authorizationRevision })), counts: { units: serialized.units.length, workspaces: serialized.workspaces.length, users: serialized.users.length, patients: serialized.patients.length, auditRecords: serialized.auditRecords.length, commandReceipts: serialized.commandReceipts.length, quarantined: serialized.quarantined.length } } }, context.correlationId));
+  });
+
+  app.post("/api/v1/ops/export", async (request, reply) => {
+    const session = requireSession(request); requireCsrf(request, session);
+    const { context } = requestContext(request, "ops.export");
+    store.requireRole(context, ["admin"], "ops:export");
+    const input = parse(governedExportInputSchema, request.body);
+    const idempotencyKey = requireIdempotencyKey(request);
+    const result = await exportApplication.create(context, input, idempotencyKey);
+    audit(context, "ops.export", "RecoveryBundle", result.value.exportId, "ALLOWED", null, { expiresAt: result.value.expiresAt, payloadDigest: result.value.envelope.payloadDigest, exportDigest: governedExportDigest(result.value) });
+    return response(reply, success({ ...result.value, receiptId: result.receipt.id, replayed: result.replayed }, context.correlationId), 201);
   });
 
   app.post("/api/v1/ops/restore", async (request, reply) => {

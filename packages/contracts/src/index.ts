@@ -319,6 +319,12 @@ export const knowledgeDocumentInputSchema = z.object({
 }).strict();
 export type KnowledgeDocumentInput = z.infer<typeof knowledgeDocumentInputSchema>;
 
+export const governedExportInputSchema = z.object({
+  purpose: z.string().trim().min(8).max(240),
+  ttlSeconds: z.number().int().min(60).max(86_400).default(3_600)
+}).strict();
+export type GovernedExportInput = z.infer<typeof governedExportInputSchema>;
+
 export const aiTurnInputSchema = z.object({
   sessionId: idSchema.nullable().default(null),
   prompt: z.string().trim().min(1).max(8_000),
@@ -921,6 +927,32 @@ export interface AiSession {
   createdAt: string;
 }
 
+export type AiUsageStatus = "RECEIVED" | "SETTLED" | "RECONCILIATION_REQUIRED" | "QUARANTINED";
+
+export interface AiTurnUsage {
+  id: OpaqueId;
+  reservationId: OpaqueId | null;
+  providerRequestId: string | null;
+  idempotencyKey: string;
+  usageKind: string;
+  reservedUnits: number;
+  consumedUnits: number;
+  status: AiUsageStatus;
+  record: Record<string, unknown>;
+}
+
+export interface AiTurnProvenance {
+  provider: string;
+  engineCommit: string;
+  manifestVersion: string;
+  profileDigest: string;
+  policyRevision: string;
+  references: Array<{ title: string; source: string }>;
+  referencesDigest?: string;
+  correlationId: string;
+  usageRecordId?: OpaqueId;
+}
+
 export interface AiTurn {
   id: OpaqueId;
   sessionId: OpaqueId;
@@ -931,6 +963,9 @@ export interface AiTurn {
   inputTokens: number;
   outputTokens: number;
   references: Array<{ title: string; source: string }>;
+  /** New application-bound turns persist the exact evidence and usage link. */
+  provenance?: AiTurnProvenance;
+  usage?: AiTurnUsage;
   createdAt: string;
 }
 

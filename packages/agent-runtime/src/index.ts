@@ -1,4 +1,4 @@
-import type { AiApproval, AiDraft, AiSession, AiTurn, AiTurnInput, CvgContext, OpaqueId } from "@cvg/contracts";
+import type { AiApproval, AiDraft, AiSession, AiTurn, AiTurnInput, AiTurnProvenance, CvgContext, OpaqueId } from "@cvg/contracts";
 
 export type AgentRuntimeStatus = "READY" | "DEGRADED" | "UNAVAILABLE" | "DISABLED";
 
@@ -23,15 +23,7 @@ export interface AgentTurnResult {
   turn: AiTurn;
   draft: AiDraft | null;
   approval: AiApproval | null;
-  provenance: {
-    provider: string;
-    engineCommit: string;
-    manifestVersion: string;
-    profileDigest: string;
-    policyRevision: string;
-    references: Array<{ title: string; source: string }>;
-    correlationId: string;
-  };
+  provenance: AiTurnProvenance;
 }
 
 export interface AgentReplayResult {

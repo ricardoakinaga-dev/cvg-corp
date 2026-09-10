@@ -67,7 +67,7 @@ export interface WorkerDependencies {
   maxOutstandingOutbox?: number;
 }
 
-/** Separate process boundary for leases, outbox delivery and reconciliation. */
+/** Separate process boundary for tenant-scoped leases, fenced outbox delivery and reconciliation. */
 export class CvgWorkerApplication {
   private readonly relay: OutboxWorker;
   private stopped = false;

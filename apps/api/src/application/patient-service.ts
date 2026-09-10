@@ -1,6 +1,7 @@
 import type { AnimalPatient, CvgContext, PatientInput, OpaqueId } from "@cvg/contracts";
 import { DomainError, type CvgStore } from "@cvg/domain";
 import type { PostgresPersistence } from "@cvg/persistence";
+import { enforceApplicationPolicy } from "@cvg/agent-policy";
 
 export type PatientProjectionItem = AnimalPatient & { guardian: { id: OpaqueId; displayName: string; phone: string } | null };
 export type PatientProjection = PatientProjectionItem[];
@@ -60,14 +61,17 @@ export class PatientApplicationService {
   constructor(private readonly repository: PatientRepository) {}
 
   list(context: CvgContext, query?: string): Promise<PatientProjection> {
+    enforceApplicationPolicy(context, "patients.read");
     return this.repository.list(context, query);
   }
 
   get(context: CvgContext, patientId: OpaqueId): Promise<PatientProjectionItem | null> {
+    enforceApplicationPolicy(context, "patients.read", { resourceId: patientId });
     return this.repository.get(context, patientId);
   }
 
   create(context: CvgContext, input: PatientInput): AnimalPatient {
+    enforceApplicationPolicy(context, "patients.create", { resourceId: input.guardianId });
     return this.repository.create(context, input);
   }
 }

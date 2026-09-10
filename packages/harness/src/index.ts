@@ -99,9 +99,13 @@ export interface HarnessTurnResult {
   approval: AiApproval | null;
   provenance: {
     engineCommit: string;
+    manifestVersion: string;
     profileDigest: string;
     policyRevision: string;
     references: Array<{ title: string; source: string }>;
+    referencesDigest?: string;
+    correlationId: string;
+    usageRecordId?: OpaqueId;
     provider: "local-stub";
   };
 }
@@ -151,12 +155,12 @@ export class GovernedHarness {
     if (!isInContext(session, context) || session.patientId !== input.patientId || session.encounterId !== input.encounterId || session.purpose !== input.purpose) throw new DomainError("POLICY_DENIED", "O contexto do turno não pode mudar a finalidade, o escopo, o paciente ou atendimento de uma sessão existente.", 403);
     const prompt = input.prompt;
     if (this.looksLikeInjection(prompt)) {
-      const turn = this.persistTurn(session, prompt, "QUARANTINED", "Conteúdo retido: o texto recebido é dado não confiável e não pode alterar policy ou tools.", 0, 0, []);
-      return this.result(session, turn, null, null, []);
+      const turn = this.persistTurn(context, session, prompt, "QUARANTINED", "Conteúdo retido: o texto recebido é dado não confiável e não pode alterar policy ou tools.", 0, 0, []);
+      return this.result(context, session, turn, null, null, []);
     }
     const tool = input.requestedTool ? TOOL_REGISTRY.find((candidate) => candidate.name === input.requestedTool) : undefined;
     if (input.requestedTool && !tool) {
-      const turn = this.persistTurn(session, prompt, "DENIED", "Tool não registrada no profile CVG.", 0, 0, []);
+      const turn = this.persistTurn(context, session, prompt, "DENIED", "Tool não registrada no profile CVG.", 0, 0, []);
       throw new DomainError("POLICY_DENIED", "A capability solicitada não está registrada.", 403, { turnId: turn.id });
     }
     if (tool) {
@@ -164,7 +168,7 @@ export class GovernedHarness {
         this.store.requireRole(context, tool.allowedRoles, tool.capability);
       } catch (error) {
         if (error instanceof DomainError && error.code === "FORBIDDEN") {
-          const turn = this.persistTurn(session, prompt, "DENIED", "Role sem permissão para a capability solicitada.", 0, 0, []);
+          const turn = this.persistTurn(context, session, prompt, "DENIED", "Role sem permissão para a capability solicitada.", 0, 0, []);
           throw new DomainError("POLICY_DENIED", "A capability não está disponível para este perfil.", 403, { turnId: turn.id });
         }
         throw error;
@@ -174,25 +178,25 @@ export class GovernedHarness {
       const approval = approvalId ? this.store.aiApprovals.get(approvalId) : undefined;
       const requestDigest = this.approvalRequestDigest(context, session, input, tool.name);
       if (approvalId && (!approval || approval.organizationId !== context.organizationId || approval.actorId !== session.actorId || approval.sessionId !== session.id || approval.toolName !== tool.name || approval.resourceId !== (input.resourceId ?? input.encounterId ?? input.patientId) || approval.patientId !== input.patientId || approval.encounterId !== input.encounterId || approval.unitId !== context.unitId || approval.workspaceId !== context.workspaceId || approval.purpose !== input.purpose || approval.policyRevision !== context.policyRevision || approval.requestDigest !== requestDigest || Date.parse(approval.expiresAt) <= Date.now() || approval.decidedBy === null || (tool.risk === "HIGH_IMPACT" && approval.decidedBy === approval.actorId) || approval.decision === "rejected" || approval.decision === "consumed")) {
-        const turn = this.persistTurn(session, prompt, "DENIED", "Approval ausente, incompatível ou já consumida; nenhum dispatch foi realizado.", this.estimateInput(prompt), 0, []);
+        const turn = this.persistTurn(context, session, prompt, "DENIED", "Approval ausente, incompatível ou já consumida; nenhum dispatch foi realizado.", this.estimateInput(prompt), 0, []);
         throw new DomainError("POLICY_DENIED", "A aprovação não corresponde exatamente a esta operação ou já foi consumida.", 403, { turnId: turn.id });
       }
       if (!approval) {
-        const turn = this.persistTurn(session, prompt, "RECEIVED", null, this.estimateInput(prompt), 0, []);
+        const turn = this.persistTurn(context, session, prompt, "RECEIVED", null, this.estimateInput(prompt), 0, []);
         const pending: AiApproval = { id: makeId(), organizationId: context.organizationId, actorId: context.actorId, sessionId: session.id, turnId: turn.id, toolName: tool.name, resourceId: input.resourceId ?? input.encounterId ?? input.patientId, patientId: input.patientId, encounterId: input.encounterId, unitId: context.unitId, workspaceId: context.workspaceId, purpose: input.purpose, requestDigest, policyRevision: context.policyRevision, expiresAt: new Date(Date.now() + 5 * 60_000).toISOString(), decision: "unavailable", decidedBy: null, reason: "Ação exige confirmação contextual e não pode ser presumida.", createdAt: now() };
         this.store.aiApprovals.set(pending.id, pending);
-        return this.result(session, turn, null, pending, []);
+        return this.result(context, session, turn, null, pending, []);
       }
       const originalTurn = this.store.aiTurns.get(approval.turnId);
       if (!originalTurn || originalTurn.prompt !== prompt) {
-        const turn = this.persistTurn(session, prompt, "DENIED", "Os argumentos diferem do turno aprovado; nenhum dispatch foi realizado.", this.estimateInput(prompt), 0, []);
+        const turn = this.persistTurn(context, session, prompt, "DENIED", "Os argumentos diferem do turno aprovado; nenhum dispatch foi realizado.", this.estimateInput(prompt), 0, []);
         throw new DomainError("POLICY_DENIED", "A aprovação está vinculada a outros argumentos.", 403, { turnId: turn.id });
       }
     }
     const estimated = this.estimateInput(prompt);
     const available = this.availableBudget(session.id);
     if (available < estimated + 400) {
-      const turn = this.persistTurn(session, prompt, "DENIED", "Budget insuficiente antes do turno; nenhuma chamada a provider foi feita.", estimated, 0, []);
+      const turn = this.persistTurn(context, session, prompt, "DENIED", "Budget insuficiente antes do turno; nenhuma chamada a provider foi feita.", estimated, 0, []);
       throw new DomainError("BUDGET_EXCEEDED", "O budget disponível não cobre este turno.", 429, { available, required: estimated + 400, turnId: turn.id });
     }
     if (tool) {
@@ -218,7 +222,7 @@ export class GovernedHarness {
     const response = this.composeSafeResponse(context, input, tool, references);
     const outputTokens = this.estimateOutput(response);
     this.consumeBudget(session, estimated + outputTokens);
-    const turn = this.persistTurn(session, prompt, "COMPLETED", response, estimated, outputTokens, references);
+    const turn = this.persistTurn(context, session, prompt, "COMPLETED", response, estimated, outputTokens, references);
     if (approvalId) {
       const approval = this.store.aiApprovals.get(approvalId);
       if (approval) approval.decision = "consumed";
@@ -229,7 +233,7 @@ export class GovernedHarness {
       this.store.aiDrafts.set(createdDraft.id, createdDraft);
       draft = createdDraft;
     }
-    return this.result(session, turn, draft, null, references);
+    return this.result(context, session, turn, draft, null, references);
   }
 
   approve(context: CvgContext, approvalId: OpaqueId, decision: "allowed-once" | "rejected", reason: string | null): AiApproval {
@@ -265,14 +269,30 @@ export class GovernedHarness {
     return { draft, documentId: document.id };
   }
 
-  private persistTurn(session: AiSession, prompt: string, status: AiTurn["status"], response: string | null, inputTokens: number, outputTokens: number, references: Array<{ title: string; source: string }>): AiTurn {
-    const turn: AiTurn = { id: makeId(), sessionId: session.id, prompt, response, status, model: "cvg-local-governed-stub", inputTokens, outputTokens, references, createdAt: now() };
+  private persistTurn(context: CvgContext, session: AiSession, prompt: string, status: AiTurn["status"], response: string | null, inputTokens: number, outputTokens: number, references: Array<{ title: string; source: string }>): AiTurn {
+    const id = makeId();
+    const usageId = makeId();
+    const referencesDigest = digest(references);
+    const turn: AiTurn = {
+      id,
+      sessionId: session.id,
+      prompt,
+      response,
+      status,
+      model: "cvg-local-governed-stub",
+      inputTokens,
+      outputTokens,
+      references,
+      provenance: { provider: "local-stub", engineCommit: DSH_ENGINE_COMMIT, manifestVersion: DSH_MANIFEST_VERSION, profileDigest: this.profileDigest, policyRevision: context.policyRevision, references, referencesDigest, correlationId: context.correlationId, usageRecordId: usageId },
+      usage: { id: usageId, reservationId: null, providerRequestId: null, idempotencyKey: `ai-turn:${id}`, usageKind: "TOKENS", reservedUnits: inputTokens + outputTokens, consumedUnits: inputTokens + outputTokens, status: status === "OUTCOME_UNKNOWN" ? "RECONCILIATION_REQUIRED" : "SETTLED", record: { kind: "AI_TURN_USAGE", turnId: id, sessionId: session.id, model: "cvg-local-governed-stub", provider: "local-stub", engineCommit: DSH_ENGINE_COMMIT, manifestVersion: DSH_MANIFEST_VERSION, profileDigest: this.profileDigest, policyRevision: context.policyRevision, correlationId: context.correlationId, referencesDigest, responseDigest: digest(response ?? "") } },
+      createdAt: now()
+    };
     this.store.aiTurns.set(turn.id, turn);
     return turn;
   }
 
-  private result(session: AiSession, turn: AiTurn, draft: AiDraft | null, approval: AiApproval | null, references: Array<{ title: string; source: string }>): HarnessTurnResult {
-    return { session, turn, draft, approval, provenance: { engineCommit: DSH_ENGINE_COMMIT, profileDigest: this.profileDigest, policyRevision: "local-synthetic-v1", references, provider: "local-stub" } };
+  private result(context: CvgContext, session: AiSession, turn: AiTurn, draft: AiDraft | null, approval: AiApproval | null, references: Array<{ title: string; source: string }>): HarnessTurnResult {
+    return { session, turn, draft, approval, provenance: { engineCommit: DSH_ENGINE_COMMIT, manifestVersion: DSH_MANIFEST_VERSION, profileDigest: this.profileDigest, policyRevision: context.policyRevision, references, referencesDigest: turn.provenance!.referencesDigest!, correlationId: context.correlationId, usageRecordId: turn.usage!.id, provider: "local-stub" } };
   }
 
   private approvalRequestDigest(context: CvgContext, session: AiSession, input: AiTurnInput, toolName: string): string {

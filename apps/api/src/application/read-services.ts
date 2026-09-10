@@ -1,6 +1,7 @@
 import type { AnimalPatient, Appointment, CvgContext, Guardian, OpaqueId } from "@cvg/contracts";
 import type { CvgStore } from "@cvg/domain";
 import type { NormalizedAppointmentRead, PostgresPersistence } from "@cvg/persistence";
+import { enforceApplicationPolicy } from "@cvg/agent-policy";
 
 export type PatientRead = AnimalPatient & { guardian: Pick<Guardian, "id" | "displayName" | "phone"> | null };
 export type AppointmentRead = Appointment & { patient: { id: OpaqueId; name: string } | null; provider: string | null };
@@ -54,10 +55,12 @@ export class ReadApplicationService {
   constructor(private readonly guardians: GuardianReadRepository, private readonly appointments: AppointmentReadRepository) {}
 
   listGuardians(context: CvgContext, query?: string): Promise<Guardian[]> {
+    enforceApplicationPolicy(context, "guardians.read");
     return this.guardians.list(context, query);
   }
 
   listAppointments(context: CvgContext, range: "today" | "week" = "today"): Promise<AppointmentRead[]> {
+    enforceApplicationPolicy(context, "appointments.read");
     return this.appointments.list(context, range);
   }
 }

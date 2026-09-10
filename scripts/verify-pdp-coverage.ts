@@ -1,4 +1,5 @@
 import { readFile } from "node:fs/promises";
+import { API_ROUTE_CATALOG } from "@cvg/contracts";
 import { applicationPolicyFor, APPLICATION_POLICY_REGISTRY, toolPolicyFor, TOOL_POLICY_REGISTRY } from "@cvg/agent-policy";
 import { TOOL_REGISTRY } from "@cvg/harness";
 
@@ -13,10 +14,53 @@ for (const source of apiSources) {
     const operation = (match[1] ?? match[2] ?? "").replace(/\$\{[^}]+\}/g, "SYNTHETIC");
     if (operation) operations.add(operation);
   }
+  for (const match of source.matchAll(/enforceApplicationPolicy\(request,\s*context,\s*"([^"]+)"/g)) {
+    if (match[1]) operations.add(match[1]);
+  }
 }
 
 for (const operation of operations) {
   if (!applicationPolicyFor(operation)) failures.push(`route operation ${operation} has no registered application PDP rule`);
+}
+
+const protectedCatalog = API_ROUTE_CATALOG.filter((route) => route.auth !== "PUBLIC");
+for (const route of protectedCatalog) {
+  if (!applicationPolicyFor(route.operation)) failures.push(`catalog route ${route.method} ${route.path} has no registered application PDP rule`);
+  const observed = route.operation === "ai.turn"
+    ? [...operations].some((operation) => operation.startsWith("ai.turn."))
+    : operations.has(route.operation);
+  if (!observed) failures.push(`catalog route ${route.method} ${route.path} is not bound to requestContext`);
+}
+if (new Set(API_ROUTE_CATALOG.map((route) => `${route.method} ${route.path}`)).size !== API_ROUTE_CATALOG.length) failures.push("API route catalog contains duplicate method/path entries");
+
+const boundarySources = await Promise.all([
+  readFile("apps/api/src/application/domain-command-service.ts", "utf8"),
+  readFile("apps/api/src/application/agent-service.ts", "utf8"),
+  readFile("apps/api/src/application/patient-service.ts", "utf8"),
+  readFile("apps/api/src/application/read-services.ts", "utf8"),
+  readFile("apps/api/src/application/export-service.ts", "utf8"),
+  readFile("apps/worker/src/worker.ts", "utf8"),
+  readFile("packages/integrations/src/index.ts", "utf8"),
+  readFile("packages/persistence/src/index.ts", "utf8")
+]);
+const [commandSource, agentSource, patientSource, readServiceSource, exportSource, workerSource, integrationSource, persistenceSource] = boundarySources;
+for (const [name, source] of [["DomainCommandService", commandSource], ["AgentApplicationService", agentSource], ["PatientApplicationService", patientSource], ["ReadApplicationService", readServiceSource], ["ExportApplicationService", exportSource]] as const) {
+  if (!source.includes("enforceApplicationPolicy")) failures.push(`${name} does not enforce the application PDP at its use-case boundary`);
+}
+if (!exportSource.includes('enforceApplicationPolicy(context, "ops.export"') || !exportSource.includes("encryptRecoveryBundle") || !exportSource.includes("idempotentAsync")) failures.push("ExportApplicationService is missing policy, encryption or idempotency controls");
+for (const match of commandSource.matchAll(/this\.(?:run|authorize)\(context,\s*"([^"]+)"/g)) {
+  const operation = match[1] ?? "";
+  if (operation && !applicationPolicyFor(operation)) failures.push(`DomainCommandService operation ${operation} has no application PDP rule`);
+}
+for (const operation of ["patients.read", "patients.create", "guardians.read", "appointments.read"]) {
+  if (!patientSource.includes(`enforceApplicationPolicy(context, "${operation}`) && !readServiceSource.includes(`enforceApplicationPolicy(context, "${operation}`)) failures.push(`repository use-case operation ${operation} has no explicit PDP call`);
+}
+for (const fragment of ["WORKER_LANES", "WorkerLaneContext", "organizationId", "outboxStats", "runBoundedLane", "claimOutbox"]) {
+  if (!workerSource.includes(fragment)) failures.push(`worker boundary is missing ${fragment} tenant/lease control`);
+}
+if (!integrationSource.includes("fenceToken") || !integrationSource.includes("completeOutbox") || !integrationSource.includes("failOutbox")) failures.push("worker boundary is missing fenced outbox completion controls");
+for (const fragment of ["exportRecoveryBundle", "organizationTransaction", "validateRecoveryBundle"]) {
+  if (!persistenceSource.includes(fragment)) failures.push(`durable export/recovery boundary is missing ${fragment}`);
 }
 
 const requiredDomains = ["guardians", "patients", "appointments", "encounters", "clinical", "diagnostics", "hospitalization", "medication", "stock", "finance", "communication", "audit"];

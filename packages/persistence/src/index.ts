@@ -711,6 +711,11 @@ function externalEffectDigest(input: DurableExternalEffectInput): string {
   return digest({ organizationId: input.organizationId, outboxId: input.outboxId, integrationId: input.integrationId, idempotencyKey: input.idempotencyKey, request: input.request });
 }
 
+function durableUsageDigest(input: DurableUsageInput): string {
+  const { id: _id, ...immutable } = input;
+  return digest(immutable);
+}
+
 function mapOutboxRow(row: OutboxRow): DurableOutboxRecord {
   return {
     id: sqlId(row.id, "outbox.id"),
@@ -905,6 +910,43 @@ async function writeScopedRows<T>(client: PoolClient, sql: string, rows: T[], sc
   }
 }
 
+async function writeUnitRows<T>(client: PoolClient, sql: string, rows: T[], unit: (row: T) => OpaqueId | null, values: (row: T) => unknown[]): Promise<void> {
+  for (const row of rows) {
+    const unitId = unit(row);
+    if (!unitId) throw new PersistenceCorruptionError("unit-scoped projection row has no unit scope");
+    await client.query("select set_config('cvg.unit_id', $1, true)", [unitId]);
+    await client.query("select set_config('cvg.workspace_id', '', true)");
+    await client.query(sql, values(row));
+  }
+}
+
+async function projectAiTurnUsage(client: PoolClient, snapshot: StoreSnapshot): Promise<void> {
+  for (const turn of snapshot.aiTurns) {
+    if ((turn.usage === undefined) !== (turn.provenance === undefined)) throw new PersistenceCorruptionError(`ai turn ${turn.id} has an incomplete provenance/usage pair`);
+    if (!turn.usage || !turn.provenance) continue;
+    const session = snapshot.aiSessions.find((candidate) => candidate.id === turn.sessionId);
+    if (!session) throw new PersistenceCorruptionError(`ai turn ${turn.id} has no resolvable session for usage scope`);
+    if (turn.provenance.usageRecordId !== turn.usage.id) throw new PersistenceCorruptionError(`ai turn ${turn.id} provenance does not bind its usage record`);
+    const input: DurableUsageInput = {
+      id: turn.usage.id,
+      organizationId: session.organizationId,
+      reservationId: turn.usage.reservationId,
+      providerRequestId: turn.usage.providerRequestId,
+      idempotencyKey: turn.usage.idempotencyKey,
+      usageKind: turn.usage.usageKind,
+      reservedUnits: turn.usage.reservedUnits,
+      consumedUnits: turn.usage.consumedUnits,
+      status: turn.usage.status,
+      record: turn.usage.record
+    };
+    const result = await client.query<{ id: string }>(
+      "insert into ai_usage_ledger(id, organization_id, reservation_id, provider_request_id, idempotency_key, usage_kind, reserved_units, consumed_units, status, record, record_digest, created_at) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, $11, $12) on conflict (organization_id, idempotency_key, usage_kind) do update set reserved_units = excluded.reserved_units, consumed_units = excluded.consumed_units, status = excluded.status, record = excluded.record, record_digest = excluded.record_digest, provider_request_id = excluded.provider_request_id, reservation_id = excluded.reservation_id where ai_usage_ledger.record_digest = excluded.record_digest returning id",
+      [input.id, input.organizationId, input.reservationId, input.providerRequestId, input.idempotencyKey, input.usageKind, input.reservedUnits, input.consumedUnits, input.status, JSON.stringify(input.record), durableUsageDigest(input), turn.createdAt]
+    );
+    if (!result.rows[0]) throw new PersistenceCorruptionError(`ai turn usage ${input.id} conflicts with a different idempotency record`);
+  }
+}
+
 async function projectDomain(client: PoolClient, snapshot: StoreSnapshot): Promise<void> {
   await writeScopedRows(client,
     "insert into guardians(id, organization_id, unit_id, workspace_id, display_name, phone, email, data_class, status) values ($1, $2, $3, $4, $5, $6, $7, $8, $9) on conflict (id) do update set organization_id = excluded.organization_id, unit_id = excluded.unit_id, workspace_id = excluded.workspace_id, display_name = excluded.display_name, phone = excluded.phone, email = excluded.email, data_class = excluded.data_class, status = excluded.status",
@@ -925,29 +967,34 @@ async function projectDomain(client: PoolClient, snapshot: StoreSnapshot): Promi
     snapshot.services,
     (service) => [service.id, service.organizationId, service.name, service.durationMinutes, service.priceCents, service.status]
   );
-  await writeRows(client,
+  await writeUnitRows(client,
     "insert into providers(id, organization_id, unit_id, display_name, specialty, role, status) values ($1, $2, $3, $4, $5, $6, $7) on conflict (id) do update set organization_id = excluded.organization_id, unit_id = excluded.unit_id, display_name = excluded.display_name, specialty = excluded.specialty, role = excluded.role, status = excluded.status",
     snapshot.providers,
+    (provider) => provider.unitId,
     (provider) => [provider.id, provider.organizationId, provider.unitId, provider.displayName, provider.specialty, provider.role, provider.status]
   );
-  await writeRows(client,
+  await writeUnitRows(client,
     "insert into resources(id, organization_id, unit_id, name, kind, status) values ($1, $2, $3, $4, $5, $6) on conflict (id) do update set organization_id = excluded.organization_id, unit_id = excluded.unit_id, name = excluded.name, kind = excluded.kind, status = excluded.status",
     snapshot.resources,
+    (resource) => resource.unitId,
     (resource) => [resource.id, resource.organizationId, resource.unitId, resource.name, resource.kind, resource.status]
   );
-  await writeRows(client,
+  await writeScopedRows(client,
     "insert into appointments(id, organization_id, unit_id, workspace_id, patient_id, provider_id, resource_id, service_id, starts_at, ends_at, purpose, status, version, created_at) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) on conflict (id) do update set organization_id = excluded.organization_id, unit_id = excluded.unit_id, workspace_id = excluded.workspace_id, patient_id = excluded.patient_id, provider_id = excluded.provider_id, resource_id = excluded.resource_id, service_id = excluded.service_id, starts_at = excluded.starts_at, ends_at = excluded.ends_at, purpose = excluded.purpose, status = excluded.status, version = excluded.version",
     snapshot.appointments,
+    (appointment) => ({ unitId: appointment.unitId, workspaceId: appointment.workspaceId }),
     (appointment) => [appointment.id, appointment.organizationId, appointment.unitId, appointment.workspaceId, appointment.patientId, appointment.providerId, appointment.resourceId, appointment.serviceId, appointment.startsAt, appointment.endsAt, appointment.purpose, appointment.status, appointment.version, appointment.createdAt]
   );
-  await writeRows(client,
+  await writeUnitRows(client,
     "insert into queue_entries(id, organization_id, unit_id, appointment_id, patient_id, status, priority, checked_in_at) values ($1, $2, $3, $4, $5, $6, $7, $8) on conflict (id) do update set organization_id = excluded.organization_id, unit_id = excluded.unit_id, appointment_id = excluded.appointment_id, patient_id = excluded.patient_id, status = excluded.status, priority = excluded.priority, checked_in_at = excluded.checked_in_at",
     snapshot.queueEntries,
+    (entry) => entry.unitId,
     (entry) => [entry.id, entry.organizationId, entry.unitId, entry.appointmentId, entry.patientId, entry.status, entry.priority, entry.checkedInAt]
   );
-  await writeRows(client,
+  await writeScopedRows(client,
     "insert into encounters(id, organization_id, unit_id, workspace_id, patient_id, appointment_id, chief_complaint, urgency, status, opened_at, closed_at) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) on conflict (id) do update set organization_id = excluded.organization_id, unit_id = excluded.unit_id, workspace_id = excluded.workspace_id, patient_id = excluded.patient_id, appointment_id = excluded.appointment_id, chief_complaint = excluded.chief_complaint, urgency = excluded.urgency, status = excluded.status, opened_at = excluded.opened_at, closed_at = excluded.closed_at",
     snapshot.encounters,
+    (encounter) => ({ unitId: encounter.unitId, workspaceId: encounter.workspaceId }),
     (encounter) => [encounter.id, encounter.organizationId, encounter.unitId, encounter.workspaceId, encounter.patientId, encounter.appointmentId, encounter.chiefComplaint, encounter.urgency, encounter.status, encounter.openedAt, encounter.closedAt]
   );
   const encounterById = new Map(snapshot.encounters.map((encounter) => [encounter.id, encounter]));
@@ -991,14 +1038,16 @@ async function projectDomain(client: PoolClient, snapshot: StoreSnapshot): Promi
     snapshot.diagnosticResults,
     (result) => [result.id, result.organizationId, result.requestId, result.specimenId, result.patientId, result.value, result.source, result.sourceVersion, result.status, result.createdAt]
   );
-  await writeRows(client,
+  await writeUnitRows(client,
     "insert into beds(id, organization_id, unit_id, name, status) values ($1, $2, $3, $4, $5) on conflict (id) do update set organization_id = excluded.organization_id, unit_id = excluded.unit_id, name = excluded.name, status = excluded.status",
     snapshot.beds,
+    (bed) => bed.unitId,
     (bed) => [bed.id, bed.organizationId, bed.unitId, bed.name, bed.status]
   );
-  await writeRows(client,
+  await writeUnitRows(client,
     "insert into hospital_episodes(id, organization_id, unit_id, patient_id, encounter_id, bed_id, status, admitted_at, discharged_at) values ($1, $2, $3, $4, $5, $6, $7, $8, $9) on conflict (id) do update set organization_id = excluded.organization_id, unit_id = excluded.unit_id, patient_id = excluded.patient_id, encounter_id = excluded.encounter_id, bed_id = excluded.bed_id, status = excluded.status, admitted_at = excluded.admitted_at, discharged_at = excluded.discharged_at",
     snapshot.hospitalEpisodes,
+    (episode) => episode.unitId,
     (episode) => [episode.id, episode.organizationId, episode.unitId, episode.patientId, episode.encounterId, episode.bedId, episode.status, episode.admittedAt, episode.dischargedAt]
   );
   await writeRows(client,
@@ -1006,9 +1055,10 @@ async function projectDomain(client: PoolClient, snapshot: StoreSnapshot): Promi
     snapshot.products,
     (product) => [product.id, product.organizationId, product.sku, product.name, product.category, product.unit, product.reorderPoint, product.status]
   );
-  await writeRows(client,
+  await writeUnitRows(client,
     "insert into stock_locations(id, organization_id, unit_id, name) values ($1, $2, $3, $4) on conflict (id) do update set organization_id = excluded.organization_id, unit_id = excluded.unit_id, name = excluded.name",
     snapshot.stockLocations,
+    (location) => location.unitId,
     (location) => [location.id, location.organizationId, location.unitId, location.name]
   );
   await writeRows(client,
@@ -1036,9 +1086,10 @@ async function projectDomain(client: PoolClient, snapshot: StoreSnapshot): Promi
     snapshot.administrationOccurrences,
     (occurrence) => [occurrence.id, occurrence.organizationId, occurrence.medicationOrderId, occurrence.administeredBy, occurrence.administeredAt, occurrence.status, occurrence.note]
   );
-  await writeRows(client,
+  await writeUnitRows(client,
     "insert into charges(id, organization_id, unit_id, patient_id, description, amount_cents, currency, status, created_at) values ($1, $2, $3, $4, $5, $6, $7, $8, $9) on conflict (id) do update set organization_id = excluded.organization_id, unit_id = excluded.unit_id, patient_id = excluded.patient_id, description = excluded.description, amount_cents = excluded.amount_cents, currency = excluded.currency, status = excluded.status",
     snapshot.charges,
+    (charge) => charge.unitId,
     (charge) => [charge.id, charge.organizationId, charge.unitId, charge.patientId, charge.description, charge.amountCents, charge.currency, charge.status, charge.createdAt]
   );
   await writeRows(client,
@@ -1051,48 +1102,63 @@ async function projectDomain(client: PoolClient, snapshot: StoreSnapshot): Promi
     snapshot.ledgerEntries,
     (entry) => [entry.id, entry.organizationId, entry.kind, entry.referenceId, entry.amountCents, entry.currency, entry.description, entry.createdAt]
   );
-  await writeRows(client,
+  await writeScopedRows(client,
     "insert into communication_messages(id, organization_id, unit_id, workspace_id, patient_id, channel, recipient, template, body, status, created_by, decided_by, decided_at, approved_by, approved_at, decision_reason, created_at) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17) on conflict (id) do update set organization_id = excluded.organization_id, unit_id = excluded.unit_id, workspace_id = excluded.workspace_id, patient_id = excluded.patient_id, channel = excluded.channel, recipient = excluded.recipient, template = excluded.template, body = excluded.body, status = excluded.status, created_by = excluded.created_by, decided_by = excluded.decided_by, decided_at = excluded.decided_at, approved_by = excluded.approved_by, approved_at = excluded.approved_at, decision_reason = excluded.decision_reason",
     snapshot.messages,
+    (message) => ({ unitId: message.unitId, workspaceId: message.workspaceId }),
     (message) => [message.id, message.organizationId, message.unitId, message.workspaceId, message.patientId, message.channel, message.recipient, message.template, message.body, message.status, message.createdBy ?? null, message.decidedBy ?? null, message.decidedAt ?? null, message.approvedBy ?? null, message.approvedAt ?? null, message.decisionReason ?? null, message.createdAt]
   );
-  await writeRows(client,
+  await writeScopedRows(client,
     "insert into knowledge_documents(id, organization_id, unit_id, workspace_id, title, source, data_class, version, status, content, created_at) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) on conflict (id) do update set organization_id = excluded.organization_id, unit_id = excluded.unit_id, workspace_id = excluded.workspace_id, title = excluded.title, source = excluded.source, data_class = excluded.data_class, version = excluded.version, status = excluded.status, content = excluded.content",
     snapshot.knowledgeDocuments,
+    (document) => ({ unitId: document.unitId, workspaceId: document.workspaceId }),
     (document) => [document.id, document.organizationId, document.unitId, document.workspaceId, document.title, document.source, document.dataClass, document.version, document.status, document.content, document.createdAt]
   );
   await writeRows(client,
+    "insert into budget_reservations(id, organization_id, session_id, category, reserved_units, consumed_units, status, created_at) values ($1, $2, $3, $4, $5, $6, $7, $8) on conflict (id) do update set organization_id = excluded.organization_id, session_id = excluded.session_id, category = excluded.category, reserved_units = excluded.reserved_units, consumed_units = excluded.consumed_units, status = excluded.status",
+    snapshot.budgetReservations,
+    (reservation) => [reservation.id, reservation.organizationId, reservation.sessionId, reservation.category, reservation.reservedUnits, reservation.consumedUnits, reservation.status, reservation.createdAt]
+  );
+  await writeScopedRows(client,
     "insert into ai_sessions(id, organization_id, actor_id, unit_id, workspace_id, patient_id, encounter_id, purpose, engine_commit, profile_digest, status, created_at) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) on conflict (id) do update set organization_id = excluded.organization_id, actor_id = excluded.actor_id, unit_id = excluded.unit_id, workspace_id = excluded.workspace_id, patient_id = excluded.patient_id, encounter_id = excluded.encounter_id, purpose = excluded.purpose, engine_commit = excluded.engine_commit, profile_digest = excluded.profile_digest, status = excluded.status",
     snapshot.aiSessions,
+    (session) => ({ unitId: session.unitId, workspaceId: session.workspaceId }),
     (session) => [session.id, session.organizationId, session.actorId, session.unitId, session.workspaceId, session.patientId, session.encounterId, session.purpose, session.engineCommit, session.profileDigest, session.status, session.createdAt]
   );
-  await writeRows(client,
-    "insert into ai_turns(id, organization_id, unit_id, workspace_id, session_id, prompt, response, status, model, input_tokens, output_tokens, references_json, created_at) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::jsonb, $13) on conflict (id) do update set organization_id = excluded.organization_id, unit_id = excluded.unit_id, workspace_id = excluded.workspace_id, session_id = excluded.session_id, prompt = excluded.prompt, response = excluded.response, status = excluded.status, model = excluded.model, input_tokens = excluded.input_tokens, output_tokens = excluded.output_tokens, references_json = excluded.references_json",
+  await projectAiTurnUsage(client, snapshot);
+  await writeScopedRows(client,
+    "insert into ai_turns(id, organization_id, unit_id, workspace_id, session_id, prompt, response, status, model, input_tokens, output_tokens, references_json, usage_record_id, provenance_json, created_at) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::jsonb, $13, $14::jsonb, $15) on conflict (id) do update set organization_id = excluded.organization_id, unit_id = excluded.unit_id, workspace_id = excluded.workspace_id, session_id = excluded.session_id, prompt = excluded.prompt, response = excluded.response, status = excluded.status, model = excluded.model, input_tokens = excluded.input_tokens, output_tokens = excluded.output_tokens, references_json = excluded.references_json, usage_record_id = excluded.usage_record_id, provenance_json = excluded.provenance_json",
     snapshot.aiTurns,
     (turn) => {
       const session = snapshot.aiSessions.find((candidate) => candidate.id === turn.sessionId);
       if (!session) throw new PersistenceCorruptionError(`ai turn ${turn.id} has no resolvable session scope`);
-      return [turn.id, session.organizationId, session.unitId, session.workspaceId, turn.sessionId, turn.prompt, turn.response, turn.status, turn.model, turn.inputTokens, turn.outputTokens, JSON.stringify(turn.references), turn.createdAt];
+      return { unitId: session.unitId, workspaceId: session.workspaceId };
+    },
+    (turn) => {
+      const session = snapshot.aiSessions.find((candidate) => candidate.id === turn.sessionId);
+      if (!session) throw new PersistenceCorruptionError(`ai turn ${turn.id} has no resolvable session scope`);
+      return [turn.id, session.organizationId, session.unitId, session.workspaceId, turn.sessionId, turn.prompt, turn.response, turn.status, turn.model, turn.inputTokens, turn.outputTokens, JSON.stringify(turn.references), turn.usage?.id ?? null, JSON.stringify(turn.provenance ?? {}), turn.createdAt];
     }
   );
-  await writeRows(client,
+  await writeScopedRows(client,
     "insert into ai_drafts(id, organization_id, unit_id, workspace_id, session_id, encounter_id, draft_type, content, source_turn_id, status, created_at) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) on conflict (id) do update set organization_id = excluded.organization_id, unit_id = excluded.unit_id, workspace_id = excluded.workspace_id, session_id = excluded.session_id, encounter_id = excluded.encounter_id, draft_type = excluded.draft_type, content = excluded.content, source_turn_id = excluded.source_turn_id, status = excluded.status",
     snapshot.aiDrafts,
+    (draft) => {
+      const session = snapshot.aiSessions.find((candidate) => candidate.id === draft.sessionId);
+      if (!session) throw new PersistenceCorruptionError(`ai draft ${draft.id} has no resolvable session scope`);
+      return { unitId: session.unitId, workspaceId: session.workspaceId };
+    },
     (draft) => {
       const session = snapshot.aiSessions.find((candidate) => candidate.id === draft.sessionId);
       if (!session) throw new PersistenceCorruptionError(`ai draft ${draft.id} has no resolvable session scope`);
       return [draft.id, session.organizationId, session.unitId, session.workspaceId, draft.sessionId, draft.encounterId, draft.draftType, draft.content, draft.sourceTurnId, draft.status, draft.createdAt];
     }
   );
-  await writeRows(client,
+  await writeScopedRows(client,
     "insert into ai_approvals(id, organization_id, actor_id, session_id, turn_id, tool_name, resource_id, patient_id, encounter_id, unit_id, workspace_id, purpose, request_digest, policy_revision, expires_at, decision, decided_by, reason, created_at) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19) on conflict (id) do update set organization_id = excluded.organization_id, actor_id = excluded.actor_id, session_id = excluded.session_id, turn_id = excluded.turn_id, tool_name = excluded.tool_name, resource_id = excluded.resource_id, patient_id = excluded.patient_id, encounter_id = excluded.encounter_id, unit_id = excluded.unit_id, workspace_id = excluded.workspace_id, purpose = excluded.purpose, request_digest = excluded.request_digest, policy_revision = excluded.policy_revision, expires_at = excluded.expires_at, decision = excluded.decision, decided_by = excluded.decided_by, reason = excluded.reason",
     snapshot.aiApprovals,
+    (approval) => ({ unitId: approval.unitId, workspaceId: approval.workspaceId }),
     (approval) => [approval.id, approval.organizationId, approval.actorId, approval.sessionId, approval.turnId, approval.toolName, approval.resourceId, approval.patientId, approval.encounterId, approval.unitId, approval.workspaceId, approval.purpose, approval.requestDigest, approval.policyRevision, approval.expiresAt, approval.decision, approval.decidedBy, approval.reason, approval.createdAt]
-  );
-  await writeRows(client,
-    "insert into budget_reservations(id, organization_id, session_id, category, reserved_units, consumed_units, status, created_at) values ($1, $2, $3, $4, $5, $6, $7, $8) on conflict (id) do update set organization_id = excluded.organization_id, session_id = excluded.session_id, category = excluded.category, reserved_units = excluded.reserved_units, consumed_units = excluded.consumed_units, status = excluded.status",
-    snapshot.budgetReservations,
-    (reservation) => [reservation.id, reservation.organizationId, reservation.sessionId, reservation.category, reservation.reservedUnits, reservation.consumedUnits, reservation.status, reservation.createdAt]
   );
 }
 
@@ -1241,10 +1307,10 @@ export class PostgresPersistence {
 
   async assertSchema(): Promise<void> {
     try {
-      const result = await this.pool.query<{ snapshots: boolean; journal: boolean; audit: boolean; receipts: boolean; communications: boolean; outbox: boolean; usage_ledger: boolean; inbox: boolean; external_effects: boolean; rate_limit_buckets: boolean; runtime_role: boolean; runtime_scope_guards: boolean; auth_security: boolean; ai_turn_scope: boolean; ai_draft_scope: boolean; audit_tamper_evident_chain: boolean; append_only_audit_guard: boolean; append_only_lock_privileges: boolean }>("select to_regclass('public.cvg_state_snapshots') is not null as snapshots, to_regclass('public.cvg_event_journal') is not null as journal, to_regclass('public.cvg_audit_ledger') is not null as audit, to_regclass('public.cvg_command_receipt_ledger') is not null as receipts, to_regclass('public.communication_messages') is not null as communications, to_regclass('public.outbox_records') is not null as outbox, to_regclass('public.ai_usage_ledger') is not null as usage_ledger, to_regclass('public.integration_inbox_records') is not null as inbox, to_regclass('public.external_effects') is not null as external_effects, to_regclass('public.cvg_rate_limit_buckets') is not null as rate_limit_buckets, exists (select 1 from pg_roles where rolname = current_user and rolsuper = false and rolbypassrls = false and rolcreaterole = false and rolcreatedb = false) as runtime_role, exists (select 1 from schema_migrations where version = '019_runtime_scope_guards') as runtime_scope_guards, exists (select 1 from schema_migrations where version = '020_auth_security_boundary') and to_regclass('public.auth_challenges') is not null and exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'users' and column_name = 'mfa_secret_ref') and exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'sessions' and column_name = 'device_id_digest') as auth_security, exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'ai_turns' and column_name in ('organization_id', 'unit_id', 'workspace_id') group by table_schema, table_name having count(*) = 3) as ai_turn_scope, exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'ai_drafts' and column_name in ('organization_id', 'unit_id', 'workspace_id') group by table_schema, table_name having count(*) = 3) as ai_draft_scope, exists (select 1 from schema_migrations where version = '026_audit_tamper_evident_chain') as audit_tamper_evident_chain, exists (select 1 from schema_migrations where version = '027_append_only_audit_guard') as append_only_audit_guard, exists (select 1 from schema_migrations where version = '028_append_only_lock_privileges') as append_only_lock_privileges");
+      const result = await this.pool.query<{ snapshots: boolean; journal: boolean; audit: boolean; receipts: boolean; communications: boolean; outbox: boolean; usage_ledger: boolean; inbox: boolean; external_effects: boolean; rate_limit_buckets: boolean; runtime_role: boolean; runtime_scope_guards: boolean; auth_security: boolean; ai_turn_scope: boolean; ai_draft_scope: boolean; ai_turn_provenance_usage: boolean; audit_tamper_evident_chain: boolean; append_only_audit_guard: boolean; append_only_lock_privileges: boolean }>("select to_regclass('public.cvg_state_snapshots') is not null as snapshots, to_regclass('public.cvg_event_journal') is not null as journal, to_regclass('public.cvg_audit_ledger') is not null as audit, to_regclass('public.cvg_command_receipt_ledger') is not null as receipts, to_regclass('public.communication_messages') is not null as communications, to_regclass('public.outbox_records') is not null as outbox, to_regclass('public.ai_usage_ledger') is not null as usage_ledger, to_regclass('public.integration_inbox_records') is not null as inbox, to_regclass('public.external_effects') is not null as external_effects, to_regclass('public.cvg_rate_limit_buckets') is not null as rate_limit_buckets, exists (select 1 from pg_roles where rolname = current_user and rolsuper = false and rolbypassrls = false and rolcreaterole = false and rolcreatedb = false) as runtime_role, exists (select 1 from schema_migrations where version = '019_runtime_scope_guards') as runtime_scope_guards, exists (select 1 from schema_migrations where version = '020_auth_security_boundary') and to_regclass('public.auth_challenges') is not null and exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'users' and column_name = 'mfa_secret_ref') and exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'sessions' and column_name = 'device_id_digest') as auth_security, exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'ai_turns' and column_name in ('organization_id', 'unit_id', 'workspace_id') group by table_schema, table_name having count(*) = 3) as ai_turn_scope, exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'ai_drafts' and column_name in ('organization_id', 'unit_id', 'workspace_id') group by table_schema, table_name having count(*) = 3) as ai_draft_scope, exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'ai_turns' and column_name in ('usage_record_id', 'provenance_json') group by table_schema, table_name having count(*) = 2) and exists (select 1 from schema_migrations where version = '029_ai_turn_provenance_usage_and_dml_scope') as ai_turn_provenance_usage, exists (select 1 from schema_migrations where version = '026_audit_tamper_evident_chain') as audit_tamper_evident_chain, exists (select 1 from schema_migrations where version = '027_append_only_audit_guard') as append_only_audit_guard, exists (select 1 from schema_migrations where version = '028_append_only_lock_privileges') as append_only_lock_privileges");
       const snapshotKey = await this.pool.query<{ snapshot_scope_revision: boolean }>("select exists (select 1 from pg_constraint constraint_row join pg_class table_row on table_row.oid = constraint_row.conrelid join pg_namespace namespace_row on namespace_row.oid = table_row.relnamespace where namespace_row.nspname = 'public' and table_row.relname = 'cvg_state_snapshots' and constraint_row.contype = 'p' and pg_get_constraintdef(constraint_row.oid) = 'PRIMARY KEY (organization_id, revision)') as snapshot_scope_revision");
       const row = result.rows[0];
-      if (!row?.snapshots || !row.journal || !row.audit || !row.receipts || !row.communications || !row.outbox || !row.usage_ledger || !row.inbox || !row.external_effects || !row.rate_limit_buckets || !row.runtime_role || !row.runtime_scope_guards || !row.auth_security || !row.ai_turn_scope || !row.ai_draft_scope || !row.audit_tamper_evident_chain || !row.append_only_audit_guard || !row.append_only_lock_privileges || snapshotKey.rows[0]?.snapshot_scope_revision !== true) throw new PersistenceUnavailableError("CVG persistence schema or runtime database role is not ready; run migrations with a non-superuser DATABASE_URL");
+      if (!row?.snapshots || !row.journal || !row.audit || !row.receipts || !row.communications || !row.outbox || !row.usage_ledger || !row.inbox || !row.external_effects || !row.rate_limit_buckets || !row.runtime_role || !row.runtime_scope_guards || !row.auth_security || !row.ai_turn_scope || !row.ai_draft_scope || !row.ai_turn_provenance_usage || !row.audit_tamper_evident_chain || !row.append_only_audit_guard || !row.append_only_lock_privileges || snapshotKey.rows[0]?.snapshot_scope_revision !== true) throw new PersistenceUnavailableError("CVG persistence schema or runtime database role is not ready; run migrations with a non-superuser DATABASE_URL");
     } catch (error) {
       if (error instanceof PersistenceUnavailableError) throw error;
       throw new PersistenceUnavailableError("CVG persistence schema could not be checked", error);
@@ -1586,8 +1652,7 @@ export class PostgresPersistence {
   }
 
   async recordUsage(input: DurableUsageInput): Promise<DurableUsageRecord> {
-    const { id: _id, ...immutable } = input;
-    const recordDigest = digest(immutable);
+    const recordDigest = durableUsageDigest(input);
     return this.organizationTransaction(input.organizationId, "usage ledger", async (client) => {
       const result = await client.query<UsageRow>(
         "insert into ai_usage_ledger(id, organization_id, reservation_id, provider_request_id, idempotency_key, usage_kind, reserved_units, consumed_units, status, record, record_digest) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, $11) on conflict (organization_id, idempotency_key, usage_kind) do update set record_digest = ai_usage_ledger.record_digest where ai_usage_ledger.record_digest = excluded.record_digest returning id::text as id, organization_id::text as organization_id, reservation_id::text as reservation_id, provider_request_id, idempotency_key, usage_kind, reserved_units, consumed_units, status, record, record_digest, created_at",

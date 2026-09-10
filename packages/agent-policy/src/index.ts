@@ -225,6 +225,7 @@ export const APPLICATION_POLICY_REGISTRY: readonly ApplicationPolicyRule[] = [
   applicationRule("identity.password.rotate", "identity:password:rotate", allApplicationRoles, d0, "MEDIUM"),
   applicationRule("identity.mfa.enroll", "identity:mfa:enroll", allApplicationRoles, d0, "MEDIUM"),
   applicationRule("identity.mfa.revoke", "identity:mfa:revoke", allApplicationRoles, d0, "MEDIUM"),
+  applicationRule("auth.logout", "auth:logout", allApplicationRoles, d0),
   applicationRule("contexts.read", "contexts:read", allApplicationRoles, d0),
   applicationRule("context.select", "context:select", allApplicationRoles, d0),
   applicationRule("users.read", "users:read", ["admin"], d4),
@@ -286,6 +287,7 @@ export const APPLICATION_POLICY_REGISTRY: readonly ApplicationPolicyRule[] = [
   applicationRule("operations.summary", "operations:summary", appointmentRoles, d2),
   applicationRule("metrics.read", "metrics:read", ["admin", "operador"], d4),
   applicationRule("ops.snapshot", "ops:snapshot", ["admin"], d4, "MEDIUM"),
+  applicationRule("ops.export", "ops:export", ["admin"], d4, "MEDIUM"),
   applicationRule("ops.restore", "ops:restore", ["admin"], d4, "MEDIUM")
 ];
 
@@ -346,4 +348,9 @@ export function authorizeApplicationRequest(context: CvgContext, operation: stri
     requestDigest: options.requestDigest ?? context.correlationId,
     constraints: { source: "api-application-boundary", resourceRequired: options.resourceRequired ?? (options.resourceId !== undefined && options.resourceId !== null) }
   });
+}
+
+/** Reusable guard for application/use-case boundaries below the HTTP layer. */
+export function enforceApplicationPolicy(context: CvgContext, operation: string, options: ApplicationPolicyAuthorizationOptions = {}): void {
+  assertPolicyAllowed(authorizeApplicationRequest(context, operation, options));
 }

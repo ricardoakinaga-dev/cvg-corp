@@ -5,7 +5,10 @@ import type { Pool, PoolClient } from "pg";
 import { id } from "@cvg/contracts";
 import { CvgStore, digest, idempotent, serializeSnapshot } from "@cvg/domain";
 import { GovernedHarness } from "@cvg/harness";
+import { MockHarnessAdapter } from "@cvg/harness-adapters";
 import { createRuntime } from "@cvg/api";
+import { AgentApplicationService } from "../../apps/api/src/application/agent-service.ts";
+import { ExportApplicationService } from "../../apps/api/src/application/export-service.ts";
 import { createRecoveryBundleManifest, decryptRecoveryBundle, encryptRecoveryBundle, OutboxLeaseLostError, PersistenceConflictError, PersistenceCorruptionError, PersistenceStateError, PersistenceUnavailableError, PostgresPersistence, validateRecoveryBundle, type DurableRecoveryBundle } from "@cvg/persistence";
 
 type QueryResult = { rows: Array<Record<string, unknown>> };
@@ -17,6 +20,7 @@ function fakePool(options: { revision?: string; failSnapshotInsert?: boolean; au
     async query(sql: string, params: unknown[] = []): Promise<QueryResult> {
       statements.push(sql.trim().replace(/\s+/g, " "));
       if (sql.includes("select revision::text")) return { rows: revision === "0" ? [] : [{ revision }] };
+      if (sql.startsWith("insert into ai_usage_ledger")) return { rows: [{ id: String(params[0]) }] };
       if (sql.startsWith("insert into cvg_audit_ledger")) return { rows: options.auditLedgerConflict ? [] : [{ audit_id: String(params[0]) }] };
       if (sql.startsWith("insert into command_receipts")) return { rows: [{ id: String(params[0]) }] };
       if (sql.startsWith("insert into cvg_command_receipt_ledger")) return { rows: [{ receipt_id: String(params[0]) }] };
@@ -33,7 +37,7 @@ function fakePool(options: { revision?: string; failSnapshotInsert?: boolean; au
       const normalized = sql.trim().replace(/\s+/g, " ");
       statements.push(normalized);
       if (sql.includes("current_database()")) return { rows: [{ database: "cvg_synthetic", server_version: "16.0" }] };
-      if (sql.includes("to_regclass('public.cvg_state_snapshots')")) return { rows: [{ snapshots: true, journal: true, audit: true, receipts: true, communications: true, outbox: true, usage_ledger: true, inbox: true, external_effects: true, rate_limit_buckets: true, runtime_role: true, runtime_scope_guards: true, auth_security: true, ai_turn_scope: true, ai_draft_scope: true, audit_tamper_evident_chain: true, append_only_audit_guard: true, append_only_lock_privileges: true }] };
+      if (sql.includes("to_regclass('public.cvg_state_snapshots')")) return { rows: [{ snapshots: true, journal: true, audit: true, receipts: true, communications: true, outbox: true, usage_ledger: true, inbox: true, external_effects: true, rate_limit_buckets: true, runtime_role: true, runtime_scope_guards: true, auth_security: true, ai_turn_scope: true, ai_draft_scope: true, ai_turn_provenance_usage: true, audit_tamper_evident_chain: true, append_only_audit_guard: true, append_only_lock_privileges: true }] };
       if (sql.includes("as snapshot_scope_revision")) return { rows: [{ snapshot_scope_revision: true }] };
       if (sql.includes("from cvg_state_snapshots s")) return { rows: [] };
       if (sql.includes("select revision::text as revision")) return { rows: revision === "0" ? [] : [{ revision }] };
@@ -118,13 +122,22 @@ test("AI projections derive mandatory tenant scope from the persisted session", 
   const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
   const option = store.contextOptions(store.bootstrapCredentials.userId)[0];
   assert.ok(option);
-  const context = store.resolveContext(store.bootstrapCredentials.userId, { unitId: option.unit.id, workspaceId: option.workspace.id }, "ai.turn.SUMMARY", "ai-projection");
-  await new GovernedHarness(store).executeTurn(context, { sessionId: null, prompt: "resumir a fila", purpose: "SUMMARY", patientId: null, encounterId: null, requestedTool: null, approvalId: null, idempotencyKey: "ai-projection-1" });
+  const session = store.createSession(store.bootstrapCredentials.userId, digest("ai-projection-token"), "synthetic-csrf", 60);
+  const context = store.resolveContext(store.bootstrapCredentials.userId, { unitId: option.unit.id, workspaceId: option.workspace.id }, "ai.turn.SUMMARY", "ai-projection", null, null, session.id);
+  const service = new AgentApplicationService(store, new MockHarnessAdapter(new GovernedHarness(store)));
+  const input = { sessionId: null, prompt: "resumir a fila", purpose: "SUMMARY" as const, patientId: null, encounterId: null, requestedTool: null, approvalId: null, idempotencyKey: "ai-projection-1" };
+  const first = await service.executeTurn(context, input);
+  const replay = await service.executeTurn(context, input);
+  assert.equal(replay.replayed, true);
+  assert.equal(first.value.turn.provenance?.usageRecordId, first.value.turn.usage?.id);
+  assert.equal(first.value.turn.provenance?.referencesDigest, digest(first.value.turn.references));
   const fake = fakePool();
   const persistence = new PostgresPersistence({ connectionString: "postgres://synthetic.invalid", pool: fake.pool });
   await persistence.commit({ ...commitInput(store), snapshot: store.snapshot() });
   const turnStatement = fake.statements.find((statement) => statement.startsWith("insert into ai_turns"));
   assert.ok(turnStatement?.includes("organization_id, unit_id, workspace_id, session_id"));
+  assert.ok(turnStatement?.includes("usage_record_id, provenance_json"));
+  assert.ok(fake.statements.some((statement) => statement.startsWith("insert into ai_usage_ledger")));
 });
 
 test("normalized read repositories scope the transaction and preserve joined projections", async () => {
@@ -221,6 +234,28 @@ test("recovery bundle encryption round-trips BigInt state and rejects tampering"
   assert.throws(() => decryptRecoveryBundle({ ...encrypted, ciphertext: ciphertext.toString("base64") }, key), (error: unknown) => error instanceof PersistenceCorruptionError);
   assert.throws(() => decryptRecoveryBundle(encrypted, randomBytes(32)), (error: unknown) => error instanceof PersistenceCorruptionError);
   assert.throws(() => encryptRecoveryBundle(bundle, randomBytes(31), "synthetic-kms-key"), (error: unknown) => error instanceof Error && error.name === "PersistenceStateError");
+});
+
+test("governed export binds policy, secret resolution and idempotent encrypted delivery", async () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const option = store.contextOptions(store.bootstrapCredentials.userId)[0];
+  assert.ok(option);
+  const session = store.createSession(store.bootstrapCredentials.userId, digest("export-token"), "synthetic-csrf", 60);
+  const context = store.resolveContext(store.bootstrapCredentials.userId, { unitId: option.unit.id, workspaceId: option.workspace.id }, "ops.export", "export-test", null, null, session.id);
+  const snapshot = store.snapshot();
+  const recoveryData = { revision: 9n, snapshot, snapshotDigest: digest(JSON.parse(serializeSnapshot(snapshot))), eventId: randomUUID(), outboxRecords: [], usageRecords: [], inboxRecords: [], externalEffects: [] };
+  const bundle: DurableRecoveryBundle = { ...recoveryData, manifest: createRecoveryBundleManifest({ organizationId: store.bootstrapCredentials.organizationId, ...recoveryData, migrationFingerprint: digest([{ version: "029_ai_turn_provenance_usage_and_dml_scope", checksum: "synthetic-checksum" }]) }) };
+  const persistence = { exportRecoveryBundle: async () => bundle } as unknown as PostgresPersistence;
+  const key = randomBytes(32).toString("base64");
+  const secretProvider = { status: () => "READY" as const, has: (reference: string) => reference === "synthetic-export-key", resolve: async (reference: string) => reference === "synthetic-export-key" ? key : null };
+  const service = new ExportApplicationService(store, persistence, secretProvider, "synthetic-export-key");
+  const first = await service.create(context, { purpose: "incident recovery validation", ttlSeconds: 300 }, "export-idempotency-1");
+  const replay = await service.create(context, { purpose: "incident recovery validation", ttlSeconds: 300 }, "export-idempotency-1");
+  assert.equal(first.replayed, false);
+  assert.equal(replay.replayed, true);
+  assert.equal(replay.value.envelope.ciphertext, first.value.envelope.ciphertext);
+  assert.doesNotMatch(JSON.stringify(first.value.envelope), /Marina Souza/);
+  assert.equal(first.value.scope.organizationId, store.bootstrapCredentials.organizationId);
 });
 
 test("recovery manifest rejects partial, stale, and migration-incompatible restores", () => {

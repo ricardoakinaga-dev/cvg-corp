@@ -271,6 +271,12 @@ O último CI remoto observado antes deste patch é o run `34422825560` no SHA `0
 
 `VER-CVG-064` registra o run remoto `34426562885` no SHA `426d9f640d3174a6962e35aa0b5be0ab8304ea47`: o job principal falhou no `Browser E2E` com a anotação pública genérica `Process completed with exit code 1`; migrations, PostgreSQL, release, imagens e scans foram pulados. Não há log autenticado para atribuir a causa. `VER-CVG-065` registra a suíte local Chromium/Firefox/stress verde (`52 pass`, `4 skips intencionais`) e a configuração Playwright ajustada para uma única retry somente sob CI (`retries: process.env.CI ? 1 : 0`). O próximo SHA precisa ser publicado e observado; o veredito segue `FAIL_WITH_LIMITATIONS`.
 
+## Current checkpoint — 2026-09-09 22:59
+
+`VER-CVG-066` registra o run remoto `34427078117` no SHA `90bddd919b2a847f67dd704d253da6dcaa34b15b`: o job principal passou E2E, migrations, PostgreSQL/RLS, restore, release/Compose, performance, SBOM e artifacts; builds API/web e `Scan API image` passaram, mas `Scan web image` falhou. A reprodução com Trivy 0.74 encontrou 34 findings HIGH/CRITICAL na base `nginxinc/nginx-unprivileged:1.27-alpine`/Alpine 3.21.3.
+
+`VER-CVG-067` registra a atualização para `nginxinc/nginx-unprivileged:1.31.5-alpine3.24` fixada pelo digest multi-arch; a reprodução local passou sem findings, e typecheck/build/static/produção estrutural/diff check passaram. O scan remoto do novo SHA ainda é necessário; o veredito segue `FAIL_WITH_LIMITATIONS`.
+
 ## 10. Próxima ação
 
 **Ação concluída localmente:** `CVG-FULL-STATE-OF-THE-ART:PROVIDER-CONTRACT-AND-UNIVERSAL-PDP`.

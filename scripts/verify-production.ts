@@ -147,7 +147,7 @@ function inspectStaticContracts(): void {
   }
 
   for (const fragment of ["npm ci", "USER node", "HEALTHCHECK", "node:24.20.0-bookworm-slim"]) requireText("Dockerfile.api", fragment);
-  for (const fragment of ["npm ci", "RUN npm run build", "nginxinc/nginx-unprivileged:1.27-alpine", "USER 101", "HEALTHCHECK"]) requireText("Dockerfile.web", fragment);
+  for (const fragment of ["npm ci", "RUN npm run build", "nginxinc/nginx-unprivileged:1.31.5-alpine3.24@sha256:2ddec616f1cb58bcac057aa388f28cb81e35137641ef4226d321714499329bd1", "USER 101", "HEALTHCHECK"]) requireText("Dockerfile.web", fragment);
   for (const service of ["postgres", "migrate", "api", "web", "worker", "proxy"]) {
     if (!new RegExp(`^  ${service}:`, "m").test(readArtifacts.get("docker-compose.yml") ?? "")) failures.push(`docker-compose.yml: service ${service} is missing`);
   }

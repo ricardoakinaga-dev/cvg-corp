@@ -384,3 +384,7 @@ O focused test e o verificador passaram (`sendRequests=4`, `queryRequests=2`, `c
 ## Current checkpoint — 2026-09-09 22:47
 
 `VER-CVG-064` registrou o run remoto `34426562885` no SHA `426d9f6`: o job principal falhou no `Browser E2E` com anotação pública genérica antes dos gates de banco, release e containers. `VER-CVG-065` confirmou localmente 52 E2E pass e 4 skips intencionais em Chromium/Firefox/stress e configurou uma única retry somente sob CI; o próximo pointer é publicar e observar o novo run.
+
+## Current checkpoint — 2026-09-09 22:59
+
+`VER-CVG-066` registrou o run remoto `34427078117` no SHA `90bddd9`: job principal, E2E, banco, release, builds API/web e Scan API passaram; `Scan web image` falhou. A reprodução Trivy encontrou 34 findings HIGH/CRITICAL na base Nginx antiga. `VER-CVG-067` registra `nginxinc/nginx-unprivileged:1.31.5-alpine3.24@sha256:2ddec616f1cb58bcac057aa388f28cb81e35137641ef4226d321714499329bd1`, com zero findings na reprodução local e gates locais verdes; o próximo pointer é publicar e observar o scan.

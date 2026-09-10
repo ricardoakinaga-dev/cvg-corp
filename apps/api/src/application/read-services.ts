@@ -1,11 +1,15 @@
-import type { AnimalPatient, Appointment, AuditRecord, ClinicalDocument, CvgContext, DiagnosticRequest, DiagnosticResult, Encounter, Guardian, OpaqueId, Specimen } from "@cvg/contracts";
+import type { AiSession, AnimalPatient, Appointment, AuditRecord, Bed, Charge, ClinicalDocument, CommunicationMessage, CvgContext, DiagnosticRequest, DiagnosticResult, Encounter, Guardian, HospitalEpisode, KnowledgeDocument, LedgerEntry, Lot, MedicationOrder, OpaqueId, Payment, Product, QueueEntry, Specimen, StockLocation } from "@cvg/contracts";
 import type { CvgStore } from "@cvg/domain";
-import type { NormalizedAppointmentRead, NormalizedEncounterRead, PostgresPersistence } from "@cvg/persistence";
+import type { NormalizedAiSessionRead, NormalizedAppointmentRead, NormalizedEncounterRead, NormalizedMedicationOrderRead, NormalizedQueueRead, NormalizedStockRead, PostgresPersistence } from "@cvg/persistence";
 import { enforceApplicationPolicy } from "@cvg/agent-policy";
 
 export type PatientRead = AnimalPatient & { guardian: Pick<Guardian, "id" | "displayName" | "phone"> | null };
 export type AppointmentRead = Appointment & { patient: { id: OpaqueId; name: string } | null; provider: string | null };
 export type EncounterRead = Encounter & { patient: { id: OpaqueId; name: string } };
+export type MedicationOrderRead = MedicationOrder & { product: Pick<Product, "id" | "name" | "unit"> | null };
+export type StockRead = Lot & { product: Product | null; location: StockLocation | null };
+export type QueueRead = QueueEntry & { patient: { id: OpaqueId; name: string } | null };
+export type AiSessionRead = AiSession & { turns: number };
 
 export interface GuardianReadRepository {
   list(context: CvgContext, query?: string): Promise<Guardian[]>;
@@ -31,6 +35,41 @@ export interface DiagnosticReadRepository {
   listRequests(context: CvgContext): Promise<DiagnosticRequest[]>;
   listSpecimens(context: CvgContext): Promise<Specimen[]>;
   listResults(context: CvgContext): Promise<DiagnosticResult[]>;
+}
+
+export interface HospitalizationReadRepository {
+  listBeds(context: CvgContext): Promise<Bed[]>;
+  listEpisodes(context: CvgContext): Promise<HospitalEpisode[]>;
+}
+
+export interface MedicationReadRepository {
+  listOrders(context: CvgContext): Promise<MedicationOrderRead[]>;
+}
+
+export interface StockReadRepository {
+  list(context: CvgContext): Promise<StockRead[]>;
+}
+
+export interface FinanceReadRepository {
+  listCharges(context: CvgContext, openOnly?: boolean): Promise<Charge[]>;
+  listPayments(context: CvgContext): Promise<Payment[]>;
+  listLedgerEntries(context: CvgContext): Promise<LedgerEntry[]>;
+}
+
+export interface CommunicationReadRepository {
+  list(context: CvgContext): Promise<CommunicationMessage[]>;
+}
+
+export interface KnowledgeReadRepository {
+  list(context: CvgContext): Promise<KnowledgeDocument[]>;
+}
+
+export interface QueueReadRepository {
+  list(context: CvgContext): Promise<QueueRead[]>;
+}
+
+export interface AiSessionReadRepository {
+  list(context: CvgContext): Promise<AiSessionRead[]>;
 }
 
 class StoreGuardianReadRepository implements GuardianReadRepository {
@@ -173,9 +212,179 @@ class PostgresDiagnosticReadRepository implements DiagnosticReadRepository {
   }
 }
 
+class StoreHospitalizationReadRepository implements HospitalizationReadRepository {
+  constructor(private readonly store: CvgStore) {}
+
+  listBeds(context: CvgContext): Promise<Bed[]> {
+    return Promise.resolve(this.store.listBeds(context));
+  }
+
+  listEpisodes(context: CvgContext): Promise<HospitalEpisode[]> {
+    return Promise.resolve(this.store.listHospitalEpisodes(context));
+  }
+}
+
+class PostgresHospitalizationReadRepository implements HospitalizationReadRepository {
+  constructor(private readonly persistence: PostgresPersistence) {}
+
+  listBeds(context: CvgContext): Promise<Bed[]> {
+    return this.persistence.listBeds(context);
+  }
+
+  listEpisodes(context: CvgContext): Promise<HospitalEpisode[]> {
+    return this.persistence.listHospitalEpisodes(context);
+  }
+}
+
+class StoreMedicationReadRepository implements MedicationReadRepository {
+  constructor(private readonly store: CvgStore) {}
+
+  async listOrders(context: CvgContext): Promise<MedicationOrderRead[]> {
+    return this.store.listMedicationOrders(context).map((order) => ({
+      ...order,
+      product: this.store.products.get(order.productId) ? { id: order.productId, name: this.store.products.get(order.productId)!.name, unit: this.store.products.get(order.productId)!.unit } : null
+    }));
+  }
+}
+
+class PostgresMedicationReadRepository implements MedicationReadRepository {
+  constructor(private readonly persistence: PostgresPersistence) {}
+
+  listOrders(context: CvgContext): Promise<NormalizedMedicationOrderRead[]> {
+    return this.persistence.listMedicationOrders(context);
+  }
+}
+
+class StoreStockReadRepository implements StockReadRepository {
+  constructor(private readonly store: CvgStore) {}
+
+  list(context: CvgContext): Promise<StockRead[]> {
+    return Promise.resolve(this.store.listStock(context));
+  }
+}
+
+class PostgresStockReadRepository implements StockReadRepository {
+  constructor(private readonly persistence: PostgresPersistence) {}
+
+  list(context: CvgContext): Promise<NormalizedStockRead[]> {
+    return this.persistence.listStock(context);
+  }
+}
+
+class StoreFinanceReadRepository implements FinanceReadRepository {
+  constructor(private readonly store: CvgStore) {}
+
+  listCharges(context: CvgContext, openOnly = false): Promise<Charge[]> {
+    return Promise.resolve([...this.store.charges.values()]
+      .filter((charge) => charge.organizationId === context.organizationId && charge.unitId === context.unitId && (!openOnly || (charge.status !== "PAID" && charge.status !== "REFUNDED")))
+      .map((charge) => ({ ...charge })));
+  }
+
+  listPayments(context: CvgContext): Promise<Payment[]> {
+    return Promise.resolve([...this.store.payments.values()]
+      .filter((payment) => payment.organizationId === context.organizationId && this.store.charges.get(payment.chargeId)?.unitId === context.unitId)
+      .map((payment) => ({ ...payment })));
+  }
+
+  listLedgerEntries(context: CvgContext): Promise<LedgerEntry[]> {
+    return Promise.resolve([...this.store.ledgerEntries.values()]
+      .filter((entry) => {
+        if (entry.organizationId !== context.organizationId) return false;
+        const chargeId = entry.kind === "CHARGE" ? entry.referenceId : entry.kind === "PAYMENT" || entry.kind === "REFUND" ? this.store.payments.get(entry.referenceId)?.chargeId : null;
+        return chargeId ? this.store.charges.get(chargeId)?.unitId === context.unitId : false;
+      })
+      .map((entry) => ({ ...entry })));
+  }
+}
+
+class PostgresFinanceReadRepository implements FinanceReadRepository {
+  constructor(private readonly persistence: PostgresPersistence) {}
+
+  listCharges(context: CvgContext, openOnly = false): Promise<Charge[]> {
+    return this.persistence.listCharges(context, openOnly);
+  }
+
+  listPayments(context: CvgContext): Promise<Payment[]> {
+    return this.persistence.listPayments(context);
+  }
+
+  listLedgerEntries(context: CvgContext): Promise<LedgerEntry[]> {
+    return this.persistence.listLedgerEntries(context);
+  }
+}
+
+class StoreCommunicationReadRepository implements CommunicationReadRepository {
+  constructor(private readonly store: CvgStore) {}
+
+  list(context: CvgContext): Promise<CommunicationMessage[]> {
+    return Promise.resolve(this.store.listMessages(context));
+  }
+}
+
+class PostgresCommunicationReadRepository implements CommunicationReadRepository {
+  constructor(private readonly persistence: PostgresPersistence) {}
+
+  list(context: CvgContext): Promise<CommunicationMessage[]> {
+    return this.persistence.listMessages(context);
+  }
+}
+
+class StoreKnowledgeReadRepository implements KnowledgeReadRepository {
+  constructor(private readonly store: CvgStore) {}
+
+  list(context: CvgContext): Promise<KnowledgeDocument[]> {
+    return Promise.resolve(this.store.listKnowledgeDocuments(context));
+  }
+}
+
+class PostgresKnowledgeReadRepository implements KnowledgeReadRepository {
+  constructor(private readonly persistence: PostgresPersistence) {}
+
+  list(context: CvgContext): Promise<KnowledgeDocument[]> {
+    return this.persistence.listKnowledgeDocuments(context);
+  }
+}
+
+class StoreQueueReadRepository implements QueueReadRepository {
+  constructor(private readonly store: CvgStore) {}
+
+  list(context: CvgContext): Promise<QueueRead[]> {
+    return Promise.resolve(this.store.listQueue(context).map((entry) => ({
+      ...entry,
+      patient: this.store.patients.get(entry.patientId) ? { id: entry.patientId, name: this.store.patients.get(entry.patientId)!.name } : null
+    })));
+  }
+}
+
+class PostgresQueueReadRepository implements QueueReadRepository {
+  constructor(private readonly persistence: PostgresPersistence) {}
+
+  list(context: CvgContext): Promise<NormalizedQueueRead[]> {
+    return this.persistence.listQueue(context);
+  }
+}
+
+class StoreAiSessionReadRepository implements AiSessionReadRepository {
+  constructor(private readonly store: CvgStore) {}
+
+  list(context: CvgContext): Promise<AiSessionRead[]> {
+    return Promise.resolve([...this.store.aiSessions.values()]
+      .filter((session) => session.organizationId === context.organizationId && session.actorId === context.actorId && session.unitId === context.unitId && session.workspaceId === context.workspaceId)
+      .map((session) => ({ ...session, turns: [...this.store.aiTurns.values()].filter((turn) => turn.sessionId === session.id).length })));
+  }
+}
+
+class PostgresAiSessionReadRepository implements AiSessionReadRepository {
+  constructor(private readonly persistence: PostgresPersistence) {}
+
+  list(context: CvgContext): Promise<NormalizedAiSessionRead[]> {
+    return this.persistence.listAiSessions(context);
+  }
+}
+
 /** Read-side use cases select a repository behind one application boundary. */
 export class ReadApplicationService {
-  constructor(private readonly guardians: GuardianReadRepository, private readonly appointments: AppointmentReadRepository, private readonly audit: AuditRepository, private readonly encounters: EncounterRepository, private readonly clinical: ClinicalRepository, private readonly diagnostics: DiagnosticReadRepository) {}
+  constructor(private readonly guardians: GuardianReadRepository, private readonly appointments: AppointmentReadRepository, private readonly audit: AuditRepository, private readonly encounters: EncounterRepository, private readonly clinical: ClinicalRepository, private readonly diagnostics: DiagnosticReadRepository, private readonly hospitalization: HospitalizationReadRepository, private readonly medications: MedicationReadRepository, private readonly stock: StockReadRepository, private readonly finance: FinanceReadRepository, private readonly communications: CommunicationReadRepository, private readonly knowledge: KnowledgeReadRepository, private readonly queue: QueueReadRepository, private readonly aiSessions: AiSessionReadRepository) {}
 
   listGuardians(context: CvgContext, query?: string): Promise<Guardian[]> {
     enforceApplicationPolicy(context, "guardians.read");
@@ -216,6 +425,66 @@ export class ReadApplicationService {
     enforceApplicationPolicy(context, "diagnostics.results.read");
     return this.diagnostics.listResults(context);
   }
+
+  listBeds(context: CvgContext): Promise<Bed[]> {
+    enforceApplicationPolicy(context, "hospitalization.beds.read");
+    return this.hospitalization.listBeds(context);
+  }
+
+  listHospitalEpisodes(context: CvgContext): Promise<HospitalEpisode[]> {
+    enforceApplicationPolicy(context, "hospitalization.read");
+    return this.hospitalization.listEpisodes(context);
+  }
+
+  listMedicationOrders(context: CvgContext): Promise<MedicationOrderRead[]> {
+    enforceApplicationPolicy(context, "medication.read");
+    return this.medications.listOrders(context);
+  }
+
+  listStock(context: CvgContext): Promise<StockRead[]> {
+    enforceApplicationPolicy(context, "stock.read");
+    return this.stock.list(context);
+  }
+
+  listCharges(context: CvgContext): Promise<Charge[]> {
+    enforceApplicationPolicy(context, "finance.read");
+    return this.finance.listCharges(context);
+  }
+
+  listOpenChargesForOperationsSummary(context: CvgContext): Promise<Charge[]> {
+    enforceApplicationPolicy(context, "operations.summary");
+    return this.finance.listCharges(context, true);
+  }
+
+  listPayments(context: CvgContext): Promise<Payment[]> {
+    enforceApplicationPolicy(context, "finance.payments.read");
+    return this.finance.listPayments(context);
+  }
+
+  listLedgerEntries(context: CvgContext): Promise<LedgerEntry[]> {
+    enforceApplicationPolicy(context, "finance.ledger.read");
+    return this.finance.listLedgerEntries(context);
+  }
+
+  listMessages(context: CvgContext): Promise<CommunicationMessage[]> {
+    enforceApplicationPolicy(context, "communication.read");
+    return this.communications.list(context);
+  }
+
+  listKnowledgeDocuments(context: CvgContext): Promise<KnowledgeDocument[]> {
+    enforceApplicationPolicy(context, "knowledge.read");
+    return this.knowledge.list(context);
+  }
+
+  listQueue(context: CvgContext): Promise<QueueRead[]> {
+    enforceApplicationPolicy(context, "queue.read");
+    return this.queue.list(context);
+  }
+
+  listAiSessions(context: CvgContext): Promise<AiSessionRead[]> {
+    enforceApplicationPolicy(context, "ai.sessions.read");
+    return this.aiSessions.list(context);
+  }
 }
 
 export function createReadApplicationService(store: CvgStore, persistence: PostgresPersistence | null): ReadApplicationService {
@@ -225,6 +494,14 @@ export function createReadApplicationService(store: CvgStore, persistence: Postg
     persistence ? new PostgresAuditRepository(persistence) : new StoreAuditRepository(store),
     persistence ? new PostgresEncounterRepository(persistence) : new StoreEncounterRepository(store),
     persistence ? new PostgresClinicalRepository(persistence) : new StoreClinicalRepository(store),
-    persistence ? new PostgresDiagnosticReadRepository(persistence) : new StoreDiagnosticReadRepository(store)
+    persistence ? new PostgresDiagnosticReadRepository(persistence) : new StoreDiagnosticReadRepository(store),
+    persistence ? new PostgresHospitalizationReadRepository(persistence) : new StoreHospitalizationReadRepository(store),
+    persistence ? new PostgresMedicationReadRepository(persistence) : new StoreMedicationReadRepository(store),
+    persistence ? new PostgresStockReadRepository(persistence) : new StoreStockReadRepository(store),
+    persistence ? new PostgresFinanceReadRepository(persistence) : new StoreFinanceReadRepository(store),
+    persistence ? new PostgresCommunicationReadRepository(persistence) : new StoreCommunicationReadRepository(store),
+    persistence ? new PostgresKnowledgeReadRepository(persistence) : new StoreKnowledgeReadRepository(store),
+    persistence ? new PostgresQueueReadRepository(persistence) : new StoreQueueReadRepository(store),
+    persistence ? new PostgresAiSessionReadRepository(persistence) : new StoreAiSessionReadRepository(store)
   );
 }

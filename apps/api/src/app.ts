@@ -61,7 +61,6 @@ import {
   digest,
   hashPassword,
   idempotent,
-  isInContext,
   now,
   publicUser,
   parseSnapshot,
@@ -1142,7 +1141,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
 
   app.get("/api/v1/queue", async (request, reply) => {
     const { context } = requestContext(request, "queue.read");
-    const items = store.listQueue(context).map((entry) => ({ ...entry, patient: store.patients.get(entry.patientId) ? { id: entry.patientId, name: store.patients.get(entry.patientId)!.name } : null }));
+    const items = await readApplication.listQueue(context);
     audit(context, "queue.read", "QueueEntry", null, "ALLOWED", null, { count: items.length });
     return response(reply, success({ items }, context.correlationId));
   });
@@ -1269,7 +1268,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
 
   app.get("/api/v1/stock", async (request, reply) => {
     const { context } = requestContext(request, "stock.read");
-    const items = store.listStock(context);
+    const items = await readApplication.listStock(context);
     audit(context, "stock.read", "Lot", null, "ALLOWED", null, { count: items.length });
     return response(reply, success({ items }, context.correlationId));
   });
@@ -1287,14 +1286,14 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
 
   app.get("/api/v1/hospitalization/beds", async (request, reply) => {
     const { context } = requestContext(request, "hospitalization.beds.read");
-    const items = store.listBeds(context);
+    const items = await readApplication.listBeds(context);
     audit(context, "hospitalization.beds.read", "Bed", null, "ALLOWED", null, { count: items.length });
     return response(reply, success({ items }, context.correlationId));
   });
 
   app.get("/api/v1/hospitalization/episodes", async (request, reply) => {
     const { context } = requestContext(request, "hospitalization.read");
-    const items = store.listHospitalEpisodes(context);
+    const items = await readApplication.listHospitalEpisodes(context);
     audit(context, "hospitalization.read", "HospitalEpisode", null, "ALLOWED", null, { count: items.length });
     return response(reply, success({ items }, context.correlationId));
   });
@@ -1312,7 +1311,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
 
   app.get("/api/v1/medications/orders", async (request, reply) => {
     const { context } = requestContext(request, "medication.read");
-    const items = store.listMedicationOrders(context).map((order) => ({ ...order, product: store.products.get(order.productId) ? { id: order.productId, name: store.products.get(order.productId)!.name, unit: store.products.get(order.productId)!.unit } : null }));
+    const items = await readApplication.listMedicationOrders(context);
     audit(context, "medication.read", "MedicationOrder", null, "ALLOWED", null, { count: items.length });
     return response(reply, success({ items }, context.correlationId));
   });
@@ -1354,8 +1353,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
 
   app.get("/api/v1/finance/charges", async (request, reply) => {
     const { context } = requestContext(request, "finance.read");
-    store.requireRole(context, ["admin", "financeiro"], "finance:read");
-    const items = [...store.charges.values()].filter((charge) => charge.organizationId === context.organizationId && charge.unitId === context.unitId);
+    const items = await readApplication.listCharges(context);
     audit(context, "finance.read", "Charge", null, "ALLOWED", null, { count: items.length });
     return response(reply, success({ items }, context.correlationId));
   });
@@ -1383,20 +1381,14 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
 
   app.get("/api/v1/finance/payments", async (request, reply) => {
     const { context } = requestContext(request, "finance.payments.read");
-    store.requireRole(context, ["admin", "financeiro"], "finance:read");
-    const items = [...store.payments.values()].filter((payment) => payment.organizationId === context.organizationId && store.charges.get(payment.chargeId)?.unitId === context.unitId);
+    const items = await readApplication.listPayments(context);
     audit(context, "finance.payments.read", "Payment", null, "ALLOWED", null, { count: items.length });
     return response(reply, success({ items }, context.correlationId));
   });
 
   app.get("/api/v1/finance/ledger", async (request, reply) => {
     const { context } = requestContext(request, "finance.ledger.read");
-    store.requireRole(context, ["admin", "financeiro"], "finance:read");
-    const items = [...store.ledgerEntries.values()].filter((entry) => {
-      if (entry.organizationId !== context.organizationId) return false;
-      const chargeId = entry.kind === "CHARGE" ? entry.referenceId : entry.kind === "PAYMENT" || entry.kind === "REFUND" ? store.payments.get(entry.referenceId)?.chargeId : null;
-      return chargeId ? store.charges.get(chargeId)?.unitId === context.unitId : false;
-    });
+    const items = await readApplication.listLedgerEntries(context);
     audit(context, "finance.ledger.read", "LedgerEntry", null, "ALLOWED", null, { count: items.length });
     return response(reply, success({ items }, context.correlationId));
   });
@@ -1414,7 +1406,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
 
   app.get("/api/v1/communications", async (request, reply) => {
     const { context } = requestContext(request, "communication.read");
-    const items = store.listMessages(context);
+    const items = await readApplication.listMessages(context);
     audit(context, "communication.read", "CommunicationMessage", null, "ALLOWED", null, { count: items.length });
     return response(reply, success({ items }, context.correlationId));
   });
@@ -1446,7 +1438,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
 
   app.get("/api/v1/knowledge", async (request, reply) => {
     const { context } = requestContext(request, "knowledge.read");
-    const items = store.listKnowledgeDocuments(context).map(({ content: _content, ...doc }) => doc);
+    const items = (await readApplication.listKnowledgeDocuments(context)).map(({ content: _content, ...doc }) => doc);
     audit(context, "knowledge.read", "KnowledgeDocument", null, "ALLOWED", null, { count: items.length });
     return response(reply, success({ items }, context.correlationId));
   });
@@ -1470,8 +1462,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
 
   app.get("/api/v1/ai/sessions", async (request, reply) => {
     const { context } = requestContext(request, "ai.sessions.read");
-    store.requireRole(context, ["admin", "veterinario", "recepcao"], "ai:sessions:read");
-    const items = [...store.aiSessions.values()].filter((session) => session.organizationId === context.organizationId && session.actorId === context.actorId && isInContext(session, context)).map((session) => ({ ...session, turns: [...store.aiTurns.values()].filter((turn) => turn.sessionId === session.id).length }));
+    const items = await readApplication.listAiSessions(context);
     audit(context, "ai.sessions.read", "AiSession", null, "ALLOWED", null, { count: items.length });
     return response(reply, success({ items }, context.correlationId));
   });
@@ -1548,10 +1539,10 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
   app.get("/api/v1/operations/summary", async (request, reply) => {
     const { context } = requestContext(request, "operations.summary");
     const appointments = await readApplication.listAppointments(context);
-    const waiting = store.listQueue(context).filter((entry) => entry.status === "WAITING");
-    const stock = store.listStock(context);
+    const waiting = (await readApplication.listQueue(context)).filter((entry) => entry.status === "WAITING");
+    const stock = await readApplication.listStock(context);
     const lowStock = stock.filter((item) => (item.product?.reorderPoint ?? 0) >= item.quantity);
-    const openCharges = [...store.charges.values()].filter((charge) => charge.organizationId === context.organizationId && charge.unitId === context.unitId && charge.status !== "PAID" && charge.status !== "REFUNDED");
+    const openCharges = await readApplication.listOpenChargesForOperationsSummary(context);
     const runtimeHealth = await agentRuntime.health();
     const summary = { appointmentsToday: appointments.length, waitingPatients: waiting.length, lowStockItems: lowStock.length, openCharges: openCharges.length, ai: { provider: runtimeHealth.capabilities.provider, tools: runtimeHealth.capabilities.toolNames.length, status: runtimeHealth.status }, unit: context.unitId ? store.units.get(context.unitId)?.name ?? "" : "Organização" };
     audit(context, "operations.summary", "Dashboard", null, "ALLOWED");

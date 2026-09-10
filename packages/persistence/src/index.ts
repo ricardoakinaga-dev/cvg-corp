@@ -1,6 +1,6 @@
 import { createCipheriv, createDecipheriv, randomBytes, randomUUID } from "node:crypto";
 import { Pool, type PoolClient, type PoolConfig } from "pg";
-import type { AnimalPatient, Appointment, AuditRecord, ClinicalDocument, CommandReceipt, CvgContext, DiagnosticRequest, DiagnosticResult, Encounter, Guardian, OpaqueId, Specimen } from "@cvg/contracts";
+import type { AiSession, AnimalPatient, Appointment, AuditRecord, Bed, Charge, ClinicalDocument, CommunicationMessage, CommandReceipt, CvgContext, DiagnosticRequest, DiagnosticResult, Encounter, Guardian, HospitalEpisode, KnowledgeDocument, LedgerEntry, Lot, MedicationOrder, OpaqueId, Payment, Product, QueueEntry, Specimen, StockLocation } from "@cvg/contracts";
 import { id } from "@cvg/contracts";
 import { auditRecordHash, digest, now, parseSnapshot, serializeSnapshot, type StoreSnapshot } from "@cvg/domain";
 
@@ -737,6 +737,23 @@ export interface NormalizedEncounterRead extends Encounter {
   patient: { id: OpaqueId; name: string };
 }
 
+export interface NormalizedMedicationOrderRead extends MedicationOrder {
+  product: Pick<Product, "id" | "name" | "unit"> | null;
+}
+
+export interface NormalizedStockRead extends Lot {
+  product: Product | null;
+  location: StockLocation | null;
+}
+
+export interface NormalizedQueueRead extends QueueEntry {
+  patient: { id: OpaqueId; name: string } | null;
+}
+
+export interface NormalizedAiSessionRead extends AiSession {
+  turns: number;
+}
+
 interface AuditReadRow {
   id: string;
   organization_id: string;
@@ -831,6 +848,161 @@ interface DiagnosticResultReadRow {
   workspace_id: string;
 }
 
+interface BedReadRow {
+  id: string;
+  organization_id: string;
+  unit_id: string;
+  name: unknown;
+  status: unknown;
+}
+
+interface HospitalEpisodeReadRow {
+  id: string;
+  organization_id: string;
+  unit_id: string;
+  patient_id: string;
+  encounter_id: string | null;
+  bed_id: string | null;
+  status: unknown;
+  admitted_at: SqlTimestamp;
+  discharged_at: SqlTimestamp;
+}
+
+interface MedicationOrderReadRow {
+  id: string;
+  organization_id: string;
+  patient_id: string;
+  encounter_id: string;
+  product_id: string;
+  dose: unknown;
+  route: unknown;
+  frequency: unknown;
+  status: unknown;
+  prescribed_by: string;
+  unit_id: string;
+  workspace_id: string;
+  product_name: unknown;
+  product_unit: unknown;
+}
+
+interface StockReadRow {
+  id: string;
+  organization_id: string;
+  product_id: string;
+  lot_number: unknown;
+  expires_on: string;
+  quantity: unknown;
+  location_id: string;
+  status: unknown;
+  product_sku: unknown;
+  product_name: unknown;
+  product_category: unknown;
+  product_unit: unknown;
+  product_reorder_point: unknown;
+  product_status: unknown;
+  location_unit_id: string;
+  location_name: unknown;
+}
+
+interface QueueReadRow {
+  id: string;
+  organization_id: string;
+  unit_id: string;
+  appointment_id: string | null;
+  patient_id: string;
+  status: unknown;
+  priority: unknown;
+  checked_in_at: SqlTimestamp;
+  appointment_workspace_id: string | null;
+  patient_name: unknown;
+}
+
+interface AiSessionReadRow {
+  id: string;
+  organization_id: string;
+  actor_id: string;
+  unit_id: string | null;
+  workspace_id: string | null;
+  patient_id: string | null;
+  encounter_id: string | null;
+  purpose: unknown;
+  engine_commit: unknown;
+  profile_digest: unknown;
+  status: unknown;
+  created_at: SqlTimestamp;
+  turn_count: unknown;
+}
+
+interface ChargeReadRow {
+  id: string;
+  organization_id: string;
+  unit_id: string | null;
+  patient_id: string | null;
+  description: unknown;
+  amount_cents: unknown;
+  currency: unknown;
+  status: unknown;
+  created_at: SqlTimestamp;
+}
+
+interface PaymentReadRow {
+  id: string;
+  organization_id: string;
+  charge_id: string;
+  scope_unit_id: string | null;
+  amount_cents: unknown;
+  method: unknown;
+  external_reference: unknown;
+  status: unknown;
+  created_at: SqlTimestamp;
+}
+
+interface LedgerEntryReadRow {
+  id: string;
+  organization_id: string;
+  kind: unknown;
+  reference_id: string;
+  amount_cents: unknown;
+  currency: unknown;
+  description: unknown;
+  created_at: SqlTimestamp;
+  scope_unit_id: string | null;
+}
+
+interface CommunicationReadRow {
+  id: string;
+  organization_id: string;
+  unit_id: string | null;
+  workspace_id: string | null;
+  patient_id: string | null;
+  channel: unknown;
+  recipient: unknown;
+  template: unknown;
+  body: unknown;
+  status: unknown;
+  created_by: string | null;
+  decided_by: string | null;
+  decided_at: SqlTimestamp;
+  approved_by: string | null;
+  approved_at: SqlTimestamp;
+  decision_reason: unknown;
+  created_at: SqlTimestamp;
+}
+
+interface KnowledgeReadRow {
+  id: string;
+  organization_id: string;
+  unit_id: string | null;
+  workspace_id: string | null;
+  title: unknown;
+  source: unknown;
+  data_class: unknown;
+  version: unknown;
+  status: unknown;
+  content: unknown;
+  created_at: SqlTimestamp;
+}
+
 function sqlId(value: unknown, field: string): OpaqueId {
   if (typeof value !== "string") throw new PersistenceCorruptionError(`normalized ${field} is not a UUID string`);
   return id(value);
@@ -839,6 +1011,11 @@ function sqlId(value: unknown, field: string): OpaqueId {
 function sqlText(value: unknown, field: string): string {
   if (typeof value !== "string") throw new PersistenceCorruptionError(`normalized ${field} is not text`);
   return value;
+}
+
+function sqlNullableText(value: unknown, field: string): string | null {
+  if (value === null || typeof value === "string") return value;
+  throw new PersistenceCorruptionError(`normalized ${field} is not nullable text`);
 }
 
 function sqlTimestamp(value: SqlTimestamp, field: string): string {
@@ -1835,6 +2012,32 @@ export class PostgresPersistence {
     });
   }
 
+  async listQueue(context: CvgContext): Promise<NormalizedQueueRead[]> {
+    return this.scopedRead(context, "queue", async (client) => {
+      const result = await client.query<QueueReadRow>(
+        "select q.id::text as id, q.organization_id::text as organization_id, q.unit_id::text as unit_id, q.appointment_id::text as appointment_id, q.patient_id::text as patient_id, q.status, q.priority, q.checked_in_at, a.workspace_id::text as appointment_workspace_id, p.name as patient_name from queue_entries q left join appointments a on a.id = q.appointment_id and a.organization_id = q.organization_id left join patients p on p.id = q.patient_id and p.organization_id = q.organization_id where q.organization_id = cvg_request_organization() and cvg_request_scope_allows(q.unit_id, null) and ($1::uuid is null or q.unit_id = $1::uuid) and ($2::uuid is null or a.workspace_id = $2::uuid) order by q.checked_in_at, q.id",
+        [context.unitId, context.workspaceId]
+      );
+      return result.rows.map((row) => {
+        const organizationId = sqlId(row.organization_id, "queue.organization_id");
+        const unitId = sqlId(row.unit_id, "queue.unit_id");
+        const appointmentWorkspaceId = row.appointment_workspace_id ? sqlId(row.appointment_workspace_id, "queue.appointment_workspace_id") : null;
+        if (organizationId !== context.organizationId || (context.unitId !== null && unitId !== context.unitId) || (context.workspaceId !== null && appointmentWorkspaceId !== context.workspaceId)) throw new PersistenceCorruptionError(`normalized queue entry ${row.id} is outside the requested scope`);
+        return {
+          id: sqlId(row.id, "queue.id"),
+          organizationId,
+          unitId,
+          appointmentId: row.appointment_id ? sqlId(row.appointment_id, "queue.appointment_id") : null,
+          patientId: sqlId(row.patient_id, "queue.patient_id"),
+          status: sqlEnum(row.status, ["WAITING", "TRIAGE", "IN_SERVICE", "DONE", "CANCELLED"] as const, "queue.status"),
+          priority: sqlEnum(row.priority, ["ROUTINE", "URGENT", "EMERGENCY"] as const, "queue.priority"),
+          checkedInAt: sqlTimestamp(row.checked_in_at, "queue.checked_in_at"),
+          patient: row.patient_name === null ? null : { id: sqlId(row.patient_id, "queue.patient.id"), name: sqlText(row.patient_name, "queue.patient.name") }
+        };
+      });
+    });
+  }
+
   async listEncounters(context: CvgContext): Promise<NormalizedEncounterRead[]> {
     return this.scopedRead(context, "encounters", async (client) => {
       const result = await client.query<EncounterReadRow>(
@@ -1969,6 +2172,279 @@ export class PostgresPersistence {
           sourceVersion: sqlText(row.source_version, "diagnostic-result.source_version"),
           status: sqlEnum(row.status, ["RECEIVED", "QUARANTINED", "VALID", "REJECTED"] as const, "diagnostic-result.status"),
           createdAt: sqlTimestamp(row.created_at, "diagnostic-result.created_at")
+        };
+      });
+    });
+  }
+
+  async listBeds(context: CvgContext): Promise<Bed[]> {
+    return this.scopedRead(context, "beds", async (client) => {
+      const result = await client.query<BedReadRow>(
+        "select b.id::text as id, b.organization_id::text as organization_id, b.unit_id::text as unit_id, b.name, b.status from beds b where b.organization_id = cvg_request_organization() and cvg_request_scope_allows(b.unit_id, null) and ($1::uuid is null or b.unit_id = $1::uuid) order by b.name, b.id",
+        [context.unitId]
+      );
+      return result.rows.map((row) => {
+        const organizationId = sqlId(row.organization_id, "bed.organization_id");
+        const unitId = sqlId(row.unit_id, "bed.unit_id");
+        if (organizationId !== context.organizationId || (context.unitId !== null && unitId !== context.unitId)) throw new PersistenceCorruptionError(`normalized bed ${row.id} is outside the requested scope`);
+        return {
+          id: sqlId(row.id, "bed.id"),
+          organizationId,
+          unitId,
+          name: sqlText(row.name, "bed.name"),
+          status: sqlEnum(row.status, ["AVAILABLE", "OCCUPIED", "MAINTENANCE"] as const, "bed.status")
+        };
+      });
+    });
+  }
+
+  async listHospitalEpisodes(context: CvgContext): Promise<HospitalEpisode[]> {
+    return this.scopedRead(context, "hospital episodes", async (client) => {
+      const result = await client.query<HospitalEpisodeReadRow>(
+        "select h.id::text as id, h.organization_id::text as organization_id, h.unit_id::text as unit_id, h.patient_id::text as patient_id, h.encounter_id::text as encounter_id, h.bed_id::text as bed_id, h.status, h.admitted_at, h.discharged_at from hospital_episodes h where h.organization_id = cvg_request_organization() and cvg_request_scope_allows(h.unit_id, null) and ($1::uuid is null or h.unit_id = $1::uuid) order by h.admitted_at nulls last, h.id",
+        [context.unitId]
+      );
+      return result.rows.map((row) => {
+        const organizationId = sqlId(row.organization_id, "hospital.organization_id");
+        const unitId = sqlId(row.unit_id, "hospital.unit_id");
+        if (organizationId !== context.organizationId || (context.unitId !== null && unitId !== context.unitId)) throw new PersistenceCorruptionError(`normalized hospital episode ${row.id} is outside the requested scope`);
+        return {
+          id: sqlId(row.id, "hospital.id"),
+          organizationId,
+          unitId,
+          patientId: sqlId(row.patient_id, "hospital.patient_id"),
+          encounterId: row.encounter_id ? sqlId(row.encounter_id, "hospital.encounter_id") : null,
+          bedId: row.bed_id ? sqlId(row.bed_id, "hospital.bed_id") : null,
+          status: sqlEnum(row.status, ["PLANNED", "ADMITTED", "PROCEDURE", "RECOVERY", "DISCHARGED"] as const, "hospital.status"),
+          admittedAt: sqlNullableTimestamp(row.admitted_at),
+          dischargedAt: sqlNullableTimestamp(row.discharged_at)
+        };
+      });
+    });
+  }
+
+  async listMedicationOrders(context: CvgContext): Promise<NormalizedMedicationOrderRead[]> {
+    return this.scopedRead(context, "medication orders", async (client) => {
+      const result = await client.query<MedicationOrderReadRow>(
+        "select m.id::text as id, m.organization_id::text as organization_id, m.patient_id::text as patient_id, m.encounter_id::text as encounter_id, m.product_id::text as product_id, m.dose, m.route, m.frequency, m.status, m.prescribed_by::text as prescribed_by, e.unit_id::text as unit_id, e.workspace_id::text as workspace_id, p.name as product_name, p.unit as product_unit from medication_orders m join encounters e on e.id = m.encounter_id and e.organization_id = m.organization_id left join products p on p.id = m.product_id and p.organization_id = m.organization_id where m.organization_id = cvg_request_organization() and cvg_request_scope_allows(e.unit_id, e.workspace_id) and ($1::uuid is null or e.unit_id = $1::uuid) and ($2::uuid is null or e.workspace_id = $2::uuid) order by m.id",
+        [context.unitId, context.workspaceId]
+      );
+      return result.rows.map((row) => {
+        const organizationId = sqlId(row.organization_id, "medication.organization_id");
+        const unitId = sqlId(row.unit_id, "medication.unit_id");
+        const workspaceId = sqlId(row.workspace_id, "medication.workspace_id");
+        if (organizationId !== context.organizationId || (context.unitId !== null && unitId !== context.unitId) || (context.workspaceId !== null && workspaceId !== context.workspaceId)) throw new PersistenceCorruptionError(`normalized medication order ${row.id} is outside the requested scope`);
+        if (row.product_name === null || row.product_unit === null) throw new PersistenceCorruptionError(`normalized medication order ${row.id} has no product projection`);
+        const productId = sqlId(row.product_id, "medication.product_id");
+        return {
+          id: sqlId(row.id, "medication.id"),
+          organizationId,
+          patientId: sqlId(row.patient_id, "medication.patient_id"),
+          encounterId: sqlId(row.encounter_id, "medication.encounter_id"),
+          productId,
+          dose: sqlText(row.dose, "medication.dose"),
+          route: sqlText(row.route, "medication.route"),
+          frequency: sqlText(row.frequency, "medication.frequency"),
+          status: sqlEnum(row.status, ["DRAFT", "ACTIVE", "SUSPENDED", "COMPLETED"] as const, "medication.status"),
+          prescribedBy: sqlId(row.prescribed_by, "medication.prescribed_by"),
+          product: { id: productId, name: sqlText(row.product_name, "medication.product_name"), unit: sqlText(row.product_unit, "medication.product_unit") }
+        };
+      });
+    });
+  }
+
+  async listStock(context: CvgContext): Promise<NormalizedStockRead[]> {
+    return this.scopedRead(context, "stock", async (client) => {
+      const result = await client.query<StockReadRow>(
+        "select l.id::text as id, l.organization_id::text as organization_id, l.product_id::text as product_id, l.lot_number, to_char(l.expires_on, 'YYYY-MM-DD') as expires_on, l.quantity, l.location_id::text as location_id, l.status, p.sku as product_sku, p.name as product_name, p.category as product_category, p.unit as product_unit, p.reorder_point as product_reorder_point, p.status as product_status, sl.unit_id::text as location_unit_id, sl.name as location_name from lots l join stock_locations sl on sl.id = l.location_id and sl.organization_id = l.organization_id left join products p on p.id = l.product_id and p.organization_id = l.organization_id where l.organization_id = cvg_request_organization() and cvg_request_scope_allows(sl.unit_id, null) and ($1::uuid is null or sl.unit_id = $1::uuid) order by l.expires_on, l.id",
+        [context.unitId]
+      );
+      return result.rows.map((row) => {
+        const organizationId = sqlId(row.organization_id, "stock.organization_id");
+        const locationUnitId = sqlId(row.location_unit_id, "stock.location_unit_id");
+        if (organizationId !== context.organizationId || (context.unitId !== null && locationUnitId !== context.unitId)) throw new PersistenceCorruptionError(`normalized stock lot ${row.id} is outside the requested scope`);
+        const productId = sqlId(row.product_id, "stock.product_id");
+        const locationId = sqlId(row.location_id, "stock.location_id");
+        const product = row.product_name === null || row.product_sku === null || row.product_category === null || row.product_unit === null || row.product_reorder_point === null || row.product_status === null
+          ? null
+          : { id: productId, organizationId, sku: sqlText(row.product_sku, "stock.product.sku"), name: sqlText(row.product_name, "stock.product.name"), category: sqlText(row.product_category, "stock.product.category"), unit: sqlText(row.product_unit, "stock.product.unit"), reorderPoint: sqlInteger(row.product_reorder_point, "stock.product.reorder_point"), status: sqlEnum(row.product_status, ["ACTIVE", "INACTIVE"] as const, "stock.product.status") } satisfies Product;
+        return {
+          id: sqlId(row.id, "stock.id"),
+          organizationId,
+          productId,
+          lotNumber: sqlText(row.lot_number, "stock.lot_number"),
+          expiresOn: sqlText(row.expires_on, "stock.expires_on"),
+          quantity: sqlInteger(row.quantity, "stock.quantity"),
+          locationId,
+          status: sqlEnum(row.status, ["AVAILABLE", "EXPIRED", "BLOCKED"] as const, "stock.status"),
+          product,
+          location: { id: locationId, organizationId, unitId: locationUnitId, name: sqlText(row.location_name, "stock.location.name") } satisfies StockLocation
+        };
+      });
+    });
+  }
+
+  async listCharges(context: CvgContext, openOnly = false): Promise<Charge[]> {
+    return this.scopedRead(context, "charges", async (client) => {
+      const result = await client.query<ChargeReadRow>(
+        `select c.id::text as id, c.organization_id::text as organization_id, c.unit_id::text as unit_id, c.patient_id::text as patient_id, c.description, c.amount_cents, c.currency, c.status, c.created_at from charges c where c.organization_id = cvg_request_organization() and cvg_request_scope_allows(c.unit_id, null) and c.unit_id is not distinct from $1::uuid${openOnly ? " and c.status not in ('PAID', 'REFUNDED')" : ""} order by c.created_at, c.id`,
+        [context.unitId]
+      );
+      return result.rows.map((row) => {
+        const organizationId = sqlId(row.organization_id, "charge.organization_id");
+        const unitId = row.unit_id ? sqlId(row.unit_id, "charge.unit_id") : null;
+        if (organizationId !== context.organizationId || (context.unitId !== null && unitId !== context.unitId)) throw new PersistenceCorruptionError(`normalized charge ${row.id} is outside the requested scope`);
+        return {
+          id: sqlId(row.id, "charge.id"),
+          organizationId,
+          unitId,
+          patientId: row.patient_id ? sqlId(row.patient_id, "charge.patient_id") : null,
+          description: sqlText(row.description, "charge.description"),
+          amountCents: sqlInteger(row.amount_cents, "charge.amount_cents"),
+          currency: sqlText(row.currency, "charge.currency"),
+          status: sqlEnum(row.status, ["OPEN", "PARTIALLY_PAID", "PAID", "REFUNDED"] as const, "charge.status"),
+          createdAt: sqlTimestamp(row.created_at, "charge.created_at")
+        };
+      });
+    });
+  }
+
+  async listPayments(context: CvgContext): Promise<Payment[]> {
+    return this.scopedRead(context, "payments", async (client) => {
+      const result = await client.query<PaymentReadRow>(
+        "select p.id::text as id, p.organization_id::text as organization_id, p.charge_id::text as charge_id, c.unit_id::text as scope_unit_id, p.amount_cents, p.method, p.external_reference, p.status, p.created_at from payments p join charges c on c.id = p.charge_id and c.organization_id = p.organization_id where p.organization_id = cvg_request_organization() and cvg_request_scope_allows(c.unit_id, null) and c.unit_id is not distinct from $1::uuid order by p.created_at, p.id",
+        [context.unitId]
+      );
+      return result.rows.map((row) => {
+        const organizationId = sqlId(row.organization_id, "payment.organization_id");
+        const scopeUnitId = row.scope_unit_id ? sqlId(row.scope_unit_id, "payment.scope_unit_id") : null;
+        if (organizationId !== context.organizationId || scopeUnitId !== context.unitId) throw new PersistenceCorruptionError(`normalized payment ${row.id} is outside the requested scope`);
+        return {
+          id: sqlId(row.id, "payment.id"),
+          organizationId,
+          chargeId: sqlId(row.charge_id, "payment.charge_id"),
+          amountCents: sqlInteger(row.amount_cents, "payment.amount_cents"),
+          method: sqlEnum(row.method, ["PIX", "CARD", "CASH", "TRANSFER"] as const, "payment.method"),
+          externalReference: sqlNullableText(row.external_reference, "payment.external_reference"),
+          status: sqlEnum(row.status, ["PENDING", "SETTLED", "UNKNOWN", "REFUNDED"] as const, "payment.status"),
+          createdAt: sqlTimestamp(row.created_at, "payment.created_at")
+        };
+      });
+    });
+  }
+
+  async listLedgerEntries(context: CvgContext): Promise<LedgerEntry[]> {
+    return this.scopedRead(context, "ledger entries", async (client) => {
+      const result = await client.query<LedgerEntryReadRow>(
+        "select l.id::text as id, l.organization_id::text as organization_id, l.kind, l.reference_id::text as reference_id, l.amount_cents, l.currency, l.description, l.created_at, coalesce(direct_charge.unit_id, payment_charge.unit_id)::text as scope_unit_id from ledger_entries l left join charges direct_charge on l.kind = 'CHARGE' and direct_charge.id = l.reference_id and direct_charge.organization_id = l.organization_id left join payments payment_ref on l.kind in ('PAYMENT', 'REFUND') and payment_ref.id = l.reference_id and payment_ref.organization_id = l.organization_id left join charges payment_charge on payment_charge.id = payment_ref.charge_id and payment_charge.organization_id = payment_ref.organization_id where l.organization_id = cvg_request_organization() and l.kind in ('CHARGE', 'PAYMENT', 'REFUND') and coalesce(direct_charge.id, payment_charge.id) is not null and cvg_request_scope_allows(coalesce(direct_charge.unit_id, payment_charge.unit_id), null) and coalesce(direct_charge.unit_id, payment_charge.unit_id) is not distinct from $1::uuid order by l.created_at, l.id",
+        [context.unitId]
+      );
+      return result.rows.map((row) => {
+        const organizationId = sqlId(row.organization_id, "ledger.organization_id");
+        const scopeUnitId = row.scope_unit_id ? sqlId(row.scope_unit_id, "ledger.scope_unit_id") : null;
+        if (organizationId !== context.organizationId || (context.unitId !== null && scopeUnitId !== context.unitId)) throw new PersistenceCorruptionError(`normalized ledger entry ${row.id} is outside the requested scope`);
+        return {
+          id: sqlId(row.id, "ledger.id"),
+          organizationId,
+          kind: sqlEnum(row.kind, ["CHARGE", "PAYMENT", "REFUND", "ADJUSTMENT"] as const, "ledger.kind"),
+          referenceId: sqlId(row.reference_id, "ledger.reference_id"),
+          amountCents: sqlInteger(row.amount_cents, "ledger.amount_cents"),
+          currency: sqlText(row.currency, "ledger.currency"),
+          description: sqlText(row.description, "ledger.description"),
+          createdAt: sqlTimestamp(row.created_at, "ledger.created_at")
+        };
+      });
+    });
+  }
+
+  async listMessages(context: CvgContext): Promise<CommunicationMessage[]> {
+    return this.scopedRead(context, "communication messages", async (client) => {
+      const result = await client.query<CommunicationReadRow>(
+        "select m.id::text as id, m.organization_id::text as organization_id, m.unit_id::text as unit_id, m.workspace_id::text as workspace_id, m.patient_id::text as patient_id, m.channel, m.recipient, m.template, m.body, m.status, m.created_by::text as created_by, m.decided_by::text as decided_by, m.decided_at, m.approved_by::text as approved_by, m.approved_at, m.decision_reason, m.created_at from communication_messages m where m.organization_id = cvg_request_organization() and cvg_request_scope_allows(m.unit_id, m.workspace_id) and m.unit_id is not distinct from $1::uuid and m.workspace_id is not distinct from $2::uuid order by m.created_at, m.id",
+        [context.unitId, context.workspaceId]
+      );
+      return result.rows.map((row) => {
+        const organizationId = sqlId(row.organization_id, "communication.organization_id");
+        const unitId = row.unit_id ? sqlId(row.unit_id, "communication.unit_id") : null;
+        const workspaceId = row.workspace_id ? sqlId(row.workspace_id, "communication.workspace_id") : null;
+        if (organizationId !== context.organizationId || unitId !== context.unitId || workspaceId !== context.workspaceId) throw new PersistenceCorruptionError(`normalized communication ${row.id} is outside the requested scope`);
+        return {
+          id: sqlId(row.id, "communication.id"),
+          organizationId,
+          unitId,
+          workspaceId,
+          patientId: row.patient_id ? sqlId(row.patient_id, "communication.patient_id") : null,
+          channel: sqlEnum(row.channel, ["SMS", "EMAIL", "WHATSAPP"] as const, "communication.channel"),
+          recipient: sqlText(row.recipient, "communication.recipient"),
+          template: sqlText(row.template, "communication.template"),
+          body: sqlText(row.body, "communication.body"),
+          status: sqlEnum(row.status, ["STAGED", "APPROVAL_REQUIRED", "QUEUED", "SENT", "FAILED"] as const, "communication.status"),
+          ...(row.created_by ? { createdBy: sqlId(row.created_by, "communication.created_by") } : {}),
+          ...(row.decided_by ? { decidedBy: sqlId(row.decided_by, "communication.decided_by") } : {}),
+          ...(row.decided_at !== null ? { decidedAt: sqlTimestamp(row.decided_at, "communication.decided_at") } : {}),
+          ...(row.approved_by ? { approvedBy: sqlId(row.approved_by, "communication.approved_by") } : {}),
+          ...(row.approved_at !== null ? { approvedAt: sqlTimestamp(row.approved_at, "communication.approved_at") } : {}),
+          ...(row.decision_reason !== null ? { decisionReason: sqlNullableText(row.decision_reason, "communication.decision_reason") } : {}),
+          createdAt: sqlTimestamp(row.created_at, "communication.created_at")
+        };
+      });
+    });
+  }
+
+  async listKnowledgeDocuments(context: CvgContext): Promise<KnowledgeDocument[]> {
+    return this.scopedRead(context, "knowledge documents", async (client) => {
+      const result = await client.query<KnowledgeReadRow>(
+        "select d.id::text as id, d.organization_id::text as organization_id, d.unit_id::text as unit_id, d.workspace_id::text as workspace_id, d.title, d.source, d.data_class, d.version, d.status, d.content, d.created_at from knowledge_documents d where d.organization_id = cvg_request_organization() and cvg_request_scope_allows(d.unit_id, d.workspace_id) and d.unit_id is not distinct from $1::uuid and d.workspace_id is not distinct from $2::uuid order by d.created_at, d.id",
+        [context.unitId, context.workspaceId]
+      );
+      return result.rows.map((row) => {
+        const organizationId = sqlId(row.organization_id, "knowledge.organization_id");
+        const unitId = row.unit_id ? sqlId(row.unit_id, "knowledge.unit_id") : null;
+        const workspaceId = row.workspace_id ? sqlId(row.workspace_id, "knowledge.workspace_id") : null;
+        if (organizationId !== context.organizationId || unitId !== context.unitId || workspaceId !== context.workspaceId) throw new PersistenceCorruptionError(`normalized knowledge document ${row.id} is outside the requested scope`);
+        return {
+          id: sqlId(row.id, "knowledge.id"),
+          organizationId,
+          unitId,
+          workspaceId,
+          title: sqlText(row.title, "knowledge.title"),
+          source: sqlText(row.source, "knowledge.source"),
+          dataClass: sqlEnum(row.data_class, ["D0", "D1", "D2", "D3", "D4", "D5"] as const, "knowledge.data_class"),
+          version: sqlInteger(row.version, "knowledge.version"),
+          status: sqlEnum(row.status, ["DRAFT", "APPROVED", "INDEXING", "INDEXED", "QUARANTINED"] as const, "knowledge.status"),
+          content: sqlText(row.content, "knowledge.content"),
+          createdAt: sqlTimestamp(row.created_at, "knowledge.created_at")
+        };
+      });
+    });
+  }
+
+  async listAiSessions(context: CvgContext): Promise<NormalizedAiSessionRead[]> {
+    return this.scopedRead(context, "ai sessions", async (client) => {
+      const result = await client.query<AiSessionReadRow>(
+        "select s.id::text as id, s.organization_id::text as organization_id, s.actor_id::text as actor_id, s.unit_id::text as unit_id, s.workspace_id::text as workspace_id, s.patient_id::text as patient_id, s.encounter_id::text as encounter_id, s.purpose, s.engine_commit, s.profile_digest, s.status, s.created_at, count(t.id)::int as turn_count from ai_sessions s left join ai_turns t on t.session_id = s.id and t.organization_id = s.organization_id and t.unit_id is not distinct from s.unit_id and t.workspace_id is not distinct from s.workspace_id where s.organization_id = cvg_request_organization() and s.actor_id = $1::uuid and cvg_request_scope_allows(s.unit_id, s.workspace_id) and s.unit_id is not distinct from $2::uuid and s.workspace_id is not distinct from $3::uuid group by s.id, s.organization_id, s.actor_id, s.unit_id, s.workspace_id, s.patient_id, s.encounter_id, s.purpose, s.engine_commit, s.profile_digest, s.status, s.created_at order by s.created_at, s.id",
+        [context.actorId, context.unitId, context.workspaceId]
+      );
+      return result.rows.map((row) => {
+        const organizationId = sqlId(row.organization_id, "ai-session.organization_id");
+        const actorId = sqlId(row.actor_id, "ai-session.actor_id");
+        const unitId = row.unit_id ? sqlId(row.unit_id, "ai-session.unit_id") : null;
+        const workspaceId = row.workspace_id ? sqlId(row.workspace_id, "ai-session.workspace_id") : null;
+        if (organizationId !== context.organizationId || actorId !== context.actorId || unitId !== context.unitId || workspaceId !== context.workspaceId) throw new PersistenceCorruptionError(`normalized ai session ${row.id} is outside the requested scope`);
+        return {
+          id: sqlId(row.id, "ai-session.id"),
+          organizationId,
+          actorId,
+          unitId,
+          workspaceId,
+          patientId: row.patient_id ? sqlId(row.patient_id, "ai-session.patient_id") : null,
+          encounterId: row.encounter_id ? sqlId(row.encounter_id, "ai-session.encounter_id") : null,
+          purpose: sqlEnum(row.purpose, ["SUMMARY", "DRAFT_CLINICAL", "KNOWLEDGE_QUERY", "OPERATIONS"] as const, "ai-session.purpose"),
+          engineCommit: sqlText(row.engine_commit, "ai-session.engine_commit"),
+          profileDigest: sqlText(row.profile_digest, "ai-session.profile_digest"),
+          status: sqlEnum(row.status, ["ACTIVE", "CLOSED", "QUARANTINED"] as const, "ai-session.status"),
+          createdAt: sqlTimestamp(row.created_at, "ai-session.created_at"),
+          turns: sqlInteger(row.turn_count, "ai-session.turn_count")
         };
       });
     });

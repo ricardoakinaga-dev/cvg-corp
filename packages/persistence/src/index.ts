@@ -189,6 +189,35 @@ export interface DurableExternalEffectRecord extends DurableExternalEffectInput 
   updatedAt: string;
 }
 
+export type DurableBreakGlassStatus = "ACTIVE" | "EXPIRED" | "REVOKED" | "REVIEWED";
+export type DurableBreakGlassMfaMethod = "WEBAUTHN";
+
+/**
+ * Durable record admitted only after the application boundary has verified an
+ * independent WebAuthn approval. This adapter intentionally does not perform
+ * WebAuthn verification or grant public capability access by itself.
+ */
+export interface DurableBreakGlassInput {
+  grantId: OpaqueId;
+  organizationId: OpaqueId;
+  actorId: OpaqueId;
+  approverId: OpaqueId;
+  reason: string;
+  target: string;
+  mfaMethod: DurableBreakGlassMfaMethod;
+  issuedAt: string;
+  expiresAt: string;
+}
+
+export interface DurableBreakGlassGrant extends DurableBreakGlassInput {
+  status: DurableBreakGlassStatus;
+  reviewedBy: OpaqueId | null;
+  reviewedAt: string | null;
+  reviewNote: string | null;
+  revokedAt: string | null;
+  createdAt: string;
+}
+
 export type DurableExternalEffectOutcomeStatus = "SUCCEEDED" | "FAILED_RETRYABLE" | "OUTCOME_UNKNOWN" | "FAILED_FINAL" | "QUARANTINED";
 
 export interface DurableExternalEffectOutcome {
@@ -673,6 +702,26 @@ interface ExternalEffectRow {
   updated_at: SqlTimestamp;
 }
 
+interface BreakGlassRow {
+  id: string;
+  organization_id: string;
+  actor_id: string;
+  approver_id: string;
+  reason: string;
+  target: string;
+  mfa_method: DurableBreakGlassMfaMethod;
+  issued_at: SqlTimestamp;
+  expires_at: SqlTimestamp;
+  status: DurableBreakGlassStatus;
+  reviewed_by: string | null;
+  reviewed_at: SqlTimestamp;
+  review_note: string | null;
+  revoked_at: SqlTimestamp;
+  created_at: SqlTimestamp;
+}
+
+const BREAK_GLASS_COLUMNS = "id::text as id, organization_id::text as organization_id, actor_id::text as actor_id, approver_id::text as approver_id, reason, target, mfa_method, issued_at, expires_at, status, reviewed_by::text as reviewed_by, reviewed_at, review_note, revoked_at, created_at";
+
 type SqlTimestamp = string | Date | null;
 
 export interface NormalizedPatientRead extends AnimalPatient {
@@ -819,6 +868,41 @@ function mapExternalEffectRow(row: ExternalEffectRow): DurableExternalEffectReco
     createdAt: sqlTimestamp(row.created_at, "external_effect.created_at"),
     updatedAt: sqlTimestamp(row.updated_at, "external_effect.updated_at")
   };
+}
+
+function mapBreakGlassRow(row: BreakGlassRow): DurableBreakGlassGrant {
+  return {
+    grantId: sqlId(row.id, "break_glass.grant_id"),
+    organizationId: sqlId(row.organization_id, "break_glass.organization_id"),
+    actorId: sqlId(row.actor_id, "break_glass.actor_id"),
+    approverId: sqlId(row.approver_id, "break_glass.approver_id"),
+    reason: sqlText(row.reason, "break_glass.reason"),
+    target: sqlText(row.target, "break_glass.target"),
+    mfaMethod: row.mfa_method,
+    issuedAt: sqlTimestamp(row.issued_at, "break_glass.issued_at"),
+    expiresAt: sqlTimestamp(row.expires_at, "break_glass.expires_at"),
+    status: row.status,
+    reviewedBy: row.reviewed_by ? sqlId(row.reviewed_by, "break_glass.reviewed_by") : null,
+    reviewedAt: sqlNullableTimestamp(row.reviewed_at),
+    reviewNote: row.review_note,
+    revokedAt: sqlNullableTimestamp(row.revoked_at),
+    createdAt: sqlTimestamp(row.created_at, "break_glass.created_at")
+  };
+}
+
+function validateBreakGlassInput(input: DurableBreakGlassInput, atMs = Date.now()): void {
+  if (input.mfaMethod !== "WEBAUTHN") throw new PersistenceStateError("durable break-glass grants require WebAuthn");
+  if (!input.reason.trim() || input.reason.trim().length < 10 || input.reason.length > 2_000) throw new PersistenceStateError("durable break-glass reason is invalid");
+  if (!input.target.trim() || input.target.length > 512) throw new PersistenceStateError("durable break-glass target is invalid");
+  if (input.actorId === input.approverId) throw new PersistenceStateError("durable break-glass approval must be independent");
+  const issuedAt = Date.parse(input.issuedAt);
+  const expiresAt = Date.parse(input.expiresAt);
+  if (!Number.isFinite(issuedAt) || !Number.isFinite(expiresAt) || issuedAt > atMs || expiresAt <= atMs || expiresAt <= issuedAt || expiresAt - issuedAt > 15 * 60_000) throw new PersistenceStateError("durable break-glass window is invalid");
+}
+
+function breakGlassInstant(atMs: number): string {
+  if (!Number.isFinite(atMs)) throw new PersistenceStateError("break-glass clock value is invalid");
+  return new Date(atMs).toISOString();
 }
 
 function validateExternalSuccess(providerRequestId: string | null | undefined, response: Record<string, unknown> | null | undefined): void {
@@ -1327,10 +1411,10 @@ export class PostgresPersistence {
 
   async assertSchema(): Promise<void> {
     try {
-      const result = await this.pool.query<{ snapshots: boolean; journal: boolean; audit: boolean; receipts: boolean; communications: boolean; outbox: boolean; usage_ledger: boolean; inbox: boolean; external_effects: boolean; rate_limit_buckets: boolean; runtime_role: boolean; runtime_scope_guards: boolean; auth_security: boolean; ai_turn_scope: boolean; ai_draft_scope: boolean; ai_turn_provenance_usage: boolean; audit_tamper_evident_chain: boolean; append_only_audit_guard: boolean; append_only_lock_privileges: boolean }>("select to_regclass('public.cvg_state_snapshots') is not null as snapshots, to_regclass('public.cvg_event_journal') is not null as journal, to_regclass('public.cvg_audit_ledger') is not null as audit, to_regclass('public.cvg_command_receipt_ledger') is not null as receipts, to_regclass('public.communication_messages') is not null as communications, to_regclass('public.outbox_records') is not null as outbox, to_regclass('public.ai_usage_ledger') is not null as usage_ledger, to_regclass('public.integration_inbox_records') is not null as inbox, to_regclass('public.external_effects') is not null as external_effects, to_regclass('public.cvg_rate_limit_buckets') is not null as rate_limit_buckets, exists (select 1 from pg_roles where rolname = current_user and rolsuper = false and rolbypassrls = false and rolcreaterole = false and rolcreatedb = false) as runtime_role, exists (select 1 from schema_migrations where version = '019_runtime_scope_guards') as runtime_scope_guards, exists (select 1 from schema_migrations where version = '020_auth_security_boundary') and to_regclass('public.auth_challenges') is not null and exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'users' and column_name = 'mfa_secret_ref') and exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'sessions' and column_name = 'device_id_digest') as auth_security, exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'ai_turns' and column_name in ('organization_id', 'unit_id', 'workspace_id') group by table_schema, table_name having count(*) = 3) as ai_turn_scope, exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'ai_drafts' and column_name in ('organization_id', 'unit_id', 'workspace_id') group by table_schema, table_name having count(*) = 3) as ai_draft_scope, exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'ai_turns' and column_name in ('usage_record_id', 'provenance_json') group by table_schema, table_name having count(*) = 2) and exists (select 1 from schema_migrations where version = '029_ai_turn_provenance_usage_and_dml_scope') as ai_turn_provenance_usage, exists (select 1 from schema_migrations where version = '026_audit_tamper_evident_chain') as audit_tamper_evident_chain, exists (select 1 from schema_migrations where version = '027_append_only_audit_guard') as append_only_audit_guard, exists (select 1 from schema_migrations where version = '028_append_only_lock_privileges') as append_only_lock_privileges");
+      const result = await this.pool.query<{ snapshots: boolean; journal: boolean; audit: boolean; receipts: boolean; communications: boolean; outbox: boolean; usage_ledger: boolean; inbox: boolean; external_effects: boolean; rate_limit_buckets: boolean; break_glass_grants: boolean; break_glass_lifecycle: boolean; runtime_role: boolean; runtime_scope_guards: boolean; auth_security: boolean; ai_turn_scope: boolean; ai_draft_scope: boolean; ai_turn_provenance_usage: boolean; audit_tamper_evident_chain: boolean; append_only_audit_guard: boolean; append_only_lock_privileges: boolean }>("select to_regclass('public.cvg_state_snapshots') is not null as snapshots, to_regclass('public.cvg_event_journal') is not null as journal, to_regclass('public.cvg_audit_ledger') is not null as audit, to_regclass('public.cvg_command_receipt_ledger') is not null as receipts, to_regclass('public.communication_messages') is not null as communications, to_regclass('public.outbox_records') is not null as outbox, to_regclass('public.ai_usage_ledger') is not null as usage_ledger, to_regclass('public.integration_inbox_records') is not null as inbox, to_regclass('public.external_effects') is not null as external_effects, to_regclass('public.cvg_rate_limit_buckets') is not null as rate_limit_buckets, to_regclass('public.break_glass_grants') is not null as break_glass_grants, exists (select 1 from pg_roles where rolname = current_user and rolsuper = false and rolbypassrls = false and rolcreaterole = false and rolcreatedb = false) as runtime_role, exists (select 1 from schema_migrations where version = '019_runtime_scope_guards') as runtime_scope_guards, exists (select 1 from schema_migrations where version = '020_auth_security_boundary') and to_regclass('public.auth_challenges') is not null and exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'users' and column_name = 'mfa_secret_ref') and exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'sessions' and column_name = 'device_id_digest') as auth_security, exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'ai_turns' and column_name in ('organization_id', 'unit_id', 'workspace_id') group by table_schema, table_name having count(*) = 3) as ai_turn_scope, exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'ai_drafts' and column_name in ('organization_id', 'unit_id', 'workspace_id') group by table_schema, table_name having count(*) = 3) as ai_draft_scope, exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'ai_turns' and column_name in ('usage_record_id', 'provenance_json') group by table_schema, table_name having count(*) = 2) and exists (select 1 from schema_migrations where version = '029_ai_turn_provenance_usage_and_dml_scope') as ai_turn_provenance_usage, exists (select 1 from schema_migrations where version = '026_audit_tamper_evident_chain') as audit_tamper_evident_chain, exists (select 1 from schema_migrations where version = '027_append_only_audit_guard') as append_only_audit_guard, exists (select 1 from schema_migrations where version = '028_append_only_lock_privileges') as append_only_lock_privileges, exists (select 1 from schema_migrations where version = '030_break_glass_durable_lifecycle') as break_glass_lifecycle");
       const snapshotKey = await this.pool.query<{ snapshot_scope_revision: boolean }>("select exists (select 1 from pg_constraint constraint_row join pg_class table_row on table_row.oid = constraint_row.conrelid join pg_namespace namespace_row on namespace_row.oid = table_row.relnamespace where namespace_row.nspname = 'public' and table_row.relname = 'cvg_state_snapshots' and constraint_row.contype = 'p' and pg_get_constraintdef(constraint_row.oid) = 'PRIMARY KEY (organization_id, revision)') as snapshot_scope_revision");
       const row = result.rows[0];
-      if (!row?.snapshots || !row.journal || !row.audit || !row.receipts || !row.communications || !row.outbox || !row.usage_ledger || !row.inbox || !row.external_effects || !row.rate_limit_buckets || !row.runtime_role || !row.runtime_scope_guards || !row.auth_security || !row.ai_turn_scope || !row.ai_draft_scope || !row.ai_turn_provenance_usage || !row.audit_tamper_evident_chain || !row.append_only_audit_guard || !row.append_only_lock_privileges || snapshotKey.rows[0]?.snapshot_scope_revision !== true) throw new PersistenceUnavailableError("CVG persistence schema or runtime database role is not ready; run migrations with a non-superuser DATABASE_URL");
+      if (!row?.snapshots || !row.journal || !row.audit || !row.receipts || !row.communications || !row.outbox || !row.usage_ledger || !row.inbox || !row.external_effects || !row.rate_limit_buckets || !row.break_glass_grants || !row.break_glass_lifecycle || !row.runtime_role || !row.runtime_scope_guards || !row.auth_security || !row.ai_turn_scope || !row.ai_draft_scope || !row.ai_turn_provenance_usage || !row.audit_tamper_evident_chain || !row.append_only_audit_guard || !row.append_only_lock_privileges || snapshotKey.rows[0]?.snapshot_scope_revision !== true) throw new PersistenceUnavailableError("CVG persistence schema or runtime database role is not ready; run migrations with a non-superuser DATABASE_URL");
     } catch (error) {
       if (error instanceof PersistenceUnavailableError) throw error;
       throw new PersistenceUnavailableError("CVG persistence schema could not be checked", error);
@@ -1622,6 +1706,95 @@ export class PostgresPersistence {
         patient: row.patient_name === null ? null : { id: sqlId(row.patient_id, "patient.id"), name: row.patient_name },
         provider: row.provider_name
       }));
+    });
+  }
+
+  async createBreakGlassGrant(input: DurableBreakGlassInput): Promise<DurableBreakGlassGrant> {
+    validateBreakGlassInput(input);
+    return this.organizationTransaction(input.organizationId, "break-glass activation record", async (client) => {
+      const result = await client.query<BreakGlassRow>(
+        `insert into break_glass_grants(id, organization_id, actor_id, approver_id, reason, target, mfa_method, issued_at, expires_at, status)
+         values ($1, cvg_request_organization(), $2, $3, $4, $5, $6, $7, $8, 'ACTIVE')
+         on conflict (id) do nothing
+         returning ${BREAK_GLASS_COLUMNS}`,
+        [input.grantId, input.actorId, input.approverId, input.reason.trim(), input.target.trim(), input.mfaMethod, input.issuedAt, input.expiresAt]
+      );
+      if (!result.rows[0]) throw new PersistenceStateError(`break-glass grant ${input.grantId} already exists or could not be recorded`);
+      return mapBreakGlassRow(result.rows[0]);
+    });
+  }
+
+  async getBreakGlassGrant(organizationId: OpaqueId, grantId: OpaqueId, atMs = Date.now()): Promise<DurableBreakGlassGrant | null> {
+    const at = breakGlassInstant(atMs);
+    return this.organizationTransaction(organizationId, "break-glass read", async (client) => {
+      await client.query(
+        "update break_glass_grants set status = 'EXPIRED' where organization_id = cvg_request_organization() and id = $1 and status = 'ACTIVE' and expires_at <= $2::timestamptz",
+        [grantId, at]
+      );
+      const result = await client.query<BreakGlassRow>(`select ${BREAK_GLASS_COLUMNS} from break_glass_grants where organization_id = cvg_request_organization() and id = $1`, [grantId]);
+      return result.rows[0] ? mapBreakGlassRow(result.rows[0]) : null;
+    });
+  }
+
+  async assertActiveBreakGlassGrant(organizationId: OpaqueId, grantId: OpaqueId, atMs = Date.now()): Promise<DurableBreakGlassGrant> {
+    const grant = await this.getBreakGlassGrant(organizationId, grantId, atMs);
+    if (!grant) throw new PersistenceStateError(`break-glass grant ${grantId} was not found`);
+    if (grant.status !== "ACTIVE") throw new PersistenceStateError(`break-glass grant ${grantId} is no longer active`);
+    return grant;
+  }
+
+  async revokeBreakGlassGrant(organizationId: OpaqueId, grantId: OpaqueId, atMs = Date.now()): Promise<DurableBreakGlassGrant> {
+    const at = breakGlassInstant(atMs);
+    return this.organizationTransaction(organizationId, "break-glass revocation", async (client) => {
+      await client.query(
+        "update break_glass_grants set status = 'EXPIRED' where organization_id = cvg_request_organization() and id = $1 and status = 'ACTIVE' and expires_at <= $2::timestamptz",
+        [grantId, at]
+      );
+      const result = await client.query<BreakGlassRow>(
+        `update break_glass_grants set status = 'REVOKED', revoked_at = $2::timestamptz
+         where organization_id = cvg_request_organization() and id = $1 and status = 'ACTIVE' and expires_at > $2::timestamptz
+         returning ${BREAK_GLASS_COLUMNS}`,
+        [grantId, at]
+      );
+      if (result.rows[0]) return mapBreakGlassRow(result.rows[0]);
+      const current = await client.query<BreakGlassRow>(`select ${BREAK_GLASS_COLUMNS} from break_glass_grants where organization_id = cvg_request_organization() and id = $1`, [grantId]);
+      if (!current.rows[0]) throw new PersistenceStateError(`break-glass grant ${grantId} was not found`);
+      throw new PersistenceStateError(`break-glass grant ${grantId} is no longer active`);
+    });
+  }
+
+  async reviewBreakGlassGrant(organizationId: OpaqueId, grantId: OpaqueId, reviewerId: OpaqueId, note: string, atMs = Date.now()): Promise<DurableBreakGlassGrant> {
+    const trimmedNote = note.trim();
+    if (trimmedNote.length < 10 || note.length > 2_000) throw new PersistenceStateError("break-glass review requires a bounded note");
+    const at = breakGlassInstant(atMs);
+    return this.organizationTransaction(organizationId, "break-glass review", async (client) => {
+      await client.query(
+        "update break_glass_grants set status = 'EXPIRED' where organization_id = cvg_request_organization() and id = $1 and status = 'ACTIVE' and expires_at <= $2::timestamptz",
+        [grantId, at]
+      );
+      const result = await client.query<BreakGlassRow>(
+        `update break_glass_grants as grant_row
+         set status = 'REVIEWED', reviewed_by = $2, reviewed_at = $3::timestamptz, review_note = $4
+         where grant_row.organization_id = cvg_request_organization() and grant_row.id = $1 and grant_row.status in ('EXPIRED', 'REVOKED') and grant_row.reviewed_by is null and grant_row.actor_id <> $2
+         returning ${BREAK_GLASS_COLUMNS}`,
+        [grantId, reviewerId, at, trimmedNote]
+      );
+      if (result.rows[0]) return mapBreakGlassRow(result.rows[0]);
+      const current = await client.query<BreakGlassRow>(`select ${BREAK_GLASS_COLUMNS} from break_glass_grants where organization_id = cvg_request_organization() and id = $1`, [grantId]);
+      if (!current.rows[0]) throw new PersistenceStateError(`break-glass grant ${grantId} was not found`);
+      throw new PersistenceStateError(`break-glass grant ${grantId} cannot be reviewed in its current state`);
+    });
+  }
+
+  async listBreakGlassGrants(organizationId: OpaqueId, atMs = Date.now()): Promise<DurableBreakGlassGrant[]> {
+    const at = breakGlassInstant(atMs);
+    return this.organizationTransaction(organizationId, "break-glass list", async (client) => {
+      await client.query(
+        "update break_glass_grants set status = 'EXPIRED' where organization_id = cvg_request_organization() and status = 'ACTIVE' and expires_at <= $1::timestamptz",
+        [at]
+      );
+      const result = await client.query<BreakGlassRow>(`select ${BREAK_GLASS_COLUMNS} from break_glass_grants where organization_id = cvg_request_organization() order by issued_at desc, id`);
+      return result.rows.map(mapBreakGlassRow);
     });
   }
 

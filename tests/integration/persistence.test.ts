@@ -37,7 +37,7 @@ function fakePool(options: { revision?: string; failSnapshotInsert?: boolean; au
       const normalized = sql.trim().replace(/\s+/g, " ");
       statements.push(normalized);
       if (sql.includes("current_database()")) return { rows: [{ database: "cvg_synthetic", server_version: "16.0" }] };
-      if (sql.includes("to_regclass('public.cvg_state_snapshots')")) return { rows: [{ snapshots: true, journal: true, audit: true, receipts: true, communications: true, outbox: true, usage_ledger: true, inbox: true, external_effects: true, rate_limit_buckets: true, runtime_role: true, runtime_scope_guards: true, auth_security: true, ai_turn_scope: true, ai_draft_scope: true, ai_turn_provenance_usage: true, audit_tamper_evident_chain: true, append_only_audit_guard: true, append_only_lock_privileges: true }] };
+      if (sql.includes("to_regclass('public.cvg_state_snapshots')")) return { rows: [{ snapshots: true, journal: true, audit: true, receipts: true, communications: true, outbox: true, usage_ledger: true, inbox: true, external_effects: true, rate_limit_buckets: true, break_glass_grants: true, break_glass_lifecycle: true, runtime_role: true, runtime_scope_guards: true, auth_security: true, ai_turn_scope: true, ai_draft_scope: true, ai_turn_provenance_usage: true, audit_tamper_evident_chain: true, append_only_audit_guard: true, append_only_lock_privileges: true }] };
       if (sql.includes("as snapshot_scope_revision")) return { rows: [{ snapshot_scope_revision: true }] };
       if (sql.includes("from cvg_state_snapshots s")) return { rows: [] };
       if (sql.includes("select revision::text as revision")) return { rows: revision === "0" ? [] : [{ revision }] };
@@ -158,6 +158,65 @@ test("normalized read repositories scope the transaction and preserve joined pro
   assert.ok(fake.statements.filter((statement) => statement === "COMMIT").length === 3);
   assert.ok(fake.statements.some((statement) => statement.includes("p.organization_id = cvg_request_organization()")));
   assert.ok(fake.statements.some((statement) => statement.includes("a.workspace_id = $2::uuid")));
+});
+
+test("durable break-glass lifecycle keeps evidence immutable behind the transaction boundary", async () => {
+  const statements: string[] = [];
+  const grantId = "00000000-0000-4000-0000-000000000201";
+  const organizationId = "00000000-0000-4000-0000-000000000010";
+  const actorId = "00000000-0000-4000-0000-000000000001";
+  const approverId = "00000000-0000-4000-0000-000000000002";
+  const issuedAt = new Date(Date.now() - 1_000).toISOString();
+  const expiresAt = new Date(Date.now() + 10 * 60_000).toISOString();
+  const row: Record<string, unknown> = {
+    id: grantId,
+    organization_id: organizationId,
+    actor_id: actorId,
+    approver_id: approverId,
+    reason: "synthetic incident review",
+    target: "patient:synthetic",
+    mfa_method: "WEBAUTHN",
+    issued_at: issuedAt,
+    expires_at: expiresAt,
+    status: "ACTIVE",
+    reviewed_by: null,
+    reviewed_at: null,
+    review_note: null,
+    revoked_at: null,
+    created_at: issuedAt
+  };
+  const client = {
+    async query(sql: string): Promise<QueryResult> {
+      statements.push(sql.trim().replace(/\s+/g, " "));
+      if (sql.includes("insert into break_glass_grants")) return { rows: [row] };
+      if (sql.includes("set status = 'REVOKED'")) {
+        row.status = "REVOKED";
+        row.revoked_at = new Date().toISOString();
+        return { rows: [row] };
+      }
+      if (sql.includes("update break_glass_grants as grant_row")) {
+        row.status = "REVIEWED";
+        row.reviewed_by = approverId;
+        row.reviewed_at = new Date().toISOString();
+        row.review_note = "independent synthetic post-incident review";
+        return { rows: [row] };
+      }
+      if (sql.includes("select id::text as id")) return { rows: [row] };
+      return { rows: [] };
+    },
+    release(): void { /* no-op fake */ }
+  } as unknown as PoolClient;
+  const persistence = new PostgresPersistence({ connectionString: "postgres://synthetic.invalid", pool: { connect: async (): Promise<PoolClient> => client } as unknown as Pool });
+  const grant = await persistence.createBreakGlassGrant({ grantId: id(grantId), organizationId: id(organizationId), actorId: id(actorId), approverId: id(approverId), reason: "synthetic incident review", target: "patient:synthetic", mfaMethod: "WEBAUTHN", issuedAt, expiresAt });
+  assert.equal(grant.status, "ACTIVE");
+  assert.equal((await persistence.assertActiveBreakGlassGrant(id(organizationId), id(grantId))).grantId, id(grantId));
+  assert.equal((await persistence.revokeBreakGlassGrant(id(organizationId), id(grantId))).status, "REVOKED");
+  const reviewed = await persistence.reviewBreakGlassGrant(id(organizationId), id(grantId), id(approverId), "independent synthetic post-incident review");
+  assert.equal(reviewed.status, "REVIEWED");
+  assert.equal(reviewed.reviewedBy, id(approverId));
+  assert.ok(statements.some((statement) => statement.includes("insert into break_glass_grants")));
+  assert.ok(statements.some((statement) => statement.includes("update break_glass_grants set status = 'REVOKED'")));
+  assert.ok(statements.some((statement) => statement.includes("update break_glass_grants as grant_row")));
 });
 
 test("Postgres persistence rolls back a failed projection and rejects stale writers", async () => {

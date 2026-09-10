@@ -54,6 +54,7 @@ const requiredFiles = [
   "db/migrations/027_append_only_audit_guard.sql",
   "db/migrations/028_append_only_lock_privileges.sql",
   "db/migrations/029_ai_turn_provenance_usage_and_dml_scope.sql",
+  "db/migrations/030_break_glass_durable_lifecycle.sql",
   "docs/runbooks/deploy.md",
   "docs/runbooks/deployment.md",
   "docs/runbooks/rollback.md",
@@ -214,6 +215,9 @@ function inspectStaticContracts(): void {
   requireText("db/migrations/029_ai_turn_provenance_usage_and_dml_scope.sql", "usage_record_id");
   requireText("db/migrations/029_ai_turn_provenance_usage_and_dml_scope.sql", "provenance_json");
   requireText("db/migrations/029_ai_turn_provenance_usage_and_dml_scope.sql", "cvg_request_dml_scope_allows");
+  requireText("db/migrations/030_break_glass_durable_lifecycle.sql", "break_glass_grants");
+  requireText("db/migrations/030_break_glass_durable_lifecycle.sql", "mfa_method = 'WEBAUTHN'");
+  requireText("db/migrations/030_break_glass_durable_lifecycle.sql", "cvg_break_glass_transition_guard");
   requireText("apps/api/src/application/export-service.ts", "encryptRecoveryBundle");
   requireText("apps/api/src/application/export-service.ts", "idempotentAsync");
   requireText(".gauntlet/bar-v3.json", "V3-AAA-001");

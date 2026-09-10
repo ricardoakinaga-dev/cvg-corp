@@ -10,7 +10,7 @@ const required = [
 for (const path of required) { try { const content = await readFile(path, "utf8"); if (content.trim().length < 40) failures.push(`${path}: empty artifact`); } catch { failures.push(`${path}: missing`); } }
 const sourceFiles: string[] = [];
 const walk = async (root: string): Promise<void> => { for (const item of await readdir(root, { withFileTypes: true })) { const path = join(root, item.name); if (item.isDirectory()) await walk(path); else if (/\.(ts|tsx|sql|json|css)$/.test(item.name)) sourceFiles.push(path); } };
-await walk("apps"); await walk("packages"); await walk("db"); await walk("scripts");
+await walk("apps"); await walk("packages"); await walk("db"); await walk("scripts"); await walk("docker");
 for (const path of sourceFiles) {
   const content = await readFile(path, "utf8");
   if (/sk-[A-Za-z0-9]{20,}|postgres:\/\/[^\s]*@[^\s]+/.test(content) && !path.endsWith("docker-compose.yml")) failures.push(`${path}: possible credential literal`);

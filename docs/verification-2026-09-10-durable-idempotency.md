@@ -53,3 +53,18 @@ no hook transacional do request e um erro ambíguo pode exigir reconciliação.
 Login/MFA/recuperação/emissão de sessão permanecem sem replay genérico por
 emitirem ou revogarem segredos. Não houve staging, provider/DeepSeek real,
 Collector/SLO, carga/chaos/recovery production-like ou aceite humano.
+
+## CI remoto no SHA exato — 2026-09-10 11:26
+
+A lane foi integrada no commit
+`5d09f25a224faecdd75631fdd7070e3fc8b14fda` e publicada em `origin/main`.
+O [run público 34487688940](https://github.com/ricardoakinaga-dev/cvg-corp/actions/runs/34487688940)
+terminou com `Success` para esse SHA. O job principal
+`102906073863` (typecheck, testes e artefatos) e o job
+`102909026577` (imagens API/web) aparecem concluídos com sucesso.
+
+Esse resultado é evidência de CI vinculada ao SHA, não de staging autorizado,
+provider/DeepSeek/segredos reais, Collector/SLO operacional,
+carga/chaos/recovery production-like, matriz completa de browser/assistive tech
+e zoom real ou aceite humano. O resultado global permanece
+`FAIL_WITH_LIMITATIONS` / `AAA_NOT_PROVEN`.

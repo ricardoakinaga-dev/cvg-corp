@@ -399,6 +399,15 @@ carga/chaos/recovery production-like, browser completo, crítica aprovadora ou
 aceite humano. O veredito global permanece `FAIL_WITH_LIMITATIONS` /
 `AAA_NOT_PROVEN`.
 
+## Fechamento de integração — idempotência durável — 2026-09-10
+
+O commit `5d09f25a224faecdd75631fdd7070e3fc8b14fda` foi enviado para
+`origin/main`. O [CVG CI #74](https://github.com/ricardoakinaga-dev/cvg-corp/actions/runs/34487688940)
+terminou `Success`; os jobs principal (`102906073863`) e de imagens
+(`102909026577`) também terminaram com sucesso. O próximo gate é
+`EXTERNAL-EVIDENCE-AND-HUMAN-ACCEPTANCE`. Não há autorização para declarar
+AAA ou promover dados, provider, segredos, staging ou produção.
+
 ## Checkpoint atual — 2026-09-10 escrita normalizada autoritativa de encounter
 
 `POST /api/v1/encounters` agora usa `EncounterApplicationService`, repository

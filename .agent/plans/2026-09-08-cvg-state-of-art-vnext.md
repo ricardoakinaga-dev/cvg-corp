@@ -664,3 +664,13 @@ O próximo passo é integrar a lane e observar o CI no SHA exato, sem alterar o
 veredito global `FAIL_WITH_LIMITATIONS` / `AAA_NOT_PROVEN`. Concorrência
 PostgreSQL real, crash/restart, provider/DeepSeek/segredos, staging,
 Collector/SLO, carga/chaos/recovery e aceite humano continuam fora da prova.
+
+## Durable command idempotency — integration and exact CI — 2026-09-10 11:26
+
+A lane foi integrada no commit `5d09f25a224faecdd75631fdd7070e3fc8b14fda`.
+O run público `34487688940` terminou `Success` para o SHA exato; os jobs
+`102906073863` e `102909026577` aparecem concluídos com sucesso. O próximo
+gate é `EXTERNAL-EVIDENCE-AND-HUMAN-ACCEPTANCE`. O programa continua
+`FAIL_WITH_LIMITATIONS` / `AAA_NOT_PROVEN`, pois staging, provider/DeepSeek,
+segredos, Collector/SLO, carga/chaos/recovery, matriz assistiva completa e
+aceite humano não foram executados.

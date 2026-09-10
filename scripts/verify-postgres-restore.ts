@@ -107,7 +107,7 @@ try {
   const encryptedBackup = encryptRecoveryBundle(sourceBefore, backupKey, "synthetic-kms-key");
   const restoredBundle = decryptRecoveryBundle(encryptedBackup, backupKey);
   validateRecoveryBundle(restoredBundle, { expectedMigrationFingerprint: sourceMigrationFingerprint });
-  if (restoredBundle.revision !== sourceBefore.revision || restoredBundle.eventId !== sourceBefore.eventId || restoredBundle.snapshotDigest !== sourceBefore.snapshotDigest || restoredBundle.outboxRecords.length !== sourceBefore.outboxRecords.length || restoredBundle.usageRecords.length !== sourceBefore.usageRecords.length || restoredBundle.inboxRecords.length !== sourceBefore.inboxRecords.length || restoredBundle.externalEffects.length !== sourceBefore.externalEffects.length) throw new Error("encrypted recovery bundle round-trip changed durable recovery state");
+  if (restoredBundle.revision !== sourceBefore.revision || restoredBundle.eventId !== sourceBefore.eventId || restoredBundle.snapshotDigest !== sourceBefore.snapshotDigest || restoredBundle.outboxRecords.length !== sourceBefore.outboxRecords.length || restoredBundle.usageRecords.length !== sourceBefore.usageRecords.length || restoredBundle.inboxRecords.length !== sourceBefore.inboxRecords.length || restoredBundle.externalEffects.length !== sourceBefore.externalEffects.length || (restoredBundle.workerJobs?.length ?? 0) !== (sourceBefore.workerJobs?.length ?? 0)) throw new Error("encrypted recovery bundle round-trip changed durable recovery state");
   const tamperedCiphertext = Buffer.from(encryptedBackup.ciphertext, "base64");
   tamperedCiphertext[0] = (tamperedCiphertext[0] ?? 0) ^ 1;
   let tamperRejected = false;
@@ -172,11 +172,12 @@ try {
     correlationId: "verify-postgres-restore",
     aggregateType: "Restore",
     aggregateId: null,
-    payload: { synthetic: true, sourceRevision: restoredBundle.revision.toString(), sourceEventId: restoredBundle.eventId, quarantine: true, recoveredOutbox: restoredBundle.outboxRecords.length, recoveredUsage: restoredBundle.usageRecords.length, recoveredInbox: restoredBundle.inboxRecords.length, recoveredExternalEffects: restoredBundle.externalEffects.length },
+    payload: { synthetic: true, sourceRevision: restoredBundle.revision.toString(), sourceEventId: restoredBundle.eventId, quarantine: true, recoveredOutbox: restoredBundle.outboxRecords.length, recoveredUsage: restoredBundle.usageRecords.length, recoveredInbox: restoredBundle.inboxRecords.length, recoveredExternalEffects: restoredBundle.externalEffects.length, recoveredWorkerJobs: restoredBundle.workerJobs?.length ?? 0 },
     recoveredOutboxRecords: restoredBundle.outboxRecords,
     recoveredUsageRecords: restoredBundle.usageRecords,
     recoveredInboxRecords: restoredBundle.inboxRecords,
-    recoveredExternalEffects: restoredBundle.externalEffects
+    recoveredExternalEffects: restoredBundle.externalEffects,
+    ...(restoredBundle.workerJobs ? { recoveredWorkerJobs: restoredBundle.workerJobs } : {})
   });
   if (targetCommit.revision !== 1n) throw new Error(`restore target revision is ${targetCommit.revision}, expected 1`);
 
@@ -190,6 +191,7 @@ try {
   if (JSON.stringify(sortedDigests(targetBundle.usageRecords)) !== JSON.stringify(sortedDigests(sourceBefore.usageRecords))) throw new Error("restore did not preserve the usage recovery ledger");
   if (JSON.stringify(targetBundle.inboxRecords.map((record) => record.recordDigest).sort()) !== JSON.stringify(sourceBefore.inboxRecords.map((record) => record.recordDigest).sort())) throw new Error("restore did not preserve the inbox recovery ledger");
   if (JSON.stringify(targetBundle.externalEffects.map((record) => record.requestDigest).sort()) !== JSON.stringify(sourceBefore.externalEffects.map((record) => record.requestDigest).sort())) throw new Error("restore did not preserve the external effect recovery ledger");
+  if (JSON.stringify((targetBundle.workerJobs ?? []).map((record) => record.recordDigest).sort()) !== JSON.stringify((sourceBefore.workerJobs ?? []).map((record) => record.recordDigest).sort())) throw new Error("restore did not preserve the worker job recovery ledger");
 
   runtime = await createRuntime({ config: { storageMode: "postgres", demoMode: true, databaseUrl: targetUrl, bootstrapPassword }, persistence: targetPersistence });
   const login = await runtime.app.inject({ method: "POST", url: "/api/v1/auth/login", headers: { "content-type": "application/json" }, payload: JSON.stringify({ login: "admin@cvg.local", password: bootstrapPassword }) });
@@ -199,8 +201,8 @@ try {
 
   const sourceAfter = await sourcePersistence.exportRecoveryBundle(sourceOrganizationId);
   if (!sourceAfter || sourceAfter.revision !== sourceBefore.revision || sourceAfter.eventId !== sourceBefore.eventId) throw new Error("restore drill changed the source database");
-  if (JSON.stringify(sortedDigests(sourceAfter.outboxRecords)) !== JSON.stringify(sortedDigests(sourceBefore.outboxRecords)) || JSON.stringify(sortedDigests(sourceAfter.usageRecords)) !== JSON.stringify(sortedDigests(sourceBefore.usageRecords)) || JSON.stringify(sourceAfter.inboxRecords.map((record) => record.recordDigest).sort()) !== JSON.stringify(sourceBefore.inboxRecords.map((record) => record.recordDigest).sort()) || JSON.stringify(sourceAfter.externalEffects.map((record) => record.requestDigest).sort()) !== JSON.stringify(sourceBefore.externalEffects.map((record) => record.requestDigest).sort())) throw new Error("restore drill changed the source recovery ledgers");
-  console.log(JSON.stringify({ restore: "PASS", encryptedBackup: true, backupAlgorithm: encryptedBackup.algorithm, tamperRejected, partialRejected, staleRejected, migrationMismatchRejected, sourceRevision: sourceBefore.revision.toString(), targetDatabase: restoreDatabase, targetRevision: targetLatest.revision.toString(), targetStatus: targetLatest.snapshot.healthStatus, recoveredOutbox: targetBundle.outboxRecords.length, recoveredUsage: targetBundle.usageRecords.length, recoveredInbox: targetBundle.inboxRecords.length, recoveredExternalEffects: targetBundle.externalEffects.length, loginBlocked: true, readinessBlocked: true, sourceUnchanged: true }, null, 2));
+  if (JSON.stringify(sortedDigests(sourceAfter.outboxRecords)) !== JSON.stringify(sortedDigests(sourceBefore.outboxRecords)) || JSON.stringify(sortedDigests(sourceAfter.usageRecords)) !== JSON.stringify(sortedDigests(sourceBefore.usageRecords)) || JSON.stringify(sourceAfter.inboxRecords.map((record) => record.recordDigest).sort()) !== JSON.stringify(sourceBefore.inboxRecords.map((record) => record.recordDigest).sort()) || JSON.stringify(sourceAfter.externalEffects.map((record) => record.requestDigest).sort()) !== JSON.stringify(sourceBefore.externalEffects.map((record) => record.requestDigest).sort()) || JSON.stringify((sourceAfter.workerJobs ?? []).map((record) => record.recordDigest).sort()) !== JSON.stringify((sourceBefore.workerJobs ?? []).map((record) => record.recordDigest).sort())) throw new Error("restore drill changed the source recovery ledgers");
+  console.log(JSON.stringify({ restore: "PASS", encryptedBackup: true, backupAlgorithm: encryptedBackup.algorithm, tamperRejected, partialRejected, staleRejected, migrationMismatchRejected, sourceRevision: sourceBefore.revision.toString(), targetDatabase: restoreDatabase, targetRevision: targetLatest.revision.toString(), targetStatus: targetLatest.snapshot.healthStatus, recoveredOutbox: targetBundle.outboxRecords.length, recoveredUsage: targetBundle.usageRecords.length, recoveredInbox: targetBundle.inboxRecords.length, recoveredExternalEffects: targetBundle.externalEffects.length, recoveredWorkerJobs: targetBundle.workerJobs?.length ?? 0, loginBlocked: true, readinessBlocked: true, sourceUnchanged: true }, null, 2));
 } finally {
   if (runtime) await runtime.app.close().catch(() => undefined);
   await targetPersistence?.close().catch(() => undefined);

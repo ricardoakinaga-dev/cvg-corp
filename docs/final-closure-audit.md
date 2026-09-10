@@ -290,3 +290,7 @@ O último CI remoto observado antes deste patch é o run `34422825560` no SHA `0
 **Owner:** Lead/integrator do repositório.
 **Dependências:** contrato observável do DeepSeek Harness; nenhuma credencial ou efeito externo é necessária para a etapa local.
 **Revalidação:** após qualquer mudança em adapter, contracts, tool registry, auth, provider, migrations, CI ou staging.
+
+## Current checkpoint — 2026-09-09 23:12
+
+`VER-CVG-068` registra o run remoto `34427884550` no SHA `b232648bfbc3f1ae37ec099705ac16d045582b4d`: o job principal passou Browser E2E, migrations, PostgreSQL/RLS, restore, release/Compose, performance, SBOM, artifacts e whitespace; o job de containers passou Build API image, Build web image, Scan API image e Scan web image. `VER-CVG-069` registra o fechamento do plano de controle e a publicação do resultado. O CI do repositório está verde para o SHA publicado, mas o veredito global permanece `FAIL_WITH_LIMITATIONS`/`AAA_NOT_PROVEN` por falta de staging autorizado, provider/secret authority, turno DeepSeek, collector/SLO, carga/recuperação production-like, WebKit/assistive-tech/zoom real, crítica independente aprovadora e aceite humano.

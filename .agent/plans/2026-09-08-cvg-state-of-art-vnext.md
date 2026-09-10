@@ -388,3 +388,7 @@ O focused test e o verificador passaram (`sendRequests=4`, `queryRequests=2`, `c
 ## Current checkpoint — 2026-09-09 22:59
 
 `VER-CVG-066` registrou o run remoto `34427078117` no SHA `90bddd9`: job principal, E2E, banco, release, builds API/web e Scan API passaram; `Scan web image` falhou. A reprodução Trivy encontrou 34 findings HIGH/CRITICAL na base Nginx antiga. `VER-CVG-067` registra `nginxinc/nginx-unprivileged:1.31.5-alpine3.24@sha256:2ddec616f1cb58bcac057aa388f28cb81e35137641ef4226d321714499329bd1`, com zero findings na reprodução local e gates locais verdes; o próximo pointer é publicar e observar o scan.
+
+## Current checkpoint — 2026-09-09 23:12
+
+`VER-CVG-068` registra o run remoto `34427884550` no SHA `b232648bfbc3f1ae37ec099705ac16d045582b4d`: o job principal passou Browser E2E, migrations, PostgreSQL/RLS, restore, release/Compose, performance, SBOM, artifacts e whitespace; o job de containers passou Build API image, Build web image, Scan API image e Scan web image. `VER-CVG-069` registra o fechamento do plano de controle. O CI do repositório está verde para o SHA publicado; o próximo estado é manter o artefato bloqueado para promoção até que os gates externos e o aceite humano sejam executados, sem declarar AAA.

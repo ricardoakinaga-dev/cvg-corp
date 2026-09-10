@@ -1,6 +1,6 @@
 import { createCipheriv, createDecipheriv, randomBytes, randomUUID } from "node:crypto";
 import { Pool, type PoolClient, type PoolConfig } from "pg";
-import type { AnimalPatient, Appointment, AuditRecord, CommandReceipt, CvgContext, Guardian, OpaqueId } from "@cvg/contracts";
+import type { AnimalPatient, Appointment, AuditRecord, ClinicalDocument, CommandReceipt, CvgContext, Encounter, Guardian, OpaqueId } from "@cvg/contracts";
 import { id } from "@cvg/contracts";
 import { auditRecordHash, digest, now, parseSnapshot, serializeSnapshot, type StoreSnapshot } from "@cvg/domain";
 
@@ -733,6 +733,10 @@ export interface NormalizedAppointmentRead extends Appointment {
   provider: string | null;
 }
 
+export interface NormalizedEncounterRead extends Encounter {
+  patient: { id: OpaqueId; name: string };
+}
+
 interface AuditReadRow {
   id: string;
   organization_id: string;
@@ -749,6 +753,40 @@ interface AuditReadRow {
   chain_version: number;
   previous_hash: string | null;
   record_hash: string;
+  created_at: SqlTimestamp;
+}
+
+interface EncounterReadRow {
+  id: string;
+  organization_id: string;
+  unit_id: string;
+  workspace_id: string;
+  patient_id: string;
+  appointment_id: string | null;
+  chief_complaint: unknown;
+  urgency: unknown;
+  status: unknown;
+  opened_at: SqlTimestamp;
+  closed_at: SqlTimestamp;
+  patient_name: unknown;
+}
+
+interface ClinicalDocumentReadRow {
+  id: string;
+  organization_id: string;
+  unit_id: string;
+  workspace_id: string;
+  encounter_id: string;
+  patient_id: string;
+  author_id: string;
+  document_type: unknown;
+  title: unknown;
+  content: unknown;
+  data_class: unknown;
+  status: unknown;
+  version: unknown;
+  signed_at: SqlTimestamp;
+  signed_by: string | null;
   created_at: SqlTimestamp;
 }
 
@@ -776,6 +814,16 @@ function sqlNullableTimestamp(value: SqlTimestamp): string | null {
 function sqlStringArray(value: unknown, field: string): string[] {
   if (!Array.isArray(value) || value.some((item) => typeof item !== "string")) throw new PersistenceCorruptionError(`normalized ${field} is not a string array`);
   return [...value];
+}
+
+function sqlEnum<T extends string>(value: unknown, allowed: readonly T[], field: string): T {
+  if (typeof value === "string" && allowed.includes(value as T)) return value as T;
+  throw new PersistenceCorruptionError(`normalized ${field} has an unsupported value`);
+}
+
+function sqlInteger(value: unknown, field: string): number {
+  if (!Number.isSafeInteger(value)) throw new PersistenceCorruptionError(`normalized ${field} is not a safe integer`);
+  return value as number;
 }
 
 function sqlObject(value: unknown, field: string): Record<string, unknown> {
@@ -1743,6 +1791,68 @@ export class PostgresPersistence {
         patient: row.patient_name === null ? null : { id: sqlId(row.patient_id, "patient.id"), name: row.patient_name },
         provider: row.provider_name
       }));
+    });
+  }
+
+  async listEncounters(context: CvgContext): Promise<NormalizedEncounterRead[]> {
+    return this.scopedRead(context, "encounters", async (client) => {
+      const result = await client.query<EncounterReadRow>(
+        "select e.id::text as id, e.organization_id::text as organization_id, e.unit_id::text as unit_id, e.workspace_id::text as workspace_id, e.patient_id::text as patient_id, e.appointment_id::text as appointment_id, e.chief_complaint, e.urgency, e.status, e.opened_at, e.closed_at, p.name as patient_name from encounters e left join patients p on p.id = e.patient_id and p.organization_id = e.organization_id where e.organization_id = cvg_request_organization() and cvg_request_scope_allows(e.unit_id, e.workspace_id) and ($1::uuid is null or e.unit_id = $1::uuid) and ($2::uuid is null or e.workspace_id = $2::uuid) order by e.opened_at, e.id",
+        [context.unitId, context.workspaceId]
+      );
+      return result.rows.map((row) => {
+        const organizationId = sqlId(row.organization_id, "encounter.organization_id");
+        const unitId = sqlId(row.unit_id, "encounter.unit_id");
+        const workspaceId = sqlId(row.workspace_id, "encounter.workspace_id");
+        const patientId = sqlId(row.patient_id, "encounter.patient_id");
+        if (organizationId !== context.organizationId || (context.unitId !== null && unitId !== context.unitId) || (context.workspaceId !== null && workspaceId !== context.workspaceId)) throw new PersistenceCorruptionError(`normalized encounter ${row.id} is outside the requested scope`);
+        if (row.patient_name === null) throw new PersistenceCorruptionError(`normalized encounter ${row.id} has no patient projection`);
+        return {
+          id: sqlId(row.id, "encounter.id"),
+          organizationId,
+          unitId,
+          workspaceId,
+          patientId,
+          appointmentId: row.appointment_id ? sqlId(row.appointment_id, "encounter.appointment_id") : null,
+          chiefComplaint: sqlText(row.chief_complaint, "encounter.chief_complaint"),
+          urgency: sqlEnum(row.urgency, ["ROUTINE", "URGENT", "EMERGENCY"] as const, "encounter.urgency"),
+          status: sqlEnum(row.status, ["OPEN", "IN_PROGRESS", "SIGNED", "CLOSED"] as const, "encounter.status"),
+          openedAt: sqlTimestamp(row.opened_at, "encounter.opened_at"),
+          closedAt: sqlNullableTimestamp(row.closed_at),
+          patient: { id: patientId, name: sqlText(row.patient_name, "encounter.patient_name") }
+        };
+      });
+    });
+  }
+
+  async listClinicalDocuments(context: CvgContext): Promise<ClinicalDocument[]> {
+    return this.scopedRead(context, "clinical documents", async (client) => {
+      const result = await client.query<ClinicalDocumentReadRow>(
+        "select d.id::text as id, d.organization_id::text as organization_id, d.unit_id::text as unit_id, d.workspace_id::text as workspace_id, d.encounter_id::text as encounter_id, d.patient_id::text as patient_id, d.author_id::text as author_id, d.document_type, d.title, d.content, d.data_class, d.status, d.version, d.signed_at, d.signed_by::text as signed_by, d.created_at from clinical_documents d where d.organization_id = cvg_request_organization() and cvg_request_scope_allows(d.unit_id, d.workspace_id) and ($1::uuid is null or d.unit_id = $1::uuid) and ($2::uuid is null or d.workspace_id = $2::uuid) order by d.created_at, d.id",
+        [context.unitId, context.workspaceId]
+      );
+      return result.rows.map((row) => {
+        const organizationId = sqlId(row.organization_id, "clinical.organization_id");
+        const unitId = sqlId(row.unit_id, "clinical.unit_id");
+        const workspaceId = sqlId(row.workspace_id, "clinical.workspace_id");
+        if (organizationId !== context.organizationId || (context.unitId !== null && unitId !== context.unitId) || (context.workspaceId !== null && workspaceId !== context.workspaceId)) throw new PersistenceCorruptionError(`normalized clinical document ${row.id} is outside the requested scope`);
+        return {
+          id: sqlId(row.id, "clinical.id"),
+          organizationId,
+          encounterId: sqlId(row.encounter_id, "clinical.encounter_id"),
+          patientId: sqlId(row.patient_id, "clinical.patient_id"),
+          authorId: sqlId(row.author_id, "clinical.author_id"),
+          documentType: sqlEnum(row.document_type, ["EVOLUTION", "TRIAGE", "DISCHARGE", "PRESCRIPTION", "REPORT"] as const, "clinical.document_type"),
+          title: sqlText(row.title, "clinical.title"),
+          content: sqlText(row.content, "clinical.content"),
+          dataClass: sqlEnum(row.data_class, ["D2", "D3"] as const, "clinical.data_class"),
+          status: sqlEnum(row.status, ["DRAFT", "REVIEW", "SIGNED", "PUBLISHED"] as const, "clinical.status"),
+          version: sqlInteger(row.version, "clinical.version"),
+          signedAt: sqlNullableTimestamp(row.signed_at),
+          signedBy: row.signed_by ? sqlId(row.signed_by, "clinical.signed_by") : null,
+          createdAt: sqlTimestamp(row.created_at, "clinical.created_at")
+        };
+      });
     });
   }
 

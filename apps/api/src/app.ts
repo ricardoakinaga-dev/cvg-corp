@@ -1160,7 +1160,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
 
   app.get("/api/v1/encounters", async (request, reply) => {
     const { context } = requestContext(request, "encounters.read");
-    const encounters = store.listEncounters(context).map((encounter) => ({ ...encounter, patient: store.patients.get(encounter.patientId) ? { id: encounter.patientId, name: store.patients.get(encounter.patientId)!.name } : null }));
+    const encounters = await readApplication.listEncounters(context);
     audit(context, "encounters.read", "Encounter", null, "ALLOWED", null, { count: encounters.length });
     return response(reply, success({ items: encounters }, context.correlationId));
   });
@@ -1177,8 +1177,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
 
   app.get("/api/v1/clinical/documents", async (request, reply) => {
     const { context } = requestContext(request, "clinical.read");
-    store.requireRole(context, ["admin", "veterinario"], "clinical:read");
-    const documents = [...store.clinicalDocuments.values()].filter((document) => document.organizationId === context.organizationId && (!context.unitId || store.encounters.get(document.encounterId)?.unitId === context.unitId) && (!context.workspaceId || store.encounters.get(document.encounterId)?.workspaceId === context.workspaceId)).map(({ content: _content, ...document }) => document);
+    const documents = (await readApplication.listClinicalDocuments(context)).map(({ content: _content, ...document }) => document);
     audit(context, "clinical.read", "ClinicalDocument", null, "ALLOWED", null, { count: documents.length });
     return response(reply, success({ items: documents }, context.correlationId));
   });
@@ -1562,7 +1561,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
 
   app.get("/api/v1/operations/summary", async (request, reply) => {
     const { context } = requestContext(request, "operations.summary");
-    const appointments = store.listAppointments(context);
+    const appointments = await readApplication.listAppointments(context);
     const waiting = store.listQueue(context).filter((entry) => entry.status === "WAITING");
     const stock = store.listStock(context);
     const lowStock = stock.filter((item) => (item.product?.reorderPoint ?? 0) >= item.quantity);

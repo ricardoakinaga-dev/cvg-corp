@@ -207,6 +207,13 @@ Evidência: `VER-CVG-043`; 73/73 testes, typecheck, lint (99 fontes), static (30
 - Cobrir known-good e known-bad com executor que não realiza egress; nenhuma tool externa, provider, segredo ou dado real será usado.
 - Ao concluir, registrar a evidência local e retornar o pointer ao gate `PRODUCTION-LIKE-EVIDENCE`; a universalidade em todos os ambientes externos continuará limitada ao que foi executado.
 
+### Ação concluída — leitura normalizada de auditoria
+
+- Escopo: `packages/persistence`, `apps/api/src/application/read-services.ts`, rota v1 de auditoria e testes de persistência.
+- Entregar `AuditRepository` tipado com adapter PostgreSQL em transação `READ ONLY`, escopo organizacional/contextual, cursor compatível e validação fail-closed dos campos duráveis; manter o snapshot somente como fallback de memória/reconstrução.
+- Evidência: `135ae56`; `npm test` 121 (120 pass, 1 skip), `npm run test:database` 15/15, typecheck, lint, build, static, PDP, `verify:production` estrutural e diff check passaram.
+- Limite: a Fase 8 ainda é parcial; os repositories operacionais dos demais bounded contexts, concorrência PostgreSQL e evidência production-like permanecem abertos.
+
 ### Ação corrente — evidência production-like
 
 - Executar PostgreSQL/Docker, CI remoto, imagem/container smoke, provider/secret authority, fault/recovery distribuído, carga/SLO e matriz de browsers/acessibilidade somente quando o ambiente e a aprovação correspondentes existirem.

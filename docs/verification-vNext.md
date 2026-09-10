@@ -1,6 +1,6 @@
 # Verification vNext
 
-**Data:** 2026-09-10 — fotografia local após Tool Gateway universal no harness, estados de falha frontend, métricas privadas, migration 030 e ciclo durável de break-glass
+**Data:** 2026-09-10 — fotografia local após Tool Gateway universal no harness, estados de falha frontend, métricas privadas, migration 030, ciclo durável de break-glass e `AuditRepository` normalizado (`135ae56`)
 
 ## Passe local atual
 
@@ -10,9 +10,9 @@
 | `npm run typecheck` | PASS | TypeScript sem emissão |
 | `npm run test:contract` | PASS | Envelopes e descriptors versionados |
 | `npm run test:security` | PASS | Auth, policy, gateway e fault-deny |
-| `npm run test:database` | PASS | Persistência/recovery sintéticos |
+| `npm run test:database` | PASS — 15/15 | Persistência/recovery sintéticos, leitura de auditoria normalizada e rota PostgreSQL-fake |
 | `npm run test:fault` | PASS | Worker e fault harness local |
-| `npm test` | PASS — 119 testes (118 pass, 1 skip condicional) | Unitário + integração, incluindo MFA, lockout, rotação, recovery manifest, PDP target-bound, Tool Gateway/ledger, harness assíncrono com execução universal, usage/provenance e exportação governada cifrada, provider loopback/reconciliação, break-glass durável, assinatura HMAC de contexto, scheduler/lifecycle do worker, OTLP redaction, fault harness, projeção RLS fail-closed e estados frontend |
+| `npm test` | PASS — 121 testes (120 pass, 1 skip condicional) | Unitário + integração, incluindo MFA, lockout, rotação, recovery manifest, PDP target-bound, Tool Gateway/ledger, harness assíncrono com execução universal, usage/provenance e exportação governada cifrada, provider loopback/reconciliação, break-glass durável, `AuditRepository` normalizado, assinatura HMAC de contexto, scheduler/lifecycle do worker, OTLP redaction, fault harness, projeção RLS fail-closed e estados frontend |
 | `npm run build` | PASS | Vite web + typecheck |
 | `npm run verify:static` | PASS | 46 artefatos e 123 arquivos-fonte |
 | recovery bundle manifest | PASS — bundle completo + 5 rejeições | watermark, tenant, digests de ledgers, partial, stale, migration mismatch, ciphertext adulterado e chave errada |
@@ -57,4 +57,4 @@ O passe demonstra uma base compilável, testável e com controles locais de supp
 
 ## Current checkpoint — 2026-09-10 local closure
 
-`docs/verification-2026-09-10-local-closure.md` registra a fotografia atual: `npm test` 119 (118/1 skip), typecheck/build/lint/static/PDP/security/database/restore, provider loopback, exportação governada, ciclo break-glass durável, produção estrutural/TLS overlay, contrast/tokens/licenses/audit e os E2E completos (64 pass/4 skips) passaram. A implementação local também conecta o harness ao `ToolGateway.execute()` e distingue `PERMISSION_DENIED`, `REAUTH_REQUIRED` e `STALE`. O CI remoto anterior `34427884550` continua verde no SHA `b232648bfbc3f1ae37ec099705ac16d045582b4d`; o commit técnico atual `e846904` foi publicado, mas não há resultado final observável para seu check nesta fotografia. O resultado global permanece `FAIL_WITH_LIMITATIONS`/`AAA_NOT_PROVEN` por falta de staging, provider/secret authority, turno DeepSeek, collector/SLO, carga/recuperação production-like, WebKit/assistive-tech/zoom real, crítica independente aprovadora e aceite humano.
+`docs/verification-2026-09-10-local-closure.md` registra a fotografia atual: `npm test` 121 (120/1 skip), `test:database` 15/15, typecheck/build/lint/static/PDP/security/restore, provider loopback, exportação governada, ciclo break-glass durável, `AuditRepository` normalizado, produção estrutural/TLS overlay, contrast/tokens/licenses/audit e os E2E completos (64 pass/4 skips) passaram. A implementação local também conecta o harness ao `ToolGateway.execute()` e distingue `PERMISSION_DENIED`, `REAUTH_REQUIRED` e `STALE`. O CI remoto anterior `34427884550` continua verde no SHA `b232648bfbc3f1ae37ec099705ac16d045582b4d`; o commit técnico `135ae56` foi publicado, mas não há resultado final observável para seu check nesta fotografia. O resultado global permanece `FAIL_WITH_LIMITATIONS`/`AAA_NOT_PROVEN` por falta de staging, provider/secret authority, turno DeepSeek, collector/SLO, carga/recuperação production-like, WebKit/assistive-tech/zoom real, crítica independente aprovadora e aceite humano.

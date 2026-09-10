@@ -1,14 +1,14 @@
 # Auditoria de fechamento — CVG-Corp State of the Art / Triplo AAA
 
 **Auditoria:** F0-2026-09-09-v2
-**Revisão de referência do CVG:** `e846904` (`feat: persist break-glass lifecycle with RLS guards`; fechamento técnico desta rodada, publicado em `main`)
+**Revisão de referência do CVG:** `135ae56` (`feat: route audit reads through normalized repository`; fatia de leitura normalizada de auditoria após o ciclo durável de break-glass, publicada em `main`)
 **Revisão observada do DeepSeek Harness:** `5dda764ed3aa172535a7967b06ff95d9cbfe536a`
 **Probe ACP local:** `READY`; `initialize` + `session/new` passaram pelo processo real via stdio; turno de modelo deliberadamente não executado sem API key.
 **Prompt normativo:** [prompt v2](prompt-state-of-the-art-triplo-aaa-2026-09-09-v2.txt), SHA-256 `34e886f59adacf8fda46d8d54bdede259705adc6e1521590cd3c281509b0e0d9`
 **Ambiente:** workspace local, Node 24.20.0, npm 11.19.0; Docker CLI/Compose presentes, daemon sem permissão; sem URL de staging, credencial, secret authority, provider, dados reais ou autorização de release.
 **Estado da auditoria:** a fotografia F0 foi revalidada durante o worktree atual; além da cópia v2, o bridge/contrato local, a boundary de secrets/auth/MFA/break-glass e o exporter OTLP protobuf foram implementados/testados sem credencial, egress, dado real ou release.
 
-**Checkpoint local final — 2026-09-10:** a rodada revalidou `119` testes (`118 pass`, `1 skip`), lint, typecheck, build, E2E Chromium/Firefox/stress (`64 pass`, `4 skips`), `verify:pdp` (`68` operações, `70` regras, `6` policies canônicas, `12` domínios), migrations 029–030, usage/provenance, exportação governada, ciclo break-glass durável, provider HTTP loopback, Compose estrutural e os gates fail-closed. A crítica independente fresca de 2026-09-10 concluiu `FAIL_WITH_LIMITATIONS`; não é aprovação AAA.
+**Checkpoint local final — 2026-09-10:** a rodada revalidou `121` testes (`120 pass`, `1 skip`), `test:database` `15/15`, lint, typecheck, build, E2E Chromium/Firefox/stress (`64 pass`, `4 skips`), `verify:pdp` (`68` operações, `70` regras, `6` policies canônicas, `12` domínios), migrations 029–030, usage/provenance, exportação governada, leitura normalizada de auditoria, ciclo break-glass durável, provider HTTP loopback, Compose estrutural e os gates fail-closed. A crítica independente fresca de 2026-09-10 concluiu `FAIL_WITH_LIMITATIONS`; não é aprovação AAA.
 
 ## 1. Escopo, método e veredito
 
@@ -39,7 +39,7 @@ HTTP/Fastify
   -> normalized reads, receipts, outbox, inbox and effect ledgers
 ```
 
-Há migrations aditivas 001–030, papel de runtime não-superusuário, RLS, escopo organizacional/unidade/workspace, leases/fencing, cadeia local de auditoria com guard append-only e restore em quarentena. A migration 028 é um forward-fix para preservar o privilégio necessário ao `SELECT ... FOR UPDATE` dos writers sem liberar mutações efetivas, que continuam protegidas pelo guard da 027. A migration 029 adiciona proveniência/usage de turnos de IA e escopo DML estrito para tabelas unit/workspace. A migration 030 persiste o ciclo break-glass com WebAuthn-only, FKs de ator/aprovador/revisor, janela de 15 minutos e transições forward-only sob RLS; a verificação criptográfica e a habilitação pública continuam ausentes. O snapshot JSONB ainda participa da reconstrução; repositories normalizados existem para uma parte dos caminhos, não para todos os bounded contexts exigidos pelo prompt.
+Há migrations aditivas 001–030, papel de runtime não-superusuário, RLS, escopo organizacional/unidade/workspace, leases/fencing, cadeia local de auditoria com guard append-only e restore em quarentena. A migration 028 é um forward-fix para preservar o privilégio necessário ao `SELECT ... FOR UPDATE` dos writers sem liberar mutações efetivas, que continuam protegidas pelo guard da 027. A migration 029 adiciona proveniência/usage de turnos de IA e escopo DML estrito para tabelas unit/workspace. A migration 030 persiste o ciclo break-glass com WebAuthn-only, FKs de ator/aprovador/revisor, janela de 15 minutos e transições forward-only sob RLS; a verificação criptográfica e a habilitação pública continuam ausentes. No commit `135ae56`, a leitura de auditoria passou por `AuditRepository`/`audit_records` normalizado em transação `READ ONLY`, com validação fail-closed de escopo e campos duráveis. O snapshot JSONB ainda participa da reconstrução; repositories normalizados existem para uma parte dos caminhos, não para todos os bounded contexts exigidos pelo prompt.
 
 ### 2.2 Caminho de IA e Harness
 
@@ -106,7 +106,7 @@ API e worker são processos separados. O worker nomeia seis lanes (`outbox`, `jo
 | 5 Unknown outcome | **PARTIAL/LOCAL-CONTRACT** | resposta perdida após o provider já possuir o efeito retorna `OUTCOME_UNKNOWN`; consulta posterior pela chave recupera `SUCCEEDED` e receipt | prova externa de timeout após efeito e query autoritativa |
 | 6 Durable idempotency | **PARTIAL/SYNTHETIC_ONLY** | ledger e testes de restart/fake persistence | concorrência multi-processo e PostgreSQL real com mesma chave/digest |
 | 7 PDP universal | **PARTIAL/LOCAL-GUARDED** | `npm run verify:pdp`: 68 operações, 70 regras de aplicação, 6 policies de tools, 12 domínios; catálogo de rotas protegido, application services, worker fenced e export/recovery guardados | jobs/repositories e concorrência universal ainda precisam de prova; guard não substitui teste de runtime |
-| 8 Repositories normalizados | **PARTIAL** | leituras normalizadas de alguns contextos | repositories tipados para guardian/patient/appointment/encounter/clinical/diagnostic/hospitalization/medication/stock/finance/communication/audit |
+| 8 Repositories normalizados | **PARTIAL** | leituras tipadas e transacionais de guardian/patient/appointment e, em `135ae56`, audit com RLS contextual e corrupção fail-closed | repositories operacionais ainda faltam para encounter/clinical/diagnostic/hospitalization/medication/stock/finance/communication e a prova PostgreSQL concorrente continua ausente |
 | 9 Worker AAA | **PARTIAL/LOCAL-GUARDED** | seis lanes, lease/fencing, budgets, concorrência limitada, backpressure antes do claim, poison metrics, heartbeat e shutdown cooperativo; testes unitários locais | execução em container/worker real, dead-letter operacional, métricas/heartbeat observados e SLO de backlog |
 | 10 Secrets | **PARTIAL/LOCAL-GUARDED** | providers de ambiente/diretório/Docker, refs aprovadas, verificação sem material, readiness fail-closed para provider degradado e token DeepSeek | Docker secret em container, Vault/cloud authority, rotação real e prova operacional de não exposição |
 | 11 Auth | **PARTIAL/SYNTHETIC_ONLY** | password, aging config, lockout, sessions, recovery, enrollment/revogação TOTP e audit local | sessões distribuídas e operação production-like |

@@ -1,6 +1,6 @@
 # Fechamento local — 2026-09-10
 
-Fotografia executada no workspace `/home/ricardo/Área de trabalho/cvg-corp` em 2026-09-10, consolidada tecnicamente no commit `e846904` (`feat: persist break-glass lifecycle with RLS guards`), publicado em `main` após o hardening de recovery/TLS de `8b122ea`. O prompt normativo permanece em [`prompt-state-of-the-art-triplo-aaa-2026-09-09-v2.txt`](prompt-state-of-the-art-triplo-aaa-2026-09-09-v2.txt), SHA-256 `34e886f59adacf8fda46d8d54bdede259705adc6e1521590cd3c281509b0e0d9`.
+Fotografia executada no workspace `/home/ricardo/Área de trabalho/cvg-corp` em 2026-09-10, consolidada tecnicamente no commit `135ae56` (`feat: route audit reads through normalized repository`), após o ciclo durável de break-glass em `e846904`. O prompt normativo permanece em [`prompt-state-of-the-art-triplo-aaa-2026-09-09-v2.txt`](prompt-state-of-the-art-triplo-aaa-2026-09-09-v2.txt), SHA-256 `34e886f59adacf8fda46d8d54bdede259705adc6e1521590cd3c281509b0e0d9`.
 
 ## Alterações verificadas
 
@@ -9,6 +9,7 @@ Fotografia executada no workspace `/home/ricardo/Área de trabalho/cvg-corp` em 
 - Lease expirada de outbox falha fechado e o startup exige explicitamente as migrations de cadeia de auditoria 026–028.
 - A migration 029 adiciona `usage_record_id`/`provenance_json`, ledger de usage idempotente e políticas DML estritas para unit/workspace; a persistência agora rejeita divergência de uso/proveniência.
 - A migration 030 adiciona ciclo durável de break-glass com MFA `WEBAUTHN`, FKs organizacionais, `FORCE RLS`, janela máxima de 15 minutos e guard forward-only para expiração, revogação e revisão; a capability pública continua `BLOCKED`.
+- A leitura de auditoria foi extraída para um `AuditRepository` tipado: o caminho PostgreSQL consulta `audit_records` em transação `READ ONLY`, aplica organização/unidade/workspace e rejeita metadata, resultado ou versão de cadeia corrompidos; o runtime mantém o adapter de memória como fallback.
 - A API passou a oferecer `/api/v1/ops/export`, protegido pelo PDP, finalidade/TTL/idempotência, SecretProvider e AES-256-GCM; purpose é devolvido com digest auditável, o envelope v2 autentica `expiresAt` no AAD e o decrypt rejeita cópias expiradas; sem PostgreSQL ou chave de 256 bits o endpoint falha fechado.
 - O overlay `docker-compose.production.yml` usa `proxy.tls.conf`, certificados montados out-of-band, redirect 80→HTTPS e TLS 1.2/1.3; o verificador renderiza a composição e rejeita a porta 8080 de desenvolvimento, mas não inicia o proxy nem prova certificado/staging.
 - O guard de PDP compara o catálogo inteiro de rotas protegidas e boundaries de aplicação, incluindo export, worker fenced e recovery durável.
@@ -19,14 +20,14 @@ Fotografia executada no workspace `/home/ricardo/Área de trabalho/cvg-corp` em 
 
 | Procedimento | Resultado observado |
 |---|---|
-| `npm test` | PASS — 119 testes: 118 pass, 1 skip condicional |
+| `npm test` | PASS — 121 testes: 120 pass, 1 skip condicional |
 | `npm run typecheck` | PASS |
 | `npm run build` | PASS — typecheck + Vite |
 | `npm run lint` | PASS — 121 fontes |
 | `npm run verify:static` | PASS — 46 artefatos, 123 fontes; `/internal/metrics` possui exceção explícita e rede privada documentada |
 | `npm run verify:pdp` | PASS — 68 operações, 70 regras, 6 policies canônicas, 12 domínios |
 | `npm run test:security` | PASS — 26 testes |
-| `npm run test:database` | PASS — 13 testes: persistência, break-glass durável, exportação governada e restore |
+| `npm run test:database` | PASS — 15 testes: persistência, audit repository normalizado, break-glass durável, exportação governada e restore |
 | `npm run verify:provider-sandbox` | PASS — loopback HTTP, replay, `OUTCOME_UNKNOWN`, reconciliação e HMAC; `externalProvider=NOT_RUN` |
 | `npm run verify:production` | PASS limitado — gates locais completos, Compose principal/observabilidade e overlay TLS renderizados; nenhum serviço de produção foi iniciado |
 | `npm run audit:contrast` | PASS — 7/7 pares |
@@ -45,6 +46,12 @@ Fotografia executada no workspace `/home/ricardo/Área de trabalho/cvg-corp` em 
 
 ## Limitações mantidas
 
-O artifact continua local-first e sintético. Usage/provenance, exportação governada e o armazenamento durável do ciclo break-glass estão implementados e cobertos localmente, mas a execução PostgreSQL concorrente, provider WebAuthn/secret authority, provider/DeepSeek, staging/TLS real, collector/alert dispatch/SLO medidos, carga/chaos, backup/RTO/RPO, WebKit, leitor de tela e zoom de 200% continuam `PARTIAL`, `NOT_RUN` ou `BLOCKED`. O host desta fotografia não tinha `DATABASE_URL` nem daemon Docker; por isso migration/role/RLS em PostgreSQL efêmero e startup de containers não foram executados neste checkpoint. A cobertura de repositories/jobs permanece parcial; o commit `e846904` foi publicado e sua página de checks não apresentou resultado final observável no momento do registro. A crítica I1 concluída sobre o SHA publicado anteriormente rejeitou AAA; as tentativas pós-publicação sem parecer não são aprovação. O veredito global permanece `FAIL_WITH_LIMITATIONS` / `AAA_NOT_PROVEN`.
+O artifact continua local-first e sintético. Usage/provenance, exportação governada, a leitura normalizada de auditoria e o armazenamento durável do ciclo break-glass estão implementados e cobertos localmente, mas a execução PostgreSQL concorrente, provider WebAuthn/secret authority, provider/DeepSeek, staging/TLS real, collector/alert dispatch/SLO medidos, carga/chaos, backup/RTO/RPO, WebKit, leitor de tela e zoom de 200% continuam `PARTIAL`, `NOT_RUN` ou `BLOCKED`. O host desta fotografia não tinha `DATABASE_URL` nem daemon Docker; por isso migration/role/RLS em PostgreSQL efêmero e startup de containers não foram executados neste checkpoint. A cobertura dos demais repositories/jobs permanece parcial; o commit `135ae56` contém somente a fatia de leitura de auditoria e não fecha V3-DATA-001. A crítica I1 concluída sobre o SHA publicado anteriormente rejeitou AAA; as tentativas pós-publicação sem parecer não são aprovação. O veredito global permanece `FAIL_WITH_LIMITATIONS` / `AAA_NOT_PROVEN`.
+
+## Incremento local — AuditRepository — 2026-09-10
+
+No commit `135ae56`, `GET /api/v1/audit` deixou de acessar `CvgStore.listAudit` diretamente. Em PostgreSQL, `PostgresPersistence.listAudit` usa a transação contextual `READ ONLY`, consulta `audit_records` com organização e escopo de unidade/workspace, mantém paginação por cursor e valida os campos duráveis antes de serializar. Metadata não escalar, resultado desconhecido no banco ou versão de cadeia diferente de `2` produzem quarentena por corrupção, sem downgrade para lista vazia.
+
+Evidência corrente: `npm test` passou com `121` testes (`120 pass`, `1 skip`); `npm run test:database` passou `15/15`, incluindo rota HTTP PostgreSQL-fake, escopo e linha corrompida; `npm run typecheck`, `npm run lint`, `npm run build`, `npm run verify:static`, `npm run verify:pdp`, `npm run verify:production` e `git diff --check` passaram. O incremento reduz a dependência operacional do snapshot para auditoria, mas não cria repositories completos para os demais bounded contexts nem evidência PostgreSQL/staging de produção.
 
 Nenhum segredo, dado real, provider externo, publicação de efeito ou alteração no repositório `/home/ricardo/deepseek-harness` foi realizada.

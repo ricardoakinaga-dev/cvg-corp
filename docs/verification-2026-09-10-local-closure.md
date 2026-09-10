@@ -1,6 +1,6 @@
 # Fechamento local — 2026-09-10
 
-Fotografia executada no workspace `/home/ricardo/Área de trabalho/cvg-corp` em 2026-09-10, consolidada tecnicamente no commit `135ae56` (`feat: route audit reads through normalized repository`), após o ciclo durável de break-glass em `e846904`. O prompt normativo permanece em [`prompt-state-of-the-art-triplo-aaa-2026-09-09-v2.txt`](prompt-state-of-the-art-triplo-aaa-2026-09-09-v2.txt), SHA-256 `34e886f59adacf8fda46d8d54bdede259705adc6e1521590cd3c281509b0e0d9`.
+Fotografia executada no workspace `/home/ricardo/Área de trabalho/cvg-corp` em 2026-09-10, consolidada tecnicamente no commit `6b3df2f` (`feat: normalize clinical read repositories`), após `135ae56` (AuditRepository) e o ciclo durável de break-glass em `e846904`. O prompt normativo permanece em [`prompt-state-of-the-art-triplo-aaa-2026-09-09-v2.txt`](prompt-state-of-the-art-triplo-aaa-2026-09-09-v2.txt), SHA-256 `34e886f59adacf8fda46d8d54bdede259705adc6e1521590cd3c281509b0e0d9`.
 
 ## Alterações verificadas
 
@@ -20,14 +20,14 @@ Fotografia executada no workspace `/home/ricardo/Área de trabalho/cvg-corp` em 
 
 | Procedimento | Resultado observado |
 |---|---|
-| `npm test` | PASS — 121 testes: 120 pass, 1 skip condicional |
+| `npm test` | PASS — 122 testes: 121 pass, 1 skip condicional |
 | `npm run typecheck` | PASS |
 | `npm run build` | PASS — typecheck + Vite |
 | `npm run lint` | PASS — 121 fontes |
 | `npm run verify:static` | PASS — 46 artefatos, 123 fontes; `/internal/metrics` possui exceção explícita e rede privada documentada |
 | `npm run verify:pdp` | PASS — 68 operações, 70 regras, 6 policies canônicas, 12 domínios |
 | `npm run test:security` | PASS — 26 testes |
-| `npm run test:database` | PASS — 15 testes: persistência, audit repository normalizado, break-glass durável, exportação governada e restore |
+| `npm run test:database` | PASS — 16 testes: persistência, repositories clínicos/audit normalizados, break-glass durável, exportação governada e restore |
 | `npm run verify:provider-sandbox` | PASS — loopback HTTP, replay, `OUTCOME_UNKNOWN`, reconciliação e HMAC; `externalProvider=NOT_RUN` |
 | `npm run verify:production` | PASS limitado — gates locais completos, Compose principal/observabilidade e overlay TLS renderizados; nenhum serviço de produção foi iniciado |
 | `npm run audit:contrast` | PASS — 7/7 pares |
@@ -46,7 +46,7 @@ Fotografia executada no workspace `/home/ricardo/Área de trabalho/cvg-corp` em 
 
 ## Limitações mantidas
 
-O artifact continua local-first e sintético. Usage/provenance, exportação governada, a leitura normalizada de auditoria e o armazenamento durável do ciclo break-glass estão implementados e cobertos localmente, mas a execução PostgreSQL concorrente, provider WebAuthn/secret authority, provider/DeepSeek, staging/TLS real, collector/alert dispatch/SLO medidos, carga/chaos, backup/RTO/RPO, WebKit, leitor de tela e zoom de 200% continuam `PARTIAL`, `NOT_RUN` ou `BLOCKED`. O host desta fotografia não tinha `DATABASE_URL` nem daemon Docker; por isso migration/role/RLS em PostgreSQL efêmero e startup de containers não foram executados neste checkpoint. A cobertura dos demais repositories/jobs permanece parcial; o commit `135ae56` contém somente a fatia de leitura de auditoria e não fecha V3-DATA-001. A crítica I1 concluída sobre o SHA publicado anteriormente rejeitou AAA; as tentativas pós-publicação sem parecer não são aprovação. O veredito global permanece `FAIL_WITH_LIMITATIONS` / `AAA_NOT_PROVEN`.
+O artifact continua local-first e sintético. Usage/provenance, exportação governada, as leituras normalizadas de auditoria, encounters e clinical documents e o armazenamento durável do ciclo break-glass estão implementados e cobertos localmente, mas a execução PostgreSQL concorrente, provider WebAuthn/secret authority, provider/DeepSeek, staging/TLS real, collector/alert dispatch/SLO medidos, carga/chaos, backup/RTO/RPO, WebKit, leitor de tela e zoom de 200% continuam `PARTIAL`, `NOT_RUN` ou `BLOCKED`. O host desta fotografia não tinha `DATABASE_URL` nem daemon Docker; por isso migration/role/RLS em PostgreSQL efêmero e startup de containers não foram executados neste checkpoint. A cobertura dos demais repositories/jobs permanece parcial; o commit `6b3df2f` fecha somente esta fatia adicional e não fecha V3-DATA-001. A crítica I1 concluída sobre o SHA publicado anteriormente rejeitou AAA; a tentativa fresh desta onda sem parecer está registrada em [critique-clinical-read-attempt-20260910.md](../.gauntlet/critique-clinical-read-attempt-20260910.md) e não é aprovação. O veredito global permanece `FAIL_WITH_LIMITATIONS` / `AAA_NOT_PROVEN`.
 
 ## Incremento local — AuditRepository — 2026-09-10
 
@@ -55,3 +55,11 @@ No commit `135ae56`, `GET /api/v1/audit` deixou de acessar `CvgStore.listAudit` 
 Evidência corrente: `npm test` passou com `121` testes (`120 pass`, `1 skip`); `npm run test:database` passou `15/15`, incluindo rota HTTP PostgreSQL-fake, escopo e linha corrompida; `npm run typecheck`, `npm run lint`, `npm run build`, `npm run verify:static`, `npm run verify:pdp`, `npm run verify:production` e `git diff --check` passaram. O incremento reduz a dependência operacional do snapshot para auditoria, mas não cria repositories completos para os demais bounded contexts nem evidência PostgreSQL/staging de produção.
 
 Nenhum segredo, dado real, provider externo, publicação de efeito ou alteração no repositório `/home/ricardo/deepseek-harness` foi realizada.
+
+## Incremento local — EncounterRepository e ClinicalRepository — 2026-09-10
+
+No commit `6b3df2f`, `GET /api/v1/encounters` e `GET /api/v1/clinical/documents` passaram a atravessar `ReadApplicationService`, com policy de aplicação e adapters separados para memória e PostgreSQL. O adapter PostgreSQL consulta `encounters` e `clinical_documents` em transação `READ ONLY`, usa `cvg_request_organization()`/`cvg_request_scope_allows(...)`, filtros explícitos de unidade/workspace e valida IDs, enums, timestamps, versão e projeções relacionadas antes de devolver dados. O endpoint clínico continua removendo `content` da resposta pública.
+
+Os testes cobrem linha conhecida-bom, status clínico persistido não suportado com rollback e rotas HTTP usando o pool PostgreSQL-fake; a verificação estática também bloqueia bypass direto dessas leituras. Evidência observada: `npm test` 122 (`121 pass`, `1 skip`), `npm run test:database` 16/16, typecheck, lint, build, static, PDP, `verify:production` estrutural e `git diff --check` passaram. O gate de produção confirmou Compose base, observabilidade e overlay TLS renderizados, sem iniciar serviços.
+
+Esta onda não prova PostgreSQL real/concurrente, nem cria repositories para diagnostics, hospitalization, medication, stock, finance, communication ou jobs. O critic fresh não completou e nenhum status AAA foi inferido.

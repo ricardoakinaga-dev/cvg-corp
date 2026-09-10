@@ -1,6 +1,6 @@
 # Verification vNext
 
-**Data:** 2026-09-10 — fotografia local após Tool Gateway universal no harness, estados de falha frontend, métricas privadas, migration 030, ciclo durável de break-glass e `AuditRepository` normalizado (`135ae56`)
+**Data:** 2026-09-10 — fotografia local após Tool Gateway universal no harness, estados de falha frontend, métricas privadas, migration 030, ciclo durável de break-glass, `AuditRepository` e reads clínicos normalizados (`6b3df2f`)
 
 ## Passe local atual
 
@@ -10,9 +10,9 @@
 | `npm run typecheck` | PASS | TypeScript sem emissão |
 | `npm run test:contract` | PASS | Envelopes e descriptors versionados |
 | `npm run test:security` | PASS | Auth, policy, gateway e fault-deny |
-| `npm run test:database` | PASS — 15/15 | Persistência/recovery sintéticos, leitura de auditoria normalizada e rota PostgreSQL-fake |
+| `npm run test:database` | PASS — 16/16 | Persistência/recovery sintéticos, leituras de auditoria/encounters/clinical normalizadas e rotas PostgreSQL-fake |
 | `npm run test:fault` | PASS | Worker e fault harness local |
-| `npm test` | PASS — 121 testes (120 pass, 1 skip condicional) | Unitário + integração, incluindo MFA, lockout, rotação, recovery manifest, PDP target-bound, Tool Gateway/ledger, harness assíncrono com execução universal, usage/provenance e exportação governada cifrada, provider loopback/reconciliação, break-glass durável, `AuditRepository` normalizado, assinatura HMAC de contexto, scheduler/lifecycle do worker, OTLP redaction, fault harness, projeção RLS fail-closed e estados frontend |
+| `npm test` | PASS — 122 testes (121 pass, 1 skip condicional) | Unitário + integração, incluindo MFA, lockout, rotação, recovery manifest, PDP target-bound, Tool Gateway/ledger, harness assíncrono com execução universal, usage/provenance e exportação governada cifrada, provider loopback/reconciliação, break-glass durável, repositories de auditoria/encounters/clinical normalizados, assinatura HMAC de contexto, scheduler/lifecycle do worker, OTLP redaction, fault harness, projeção RLS fail-closed e estados frontend |
 | `npm run build` | PASS | Vite web + typecheck |
 | `npm run verify:static` | PASS | 46 artefatos e 123 arquivos-fonte |
 | recovery bundle manifest | PASS — bundle completo + 5 rejeições | watermark, tenant, digests de ledgers, partial, stale, migration mismatch, ciphertext adulterado e chave errada |
@@ -57,4 +57,10 @@ O passe demonstra uma base compilável, testável e com controles locais de supp
 
 ## Current checkpoint — 2026-09-10 local closure
 
-`docs/verification-2026-09-10-local-closure.md` registra a fotografia atual: `npm test` 121 (120/1 skip), `test:database` 15/15, typecheck/build/lint/static/PDP/security/restore, provider loopback, exportação governada, ciclo break-glass durável, `AuditRepository` normalizado, produção estrutural/TLS overlay, contrast/tokens/licenses/audit e os E2E completos (64 pass/4 skips) passaram. A implementação local também conecta o harness ao `ToolGateway.execute()` e distingue `PERMISSION_DENIED`, `REAUTH_REQUIRED` e `STALE`. O CI remoto anterior `34427884550` continua verde no SHA `b232648bfbc3f1ae37ec099705ac16d045582b4d`; o commit técnico `135ae56` foi publicado, mas não há resultado final observável para seu check nesta fotografia. O resultado global permanece `FAIL_WITH_LIMITATIONS`/`AAA_NOT_PROVEN` por falta de staging, provider/secret authority, turno DeepSeek, collector/SLO, carga/recuperação production-like, WebKit/assistive-tech/zoom real, crítica independente aprovadora e aceite humano.
+`docs/verification-2026-09-10-local-closure.md` registra a fotografia atual: `npm test` 122 (121/1 skip), `test:database` 16/16, typecheck/build/lint/static/PDP/security/restore, provider loopback, exportação governada, ciclo break-glass durável, repositories normalizados de auditoria/encounters/clinical, produção estrutural/TLS overlay, contrast/tokens/licenses/audit e os E2E completos (64 pass/4 skips) passaram. A implementação local também conecta o harness ao `ToolGateway.execute()` e distingue `PERMISSION_DENIED`, `REAUTH_REQUIRED` e `STALE`. O CI remoto anterior `34427884550` continua verde no SHA `b232648bfbc3f1ae37ec099705ac16d045582b4d`; o commit técnico atual é `6b3df2f424ebfbe77acc4b332e4c55fbcb734321`, mas seu check remoto ainda não foi observado como concluído. O resultado global permanece `FAIL_WITH_LIMITATIONS`/`AAA_NOT_PROVEN` por falta de staging, provider/secret authority, turno DeepSeek, collector/SLO, carga/recuperação production-like, WebKit/assistive-tech/zoom real, crítica independente aprovadora e aceite humano.
+
+## Current checkpoint — 2026-09-10 clinical read closure
+
+`VER-CVG-084` registra o commit `6b3df2f424ebfbe77acc4b332e4c55fbcb734321`: as rotas de encounters e clinical documents agora usam `ReadApplicationService` e adapters de repositório; o caminho PostgreSQL aplica transação `READ ONLY`, organização, unit/workspace e validação fail-closed de linhas. `VER-CVG-085` registra `npm test` 122 (`121 pass`, `1 skip`), `test:database` 16/16, typecheck, lint, build, static, PDP, `verify:production` estrutural e diff check. `VER-CVG-086` registra tentativa de critic fresh sem relatório; mutation sentinel permaneceu estável e nenhuma aprovação foi inferida.
+
+O incremento reduz o bypass de snapshot nesta fatia, mas não fecha V3-DATA-001: diagnostics, hospitalization, medication, stock, finance, communication, jobs e a prova PostgreSQL concorrente permanecem abertos. `verify:triplo-aaa`, staging, ACP/DeepSeek real, provider, secret authority, collector/SLO, carga/chaos/recovery, browsers/assistive tech e aceite humano continuam sem evidência necessária.

@@ -219,6 +219,10 @@ Evidência: `VER-CVG-043`; 73/73 testes, typecheck, lint (99 fontes), static (30
 - Executar PostgreSQL/Docker, CI remoto, imagem/container smoke, provider/secret authority, fault/recovery distribuído, carga/SLO e matriz de browsers/acessibilidade somente quando o ambiente e a aprovação correspondentes existirem.
 - Registrar cada ausência como `NOT_RUN`, preservar egress fechado e não promover o artifact a dados reais, homologação, piloto ou release.
 
+## Current checkpoint — 2026-09-10 clinical read closure
+
+`VER-CVG-084`–`VER-CVG-086` registram a onda `6b3df2f`: encounters e clinical documents foram encaminhados pelo `ReadApplicationService` e por adapters PostgreSQL normalizados, com `READ ONLY`, organização/unit/workspace e validação fail-closed; `npm test` 122 (`121 pass`, `1 skip`), `test:database` 16/16, typecheck, lint, build, static, PDP, `verify:production` estrutural e diff check passaram. A crítica fresh não completou e não houve aprovação inferida. O próximo trabalho técnico local é escolher outra fatia de repositories/jobs sem reduzir a barra; os bloqueios externos e o veredito `FAIL_WITH_LIMITATIONS` / `AAA_NOT_PROVEN` permanecem.
+
 ## Validation and Acceptance
 
 Cada ação deve adicionar teste conhecido-bom e conhecido-ruim. Nenhum status `PASS` será promovido a partir de source inspection isolada.

@@ -1,8 +1,8 @@
 # Verificação — restore durável de auditoria e recibos
 
 Data: 2026-09-10
-Base da lane: `8776f6e3761c36167fc743379a6607333c40d5c3`
-Resultado esperado: `PASS_WITH_LIMITATIONS` local/CI; `AAA_NOT_PROVEN` global
+Base da lane: `b932b4d34a5e918cbd2222b05510a43b3bc907ba`
+Resultado: `PASS_WITH_LIMITATIONS` local/CI; `AAA_NOT_PROVEN` global
 
 ## Escopo
 
@@ -24,6 +24,8 @@ staging, dados reais, deploy/promoção ou autoridade de backup gerenciado.
 - comandos locais previstos: `npm run test:database`, `npm run verify:static`,
   `npm run typecheck`, `npm run lint`, `npm run build`, `npm test` e
   `git diff --check`.
+- CI exato: run `34482107578`, job principal `102887199009`, imagens
+  `102889497843`; o `PostgreSQL restore gate` terminou `success`.
 
 ## Limitações
 

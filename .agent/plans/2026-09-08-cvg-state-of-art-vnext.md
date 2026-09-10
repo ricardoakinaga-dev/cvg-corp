@@ -626,3 +626,18 @@ fingerprint match. A execução PostgreSQL do drill segue reservada ao CI/ambien
 explicitamente identificado, pois `DATABASE_URL` não está configurada localmente.
 O lane está pronto para integração; o veredito global permanece
 `FAIL_WITH_LIMITATIONS` / `AAA_NOT_PROVEN`.
+
+## Integration / exact CI — 2026-09-10 10:27
+
+O lane foi integrado e enviado em `b932b4d34a5e918cbd2222b05510a43b3bc907ba`.
+O run público `34482107578` (CVG CI #72) terminou `success` no SHA exato. O
+job principal `102887199009` terminou em 6m36s e o job de imagens
+`102889497843` em 52s; E2E, migrações, integração/RLS, restore PostgreSQL,
+release/Compose, performance, SBOM, upload de artifacts e diff check passaram.
+
+O gate seguinte é `EXTERNAL-EVIDENCE-AND-HUMAN-ACCEPTANCE`. O CI confirma o
+drill efêmero PostgreSQL e os controles deste commit, mas não substitui
+staging autorizado, provider/DeepSeek/segredos, Collector/SLO operacional,
+carga/chaos/recovery, matriz completa de browser/assistive tech/zoom ou aceite
+humano. O veredito global continua `FAIL_WITH_LIMITATIONS` /
+`AAA_NOT_PROVEN`.

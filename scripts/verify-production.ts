@@ -143,6 +143,10 @@ function requireText(relative: string, fragment: string): void {
   if (!content?.includes(fragment)) failures.push(`${relative}: missing required release control ${JSON.stringify(fragment)}`);
 }
 
+function requirePattern(relative: string, pattern: RegExp, message: string): void {
+  if (!pattern.test(readArtifacts.get(relative) ?? "")) failures.push(`${relative}: ${message}`);
+}
+
 function rejectText(relative: string, expression: RegExp, message: string): void {
   if (expression.test(readArtifacts.get(relative) ?? "")) failures.push(`${relative}: ${message}`);
 }
@@ -191,9 +195,11 @@ function inspectStaticContracts(): void {
   requireText("docker-compose.production.yml", "ports: !override");
   requireText("docker/worker.ts", "CvgWorkerApplication");
   requireText("docker/worker.ts", "createWorkerDependencies");
+  requirePattern("docker/worker.ts", /new CvgWorkerApplication\(createWorkerDependencies\(persistence, config, configuredSink\)\)/, "worker construction must use the shared dependency contract");
   requireText("docker/worker.ts", "process.exitCode = 1");
   requireText("apps/worker/src/main.ts", "createConfiguredWorkerSink");
   requireText("apps/worker/src/main.ts", "createWorkerDependencies");
+  requirePattern("apps/worker/src/main.ts", /new CvgWorkerApplication\(createWorkerDependencies\(persistence, config, configuredSink\)\)/, "worker construction must use the shared dependency contract");
   requireText("apps/worker/src/worker.ts", "HttpMessagingProvider");
   requireText("apps/worker/src/worker.ts", "MessagingOutboxSink");
   requireText("packages/config/src/index.ts", "CVG_MESSAGING_PROVIDER_ENDPOINT");
@@ -264,6 +270,8 @@ function inspectStaticContracts(): void {
   requireText("package.json", "tsx scripts/verify-provider-sandbox.ts");
   requireText(".github/workflows/ci.yml", "npm run verify:provider-sandbox");
   requireText("tests/unit/worker.test.ts", "worker entrypoint composition");
+  requireText("tsconfig.json", '"docker/**/*.ts"');
+  requireText("scripts/lint.ts", '"docker"');
   requireText(".github/workflows/ci.yml", "docker build --file Dockerfile.api");
   rejectText(".github/workflows/ci.yml", /docker compose up|docker push|npm publish/, "CI must not deploy or publish");
   for (const relative of ["docs/runbooks/deploy.md", "docs/runbooks/rollback.md", "docs/runbooks/backup-incidente.md"]) {

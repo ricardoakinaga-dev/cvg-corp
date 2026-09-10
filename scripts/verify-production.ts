@@ -49,6 +49,7 @@ const requiredFiles = [
   "db/migrations/025_communication_approval_provenance.sql",
   "db/migrations/026_audit_tamper_evident_chain.sql",
   "db/migrations/027_append_only_audit_guard.sql",
+  "db/migrations/028_append_only_lock_privileges.sql",
   "docs/runbooks/deploy.md",
   "docs/runbooks/deployment.md",
   "docs/runbooks/rollback.md",
@@ -198,6 +199,7 @@ function inspectStaticContracts(): void {
   requireText("db/migrations/025_communication_approval_provenance.sql", "approved_by");
   requireText("db/migrations/026_audit_tamper_evident_chain.sql", "previous_hash");
   requireText("db/migrations/027_append_only_audit_guard.sql", "append-only");
+  requireText("db/migrations/028_append_only_lock_privileges.sql", "grant update");
   requireText(".gauntlet/bar-v3.json", "V3-AAA-001");
   requireText(".github/workflows/ci.yml", "npm ci --ignore-scripts");
   requireText(".github/workflows/ci.yml", "npx playwright install --with-deps chromium");

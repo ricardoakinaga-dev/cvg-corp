@@ -39,7 +39,7 @@ HTTP/Fastify
   -> normalized reads, receipts, outbox, inbox and effect ledgers
 ```
 
-Há migrations aditivas 001–027, papel de runtime não-superusuário, RLS, escopo organizacional/unidade/workspace, leases/fencing, cadeia local de auditoria com guard append-only e restore em quarentena. O snapshot JSONB ainda participa da reconstrução; repositories normalizados existem para uma parte dos caminhos, não para todos os bounded contexts exigidos pelo prompt.
+Há migrations aditivas 001–028, papel de runtime não-superusuário, RLS, escopo organizacional/unidade/workspace, leases/fencing, cadeia local de auditoria com guard append-only e restore em quarentena. A migration 028 é um forward-fix para preservar o privilégio necessário ao `SELECT ... FOR UPDATE` dos writers sem liberar mutações efetivas, que continuam protegidas pelo guard da 027. O snapshot JSONB ainda participa da reconstrução; repositories normalizados existem para uma parte dos caminhos, não para todos os bounded contexts exigidos pelo prompt.
 
 ### 2.2 Caminho de IA e Harness
 
@@ -89,7 +89,7 @@ API e worker são processos separados. O worker nomeia seis lanes (`outbox`, `jo
 | Fail-closed | config production, secret/provider ausente, Tool Gateway, approvals, worker e staging/AAA bloqueiam | o bloqueio real de cada deployment depende de startup production-like |
 | Tool Gateway | sessão, alvo, escopo, digest, idempotência, approval e ledger durável | concorrência/distribuição PostgreSQL real não executada |
 | Efeitos externos | outbox/inbox/effect ledger, receipt, unknown outcome e reconciliação | provider e callback reais ausentes |
-| Dados | migrations 001–027, RLS, CAS, locks, runtime role, restore manifest/quarantine e guard append-only | volume, mixed-version, backup gerenciado e restore operacional ausentes |
+| Dados | migrations 001–028, RLS, CAS, locks, runtime role, restore manifest/quarantine e guard append-only | volume, mixed-version, backup gerenciado e restore operacional ausentes |
 | Identidade | password policy, lockout, TOTP, recuperação, rotação e revogação local | secret authority, WebAuthn real e sessão distribuída ausentes |
 | Supply chain | actions pinadas, SBOM, licença, npm audit e Compose estrutural | execução remota e imagem/Trivy reais não observadas |
 | UI | shell modular, estados offline, E2E Chromium/Firefox, projeto stress de reflow/DPR/touch/reduced-motion, axe e screenshots reais | WebKit/assistive tech/zoom real/baseline visual ausentes |
@@ -131,7 +131,7 @@ API e worker são processos separados. O worker nomeia seis lanes (`outbox`, `jo
 | 30 Supply chain | **PARTIAL** | SHA actions, SBOM, licenses, npm audit, Trivy declarado | remote CI e container scan executados no commit exato |
 | 31 Containers | **PARTIAL** | read-only, cap drop, no-new-privileges, resource limits, healthchecks | build/startup/scan real e pids limits verificadas no runtime |
 | 32 Database hardening | **PARTIAL** | pool/config/runtime role/timeout seams | PostgreSQL real: pool exhaustion, slow queries, locks/deadlocks, statement/transaction timeout |
-| 33 Migration safety | **PARTIAL** | migrations append-only 001–027, checksums/guards e scripts | dry-run, mixed-version, interruption/restart, volume representativo e forward-fix |
+| 33 Migration safety | **PARTIAL** | migrations append-only 001–028, checksums/guards e scripts; 028 corrige o privilégio de lock em forward-only | dry-run, mixed-version, interruption/restart, volume representativo e prova remota ainda ausentes |
 | 34 AI red team | **SYNTHETIC_ONLY** | prompt injection, scope/approval/secret negative tests | indirect injection/RAG/tool confusion/exfiltration em harness real e corpus aprovado |
 | 35 AI provenance | **PARTIAL/SYNTHETIC_ONLY** | adapter/commit/manifest/model/provider/policy/correlation/reference | persistir usage/provenance real por execução e replay verificável |
 | 36 Cost/usage ledger | **PARTIAL** | usage ledger local e budgets | input/output/model/provider/budget/reservation/settlement/custo real |
@@ -238,6 +238,10 @@ local correctness
 ```
 
 `STATE_OF_THE_ART_CANDIDATE` exige todos os gates acima com evidência atual, sem blocker crítico. `TRIPLE_AAA_CANDIDATE` exige ainda todas as dimensões no mínimo exigido, sem `PARTIAL`, `NOT_RUN`, `BLOCKED` ou `SYNTHETIC_ONLY` obrigatório, critics independentes aprovando, staging estável e aprovação humana. A execução local não deve emitir nenhum desses rótulos.
+
+## Current checkpoint — 2026-09-09 21:36
+
+`VER-CVG-055` observa o GitHub Actions run `34421045621` do SHA `53860d08c12b21667c62d7ba032435bfcf797cf5`: checkout, dependências, lint, typecheck, testes, provider loopback, build, static, auditorias, E2E e aplicação das migrations passaram; `PostgreSQL integration and RLS gate` falhou e os passos posteriores foram pulados. A 027 foi restaurada sem alteração e a 028 foi adicionada como forward-fix para o privilégio exigido por `SELECT ... FOR UPDATE` nos writers, mantendo a mutação protegida pelo trigger append-only. Após a correção, a verificação local passou 111 testes (110/1 skip), E2E 52/4, lint 118 fontes, static 43/120, PDP 64/68/6/12, provider loopback, licenças 207, npm audit 0 e diff check; um novo run remoto ainda é necessário.
 
 ## 10. Próxima ação
 

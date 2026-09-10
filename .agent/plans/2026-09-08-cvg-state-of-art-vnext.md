@@ -23,7 +23,7 @@ O resultado esperado é um produto executável com uma rota completa de desenvol
 
 ## Context and Orientation
 
-O repositório contém uma aplicação TypeScript/Fastify/React com domínio sintético, persistência PostgreSQL e migrations 001–027, Harness local determinístico e testes locais. A revisão base desta continuação é `e3c6c59aebcdd7375ae09c61a1c620ffd9257016`; o worktree estava limpo antes da nova fatia.
+O repositório contém uma aplicação TypeScript/Fastify/React com domínio sintético, persistência PostgreSQL e migrations 001–028, Harness local determinístico e testes locais. A revisão base desta continuação é `e3c6c59aebcdd7375ae09c61a1c620ffd9257016`; o worktree estava limpo antes da nova fatia. A migration 028 foi adicionada como forward-fix após o CI remoto revelar que o `SELECT ... FOR UPDATE` do writer exige privilégio de lock mesmo com o guard append-only da 027.
 
 O repositório local do DeepSeek Harness está em `/home/ricardo/deepseek-harness`, commit `5dda764ed3`. Ele é uma dependência externa observada e documentada, não uma autoridade de runtime do CVG e não será editado por este plano.
 
@@ -366,3 +366,5 @@ O focused test e o verificador passaram (`sendRequests=4`, `queryRequests=2`, `c
 `EVT-CVG-20260909-VERIFY-082` e `VER-CVG-053` registram a regressão local final: 111 testes (110 pass, 1 skip), lint 117, typecheck, build, E2E 52 pass + 4 skips, static 42/119, PDP 64/68/6/12, provider loopback, licenses 207, npm audit 0, Compose estrutural e gates fail-closed. A UI anuncia loading, expõe retry degradado, revalida após 403/409 e mantém prioridade/status/ações identificáveis na agenda móvel.
 
 `EVT-CVG-20260909-REVIEW-083` e `VER-CVG-054` registram a tentativa final de crítica independente fresca: Mendel expirou sem relatório após 120s e foi encerrado; o resultado é `NOT_RUN`, não aprovação. O veredito permanece `FAIL_WITH_LIMITATIONS`; o próximo pointer é `CVG-FULL-STATE-OF-THE-ART:REMOTE-CI-OBSERVATION`, condicionado a CI remoto e evidência externa autorizada.
+
+`VER-CVG-055` registrou o run remoto `34421045621` no SHA `53860d0`: os gates locais/remotos anteriores passaram, as migrations foram aplicadas, mas o gate PostgreSQL/RLS falhou. A migration 027 foi mantida imutável e a 028 adicionada como forward-fix do privilégio de `SELECT ... FOR UPDATE`; a regressão local pós-fix passou 111 testes, E2E 52/4, lint 118, static 43/120, PDP 64/68/6/12, provider loopback, licenses 207, npm audit e diff check. O próximo pointer continua a observação do novo CI remoto após publicação.

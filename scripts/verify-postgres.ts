@@ -98,22 +98,13 @@ async function exercise(runtime: CvgServerRuntime): Promise<{ receiptId: string;
 
 async function exerciseDiagnosticRequest(runtime: CvgServerRuntime, patientId: string): Promise<{ requestId: string; encounterId: string; auth: AuthenticatedContext }> {
   const auth = await login(runtime, { login: "ana.vet@cvg.local", password: "veterinario-synthetic-0002" });
-  const fail = (message: string): never => {
-    const telemetry = runtime.telemetry.logs.slice(-8).map((entry) => ({ event: entry.event, level: entry.level, metadata: entry.metadata }));
-    const diagnostic = `${message}; telemetry=${JSON.stringify(telemetry)}`;
-    if (process.env.GITHUB_ACTIONS === "true") {
-      const escaped = diagnostic.replaceAll("%", "%25").replaceAll("\r", "%0D").replaceAll("\n", "%0A");
-      process.stdout.write(`::error file=scripts/verify-postgres.ts,line=105::${escaped}\n`);
-    }
-    throw new Error(diagnostic);
-  };
   const encounter = await runtime.app.inject({
     method: "POST",
     url: "/api/v1/encounters",
     headers: { ...auth.headers, "idempotency-key": "verify-postgres-diagnostic-encounter-v1" },
     payload: JSON.stringify({ patientId, appointmentId: null, chiefComplaint: "synthetic diagnostic verification", urgency: "ROUTINE" })
   });
-  if (encounter.statusCode !== 201) fail(`diagnostic verification encounter failed with ${encounter.statusCode}: ${encounter.body}`);
+  if (encounter.statusCode !== 201) throw new Error(`diagnostic verification encounter failed with ${encounter.statusCode}: ${encounter.body}`);
   const encounterBody = JSON.parse(encounter.body) as { data: { encounter: { id: string } } };
   const encounterId = encounterBody.data.encounter.id;
   const payload = JSON.stringify({ patientId, encounterId, testName: "Postgres diagnostic verification", priority: "ROUTINE" });
@@ -123,7 +114,7 @@ async function exerciseDiagnosticRequest(runtime: CvgServerRuntime, patientId: s
     headers: { ...auth.headers, "idempotency-key": "verify-postgres-diagnostic-v1" },
     payload
   });
-  if (result.statusCode !== 201) fail(`diagnostic verification create failed with ${result.statusCode}: ${result.body}`);
+  if (result.statusCode !== 201) throw new Error(`diagnostic verification create failed with ${result.statusCode}: ${result.body}`);
   const body = JSON.parse(result.body) as { data: { request: { id: string }; receiptId: string } };
   const replay = await runtime.app.inject({
     method: "POST",
@@ -131,9 +122,9 @@ async function exerciseDiagnosticRequest(runtime: CvgServerRuntime, patientId: s
     headers: { ...auth.headers, "idempotency-key": "verify-postgres-diagnostic-v1" },
     payload
   });
-  if (replay.statusCode !== 201) fail(`diagnostic verification replay failed with ${replay.statusCode}: ${replay.body}`);
+  if (replay.statusCode !== 201) throw new Error(`diagnostic verification replay failed with ${replay.statusCode}: ${replay.body}`);
   const replayBody = JSON.parse(replay.body) as { data: { request: { id: string }; receiptId: string } };
-  if (replayBody.data.request.id !== body.data.request.id || replayBody.data.receiptId !== body.data.receiptId) fail("diagnostic verification replay returned a different request or receipt");
+  if (replayBody.data.request.id !== body.data.request.id || replayBody.data.receiptId !== body.data.receiptId) throw new Error("diagnostic verification replay returned a different request or receipt");
   return { requestId: body.data.request.id, encounterId, auth };
 }
 

@@ -36,7 +36,7 @@
       "next_action": {
         "id": "CVG-FULL-STATE-OF-THE-ART:REMOTE-CI-OBSERVATION",
         "kind": "VERIFY",
-        "summary": "Publicar o forward-fix 028 sem editar a 027 e observar o novo run remoto do CI para o SHA exato, registrando conclusões dos jobs",
+        "summary": "Obter logs/diagnóstico e reexecução autorizada do Browser E2E remoto; depois observar PostgreSQL/RLS e release no SHA que contém o forward-fix 028",
         "target": ".github/workflows/ci.yml; GitHub Actions run for the exact published HEAD SHA",
         "completion_signal": "run remoto do SHA exato observado com conclusões por job; se não houver acesso/run, registrar NOT_RUN ou BLOCKED sem inferir aprovação"
       }

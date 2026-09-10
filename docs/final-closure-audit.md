@@ -241,7 +241,11 @@ local correctness
 
 ## Current checkpoint — 2026-09-09 21:36
 
-`VER-CVG-055` observa o GitHub Actions run `34421045621` do SHA `53860d08c12b21667c62d7ba032435bfcf797cf5`: checkout, dependências, lint, typecheck, testes, provider loopback, build, static, auditorias, E2E e aplicação das migrations passaram; `PostgreSQL integration and RLS gate` falhou e os passos posteriores foram pulados. A 027 foi restaurada sem alteração e a 028 foi adicionada como forward-fix para o privilégio exigido por `SELECT ... FOR UPDATE` nos writers, mantendo a mutação protegida pelo trigger append-only. Após a correção, a verificação local passou 111 testes (110/1 skip), E2E 52/4, lint 118 fontes, static 43/120, PDP 64/68/6/12, provider loopback, licenças 207, npm audit 0 e diff check; um novo run remoto ainda é necessário.
+`VER-CVG-055` observa o GitHub Actions run `34421045621` do SHA `53860d08c12b21667c62d7ba032435bfcf797cf5`: checkout, dependências, lint, typecheck, testes, provider loopback, build, static, auditorias, E2E e aplicação das migrations passaram; `PostgreSQL integration and RLS gate` falhou e os passos posteriores foram pulados. A 027 foi restaurada sem alteração e a 028 foi adicionada como forward-fix para o privilégio exigido por `SELECT ... FOR UPDATE` nos writers, mantendo a mutação protegida pelo trigger append-only. Após a correção, a verificação local passou 111 testes (110/1 skip), E2E 52/4, lint 118 fontes, static 43/120, PDP 64/68/6/12, provider loopback, licenças 207, npm audit 0 e diff check.
+
+## Current checkpoint — 2026-09-09 21:47
+
+`VER-CVG-057` observa o GitHub Actions run `34422274248` do SHA `c132d1d183e269b908607a035df5fd55cad0961e`: o step `Browser E2E` falhou com exit 1 e os gates PostgreSQL/RLS, restore, release, performance, SBOM e artifacts foram pulados. O detalhe do log exige autenticação e não foi inventado. A suíte local executável permanece verde (E2E 52 pass + 4 skips); o `test:e2e:full` local continua limitado por dependências WebKit ausentes. Portanto, este run não prova nem refuta a 028; o veredito continua `FAIL_WITH_LIMITATIONS` e a próxima ação é diagnóstico/reexecução autorizada do E2E remoto antes de qualquer promoção.
 
 ## 10. Próxima ação
 
@@ -251,7 +255,7 @@ local correctness
 
 **Ação concluída localmente:** `CVG-FULL-STATE-OF-THE-ART:PROVIDER-LOOPBACK-SANDBOX`. O verificador e o teste de integração atravessaram HTTP loopback real, com replay idempotente, aceite antes de resposta perdida, `OUTCOME_UNKNOWN`, reconciliação por chave e callback HMAC válido/inválido; `externalProvider` permanece `NOT_RUN`.
 
-**Próxima ação:** `CVG-FULL-STATE-OF-THE-ART:REMOTE-CI-OBSERVATION`, observando somente o run do SHA publicado; sem run/acesso, registrar `NOT_RUN`/`BLOCKED` e manter os gaps externos.
+**Próxima ação:** `CVG-FULL-STATE-OF-THE-ART:REMOTE-CI-OBSERVATION`, obter diagnóstico/reexecução autorizada do `Browser E2E` no runner remoto e depois observar os gates PostgreSQL/release; sem logs/acesso, registrar `NOT_RUN`/`BLOCKED` e manter os gaps externos.
 
 **Owner:** Lead/integrator do repositório.
 **Dependências:** contrato observável do DeepSeek Harness; nenhuma credencial ou efeito externo é necessária para a etapa local.

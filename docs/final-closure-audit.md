@@ -1,7 +1,7 @@
 # Auditoria de fechamento — CVG-Corp State of the Art / Triplo AAA
 
 **Auditoria:** F0-2026-09-09-v2
-**Revisão de referência do CVG:** `1fe6350` (`feat: govern provenance, exports, and scoped boundaries`; fechamento técnico desta rodada)
+**Revisão de referência do CVG:** `8b122ea` (`feat: harden recovery expiry and production edge`; fechamento técnico desta rodada, publicado em `main`)
 **Revisão observada do DeepSeek Harness:** `5dda764ed3aa172535a7967b06ff95d9cbfe536a`
 **Probe ACP local:** `READY`; `initialize` + `session/new` passaram pelo processo real via stdio; turno de modelo deliberadamente não executado sem API key.
 **Prompt normativo:** [prompt v2](prompt-state-of-the-art-triplo-aaa-2026-09-09-v2.txt), SHA-256 `34e886f59adacf8fda46d8d54bdede259705adc6e1521590cd3c281509b0e0d9`
@@ -297,7 +297,7 @@ O último CI remoto observado antes deste patch é o run `34422825560` no SHA `0
 
 ## Current checkpoint — 2026-09-10 local closure
 
-`docs/verification-2026-09-10-local-closure.md` registra a nova fotografia: `npm test` 118 (`117 pass`, `1 skip`), typecheck/build/lint/static/PDP/security/database/restore, provider loopback, exportação governada, produção estrutural, contrast/tokens/licenses/audit e os E2E completos (`64 pass`, `4 skips`) passaram. O harness local agora usa `ToolGateway.execute()` com ledger e timeout; a UI diferencia 401 inicial, sessão expirada, 403 estável e `STALE`; métricas Prometheus agregadas estão isoladas na rede privada de observabilidade. `verify:triplo-aaa` permanece `AAA_NOT_PROVEN`, `verify:staging` permanece `STAGING_EVIDENCE_INCOMPLETE` e `verify:deepseek-acp` está bloqueado sem configuração explícita. O CI verde `34427884550` pertence ao SHA anterior; o commit técnico `1fe6350` ainda precisa ser publicado e observado. O veredito permanece `FAIL_WITH_LIMITATIONS`.
+`docs/verification-2026-09-10-local-closure.md` registra a nova fotografia: `npm test` 118 (`117 pass`, `1 skip`), typecheck/build/lint/static/PDP/security/database/restore, provider loopback, exportação governada, produção estrutural/TLS overlay, contrast/tokens/licenses/audit e os E2E completos (`64 pass`, `4 skips`) passaram. O harness local agora usa `ToolGateway.execute()` com ledger e timeout; a UI diferencia 401 inicial, sessão expirada, 403 estável e `STALE`; métricas Prometheus agregadas estão isoladas na rede privada de observabilidade. `verify:triplo-aaa` permanece `AAA_NOT_PROVEN`, `verify:staging` permanece `STAGING_EVIDENCE_INCOMPLETE` e `verify:deepseek-acp` está bloqueado sem configuração explícita. O CI verde `34427884550` pertence ao SHA anterior; o commit técnico `8b122ea` foi publicado e disparou novo check, ainda sem resultado final observável nesta fotografia. O veredito permanece `FAIL_WITH_LIMITATIONS`.
 
 ## Current checkpoint — 2026-09-10 governed data closure
 

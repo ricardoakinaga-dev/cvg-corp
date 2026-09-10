@@ -1,6 +1,6 @@
 # Fechamento local — 2026-09-10
 
-Fotografia executada no workspace `/home/ricardo/Área de trabalho/cvg-corp` em 2026-09-10, consolidada no commit `1fe6350` (`feat: govern provenance, exports, and scoped boundaries`). O prompt normativo permanece em [`prompt-state-of-the-art-triplo-aaa-2026-09-09-v2.txt`](prompt-state-of-the-art-triplo-aaa-2026-09-09-v2.txt), SHA-256 `34e886f59adacf8fda46d8d54bdede259705adc6e1521590cd3c281509b0e0d9`.
+Fotografia executada no workspace `/home/ricardo/Área de trabalho/cvg-corp` em 2026-09-10, consolidada tecnicamente no commit `8b122ea` (`feat: harden recovery expiry and production edge`), que foi publicado em `main`. O prompt normativo permanece em [`prompt-state-of-the-art-triplo-aaa-2026-09-09-v2.txt`](prompt-state-of-the-art-triplo-aaa-2026-09-09-v2.txt), SHA-256 `34e886f59adacf8fda46d8d54bdede259705adc6e1521590cd3c281509b0e0d9`.
 
 ## Alterações verificadas
 
@@ -27,7 +27,7 @@ Fotografia executada no workspace `/home/ricardo/Área de trabalho/cvg-corp` em 
 | `npm run test:security` | PASS — 26 testes |
 | `npm run test:database` | PASS — persistência, exportação governada e restore |
 | `npm run verify:provider-sandbox` | PASS — loopback HTTP, replay, `OUTCOME_UNKNOWN`, reconciliação e HMAC; `externalProvider=NOT_RUN` |
-| `npm run verify:production` | PASS limitado — gates locais completos, Compose principal/observabilidade renderizado; nenhum serviço de produção foi iniciado |
+| `npm run verify:production` | PASS limitado — gates locais completos, Compose principal/observabilidade e overlay TLS renderizados; nenhum serviço de produção foi iniciado |
 | `npm run audit:contrast` | PASS — 7/7 pares |
 | `npm run audit:tokens` | PASS — 0 high/critical; 73 sinais medium heurísticos não bloqueantes |
 | `npm run audit:licenses` | PASS — 207 dependências |
@@ -44,6 +44,6 @@ Fotografia executada no workspace `/home/ricardo/Área de trabalho/cvg-corp` em 
 
 ## Limitações mantidas
 
-O artifact continua local-first e sintético. Usage/provenance e exportação governada estão implementados e cobertos localmente, mas a execução PostgreSQL concorrente, secret authority, provider/DeepSeek, staging/TLS, collector/alert dispatch/SLO medidos, carga/chaos, backup/RTO/RPO, WebKit, leitor de tela e zoom de 200% continuam `PARTIAL`, `NOT_RUN` ou `BLOCKED`. A cobertura de repositories/jobs permanece parcial e o novo SHA ainda aguarda CI remoto. A crítica independente fresca de 2026-09-10 foi concluída e confirmou `FAIL_WITH_LIMITATIONS`; ela não é aceite humano nem aprovação AAA. O veredito global permanece `FAIL_WITH_LIMITATIONS` / `AAA_NOT_PROVEN`.
+O artifact continua local-first e sintético. Usage/provenance e exportação governada estão implementados e cobertos localmente, mas a execução PostgreSQL concorrente, secret authority, provider/DeepSeek, staging/TLS real, collector/alert dispatch/SLO medidos, carga/chaos, backup/RTO/RPO, WebKit, leitor de tela e zoom de 200% continuam `PARTIAL`, `NOT_RUN` ou `BLOCKED`. A cobertura de repositories/jobs permanece parcial; o CI do SHA técnico `8b122ea` foi disparado, mas ainda não havia resultado final observável nesta fotografia. A crítica I1 concluída sobre o SHA publicado anteriormente rejeitou AAA; as tentativas pós-publicação sem parecer não são aprovação. O veredito global permanece `FAIL_WITH_LIMITATIONS` / `AAA_NOT_PROVEN`.
 
 Nenhum segredo, dado real, provider externo, publicação de efeito ou alteração no repositório `/home/ricardo/deepseek-harness` foi realizada.

@@ -6,11 +6,13 @@
   "round": 4,
   "phase": "VERDICT",
   "status": "FAIL_WITH_LIMITATIONS",
-  "largest_gap": "O commit 1fe6350 fecha localmente migration 029, usage/provenance, exportação governada cifrada/idempotente e novos guards de PDP; os testes locais passaram, mas isso não substitui evidência de PostgreSQL concorrente. O maior gap continua externo ao repositório: não há turno LLM DeepSeek governado, provider/staging/secret authority, Collector/SLO medido, load/chaos/recovery production-like, WebKit/assistive tech/zoom real, CI do novo SHA, crítica independente aprovadora ou aceite humano.",
+  "largest_gap": "O commit técnico 8b122ea fecha localmente expiração autenticada do recovery envelope, exportação governada purpose-bound e overlay TLS estrutural; os testes locais passaram, mas isso não substitui evidência de PostgreSQL concorrente. O maior gap continua externo ao repositório: não há turno LLM DeepSeek governado, provider/staging/secret authority, Collector/SLO medido, load/chaos/recovery production-like, WebKit/assistive tech/zoom real, CI do SHA atual concluído, crítica independente atual aprovadora ou aceite humano.",
   "next_action": "CVG-FULL-STATE-OF-THE-ART:EXTERNAL-EVIDENCE-AND-HUMAN-ACCEPTANCE",
   "limitations": ["a auditoria arquitetural e os gates locais/remotos autorizam apenas desenvolvimento controlado", "o artifact é uma base local sintética; evidência local ou CI não satisfaz automaticamente critérios de produção", "migration 029, usage/provenance e exportação governada foram implementados e testados localmente, mas concorrência PostgreSQL, managed backup/restore e custo settlement real continuam sem prova", "o turno ACP direto permanece bloqueado sem ambiente e atestação autorizados; o harness local já executa pelo ToolGateway, mas usa executor sintético LOCAL_ONLY", "Docker daemon, staging, provider, secret authority, egress, collector/SLO, containers production-like, carga, recovery distribuído, WebKit, assistive tech, zoom real, CI do novo SHA e aceite humano permanecem bloqueados ou não executados", "a crítica independente fresca de 2026-09-10 concluiu FAIL_WITH_LIMITATIONS e não é aprovação AAA; aceite humano continua ausente"],
   "critique_ref": ".gauntlet/critique-final-20260910.md",
   "latest_critique_attempt": ".gauntlet/critique-final-20260910.md",
+  "post_publish_critique_attempt": ".gauntlet/critique-post-push-attempt-20260910.md",
+  "post_publish_critique_status": "NOT_COMPLETED; no decision inferred",
   "supersedes": ".gauntlet/state-v2-round4.json",
-  "updated_at": "2026-09-10T00:01:30-03:00"
+  "updated_at": "2026-09-10T01:07:33-03:00"
 }

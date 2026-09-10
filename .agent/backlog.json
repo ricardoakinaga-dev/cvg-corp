@@ -39,7 +39,8 @@
         "summary": "Obter evidência autorizada de staging/provider/DeepSeek/observabilidade/carga/recuperação e aceite humano antes de qualquer promoção",
         "target": "staging autorizado; SecretProvider/secret authority; provider externo; DeepSeek model turn governado; collector/SLO; carga/chaos/recovery; WebKit/assistive-tech/zoom; aprovação humana",
         "completion_signal": "evidência externa reproduzível e aprovação humana registradas; até lá manter FAIL_WITH_LIMITATIONS e sem declarar AAA"
-      }
+      },
+      "latest_control_updates": ["VER-CVG-077", "VER-CVG-078", "VER-CVG-079", ".gauntlet/critique-post-push-attempt-20260910.md", "docker-compose.production.yml", "docker/nginx/proxy.tls.conf"]
     }
   ]
 }

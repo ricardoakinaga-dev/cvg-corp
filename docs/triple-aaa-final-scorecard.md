@@ -22,7 +22,7 @@ Resultado: `FAIL_WITH_LIMITATIONS`; Triplo AAA não provado. A escala abaixo (0�
 | 16 | Chaos/resiliência | 2 | fault fixtures | `tests/integration/faults.test.ts` | sem infra/provider chaos | recuperação desconhecida |
 | 17 | Backup/recovery | 3 | restore sintético autenticado | `docs/recovery-proof.md` | backup gerenciado/RTO/RPO ausentes | perda prolongada |
 | 18 | Auditoria/proveniência/custo | 3 | audit chain local `previousHash/recordHash`, usage/provenance duráveis por turno e export cifrado com manifesto/digest | `packages/domain/`; `packages/persistence/`; `apps/api/src/application/export-service.ts` | WORM/assinatura externa/settlement incompletos | contestação/uso não conciliado |
-| 19 | Supply chain/CI/release | 3 | static/SBOM/workflow declarado; proxy e web com digest imutável; gates locais e commit `1fe6350` | `.github/workflows/`, `docker-compose.yml`, `Dockerfile.web`, `README.md` | CI remoto do novo SHA ainda não foi observado | artifact vulnerável |
+| 19 | Supply chain/CI/release | 3 | static/SBOM/workflow declarado; proxy e web com digest imutável; gates locais e commit técnico `8b122ea` | `.github/workflows/`, `docker-compose.yml`, `Dockerfile.web`, `README.md` | CI remoto do SHA técnico ainda não foi observado como concluído | artifact vulnerável |
 | 20 | Crítica independente e aceite | 2 | dois pareceres I1 + F0; mudanças locais verificadas por testes e E2E direcionado | `.gauntlet/`, `docs/final-closure-audit.md`, `docs/verification-2026-09-10-local-closure.md` | sem crítica final aprovadora, prova externa completa ou aceite humano | liberação prematura |
 
 ## Veredito

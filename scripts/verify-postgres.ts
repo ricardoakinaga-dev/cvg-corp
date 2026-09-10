@@ -96,7 +96,7 @@ async function exercise(runtime: CvgServerRuntime): Promise<{ receiptId: string;
   return { receiptId: body.data.receiptId, guardianId: body.data.guardian.id, auth };
 }
 
-async function exerciseDiagnosticRequest(runtime: CvgServerRuntime, patientId: string): Promise<{ requestId: string; encounterId: string; auth: AuthenticatedContext }> {
+async function exerciseDiagnosticRequest(runtime: CvgServerRuntime, patientId: string): Promise<{ requestId: string; encounterId: string; specimenId: string; resultId: string; auth: AuthenticatedContext }> {
   const auth = await login(runtime, { login: "ana.vet@cvg.local", password: "veterinario-synthetic-0002" });
   const encounter = await runtime.app.inject({
     method: "POST",
@@ -125,7 +125,43 @@ async function exerciseDiagnosticRequest(runtime: CvgServerRuntime, patientId: s
   if (replay.statusCode !== 201) throw new Error(`diagnostic verification replay failed with ${replay.statusCode}: ${replay.body}`);
   const replayBody = JSON.parse(replay.body) as { data: { request: { id: string }; receiptId: string } };
   if (replayBody.data.request.id !== body.data.request.id || replayBody.data.receiptId !== body.data.receiptId) throw new Error("diagnostic verification replay returned a different request or receipt");
-  return { requestId: body.data.request.id, encounterId, auth };
+  const specimenPayload = JSON.stringify({ label: "Postgres diagnostic specimen" });
+  const specimen = await runtime.app.inject({
+    method: "POST",
+    url: `/api/v1/diagnostics/requests/${body.data.request.id}/specimens`,
+    headers: { ...auth.headers, "idempotency-key": "verify-postgres-diagnostic-specimen-v1" },
+    payload: specimenPayload
+  });
+  if (specimen.statusCode !== 201) throw new Error(`diagnostic specimen verification create failed with ${specimen.statusCode}: ${specimen.body}`);
+  const specimenBody = JSON.parse(specimen.body) as { data: { specimen: { id: string }; receiptId: string } };
+  const specimenReplay = await runtime.app.inject({
+    method: "POST",
+    url: `/api/v1/diagnostics/requests/${body.data.request.id}/specimens`,
+    headers: { ...auth.headers, "idempotency-key": "verify-postgres-diagnostic-specimen-v1" },
+    payload: specimenPayload
+  });
+  if (specimenReplay.statusCode !== 201) throw new Error(`diagnostic specimen verification replay failed with ${specimenReplay.statusCode}: ${specimenReplay.body}`);
+  const specimenReplayBody = JSON.parse(specimenReplay.body) as { data: { specimen: { id: string }; receiptId: string } };
+  if (specimenReplayBody.data.specimen.id !== specimenBody.data.specimen.id || specimenReplayBody.data.receiptId !== specimenBody.data.receiptId) throw new Error("diagnostic specimen verification replay returned a different specimen or receipt");
+  const resultPayload = JSON.stringify({ requestId: body.data.request.id, specimenId: specimenBody.data.specimen.id, value: "synthetic-result-42", source: "synthetic-postgres-lab", sourceVersion: "synthetic-1" });
+  const diagnosticResult = await runtime.app.inject({
+    method: "POST",
+    url: "/api/v1/diagnostics/results",
+    headers: { ...auth.headers, "idempotency-key": "verify-postgres-diagnostic-result-v1" },
+    payload: resultPayload
+  });
+  if (diagnosticResult.statusCode !== 201) throw new Error(`diagnostic result verification create failed with ${diagnosticResult.statusCode}: ${diagnosticResult.body}`);
+  const resultBody = JSON.parse(diagnosticResult.body) as { data: { result: { id: string }; receiptId: string } };
+  const resultReplay = await runtime.app.inject({
+    method: "POST",
+    url: "/api/v1/diagnostics/results",
+    headers: { ...auth.headers, "idempotency-key": "verify-postgres-diagnostic-result-v1" },
+    payload: resultPayload
+  });
+  if (resultReplay.statusCode !== 201) throw new Error(`diagnostic result verification replay failed with ${resultReplay.statusCode}: ${resultReplay.body}`);
+  const resultReplayBody = JSON.parse(resultReplay.body) as { data: { result: { id: string }; receiptId: string } };
+  if (resultReplayBody.data.result.id !== resultBody.data.result.id || resultReplayBody.data.receiptId !== resultBody.data.receiptId) throw new Error("diagnostic result verification replay returned a different result or receipt");
+  return { requestId: body.data.request.id, encounterId, specimenId: specimenBody.data.specimen.id, resultId: resultBody.data.result.id, auth };
 }
 
 const first = await createRuntime({ config: runtimeConfig, persistence: newDurablePersistence(), providerQueryAdapter: syntheticProviderQueryAdapter });
@@ -161,6 +197,14 @@ try {
   const appointmentsBody = JSON.parse(appointments.body) as { data: { items: Array<{ id: string; workspaceId: string; patient?: { name: string }; provider: string | null }> } };
   if (!appointmentsBody.data.items.some((item) => item.workspaceId === auth.workspaceId && item.patient?.name === "Luna" && item.provider === "Dra. Ana Martins")) throw new Error("normalized appointment read did not honor the selected workspace projection");
   const diagnosticVerification = await exerciseDiagnosticRequest(second, luna.id);
+  const specimens = await second.app.inject({ method: "GET", url: "/api/v1/diagnostics/specimens", headers: diagnosticVerification.auth.headers });
+  if (specimens.statusCode !== 200) throw new Error(`normalized specimen read failed with ${specimens.statusCode}: ${specimens.body}`);
+  const specimensBody = JSON.parse(specimens.body) as { data: { items: Array<{ id: string }> } };
+  if (!specimensBody.data.items.some((item) => item.id === diagnosticVerification.specimenId)) throw new Error("normalized specimen read did not return the authoritative specimen");
+  const results = await second.app.inject({ method: "GET", url: "/api/v1/diagnostics/results", headers: diagnosticVerification.auth.headers });
+  if (results.statusCode !== 200) throw new Error(`normalized diagnostic result read failed with ${results.statusCode}: ${results.body}`);
+  const resultsBody = JSON.parse(results.body) as { data: { items: Array<{ id: string }> } };
+  if (!resultsBody.data.items.some((item) => item.id === diagnosticVerification.resultId)) throw new Error("normalized diagnostic result read did not return the authoritative result");
 
   const organizationId = second.store.bootstrapCredentials.organizationId;
   const outboxId = id(randomUUID());
@@ -379,8 +423,18 @@ try {
     [diagnosticVerification.requestId]
   )).rows[0];
   if (diagnosticScope?.unit_id !== diagnosticVerification.auth.unitId || diagnosticScope.workspace_id !== diagnosticVerification.auth.workspaceId) throw new Error("authoritative diagnostic request did not persist the encounter-derived scope");
-  counts = (await client.query<{ snapshots: number; journal: number; audits: number; auditLedger: number; receipts: number; receiptLedger: number; guardians: number; diagnosticRequests: number; outbox: number; usageLedger: number; inbox: number; externalEffects: number; breakGlass: number }>(
-    "select (select count(*)::int from cvg_state_snapshots) as snapshots, (select count(*)::int from cvg_event_journal) as journal, (select count(*)::int from audit_records) as audits, (select count(*)::int from cvg_audit_ledger) as \"auditLedger\", (select count(*)::int from command_receipts) as receipts, (select count(*)::int from cvg_command_receipt_ledger) as \"receiptLedger\", (select count(*)::int from guardians) as guardians, (select count(*)::int from diagnostic_requests) as \"diagnosticRequests\", (select count(*)::int from outbox_records) as outbox, (select count(*)::int from ai_usage_ledger) as \"usageLedger\", (select count(*)::int from integration_inbox_records) as inbox, (select count(*)::int from external_effects) as \"externalEffects\", (select count(*)::int from break_glass_grants) as \"breakGlass\""
+  const specimenScope = (await client.query<{ unit_id: string; workspace_id: string }>(
+    "select unit_id::text as unit_id, workspace_id::text as workspace_id from specimens where id = $1",
+    [diagnosticVerification.specimenId]
+  )).rows[0];
+  if (specimenScope?.unit_id !== diagnosticVerification.auth.unitId || specimenScope.workspace_id !== diagnosticVerification.auth.workspaceId) throw new Error("authoritative specimen did not persist the encounter-derived scope");
+  const resultScope = (await client.query<{ unit_id: string; workspace_id: string }>(
+    "select unit_id::text as unit_id, workspace_id::text as workspace_id from diagnostic_results where id = $1",
+    [diagnosticVerification.resultId]
+  )).rows[0];
+  if (resultScope?.unit_id !== diagnosticVerification.auth.unitId || resultScope.workspace_id !== diagnosticVerification.auth.workspaceId) throw new Error("authoritative diagnostic result did not persist the encounter-derived scope");
+  counts = (await client.query<{ snapshots: number; journal: number; audits: number; auditLedger: number; receipts: number; receiptLedger: number; guardians: number; diagnosticRequests: number; specimens: number; diagnosticResults: number; outbox: number; usageLedger: number; inbox: number; externalEffects: number; breakGlass: number }>(
+    "select (select count(*)::int from cvg_state_snapshots) as snapshots, (select count(*)::int from cvg_event_journal) as journal, (select count(*)::int from audit_records) as audits, (select count(*)::int from cvg_audit_ledger) as \"auditLedger\", (select count(*)::int from command_receipts) as receipts, (select count(*)::int from cvg_command_receipt_ledger) as \"receiptLedger\", (select count(*)::int from guardians) as guardians, (select count(*)::int from diagnostic_requests) as \"diagnosticRequests\", (select count(*)::int from specimens) as specimens, (select count(*)::int from diagnostic_results) as \"diagnosticResults\", (select count(*)::int from outbox_records) as outbox, (select count(*)::int from ai_usage_ledger) as \"usageLedger\", (select count(*)::int from integration_inbox_records) as inbox, (select count(*)::int from external_effects) as \"externalEffects\", (select count(*)::int from break_glass_grants) as \"breakGlass\""
   )).rows[0];
   const rlsRole = `cvg_rls_verify_${randomUUID().replaceAll("-", "")}`;
   const currentRole = (await client.query<{ rolsuper: boolean; rolbypassrls: boolean; rolcreaterole: boolean; rolcreatedb: boolean }>(
@@ -391,7 +445,7 @@ try {
   try {
     if (needsTemporaryRole) {
       await client.query(`grant usage on schema public to "${rlsRole}"`);
-      await client.query(`grant select, update on organizations, patients, guardians, diagnostic_requests, outbox_records, ai_usage_ledger, integration_inbox_records, external_effects, break_glass_grants, ai_turns, ai_drafts, lifecycle_decisions, lifecycle_transition_events, inbox_records, appointments, encounters, clinical_documents, clinical_addenda, knowledge_documents, communication_messages, ai_sessions, ai_approvals, audit_records, command_receipts, role_assignments, providers, resources, queue_entries, beds, hospital_episodes, stock_locations, charges to "${rlsRole}"`);
+      await client.query(`grant select, update on organizations, patients, guardians, diagnostic_requests, specimens, diagnostic_results, outbox_records, ai_usage_ledger, integration_inbox_records, external_effects, break_glass_grants, ai_turns, ai_drafts, lifecycle_decisions, lifecycle_transition_events, inbox_records, appointments, encounters, clinical_documents, clinical_addenda, knowledge_documents, communication_messages, ai_sessions, ai_approvals, audit_records, command_receipts, role_assignments, providers, resources, queue_entries, beds, hospital_episodes, stock_locations, charges to "${rlsRole}"`);
       await client.query(`grant select on cvg_state_snapshots, cvg_event_journal to "${rlsRole}"`);
       await client.query(`set role "${rlsRole}"`);
     }
@@ -409,6 +463,8 @@ try {
     const visiblePatientCount = (await client.query<{ count: number }>("select count(*)::int as count from patients")).rows[0]?.count;
     const visibleGuardianCount = (await client.query<{ count: number }>("select count(*)::int as count from guardians")).rows[0]?.count;
     const visibleDiagnosticRequestCount = (await client.query<{ count: number }>("select count(*)::int as count from diagnostic_requests")).rows[0]?.count;
+    const visibleSpecimenCount = (await client.query<{ count: number }>("select count(*)::int as count from specimens")).rows[0]?.count;
+    const visibleDiagnosticResultCount = (await client.query<{ count: number }>("select count(*)::int as count from diagnostic_results")).rows[0]?.count;
     const visibleAppointmentCount = (await client.query<{ count: number }>("select count(*)::int as count from appointments")).rows[0]?.count;
     const visibleClinicalDocumentCount = (await client.query<{ count: number }>("select count(*)::int as count from clinical_documents")).rows[0]?.count;
     const visibleClinicalAddendumCount = (await client.query<{ count: number }>("select count(*)::int as count from clinical_addenda")).rows[0]?.count;
@@ -435,8 +491,12 @@ try {
     const hiddenWorkspacePatientCount = (await client.query<{ count: number }>("select count(*)::int as count from patients")).rows[0]?.count;
     const hiddenWorkspaceGuardianCount = (await client.query<{ count: number }>("select count(*)::int as count from guardians")).rows[0]?.count;
     const hiddenWorkspaceDiagnosticRequestCount = (await client.query<{ count: number }>("select count(*)::int as count from diagnostic_requests")).rows[0]?.count;
+    const hiddenWorkspaceSpecimenCount = (await client.query<{ count: number }>("select count(*)::int as count from specimens")).rows[0]?.count;
+    const hiddenWorkspaceDiagnosticResultCount = (await client.query<{ count: number }>("select count(*)::int as count from diagnostic_results")).rows[0]?.count;
     const forbiddenWorkspaceClinicalUpdate = await client.query("update clinical_documents set title = title where id = $1", [clinicalDocument.id]);
     const forbiddenWorkspaceDiagnosticUpdate = await client.query("update diagnostic_requests set test_name = test_name where id = $1", [diagnosticVerification.requestId]);
+    const forbiddenWorkspaceSpecimenUpdate = await client.query("update specimens set label = label where id = $1", [diagnosticVerification.specimenId]);
+    const forbiddenWorkspaceDiagnosticResultUpdate = await client.query("update diagnostic_results set value = value where id = $1", [diagnosticVerification.resultId]);
     await client.query("select set_config('cvg.unit_id', $1, false)", [randomUUID()]);
     await client.query("select set_config('cvg.workspace_id', $1, false)", [auth.workspaceId]);
     const hiddenUnitAppointmentCount = (await client.query<{ count: number }>("select count(*)::int as count from appointments")).rows[0]?.count;
@@ -447,8 +507,12 @@ try {
     const hiddenUnitPatientCount = (await client.query<{ count: number }>("select count(*)::int as count from patients")).rows[0]?.count;
     const hiddenUnitGuardianCount = (await client.query<{ count: number }>("select count(*)::int as count from guardians")).rows[0]?.count;
     const hiddenUnitDiagnosticRequestCount = (await client.query<{ count: number }>("select count(*)::int as count from diagnostic_requests")).rows[0]?.count;
+    const hiddenUnitSpecimenCount = (await client.query<{ count: number }>("select count(*)::int as count from specimens")).rows[0]?.count;
+    const hiddenUnitDiagnosticResultCount = (await client.query<{ count: number }>("select count(*)::int as count from diagnostic_results")).rows[0]?.count;
     const forbiddenUnitClinicalUpdate = await client.query("update clinical_addenda set content = content where id = $1", [clinicalAddendum.id]);
     const forbiddenUnitDiagnosticUpdate = await client.query("update diagnostic_requests set test_name = test_name where id = $1", [diagnosticVerification.requestId]);
+    const forbiddenUnitSpecimenUpdate = await client.query("update specimens set label = label where id = $1", [diagnosticVerification.specimenId]);
+    const forbiddenUnitDiagnosticResultUpdate = await client.query("update diagnostic_results set value = value where id = $1", [diagnosticVerification.resultId]);
     await client.query("select set_config('cvg.organization_id', $1, false)", [randomUUID()]);
     const hiddenOrganizationCount = (await client.query<{ count: number }>("select count(*)::int as count from organizations")).rows[0]?.count;
     const hiddenSnapshotCount = (await client.query<{ count: number }>("select count(*)::int as count from cvg_state_snapshots")).rows[0]?.count;
@@ -459,7 +523,7 @@ try {
     const hiddenExternalEffectsCount = (await client.query<{ count: number }>("select count(*)::int as count from external_effects")).rows[0]?.count;
     const hiddenBreakGlassCount = (await client.query<{ count: number }>("select count(*)::int as count from break_glass_grants")).rows[0]?.count;
     const unprotectedTables = (await client.query<{ table_name: string }>("select c.relname as table_name from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' and c.relkind = 'r' and c.relname <> 'schema_migrations' and (not c.relrowsecurity or not c.relforcerowsecurity) order by c.relname")).rows;
-    if (visibleOrganizationCount !== 1 || (visibleSnapshotCount ?? 0) < 1 || (visibleJournalCount ?? 0) < 1 || (visibleOutboxCount ?? 0) < 1 || (visibleUsageCount ?? 0) < 1 || (visibleInboxCount ?? 0) < 1 || (visibleExternalEffectsCount ?? 0) < 1 || (visibleBreakGlassCount ?? 0) < 2 || (visiblePatientCount ?? 0) < 1 || (visibleGuardianCount ?? 0) < 1 || (visibleDiagnosticRequestCount ?? 0) < 1 || (visibleAppointmentCount ?? 0) < 1 || (visibleClinicalDocumentCount ?? 0) < 1 || (visibleClinicalAddendumCount ?? 0) < 1 || (visibleKnowledgeCount ?? 0) < 1 || (visibleProviderCount ?? 0) < 1 || (visibleRoleCount ?? 0) < 1 || (visibleAiTurnCount ?? 0) !== 0 || (visibleAiDraftCount ?? 0) !== 0 || (visibleLifecycleDecisionCount ?? 0) !== 0 || (visibleLifecycleEventCount ?? 0) !== 0 || (visibleLegacyInboxCount ?? 0) !== 0 || missingScopeClinicalDocumentCount !== 0 || missingScopeClinicalAddendumCount !== 0 || missingContextPatientCount !== 0 || missingContextGuardianCount !== 0 || hiddenWorkspacePatientCount !== 0 || hiddenWorkspaceGuardianCount !== 0 || hiddenWorkspaceDiagnosticRequestCount !== 0 || hiddenWorkspaceAppointmentCount !== 0 || hiddenWorkspaceClinicalDocumentCount !== 0 || hiddenWorkspaceClinicalAddendumCount !== 0 || hiddenWorkspaceKnowledgeCount !== 0 || hiddenUnitPatientCount !== 0 || hiddenUnitGuardianCount !== 0 || hiddenUnitDiagnosticRequestCount !== 0 || hiddenUnitAppointmentCount !== 0 || hiddenUnitClinicalDocumentCount !== 0 || hiddenUnitClinicalAddendumCount !== 0 || hiddenUnitKnowledgeCount !== 0 || hiddenUnitProviderCount !== 0 || hiddenOrganizationCount !== 0 || hiddenSnapshotCount !== 0 || hiddenJournalCount !== 0 || hiddenOutboxCount !== 0 || hiddenUsageCount !== 0 || hiddenInboxCount !== 0 || hiddenExternalEffectsCount !== 0 || hiddenBreakGlassCount !== 0 || forbiddenWorkspaceClinicalUpdate.rowCount !== 0 || forbiddenWorkspaceDiagnosticUpdate.rowCount !== 0 || forbiddenUnitClinicalUpdate.rowCount !== 0 || forbiddenUnitDiagnosticUpdate.rowCount !== 0 || unprotectedTables.length !== 0) throw new Error(`RLS did not isolate the complete domain catalog: ${JSON.stringify(unprotectedTables)}`);
+    if (visibleOrganizationCount !== 1 || (visibleSnapshotCount ?? 0) < 1 || (visibleJournalCount ?? 0) < 1 || (visibleOutboxCount ?? 0) < 1 || (visibleUsageCount ?? 0) < 1 || (visibleInboxCount ?? 0) < 1 || (visibleExternalEffectsCount ?? 0) < 1 || (visibleBreakGlassCount ?? 0) < 2 || (visiblePatientCount ?? 0) < 1 || (visibleGuardianCount ?? 0) < 1 || (visibleDiagnosticRequestCount ?? 0) < 1 || (visibleSpecimenCount ?? 0) < 1 || (visibleDiagnosticResultCount ?? 0) < 1 || (visibleAppointmentCount ?? 0) < 1 || (visibleClinicalDocumentCount ?? 0) < 1 || (visibleClinicalAddendumCount ?? 0) < 1 || (visibleKnowledgeCount ?? 0) < 1 || (visibleProviderCount ?? 0) < 1 || (visibleRoleCount ?? 0) < 1 || (visibleAiTurnCount ?? 0) !== 0 || (visibleAiDraftCount ?? 0) !== 0 || (visibleLifecycleDecisionCount ?? 0) !== 0 || (visibleLifecycleEventCount ?? 0) !== 0 || (visibleLegacyInboxCount ?? 0) !== 0 || missingScopeClinicalDocumentCount !== 0 || missingScopeClinicalAddendumCount !== 0 || missingContextPatientCount !== 0 || missingContextGuardianCount !== 0 || hiddenWorkspacePatientCount !== 0 || hiddenWorkspaceGuardianCount !== 0 || hiddenWorkspaceDiagnosticRequestCount !== 0 || hiddenWorkspaceSpecimenCount !== 0 || hiddenWorkspaceDiagnosticResultCount !== 0 || hiddenWorkspaceAppointmentCount !== 0 || hiddenWorkspaceClinicalDocumentCount !== 0 || hiddenWorkspaceClinicalAddendumCount !== 0 || hiddenWorkspaceKnowledgeCount !== 0 || hiddenUnitPatientCount !== 0 || hiddenUnitGuardianCount !== 0 || hiddenUnitDiagnosticRequestCount !== 0 || hiddenUnitSpecimenCount !== 0 || hiddenUnitDiagnosticResultCount !== 0 || hiddenUnitAppointmentCount !== 0 || hiddenUnitClinicalDocumentCount !== 0 || hiddenUnitClinicalAddendumCount !== 0 || hiddenUnitKnowledgeCount !== 0 || hiddenUnitProviderCount !== 0 || hiddenOrganizationCount !== 0 || hiddenSnapshotCount !== 0 || hiddenJournalCount !== 0 || hiddenOutboxCount !== 0 || hiddenUsageCount !== 0 || hiddenInboxCount !== 0 || hiddenExternalEffectsCount !== 0 || hiddenBreakGlassCount !== 0 || forbiddenWorkspaceClinicalUpdate.rowCount !== 0 || forbiddenWorkspaceDiagnosticUpdate.rowCount !== 0 || forbiddenWorkspaceSpecimenUpdate.rowCount !== 0 || forbiddenWorkspaceDiagnosticResultUpdate.rowCount !== 0 || forbiddenUnitClinicalUpdate.rowCount !== 0 || forbiddenUnitDiagnosticUpdate.rowCount !== 0 || forbiddenUnitSpecimenUpdate.rowCount !== 0 || forbiddenUnitDiagnosticResultUpdate.rowCount !== 0 || unprotectedTables.length !== 0) throw new Error(`RLS did not isolate the complete domain catalog: ${JSON.stringify(unprotectedTables)}`);
     await client.query("reset role");
     const protection = (await client.query<{ domain_tables: number; protected_tables: number; organization_foreign_keys: number }>("select count(*) filter (where c.relkind = 'r' and c.relname <> 'schema_migrations')::int as domain_tables, count(*) filter (where c.relkind = 'r' and c.relname <> 'schema_migrations' and c.relrowsecurity and c.relforcerowsecurity)::int as protected_tables, (select count(*)::int from pg_constraint where contype = 'f' and pg_get_constraintdef(oid) like 'FOREIGN KEY (organization_id,%') as organization_foreign_keys from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public'")).rows[0];
     catalogProtection = { domainTables: protection?.domain_tables ?? 0, protectedTables: protection?.protected_tables ?? 0, organizationForeignKeys: protection?.organization_foreign_keys ?? 0 };
@@ -467,7 +531,7 @@ try {
   } finally {
     await client.query("reset role").catch(() => undefined);
     if (needsTemporaryRole) {
-      await client.query(`revoke all privileges on organizations, patients, guardians, diagnostic_requests, outbox_records, ai_usage_ledger, integration_inbox_records, external_effects, break_glass_grants, ai_turns, ai_drafts, lifecycle_decisions, lifecycle_transition_events, inbox_records, appointments, encounters, clinical_documents, clinical_addenda, knowledge_documents, communication_messages, ai_sessions, ai_approvals, audit_records, command_receipts, role_assignments, providers, resources, queue_entries, beds, hospital_episodes, stock_locations, charges from "${rlsRole}"`).catch(() => undefined);
+      await client.query(`revoke all privileges on organizations, patients, guardians, diagnostic_requests, specimens, diagnostic_results, outbox_records, ai_usage_ledger, integration_inbox_records, external_effects, break_glass_grants, ai_turns, ai_drafts, lifecycle_decisions, lifecycle_transition_events, inbox_records, appointments, encounters, clinical_documents, clinical_addenda, knowledge_documents, communication_messages, ai_sessions, ai_approvals, audit_records, command_receipts, role_assignments, providers, resources, queue_entries, beds, hospital_episodes, stock_locations, charges from "${rlsRole}"`).catch(() => undefined);
       await client.query(`revoke all privileges on cvg_state_snapshots, cvg_event_journal from "${rlsRole}"`).catch(() => undefined);
       await client.query(`revoke usage on schema public from "${rlsRole}"`).catch(() => undefined);
       await client.query(`drop role "${rlsRole}"`);
@@ -509,4 +573,4 @@ try {
   await contenderB.close();
 }
 
-console.log(JSON.stringify({ postgres: "PASS", restartRead: "PASS", normalizedReads: "PASS", diagnosticRequest: "PASS", idempotency: "PASS", outbox: "PASS", externalEffects: "PASS", inbox: "PASS", usageLedger: "PASS", breakGlass: "PASS", cas: "PASS", rls: "PASS", rlsDomainTables: catalogProtection.domainTables, rlsProtectedTables: catalogProtection.protectedTables, organizationForeignKeys: catalogProtection.organizationForeignKeys, receiptId: firstResult.receiptId, counts }, null, 2));
+console.log(JSON.stringify({ postgres: "PASS", restartRead: "PASS", normalizedReads: "PASS", diagnosticRequest: "PASS", diagnosticSpecimen: "PASS", diagnosticResult: "PASS", idempotency: "PASS", outbox: "PASS", externalEffects: "PASS", inbox: "PASS", usageLedger: "PASS", breakGlass: "PASS", cas: "PASS", rls: "PASS", rlsDomainTables: catalogProtection.domainTables, rlsProtectedTables: catalogProtection.protectedTables, organizationForeignKeys: catalogProtection.organizationForeignKeys, receiptId: firstResult.receiptId, counts }, null, 2));

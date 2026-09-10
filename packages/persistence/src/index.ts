@@ -131,6 +131,26 @@ export interface DurableCommitInput {
    * snapshot and receipt may advance without issuing another diagnostic DML.
    */
   normalizedDiagnosticRequestReplayId?: OpaqueId;
+  /**
+   * A specimen command's authoritative normalized row. Its scope is derived
+   * from the bound diagnostic request and encounter, never from the payload.
+   */
+  normalizedSpecimenWrite?: Specimen;
+  /**
+   * A replay already materialized the specimen row; no second specimen DML is
+   * issued while the canonical snapshot and receipt advance.
+   */
+  normalizedSpecimenReplayId?: OpaqueId;
+  /**
+   * A diagnostic result command's authoritative normalized row. Its scope is
+   * derived from the bound request and encounter, never from the payload.
+   */
+  normalizedDiagnosticResultWrite?: DiagnosticResult;
+  /**
+   * A replay already materialized the diagnostic result; no second result DML
+   * is issued while the canonical snapshot and receipt advance.
+   */
+  normalizedDiagnosticResultReplayId?: OpaqueId;
   eventId?: string;
 }
 
@@ -1596,6 +1616,18 @@ async function writeScopedRows<T>(client: PoolClient, sql: string, rows: T[], sc
   }
 }
 
+async function writeContextualRows<T>(client: PoolClient, sql: string, rows: T[], scope: (row: T) => { unitId: OpaqueId | null; workspaceId: OpaqueId | null }, values: (row: T) => unknown[]): Promise<void> {
+  for (const row of rows) {
+    const selected = scope(row);
+    if ((selected.unitId === null) !== (selected.workspaceId === null)) {
+      throw new PersistenceCorruptionError("contextual projection row has a partial unit/workspace scope");
+    }
+    await client.query("select set_config('cvg.unit_id', $1, true)", [selected.unitId ?? ""]);
+    await client.query("select set_config('cvg.workspace_id', $1, true)", [selected.workspaceId ?? ""]);
+    await client.query(sql, values(row));
+  }
+}
+
 async function writeUnitRows<T>(client: PoolClient, sql: string, rows: T[], unit: (row: T) => OpaqueId | null, values: (row: T) => unknown[]): Promise<void> {
   for (const row of rows) {
     const unitId = unit(row);
@@ -1700,9 +1732,33 @@ async function writeAuthoritativeDiagnosticRequest(client: PoolClient, request: 
   if (!result.rows[0]) throw new PersistenceCorruptionError(`authoritative diagnostic request ${request.id} conflicts with an existing normalized row`);
 }
 
-async function projectDomain(client: PoolClient, snapshot: StoreSnapshot, normalizedPatientWrite: AnimalPatient | null = null, normalizedAppointmentWrite: Appointment | null = null, normalizedEncounterWrite: Encounter | null = null, normalizedClinicalSignWrite: ClinicalDocument | null = null, normalizedClinicalSignReplayId: OpaqueId | null = null, normalizedGuardianWrite: Guardian | null = null, normalizedGuardianReplayId: OpaqueId | null = null, normalizedDiagnosticRequestWrite: DiagnosticRequest | null = null, normalizedDiagnosticRequestReplayId: OpaqueId | null = null): Promise<void> {
+async function writeAuthoritativeSpecimen(client: PoolClient, specimen: Specimen, encounter: Encounter): Promise<void> {
+  if (!encounter.unitId || !encounter.workspaceId) throw new PersistenceCorruptionError(`specimen ${specimen.id} has no complete encounter scope for authoritative write`);
+  await client.query("select set_config('cvg.unit_id', $1, true)", [encounter.unitId]);
+  await client.query("select set_config('cvg.workspace_id', $1, true)", [encounter.workspaceId]);
+  const result = await client.query<{ id: string }>(
+    "insert into specimens(id, organization_id, unit_id, workspace_id, request_id, patient_id, label, collected_at, status) values ($1, $2, $3, $4, $5, $6, $7, $8, $9) on conflict (id) do update set organization_id = excluded.organization_id, unit_id = excluded.unit_id, workspace_id = excluded.workspace_id, request_id = excluded.request_id, patient_id = excluded.patient_id, label = excluded.label, collected_at = excluded.collected_at, status = excluded.status where specimens.organization_id = excluded.organization_id and specimens.unit_id = excluded.unit_id and specimens.workspace_id = excluded.workspace_id and specimens.request_id = excluded.request_id and specimens.patient_id = excluded.patient_id and specimens.label = excluded.label and specimens.collected_at = excluded.collected_at and specimens.status = excluded.status returning id::text",
+    [specimen.id, specimen.organizationId, encounter.unitId, encounter.workspaceId, specimen.requestId, specimen.patientId, specimen.label, specimen.collectedAt, specimen.status]
+  );
+  if (!result.rows[0]) throw new PersistenceCorruptionError(`authoritative specimen ${specimen.id} conflicts with an existing normalized row`);
+}
+
+async function writeAuthoritativeDiagnosticResult(client: PoolClient, resultRow: DiagnosticResult, encounter: Encounter): Promise<void> {
+  if (!encounter.unitId || !encounter.workspaceId) throw new PersistenceCorruptionError(`diagnostic result ${resultRow.id} has no complete encounter scope for authoritative write`);
+  await client.query("select set_config('cvg.unit_id', $1, true)", [encounter.unitId]);
+  await client.query("select set_config('cvg.workspace_id', $1, true)", [encounter.workspaceId]);
+  const result = await client.query<{ id: string }>(
+    "insert into diagnostic_results(id, organization_id, unit_id, workspace_id, request_id, specimen_id, patient_id, value, source, source_version, status, created_at) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) on conflict (id) do update set organization_id = excluded.organization_id, unit_id = excluded.unit_id, workspace_id = excluded.workspace_id, request_id = excluded.request_id, specimen_id = excluded.specimen_id, patient_id = excluded.patient_id, value = excluded.value, source = excluded.source, source_version = excluded.source_version, status = excluded.status where diagnostic_results.organization_id = excluded.organization_id and diagnostic_results.unit_id = excluded.unit_id and diagnostic_results.workspace_id = excluded.workspace_id and diagnostic_results.request_id = excluded.request_id and diagnostic_results.specimen_id = excluded.specimen_id and diagnostic_results.patient_id = excluded.patient_id and diagnostic_results.value = excluded.value and diagnostic_results.source = excluded.source and diagnostic_results.source_version = excluded.source_version and diagnostic_results.status = excluded.status and diagnostic_results.created_at = excluded.created_at returning id::text",
+    [resultRow.id, resultRow.organizationId, encounter.unitId, encounter.workspaceId, resultRow.requestId, resultRow.specimenId, resultRow.patientId, resultRow.value, resultRow.source, resultRow.sourceVersion, resultRow.status, resultRow.createdAt]
+  );
+  if (!result.rows[0]) throw new PersistenceCorruptionError(`authoritative diagnostic result ${resultRow.id} conflicts with an existing normalized row`);
+}
+
+async function projectDomain(client: PoolClient, snapshot: StoreSnapshot, normalizedPatientWrite: AnimalPatient | null = null, normalizedAppointmentWrite: Appointment | null = null, normalizedEncounterWrite: Encounter | null = null, normalizedClinicalSignWrite: ClinicalDocument | null = null, normalizedClinicalSignReplayId: OpaqueId | null = null, normalizedGuardianWrite: Guardian | null = null, normalizedGuardianReplayId: OpaqueId | null = null, normalizedDiagnosticRequestWrite: DiagnosticRequest | null = null, normalizedDiagnosticRequestReplayId: OpaqueId | null = null, normalizedSpecimenWrite: Specimen | null = null, normalizedSpecimenReplayId: OpaqueId | null = null, normalizedDiagnosticResultWrite: DiagnosticResult | null = null, normalizedDiagnosticResultReplayId: OpaqueId | null = null): Promise<void> {
   if (normalizedGuardianWrite && normalizedGuardianReplayId) throw new PersistenceCorruptionError("authoritative guardian write and replay cannot be requested together");
   if (normalizedDiagnosticRequestWrite && normalizedDiagnosticRequestReplayId) throw new PersistenceCorruptionError("authoritative diagnostic request write and replay cannot be requested together");
+  if (normalizedSpecimenWrite && normalizedSpecimenReplayId) throw new PersistenceCorruptionError("authoritative specimen write and replay cannot be requested together");
+  if (normalizedDiagnosticResultWrite && normalizedDiagnosticResultReplayId) throw new PersistenceCorruptionError("authoritative diagnostic result write and replay cannot be requested together");
   let guardians = snapshot.guardians;
   if (normalizedGuardianWrite) {
     const snapshotGuardian = snapshot.guardians.find((guardian) => guardian.id === normalizedGuardianWrite.id);
@@ -1875,15 +1931,68 @@ async function projectDomain(client: PoolClient, snapshot: StoreSnapshot, normal
   }
   await client.query("select set_config('cvg.unit_id', '', true)");
   await client.query("select set_config('cvg.workspace_id', '', true)");
-  await writeRows(client,
-    "insert into specimens(id, organization_id, request_id, patient_id, label, collected_at, status) values ($1, $2, $3, $4, $5, $6, $7) on conflict (id) do update set organization_id = excluded.organization_id, request_id = excluded.request_id, patient_id = excluded.patient_id, label = excluded.label, collected_at = excluded.collected_at, status = excluded.status",
-    snapshot.specimens,
-    (specimen) => [specimen.id, specimen.organizationId, specimen.requestId, specimen.patientId, specimen.label, specimen.collectedAt, specimen.status]
+  const specimenScopes = snapshot.specimens.map((specimen) => {
+    const request = snapshot.diagnosticRequests.find((candidate) => candidate.id === specimen.requestId);
+    const encounter = request?.encounterId ? encounterById.get(request.encounterId) : null;
+    const patient = snapshot.patients.find((candidate) => candidate.id === specimen.patientId);
+    if (!request || request.organizationId !== specimen.organizationId || request.patientId !== specimen.patientId || !patient || patient.organizationId !== specimen.organizationId) {
+      throw new PersistenceCorruptionError(`specimen ${specimen.id} has no organization-bound diagnostic request and patient`);
+    }
+    if (request.encounterId && (!encounter || encounter.organizationId !== request.organizationId || encounter.patientId !== request.patientId || !encounter.unitId || !encounter.workspaceId || patient.unitId !== encounter.unitId || patient.workspaceId !== encounter.workspaceId)) {
+      throw new PersistenceCorruptionError(`specimen ${specimen.id} has no organization-bound encounter scope`);
+    }
+    return { specimen, request, encounter };
+  });
+  let specimenRows = specimenScopes;
+  if (normalizedSpecimenWrite) {
+    const scoped = specimenScopes.find(({ specimen }) => specimen.id === normalizedSpecimenWrite.id);
+    if (!scoped || digest(scoped.specimen) !== digest(normalizedSpecimenWrite)) throw new PersistenceCorruptionError(`authoritative specimen ${normalizedSpecimenWrite.id} is not identical to the canonical snapshot`);
+    if (!scoped.encounter || !scoped.encounter.unitId || !scoped.encounter.workspaceId || !["SPECIMEN_COLLECTED", "RESULTED", "REVIEWED"].includes(scoped.request.status)) throw new PersistenceCorruptionError(`authoritative specimen ${normalizedSpecimenWrite.id} has no valid durable encounter state`);
+    await writeAuthoritativeSpecimen(client, normalizedSpecimenWrite, scoped.encounter);
+    specimenRows = specimenScopes.filter(({ specimen }) => specimen.id !== normalizedSpecimenWrite.id);
+  }
+  if (normalizedSpecimenReplayId) {
+    const replayed = specimenScopes.find(({ specimen }) => specimen.id === normalizedSpecimenReplayId);
+    if (!replayed || !replayed.encounter || !replayed.encounter.unitId || !replayed.encounter.workspaceId || !["SPECIMEN_COLLECTED", "RESULTED", "REVIEWED"].includes(replayed.request.status)) throw new PersistenceCorruptionError(`specimen replay ${normalizedSpecimenReplayId} has no durable scoped state`);
+    specimenRows = specimenRows.filter(({ specimen }) => specimen.id !== normalizedSpecimenReplayId);
+  }
+  await writeContextualRows(client,
+    "insert into specimens(id, organization_id, unit_id, workspace_id, request_id, patient_id, label, collected_at, status) values ($1, $2, $3, $4, $5, $6, $7, $8, $9) on conflict (id) do update set organization_id = excluded.organization_id, unit_id = excluded.unit_id, workspace_id = excluded.workspace_id, request_id = excluded.request_id, patient_id = excluded.patient_id, label = excluded.label, collected_at = excluded.collected_at, status = excluded.status",
+    specimenRows,
+    ({ encounter }) => ({ unitId: encounter?.unitId ?? null, workspaceId: encounter?.workspaceId ?? null }),
+    ({ specimen, encounter }) => [specimen.id, specimen.organizationId, encounter?.unitId ?? null, encounter?.workspaceId ?? null, specimen.requestId, specimen.patientId, specimen.label, specimen.collectedAt, specimen.status]
   );
-  await writeRows(client,
-    "insert into diagnostic_results(id, organization_id, request_id, specimen_id, patient_id, value, source, source_version, status, created_at) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) on conflict (id) do update set organization_id = excluded.organization_id, request_id = excluded.request_id, specimen_id = excluded.specimen_id, patient_id = excluded.patient_id, value = excluded.value, source = excluded.source, source_version = excluded.source_version, status = excluded.status",
-    snapshot.diagnosticResults,
-    (result) => [result.id, result.organizationId, result.requestId, result.specimenId, result.patientId, result.value, result.source, result.sourceVersion, result.status, result.createdAt]
+  const resultScopes = snapshot.diagnosticResults.map((resultRow) => {
+    const request = snapshot.diagnosticRequests.find((candidate) => candidate.id === resultRow.requestId);
+    const specimen = snapshot.specimens.find((candidate) => candidate.id === resultRow.specimenId);
+    const encounter = request?.encounterId ? encounterById.get(request.encounterId) : null;
+    const patient = snapshot.patients.find((candidate) => candidate.id === resultRow.patientId);
+    if (!request || !specimen || request.organizationId !== resultRow.organizationId || specimen.organizationId !== resultRow.organizationId || resultRow.specimenId !== specimen.id || request.id !== specimen.requestId || request.patientId !== resultRow.patientId || specimen.patientId !== resultRow.patientId || !patient || patient.organizationId !== resultRow.organizationId) {
+      throw new PersistenceCorruptionError(`diagnostic result ${resultRow.id} has inconsistent request, specimen or patient provenance`);
+    }
+    if (request.encounterId && (!encounter || encounter.organizationId !== request.organizationId || encounter.patientId !== request.patientId || !encounter.unitId || !encounter.workspaceId || patient.unitId !== encounter.unitId || patient.workspaceId !== encounter.workspaceId)) {
+      throw new PersistenceCorruptionError(`diagnostic result ${resultRow.id} has no organization-bound encounter scope`);
+    }
+    return { resultRow, request, specimen, encounter };
+  });
+  let diagnosticResultRows = resultScopes;
+  if (normalizedDiagnosticResultWrite) {
+    const scoped = resultScopes.find(({ resultRow }) => resultRow.id === normalizedDiagnosticResultWrite.id);
+    if (!scoped || digest(scoped.resultRow) !== digest(normalizedDiagnosticResultWrite)) throw new PersistenceCorruptionError(`authoritative diagnostic result ${normalizedDiagnosticResultWrite.id} is not identical to the canonical snapshot`);
+    if (!scoped.encounter || !scoped.encounter.unitId || !scoped.encounter.workspaceId || scoped.request.status !== "RESULTED") throw new PersistenceCorruptionError(`authoritative diagnostic result ${normalizedDiagnosticResultWrite.id} has no valid durable encounter state`);
+    await writeAuthoritativeDiagnosticResult(client, normalizedDiagnosticResultWrite, scoped.encounter);
+    diagnosticResultRows = resultScopes.filter(({ resultRow }) => resultRow.id !== normalizedDiagnosticResultWrite.id);
+  }
+  if (normalizedDiagnosticResultReplayId) {
+    const replayed = resultScopes.find(({ resultRow }) => resultRow.id === normalizedDiagnosticResultReplayId);
+    if (!replayed || !replayed.encounter || !replayed.encounter.unitId || !replayed.encounter.workspaceId || replayed.request.status !== "RESULTED") throw new PersistenceCorruptionError(`diagnostic result replay ${normalizedDiagnosticResultReplayId} has no durable scoped state`);
+    diagnosticResultRows = diagnosticResultRows.filter(({ resultRow }) => resultRow.id !== normalizedDiagnosticResultReplayId);
+  }
+  await writeContextualRows(client,
+    "insert into diagnostic_results(id, organization_id, unit_id, workspace_id, request_id, specimen_id, patient_id, value, source, source_version, status, created_at) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) on conflict (id) do update set organization_id = excluded.organization_id, unit_id = excluded.unit_id, workspace_id = excluded.workspace_id, request_id = excluded.request_id, specimen_id = excluded.specimen_id, patient_id = excluded.patient_id, value = excluded.value, source = excluded.source, source_version = excluded.source_version, status = excluded.status",
+    diagnosticResultRows,
+    ({ encounter }) => ({ unitId: encounter?.unitId ?? null, workspaceId: encounter?.workspaceId ?? null }),
+    ({ resultRow, encounter }) => [resultRow.id, resultRow.organizationId, encounter?.unitId ?? null, encounter?.workspaceId ?? null, resultRow.requestId, resultRow.specimenId, resultRow.patientId, resultRow.value, resultRow.source, resultRow.sourceVersion, resultRow.status, resultRow.createdAt]
   );
   await writeUnitRows(client,
     "insert into beds(id, organization_id, unit_id, name, status) values ($1, $2, $3, $4, $5) on conflict (id) do update set organization_id = excluded.organization_id, unit_id = excluded.unit_id, name = excluded.name, status = excluded.status",
@@ -2167,8 +2276,9 @@ export class PostgresPersistence {
     try {
       const result = await this.pool.query<{ snapshots: boolean; journal: boolean; audit: boolean; receipts: boolean; communications: boolean; outbox: boolean; usage_ledger: boolean; inbox: boolean; external_effects: boolean; rate_limit_buckets: boolean; break_glass_grants: boolean; break_glass_lifecycle: boolean; runtime_role: boolean; runtime_scope_guards: boolean; auth_security: boolean; ai_turn_scope: boolean; ai_draft_scope: boolean; ai_turn_provenance_usage: boolean; audit_tamper_evident_chain: boolean; append_only_audit_guard: boolean; append_only_lock_privileges: boolean; worker_jobs: boolean; worker_heartbeats: boolean; worker_lane_schema: boolean }>("select to_regclass('public.cvg_state_snapshots') is not null as snapshots, to_regclass('public.cvg_event_journal') is not null as journal, to_regclass('public.cvg_audit_ledger') is not null as audit, to_regclass('public.cvg_command_receipt_ledger') is not null as receipts, to_regclass('public.communication_messages') is not null as communications, to_regclass('public.outbox_records') is not null as outbox, to_regclass('public.ai_usage_ledger') is not null as usage_ledger, to_regclass('public.integration_inbox_records') is not null as inbox, to_regclass('public.external_effects') is not null as external_effects, to_regclass('public.cvg_rate_limit_buckets') is not null as rate_limit_buckets, to_regclass('public.break_glass_grants') is not null as break_glass_grants, exists (select 1 from pg_roles where rolname = current_user and rolsuper = false and rolbypassrls = false and rolcreaterole = false and rolcreatedb = false) as runtime_role, exists (select 1 from schema_migrations where version = '019_runtime_scope_guards') as runtime_scope_guards, exists (select 1 from schema_migrations where version = '020_auth_security_boundary') and to_regclass('public.auth_challenges') is not null and exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'users' and column_name = 'mfa_secret_ref') and exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'sessions' and column_name = 'device_id_digest') as auth_security, exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'ai_turns' and column_name in ('organization_id', 'unit_id', 'workspace_id') group by table_schema, table_name having count(*) = 3) as ai_turn_scope, exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'ai_drafts' and column_name in ('organization_id', 'unit_id', 'workspace_id') group by table_schema, table_name having count(*) = 3) as ai_draft_scope, exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'ai_turns' and column_name in ('usage_record_id', 'provenance_json') group by table_schema, table_name having count(*) = 2) and exists (select 1 from schema_migrations where version = '029_ai_turn_provenance_usage_and_dml_scope') as ai_turn_provenance_usage, exists (select 1 from schema_migrations where version = '026_audit_tamper_evident_chain') as audit_tamper_evident_chain, exists (select 1 from schema_migrations where version = '027_append_only_audit_guard') as append_only_audit_guard, exists (select 1 from schema_migrations where version = '028_append_only_lock_privileges') as append_only_lock_privileges, exists (select 1 from schema_migrations where version = '030_break_glass_durable_lifecycle') as break_glass_lifecycle, to_regclass('public.cvg_worker_jobs') is not null as worker_jobs, to_regclass('public.cvg_worker_heartbeats') is not null as worker_heartbeats, exists (select 1 from schema_migrations where version = '031_worker_jobs_and_heartbeats') and exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'cvg_worker_jobs' and column_name in ('lane', 'job_type', 'idempotency_key', 'fence_token', 'record_digest') group by table_schema, table_name having count(*) = 5) and exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'cvg_worker_heartbeats' and column_name in ('worker_id', 'status', 'last_seen_at', 'expires_at') group by table_schema, table_name having count(*) = 4) as worker_lane_schema");
       const snapshotKey = await this.pool.query<{ snapshot_scope_revision: boolean }>("select exists (select 1 from pg_constraint constraint_row join pg_class table_row on table_row.oid = constraint_row.conrelid join pg_namespace namespace_row on namespace_row.oid = table_row.relnamespace where namespace_row.nspname = 'public' and table_row.relname = 'cvg_state_snapshots' and constraint_row.contype = 'p' and pg_get_constraintdef(constraint_row.oid) = 'PRIMARY KEY (organization_id, revision)') as snapshot_scope_revision");
+      const diagnosticChildScope = await this.pool.query<{ diagnostic_child_scope: boolean }>("select exists (select 1 from schema_migrations where version = '033_diagnostic_specimen_result_scope') and exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'specimens' and column_name in ('unit_id', 'workspace_id') group by table_schema, table_name having count(*) = 2) and exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'diagnostic_results' and column_name in ('unit_id', 'workspace_id') group by table_schema, table_name having count(*) = 2) as diagnostic_child_scope");
       const row = result.rows[0];
-      if (!row?.snapshots || !row.journal || !row.audit || !row.receipts || !row.communications || !row.outbox || !row.usage_ledger || !row.inbox || !row.external_effects || !row.rate_limit_buckets || !row.break_glass_grants || !row.break_glass_lifecycle || !row.runtime_role || !row.runtime_scope_guards || !row.auth_security || !row.ai_turn_scope || !row.ai_draft_scope || !row.ai_turn_provenance_usage || !row.audit_tamper_evident_chain || !row.append_only_audit_guard || !row.append_only_lock_privileges || !row.worker_jobs || !row.worker_heartbeats || !row.worker_lane_schema || snapshotKey.rows[0]?.snapshot_scope_revision !== true) throw new PersistenceUnavailableError("CVG persistence schema or runtime database role is not ready; run migrations with a non-superuser DATABASE_URL");
+      if (!row?.snapshots || !row.journal || !row.audit || !row.receipts || !row.communications || !row.outbox || !row.usage_ledger || !row.inbox || !row.external_effects || !row.rate_limit_buckets || !row.break_glass_grants || !row.break_glass_lifecycle || !row.runtime_role || !row.runtime_scope_guards || !row.auth_security || !row.ai_turn_scope || !row.ai_draft_scope || !row.ai_turn_provenance_usage || !row.audit_tamper_evident_chain || !row.append_only_audit_guard || !row.append_only_lock_privileges || !row.worker_jobs || !row.worker_heartbeats || !row.worker_lane_schema || diagnosticChildScope.rows[0]?.diagnostic_child_scope !== true || snapshotKey.rows[0]?.snapshot_scope_revision !== true) throw new PersistenceUnavailableError("CVG persistence schema or runtime database role is not ready; run migrations with a non-superuser DATABASE_URL");
     } catch (error) {
       if (error instanceof PersistenceUnavailableError) throw error;
       throw new PersistenceUnavailableError("CVG persistence schema could not be checked", error);
@@ -2323,7 +2433,7 @@ export class PostgresPersistence {
       const snapshotJson = canonicalSnapshot(input.snapshot);
       const snapshotDigest = digest(snapshotJson);
       await projectIdentity(client, input.snapshot);
-      await projectDomain(client, input.snapshot, input.normalizedPatientWrite ?? null, input.normalizedAppointmentWrite ?? null, input.normalizedEncounterWrite ?? null, input.normalizedClinicalSignWrite ?? null, input.normalizedClinicalSignReplayId ?? null, input.normalizedGuardianWrite ?? null, input.normalizedGuardianReplayId ?? null, input.normalizedDiagnosticRequestWrite ?? null, input.normalizedDiagnosticRequestReplayId ?? null);
+      await projectDomain(client, input.snapshot, input.normalizedPatientWrite ?? null, input.normalizedAppointmentWrite ?? null, input.normalizedEncounterWrite ?? null, input.normalizedClinicalSignWrite ?? null, input.normalizedClinicalSignReplayId ?? null, input.normalizedGuardianWrite ?? null, input.normalizedGuardianReplayId ?? null, input.normalizedDiagnosticRequestWrite ?? null, input.normalizedDiagnosticRequestReplayId ?? null, input.normalizedSpecimenWrite ?? null, input.normalizedSpecimenReplayId ?? null, input.normalizedDiagnosticResultWrite ?? null, input.normalizedDiagnosticResultReplayId ?? null);
       await projectOutbox(client, organizationId, input.outboxRecords ?? []);
       await projectRecoveredOutbox(client, organizationId, input.recoveredOutboxRecords ?? []);
       await projectRecoveredUsage(client, organizationId, input.recoveredUsageRecords ?? []);
@@ -2643,7 +2753,7 @@ export class PostgresPersistence {
   async listSpecimens(context: CvgContext): Promise<Specimen[]> {
     return this.scopedRead(context, "specimens", async (client) => {
       const result = await client.query<SpecimenReadRow>(
-        "select s.id::text as id, s.organization_id::text as organization_id, s.request_id::text as request_id, s.patient_id::text as patient_id, s.label, s.collected_at, s.status, e.unit_id::text as unit_id, e.workspace_id::text as workspace_id from specimens s join diagnostic_requests r on r.id = s.request_id and r.organization_id = s.organization_id join encounters e on e.id = r.encounter_id and e.organization_id = r.organization_id where s.organization_id = cvg_request_organization() and cvg_request_scope_allows(e.unit_id, e.workspace_id) and ($1::uuid is null or e.unit_id = $1::uuid) and ($2::uuid is null or e.workspace_id = $2::uuid) order by s.collected_at, s.id",
+        "select s.id::text as id, s.organization_id::text as organization_id, s.request_id::text as request_id, s.patient_id::text as patient_id, s.label, s.collected_at, s.status, s.unit_id::text as unit_id, s.workspace_id::text as workspace_id from specimens s join diagnostic_requests r on r.id = s.request_id and r.organization_id = s.organization_id join encounters e on e.id = r.encounter_id and e.organization_id = r.organization_id where s.organization_id = cvg_request_organization() and s.unit_id is not distinct from e.unit_id and s.workspace_id is not distinct from e.workspace_id and cvg_request_scope_allows(s.unit_id, s.workspace_id) and ($1::uuid is null or s.unit_id = $1::uuid) and ($2::uuid is null or s.workspace_id = $2::uuid) order by s.collected_at, s.id",
         [context.unitId, context.workspaceId]
       );
       return result.rows.map((row) => {
@@ -2667,7 +2777,7 @@ export class PostgresPersistence {
   async listDiagnosticResults(context: CvgContext): Promise<DiagnosticResult[]> {
     return this.scopedRead(context, "diagnostic results", async (client) => {
       const result = await client.query<DiagnosticResultReadRow>(
-        "select dr.id::text as id, dr.organization_id::text as organization_id, dr.request_id::text as request_id, dr.specimen_id::text as specimen_id, dr.patient_id::text as patient_id, dr.value, dr.source, dr.source_version, dr.status, dr.created_at, e.unit_id::text as unit_id, e.workspace_id::text as workspace_id from diagnostic_results dr join diagnostic_requests r on r.id = dr.request_id and r.organization_id = dr.organization_id join encounters e on e.id = r.encounter_id and e.organization_id = r.organization_id where dr.organization_id = cvg_request_organization() and cvg_request_scope_allows(e.unit_id, e.workspace_id) and ($1::uuid is null or e.unit_id = $1::uuid) and ($2::uuid is null or e.workspace_id = $2::uuid) order by dr.created_at, dr.id",
+        "select dr.id::text as id, dr.organization_id::text as organization_id, dr.request_id::text as request_id, dr.specimen_id::text as specimen_id, dr.patient_id::text as patient_id, dr.value, dr.source, dr.source_version, dr.status, dr.created_at, dr.unit_id::text as unit_id, dr.workspace_id::text as workspace_id from diagnostic_results dr join diagnostic_requests r on r.id = dr.request_id and r.organization_id = dr.organization_id join encounters e on e.id = r.encounter_id and e.organization_id = r.organization_id where dr.organization_id = cvg_request_organization() and dr.unit_id is not distinct from e.unit_id and dr.workspace_id is not distinct from e.workspace_id and cvg_request_scope_allows(dr.unit_id, dr.workspace_id) and ($1::uuid is null or dr.unit_id = $1::uuid) and ($2::uuid is null or dr.workspace_id = $2::uuid) order by dr.created_at, dr.id",
         [context.unitId, context.workspaceId]
       );
       return result.rows.map((row) => {

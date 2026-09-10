@@ -58,11 +58,13 @@ import {
   type ClinicalDocument,
   type DataClass,
   type DiagnosticRequest,
+  type DiagnosticResult,
   type Encounter,
   type ErrorCode,
   type Guardian,
   type OpaqueId,
-  type Role
+  type Role,
+  type Specimen
 } from "@cvg/contracts";
 import {
   CvgStore,
@@ -89,7 +91,7 @@ import { registerHealthRoutes } from "./routes/health.ts";
 import { AgentApplicationService } from "./application/agent-service.ts";
 import { AppointmentApplicationService, PostgresAppointmentRepository, StoreAppointmentRepository } from "./application/appointment-service.ts";
 import { ClinicalSignApplicationService, PostgresClinicalSignRepository, StoreClinicalSignRepository } from "./application/clinical-command-service.ts";
-import { DiagnosticRequestApplicationService, PostgresDiagnosticRequestRepository, StoreDiagnosticRequestRepository } from "./application/diagnostic-service.ts";
+import { DiagnosticRequestApplicationService, DiagnosticResultApplicationService, DiagnosticSpecimenApplicationService, PostgresDiagnosticRequestRepository, PostgresDiagnosticResultRepository, PostgresDiagnosticSpecimenRepository, StoreDiagnosticRequestRepository, StoreDiagnosticResultRepository, StoreDiagnosticSpecimenRepository } from "./application/diagnostic-service.ts";
 import { EncounterApplicationService, PostgresEncounterRepository, StoreEncounterRepository } from "./application/encounter-service.ts";
 import { PatientApplicationService, PostgresPatientRepository, StorePatientRepository } from "./application/patient-service.ts";
 import { GuardianApplicationService, PostgresGuardianRepository, StoreGuardianRepository } from "./application/guardian-service.ts";
@@ -510,6 +512,8 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
   const guardianApplication = new GuardianApplicationService(persistence ? new PostgresGuardianRepository(store) : new StoreGuardianRepository(store));
   const appointmentApplication = new AppointmentApplicationService(persistence ? new PostgresAppointmentRepository(store) : new StoreAppointmentRepository(store));
   const diagnosticRequestApplication = new DiagnosticRequestApplicationService(persistence ? new PostgresDiagnosticRequestRepository(store) : new StoreDiagnosticRequestRepository(store));
+  const diagnosticSpecimenApplication = new DiagnosticSpecimenApplicationService(persistence ? new PostgresDiagnosticSpecimenRepository(store) : new StoreDiagnosticSpecimenRepository(store));
+  const diagnosticResultApplication = new DiagnosticResultApplicationService(persistence ? new PostgresDiagnosticResultRepository(store) : new StoreDiagnosticResultRepository(store));
   const clinicalSignApplication = new ClinicalSignApplicationService(persistence ? new PostgresClinicalSignRepository(store) : new StoreClinicalSignRepository(store));
   const encounterApplication = new EncounterApplicationService(persistence ? new PostgresEncounterRepository(store) : new StoreEncounterRepository(store));
   const readApplication = createReadApplicationService(store, persistence);
@@ -536,7 +540,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
   const durableRequests = new WeakMap<FastifyRequest, DurableRequestTransaction>();
   const durableReleases = new WeakMap<FastifyRequest, () => void>();
   const durableOutboxes = new WeakMap<FastifyRequest, import("@cvg/persistence").DurableOutboxInput[]>();
-  let commitDurableRequest: ((request: FastifyRequest, reply: FastifyReply, normalizedPatientWrite?: AnimalPatient, normalizedAppointmentWrite?: Appointment, normalizedEncounterWrite?: Encounter, normalizedClinicalSignWrite?: ClinicalDocument, normalizedClinicalSignReplayId?: OpaqueId, normalizedGuardianWrite?: Guardian, normalizedGuardianReplayId?: OpaqueId, normalizedDiagnosticRequestWrite?: DiagnosticRequest, normalizedDiagnosticRequestReplayId?: OpaqueId) => Promise<void>) | null = null;
+  let commitDurableRequest: ((request: FastifyRequest, reply: FastifyReply, normalizedPatientWrite?: AnimalPatient, normalizedAppointmentWrite?: Appointment, normalizedEncounterWrite?: Encounter, normalizedClinicalSignWrite?: ClinicalDocument, normalizedClinicalSignReplayId?: OpaqueId, normalizedGuardianWrite?: Guardian, normalizedGuardianReplayId?: OpaqueId, normalizedDiagnosticRequestWrite?: DiagnosticRequest, normalizedDiagnosticRequestReplayId?: OpaqueId, normalizedSpecimenWrite?: Specimen, normalizedSpecimenReplayId?: OpaqueId, normalizedDiagnosticResultWrite?: DiagnosticResult, normalizedDiagnosticResultReplayId?: OpaqueId) => Promise<void>) | null = null;
   let persistenceQueue = Promise.resolve();
   const acquireDurableRequest = async (): Promise<() => void> => {
     let release!: () => void;
@@ -562,11 +566,11 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
         throw error;
       }
     });
-    const commitRequest = async (request: FastifyRequest, reply: FastifyReply, normalizedPatientWrite?: AnimalPatient, normalizedAppointmentWrite?: Appointment, normalizedEncounterWrite?: Encounter, normalizedClinicalSignWrite?: ClinicalDocument, normalizedClinicalSignReplayId?: OpaqueId, normalizedGuardianWrite?: Guardian, normalizedGuardianReplayId?: OpaqueId, normalizedDiagnosticRequestWrite?: DiagnosticRequest, normalizedDiagnosticRequestReplayId?: OpaqueId): Promise<void> => {
+    const commitRequest = async (request: FastifyRequest, reply: FastifyReply, normalizedPatientWrite?: AnimalPatient, normalizedAppointmentWrite?: Appointment, normalizedEncounterWrite?: Encounter, normalizedClinicalSignWrite?: ClinicalDocument, normalizedClinicalSignReplayId?: OpaqueId, normalizedGuardianWrite?: Guardian, normalizedGuardianReplayId?: OpaqueId, normalizedDiagnosticRequestWrite?: DiagnosticRequest, normalizedDiagnosticRequestReplayId?: OpaqueId, normalizedSpecimenWrite?: Specimen, normalizedSpecimenReplayId?: OpaqueId, normalizedDiagnosticResultWrite?: DiagnosticResult, normalizedDiagnosticResultReplayId?: OpaqueId): Promise<void> => {
       const transaction = durableRequests.get(request);
       if (!transaction || transaction.committed || transaction.failed) return;
       const snapshot = store.snapshot();
-      if (!normalizedPatientWrite && !normalizedAppointmentWrite && !normalizedEncounterWrite && !normalizedClinicalSignWrite && !normalizedClinicalSignReplayId && !normalizedGuardianWrite && !normalizedGuardianReplayId && !normalizedDiagnosticRequestWrite && !normalizedDiagnosticRequestReplayId && snapshotFingerprint(snapshot) === snapshotFingerprint(transaction.baseline)) return;
+      if (!normalizedPatientWrite && !normalizedAppointmentWrite && !normalizedEncounterWrite && !normalizedClinicalSignWrite && !normalizedClinicalSignReplayId && !normalizedGuardianWrite && !normalizedGuardianReplayId && !normalizedDiagnosticRequestWrite && !normalizedDiagnosticRequestReplayId && !normalizedSpecimenWrite && !normalizedSpecimenReplayId && !normalizedDiagnosticResultWrite && !normalizedDiagnosticResultReplayId && snapshotFingerprint(snapshot) === snapshotFingerprint(transaction.baseline)) return;
       const baselineAuditIds = new Set(transaction.baseline.auditRecords.map((record) => record.id));
       const baselineReceiptDigests = new Map(transaction.baseline.commandReceipts.map((receipt) => [receipt.id, digest(receipt)]));
       const auditRecords = snapshot.auditRecords.filter((record) => !baselineAuditIds.has(record.id));
@@ -597,7 +601,11 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
           ...(normalizedGuardianWrite ? { normalizedGuardianWrite } : {}),
           ...(normalizedGuardianReplayId ? { normalizedGuardianReplayId } : {}),
           ...(normalizedDiagnosticRequestWrite ? { normalizedDiagnosticRequestWrite } : {}),
-          ...(normalizedDiagnosticRequestReplayId ? { normalizedDiagnosticRequestReplayId } : {})
+          ...(normalizedDiagnosticRequestReplayId ? { normalizedDiagnosticRequestReplayId } : {}),
+          ...(normalizedSpecimenWrite ? { normalizedSpecimenWrite } : {}),
+          ...(normalizedSpecimenReplayId ? { normalizedSpecimenReplayId } : {}),
+          ...(normalizedDiagnosticResultWrite ? { normalizedDiagnosticResultWrite } : {}),
+          ...(normalizedDiagnosticResultReplayId ? { normalizedDiagnosticResultReplayId } : {})
         });
         transaction.committed = true;
       } catch (error) {
@@ -1345,8 +1353,15 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const { context } = requestContext(request, "diagnostics.specimen", null, null, false, false, requestId);
     const key = header(request, "idempotency-key");
     if (!key) throw new DomainError("INVALID_INPUT", "Idempotency-Key é obrigatório.", 400);
-    const result = await commandExecutor.execute(commandInput(context, "diagnostics.specimen", key, requestId, input), () => domainCommands.createSpecimen(context, requestId, input.label));
+    const result = await commandExecutor.execute(commandInput(context, "diagnostics.specimen", key, requestId, input), () => diagnosticSpecimenApplication.create(context, requestId, input.label));
     audit(context, "diagnostics.specimen", "Specimen", result.value.id, "ALLOWED");
+    if (persistence) {
+      if (result.replayed) await commitDurableRequest?.(request, reply, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, result.value.id);
+      else {
+        reply.code(201);
+        await commitDurableRequest?.(request, reply, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, result.value);
+      }
+    }
     return response(reply, success({ specimen: result.value, receiptId: result.receipt.id }, context.correlationId), 201);
   });
 
@@ -1355,8 +1370,15 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const input = parse(resultInputSchema, request.body);
     const { context } = requestContext(request, "diagnostics.result", null, null, false, false, input.requestId);
     const key = requireIdempotencyKey(request);
-    const idempotentResult = await commandExecutor.execute(commandInput(context, "diagnostics.result", key, input.requestId, input), () => domainCommands.createResult(context, input));
+    const idempotentResult = await commandExecutor.execute(commandInput(context, "diagnostics.result", key, input.requestId, input), () => diagnosticResultApplication.create(context, input));
     audit(context, "diagnostics.result", "DiagnosticResult", idempotentResult.value.id, "ALLOWED");
+    if (persistence) {
+      if (idempotentResult.replayed) await commitDurableRequest?.(request, reply, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, idempotentResult.value.id);
+      else {
+        reply.code(201);
+        await commitDurableRequest?.(request, reply, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, idempotentResult.value);
+      }
+    }
     return response(reply, success({ result: idempotentResult.value, receiptId: idempotentResult.receipt.id }, context.correlationId), 201);
   });
 

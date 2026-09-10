@@ -63,6 +63,7 @@ const requiredFiles = [
   "db/migrations/030_break_glass_durable_lifecycle.sql",
   "db/migrations/031_worker_jobs_and_heartbeats.sql",
   "db/migrations/032_diagnostic_request_scope.sql",
+  "db/migrations/033_diagnostic_specimen_result_scope.sql",
   "docs/runbooks/deploy.md",
   "docs/runbooks/deployment.md",
   "docs/runbooks/rollback.md",
@@ -101,6 +102,8 @@ const requiredFiles = [
   "docs/verification-2026-09-10-guardian-source-write.md",
   "docs/adr/022-authoritative-diagnostic-request-write.md",
   "docs/verification-2026-09-10-diagnostic-request-source-write.md",
+  "docs/adr/023-authoritative-diagnostic-child-writes.md",
+  "docs/verification-2026-09-10-diagnostic-child-source-writes.md",
   ".gauntlet/critique-diagnostic-request-scope-20260910.md",
   "docs/observability-production.md",
   "docs/staging.md",
@@ -248,6 +251,9 @@ function inspectStaticContracts(): void {
   requireText("db/migrations/031_worker_jobs_and_heartbeats.sql", "force row level security");
   requireText("db/migrations/032_diagnostic_request_scope.sql", "diagnostic_requests_organization_encounter_scope_fk");
   requireText("db/migrations/032_diagnostic_request_scope.sql", "cvg_request_dml_scope_allows(unit_id, workspace_id)");
+  requireText("db/migrations/033_diagnostic_specimen_result_scope.sql", "specimens_organization_request_scope_fk");
+  requireText("db/migrations/033_diagnostic_specimen_result_scope.sql", "diagnostic_results_organization_specimen_scope_fk");
+  requireText("db/migrations/033_diagnostic_specimen_result_scope.sql", "cvg_request_dml_scope_allows(unit_id, workspace_id)");
   requireText("packages/persistence/src/index.ts", "claimWorkerJobs");
   requireText("packages/persistence/src/index.ts", "recordWorkerHeartbeat");
   requireText("apps/worker/src/worker.ts", "defaultDurableJobRunner");

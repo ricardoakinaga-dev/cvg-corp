@@ -24,6 +24,7 @@ function fakePool(options: { revision?: string; failSnapshotInsert?: boolean; au
       if (sql.startsWith("insert into ai_usage_ledger")) return { rows: [{ id: String(params[0]) }] };
       if (sql.startsWith("insert into patients") && sql.includes("returning id::text")) return { rows: [{ id: String(params[0]) }] };
       if (sql.startsWith("insert into appointments") && sql.includes("returning id::text")) return { rows: [{ id: String(params[0]) }] };
+      if (sql.startsWith("insert into encounters") && sql.includes("returning id::text")) return { rows: [{ id: String(params[0]) }] };
       if (sql.startsWith("select record_hash from cvg_audit_ledger")) return { rows: auditTail ? [{ record_hash: auditTail }] : [] };
       if (sql.startsWith("insert into cvg_audit_ledger")) {
         if (options.auditLedgerConflict) return { rows: [] };
@@ -168,6 +169,42 @@ test("appointment creation can own one authoritative normalized write inside the
   assert.ok(fake.statements.some((statement) => statement.startsWith("insert into appointments") && statement.includes("on conflict (id) do update") && statement.includes("returning id::text")));
   assert.ok(fake.statements.some((statement) => statement === "select set_config('cvg.unit_id', $1, true)"));
   assert.ok(fake.statements.some((statement) => statement === "select set_config('cvg.workspace_id', $1, true)"));
+});
+
+test("encounter creation can own one authoritative normalized write inside the durable commit", async () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const option = store.contextOptions(store.bootstrapCredentials.userId)[0];
+  assert.ok(option);
+  const context = store.resolveContext(store.bootstrapCredentials.userId, { unitId: option.unit.id, workspaceId: option.workspace.id }, "encounters.create", "encounter-source-write");
+  const patient = [...store.patients.values()].find((candidate) => candidate.unitId === context.unitId && candidate.workspaceId === context.workspaceId);
+  assert.ok(patient);
+  const encounter = store.createEncounter(context, { patientId: patient.id, appointmentId: null, chiefComplaint: "avaliação de retorno", urgency: "ROUTINE" });
+  const fake = fakePool();
+  const persistence = new PostgresPersistence({ connectionString: "postgres://synthetic.invalid", pool: fake.pool });
+
+  await persistence.commit({ ...commitInput(store), snapshot: store.snapshot(), normalizedEncounterWrite: encounter });
+
+  assert.ok(fake.statements.some((statement) => statement.startsWith("insert into encounters") && statement.includes("on conflict (id) do update") && statement.includes("returning id::text")));
+  assert.ok(fake.statements.some((statement) => statement === "select set_config('cvg.unit_id', $1, true)"));
+  assert.ok(fake.statements.some((statement) => statement === "select set_config('cvg.workspace_id', $1, true)"));
+});
+
+test("authoritative encounter writes fail closed when the candidate diverges from the canonical snapshot", async () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const option = store.contextOptions(store.bootstrapCredentials.userId)[0];
+  assert.ok(option);
+  const context = store.resolveContext(store.bootstrapCredentials.userId, { unitId: option.unit.id, workspaceId: option.workspace.id }, "encounters.create", "encounter-source-corruption");
+  const patient = [...store.patients.values()].find((candidate) => candidate.unitId === context.unitId && candidate.workspaceId === context.workspaceId);
+  assert.ok(patient);
+  const encounter = store.createEncounter(context, { patientId: patient.id, appointmentId: null, chiefComplaint: "avaliação de retorno", urgency: "ROUTINE" });
+  const fake = fakePool();
+  const persistence = new PostgresPersistence({ connectionString: "postgres://synthetic.invalid", pool: fake.pool });
+
+  await assert.rejects(
+    () => persistence.commit({ ...commitInput(store), snapshot: store.snapshot(), normalizedEncounterWrite: { ...encounter, chiefComplaint: "candidato divergente" } }),
+    (error: unknown) => error instanceof PersistenceCorruptionError && error.message.includes("not identical to the canonical snapshot")
+  );
+  assert.ok(fake.statements.some((statement) => statement === "ROLLBACK"));
 });
 
 test("Postgres persistence fails closed when a contextual projection loses its scope", async () => {
@@ -627,6 +664,36 @@ test("PostgreSQL appointment creation commits its normalized source row before t
     });
     assert.equal(created.statusCode, 201, created.body);
     assert.ok(fake.statements.some((statement) => statement.startsWith("insert into appointments") && statement.includes("returning id::text")));
+  } finally {
+    await runtime.app.close();
+  }
+});
+
+test("PostgreSQL encounter creation commits its normalized source row before the HTTP response", async () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const fake = fakePool();
+  const persistence = new PostgresPersistence({ connectionString: "postgres://synthetic.invalid", pool: fake.pool });
+  const runtime = await createRuntime({ store, persistence, config: { storageMode: "postgres", demoMode: true } });
+  try {
+    const login = await runtime.app.inject({ method: "POST", url: "/api/v1/auth/login", headers: { "content-type": "application/json" }, payload: JSON.stringify({ login: "admin@cvg.local", password: "synthetic-password-123" }) });
+    assert.equal(login.statusCode, 200, login.body);
+    const cookieValues = (Array.isArray(login.headers["set-cookie"]) ? login.headers["set-cookie"] : [login.headers["set-cookie"]]).filter((value): value is string => typeof value === "string");
+    const cookiePairs = cookieValues.map((value) => value.split(";")[0]).filter((value): value is string => Boolean(value));
+    const cookie = cookiePairs.join("; ");
+    const csrfCookie = cookiePairs.find((pair) => pair.startsWith("cvg_csrf="));
+    assert.ok(csrfCookie);
+    const csrf = decodeURIComponent(csrfCookie.slice("cvg_csrf=".length));
+    const unit = [...runtime.store.units.values()][0];
+    const workspace = [...runtime.store.workspaces.values()][0];
+    const patient = [...runtime.store.patients.values()].find((candidate) => candidate.unitId === unit?.id && candidate.workspaceId === workspace?.id);
+    assert.ok(unit && workspace && patient);
+    const headers = { cookie, "x-csrf-token": csrf, "x-cvg-unit-id": unit.id, "x-cvg-workspace-id": workspace.id, "idempotency-key": "encounter-http-source-001", "content-type": "application/json" };
+    const payload = JSON.stringify({ patientId: patient.id, appointmentId: null, chiefComplaint: "avaliação de retorno", urgency: "ROUTINE" });
+    const created = await runtime.app.inject({ method: "POST", url: "/api/v1/encounters", headers, payload });
+    assert.equal(created.statusCode, 201, created.body);
+    const replay = await runtime.app.inject({ method: "POST", url: "/api/v1/encounters", headers, payload });
+    assert.equal(replay.statusCode, 201, replay.body);
+    assert.equal(fake.statements.filter((statement) => statement.startsWith("insert into encounters") && statement.includes("returning id::text")).length, 1);
   } finally {
     await runtime.app.close();
   }

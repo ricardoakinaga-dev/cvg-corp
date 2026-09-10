@@ -81,14 +81,15 @@ Outbox/inbox/effect ledger têm lease/fencing, retry bounded, backoff, quarantin
 
 ## Concrete Steps
 
-<!-- engineering-framework: active_action_id=CVG-FULL-STATE-OF-THE-ART:EXTERNAL-EVIDENCE-AND-HUMAN-ACCEPTANCE -->
+<!-- engineering-framework: active_action_id=CVG-FULL-STATE-OF-THE-ART:REMOTE-CI-OBSERVATION-ENCOUNTER-WRITE -->
 
-1. `CVG-FULL-STATE-OF-THE-ART:AUTHORITATIVE-NORMALIZED-APPOINTMENT-WRITE` — concluída localmente: create assíncrono, `idempotentAsync`, escrita SQL contextual autoritativa, omissão da projeção genérica e testes SQL/HTTP/regressão; sem alegar PostgreSQL externo/staging.
-2. `CVG-FULL-STATE-OF-THE-ART:REMOTE-CI-OBSERVATION-APPOINTMENT-WRITE` — concluída: SHA `9c304f39621736ad8bb5f4b39447c4ac9d94fd25` publicado; run `34462488394`, job principal `102823305023` e job de imagens `102825161621` terminaram `success`.
-3. `CVG-FULL-STATE-OF-THE-ART:EXTERNAL-EVIDENCE-AND-HUMAN-ACCEPTANCE` — obter evidência autorizada de staging/provider/DeepSeek/observabilidade/carga/recuperação, executar crítica independente fresca e registrar aceite humano; até lá manter `FAIL_WITH_LIMITATIONS`/`AAA_NOT_PROVEN`.
-4. `CVG-FULL-STATE-OF-THE-ART:DEEPSEEK-NATIVE-ADAPTER` — somente quando houver contrato/authority externos; manter native/LLM como `BLOCKED` sem inventar protocolo.
-5. `CVG-FULL-STATE-OF-THE-ART:PRODUCTION-LIKE-EVIDENCE` — executar somente as evidências production-like que tenham ambiente e autoridade correspondentes; manter os gaps externos como `NOT_RUN` e continuar a evolução local nos maiores gaps reproduzíveis.
-6. `CVG-FULL-STATE-OF-THE-ART:SLO-CONTRACTS-ALERTS` — concluída localmente: tipar targets SLO propostos, avaliar observações somente com amostra explícita e testar alertas/runbooks em harness sintético; não promover medição local a evidência de produção.
+1. `CVG-FULL-STATE-OF-THE-ART:AUTHORITATIVE-NORMALIZED-ENCOUNTER-WRITE` — concluída localmente: `encounters.create` usa application/repository assíncrono e `idempotentAsync`, grava a linha `encounters` como escrita normalizada autoritativa dentro do commit durável, omite o ID da projeção genérica e cobre SQL/HTTP/replay/corrupção; sem alegar PostgreSQL externo/staging.
+2. `CVG-FULL-STATE-OF-THE-ART:AUTHORITATIVE-NORMALIZED-APPOINTMENT-WRITE` — concluída localmente: create assíncrono, `idempotentAsync`, escrita SQL contextual autoritativa, omissão da projeção genérica e testes SQL/HTTP/regressão; sem alegar PostgreSQL externo/staging.
+3. `CVG-FULL-STATE-OF-THE-ART:REMOTE-CI-OBSERVATION-APPOINTMENT-WRITE` — concluída: SHA `9c304f39621736ad8bb5f4b39447c4ac9d94fd25` publicado; run `34462488394`, job principal `102823305023` e job de imagens `102825161621` terminaram `success`.
+4. `CVG-FULL-STATE-OF-THE-ART:EXTERNAL-EVIDENCE-AND-HUMAN-ACCEPTANCE` — obter evidência autorizada de staging/provider/DeepSeek/observabilidade/carga/recuperação, executar crítica independente fresca e registrar aceite humano; até lá manter `FAIL_WITH_LIMITATIONS`/`AAA_NOT_PROVEN`.
+5. `CVG-FULL-STATE-OF-THE-ART:DEEPSEEK-NATIVE-ADAPTER` — somente quando houver contrato/authority externos; manter native/LLM como `BLOCKED` sem inventar protocolo.
+6. `CVG-FULL-STATE-OF-THE-ART:PRODUCTION-LIKE-EVIDENCE` — executar somente as evidências production-like que tenham ambiente e autoridade correspondentes; manter os gaps externos como `NOT_RUN` e continuar a evolução local nos maiores gaps reproduzíveis.
+7. `CVG-FULL-STATE-OF-THE-ART:SLO-CONTRACTS-ALERTS` — concluída localmente: tipar targets SLO propostos, avaliar observações somente com amostra explícita e testar alertas/runbooks em harness sintético; não promover medição local a evidência de produção.
 
 ### Onda A — fundamento seguro
 
@@ -424,3 +425,7 @@ O próximo action permanece `CVG-FULL-STATE-OF-THE-ART:EXTERNAL-EVIDENCE-AND-HUM
 Os commits `c3c18de9282159fa25022d7f8ce591889b73445d` e `1f066327b6d992a233e5bffae921af8377054899` fecham uma fatia local de jobs duráveis e heartbeats: migration 031 com `FORCE RLS`, admission idempotente por digest, claim `SKIP LOCKED`, `RETURNING` qualificado no `UPDATE ... FROM`, lease/fence, retry/quarantine, stats e stale protection; o worker aplica backpressure antes do claim e o recovery inclui `workerJobs`. A regressão passou `npm test` 135 (`134 pass`, `1 skip`), `test:database` 25/25, worker 12/12, typecheck, lint (122), build, static (48/124), PDP, produção estrutural e diff check.
 
 A nova evidência é local/sintética e não prova PostgreSQL concorrente, handlers de negócio, dead-letter/container production-like, métricas em staging, CI do SHA, carga/recuperação ou aceite. A crítica fresh read-only anterior e a tentativa contra o SHA da qualificação SQL foram encerradas como `NOT_COMPLETED`, sem aprovação; manter `FAIL_WITH_LIMITATIONS`/`AAA_NOT_PROVEN` e o próximo action de evidência externa/aceite humano.
+
+## Current action — 2026-09-10 07:16
+
+`CVG-FULL-STATE-OF-THE-ART:AUTHORITATIVE-NORMALIZED-ENCOUNTER-WRITE` foi fechada localmente. `POST /api/v1/encounters` usa `EncounterApplicationService`/repository assíncronos, `idempotentAsync` e, em PostgreSQL, `normalizedEncounterWrite` no mesmo commit de snapshot, journal, auditoria, receipt e outbox. A escrita SQL é contextual e equality-guarded, com dependências de organização/unidade/workspace/paciente/appointment validadas e sem duplicação pela projeção genérica. A regressão local passou; a crítica fresca não foi concluída. O próximo passo é observar CI no SHA exato. O estado global segue `FAIL_WITH_LIMITATIONS` / `AAA_NOT_PROVEN`.

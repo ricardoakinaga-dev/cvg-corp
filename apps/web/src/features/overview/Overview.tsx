@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from "react";
 import type { ApiClient } from "../../api/client";
 import { Icon } from "../../components/Icon";
 import { Kpi, PageHeader, StatePanel, StatusBadge } from "../../components/ui";
-import { formatMoney } from "../../state/formatters";
 import type { ContextOption, View } from "../../state/types";
 
 type OverviewSummary = { appointmentsToday: number; waitingPatients: number; lowStockItems: number; openCharges: number; ai: { provider: string; tools: number }; unit: string };
@@ -58,7 +57,7 @@ export function Overview({ client, context, onViewChange, notify }: { client: Ap
             <Kpi label="Hoje na agenda" value={String(summary.appointmentsToday).padStart(2, "0")} meta="Agendamentos no contexto" tone="teal" icon="calendar" />
             <Kpi label="Na fila agora" value={String(summary.waitingPatients).padStart(2, "0")} meta={summary.waitingPatients ? "Fila ativa" : "Sem pacientes aguardando"} tone="coral" icon="paw" />
             <Kpi label="Atenção no estoque" value={String(summary.lowStockItems).padStart(2, "0")} meta={summary.lowStockItems ? "Revisar disponibilidade" : "Sem alertas ativos"} tone="amber" icon="box" />
-            <Kpi label="Em aberto" value={formatMoney(summary.openCharges * 22000)} meta="Financeiro · visão da unidade" tone="slate" icon="wallet" />
+            <Kpi label="Cobranças em aberto" value={String(summary.openCharges).padStart(2, "0")} meta="Financeiro · quantidade no contexto" tone="slate" icon="wallet" />
           </section>
           <div className="dashboard-grid">
             <section className="surface surface-wide">

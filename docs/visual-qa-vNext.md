@@ -24,3 +24,14 @@ O audit de contraste continua determinístico para pares declarados, mas agora �
 Os seis screenshots nativos do dashboard foram revalidados após o ajuste de mobile em `8395ee5` e permanecem válidos no HEAD `63487af` porque o commit seguinte altera somente API/teste de sessão. Os hashes são: Chromium wide `4b9ad3ada449f643ec5b283cd9a0dc6c3029bef31a7a6476a378086ceca26278`, tablet `34b236770baed501a72ad263e8896a217cb5da38fb0ee7d12381d6b62f2b95af`, mobile `eb0b196e3ee6bcf39875e832bf7433617c3af786a9156ae5ca85bfe5566072cc`; Firefox wide `2eb75295e05389ad34d6d289fa7b400d58e5ad9889ef95b6eb2b47597dbae19b`, tablet `858609c38097cd59a67e204e77aaf958724265ec0d8c7da9ba83d7b480cf7c61`, mobile `d7fdc15d3d1bdecc44a8cc5199e322e74e63262e8f1cacee561e43cf7f856544`.
 
 O E2E atual passou os seis captures, fluxo Chromium/Firefox e stress: `64 pass`, `4 skips` condicionais. A inspeção estática confirma que mobile exibe a primeira linha da agenda dentro do fold e que o mini-gráfico tem caption e `aria-label`. A crítica fresh visual específica deste SHA não devolveu relatório após janelas bounded e foi registrada como `NOT_COMPLETED`; a crítica anterior ao ajuste visual não é usada como aprovação corrente. Foco/teclado, zoom real, leitor de tela, hover, touch interativo, recovery de rede e AAA continuam `NOT_RUN` ou cobertos somente por testes específicos, não por screenshot.
+
+## Achado corrigido — confiança financeira
+
+Uma inspeção read-only de QA identificou que `openCharges` é uma contagem da
+API, mas era renderizado como `contagem × R$220`. O dashboard agora rotula o
+KPI como `Cobranças em aberto` e mostra a quantidade no contexto. Não existe
+mais um valor monetário derivado sem um agregado financeiro real.
+
+Os demais achados do snapshot — loading inicial de sessão, seleção de outro
+contexto, foco após navegação SPA, empty states secundários e cobertura visual
+de rotas/estados — permanecem backlog; não foram mascarados por esta correção.

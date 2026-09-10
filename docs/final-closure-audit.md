@@ -398,3 +398,26 @@ substitui staging, provider/DeepSeek/secret authority, Collector/SLO medido,
 carga/chaos/recovery production-like, browser completo, crítica aprovadora ou
 aceite humano. O veredito global permanece `FAIL_WITH_LIMITATIONS` /
 `AAA_NOT_PROVEN`.
+
+## Checkpoint atual — 2026-09-10 escrita normalizada autoritativa de encounter
+
+`POST /api/v1/encounters` agora usa `EncounterApplicationService`, repository
+assíncrono e `idempotentAsync`. Em PostgreSQL, `normalizedEncounterWrite` é
+entregue ao mesmo commit durável de snapshot, journal, auditoria, receipt e
+outbox; a linha `encounters` tem DML contextual equality-guarded e é omitida
+da projeção genérica. A persistência valida digest, organização, paciente e
+appointment opcional, com `IS NOT DISTINCT FROM` nos campos nulos e falha
+fechada em divergência.
+
+Evidência local: persistência 26/26, `npm test` 143 (142 pass, 1 skip), E2E
+64/4 skips intencionais, typecheck, build, lint 126 fontes, static 50/128,
+PDP 68/70/6/12, produção estrutural e diff check passaram. A crítica fresca
+foi encerrada como `NOT_COMPLETED`, sem score ou aprovação. O KPI financeiro
+do dashboard também foi corrigido para exibir contagem de cobranças em aberto,
+sem fabricar montante.
+
+Esta fatia não prova PostgreSQL concorrente/RLS fora do CI, staging, provider/
+DeepSeek/secret authority, Collector/SLO operacional, carga/chaos/recovery,
+WebKit/assistive-tech/zoom real, demais mutações, replay seguro de
+`ops.restore` ou aceite humano. O veredito global permanece
+`FAIL_WITH_LIMITATIONS` / `AAA_NOT_PROVEN`.

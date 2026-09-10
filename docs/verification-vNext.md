@@ -158,3 +158,27 @@ secret authority, staging/TLS operations, measured Collector/SLO, load/chaos/
 recovery production-like, complete browser/assistive/zoom evidence, fresh
 approving critique and human acceptance remain absent; verdict stays
 `FAIL_WITH_LIMITATIONS` / `AAA_NOT_PROVEN`.
+
+## Current checkpoint — 2026-09-10 authoritative encounter write
+
+The third local source-write slice is recorded in
+`docs/verification-2026-09-10-encounter-source-write.md`. Encounter creation
+now uses an asynchronous application port and `idempotentAsync`; in PostgreSQL
+mode the command-owned normalized encounter row is written in the same durable
+transaction as snapshot, journal, audit, receipt and outbox, with dependency
+validation and equality-guarded replay. Its ID is omitted from the generic
+encounter projection. A same-key HTTP replay produced no second authoritative
+SQL write in the synthetic pool boundary.
+
+Local evidence passed: persistence 26/26, `npm test` 143 (142 pass/1 skip),
+E2E 64/4 intentional skips, typecheck, build, lint 126 sources, static 50/128,
+PDP, production structural verification and diff check. The fresh critic
+attempt ended `NOT_COMPLETED` without approval. The dashboard financial KPI now
+shows the open-charge count rather than an invented currency amount.
+
+This remains local/synthetic evidence. PostgreSQL concurrency/RLS outside CI,
+staging/TLS operations, provider/DeepSeek/secret authority, measured
+observability/SLO, load/chaos/recovery production-like, WebKit/assistive
+technology/real zoom, remaining mutating domains, safe `ops.restore` replay and
+human acceptance remain unproven; verdict stays `FAIL_WITH_LIMITATIONS` /
+`AAA_NOT_PROVEN`.

@@ -93,6 +93,12 @@ export interface DurableCommitInput {
    * same transaction and replay-safety contract as normalizedPatientWrite.
    */
   normalizedAppointmentWrite?: Appointment;
+  /**
+   * The encounter command's authoritative normalized row. It follows the
+   * same transaction and replay-safety contract as the other command-owned
+   * normalized writes.
+   */
+  normalizedEncounterWrite?: Encounter;
   eventId?: string;
 }
 
@@ -1576,7 +1582,18 @@ async function writeAuthoritativeAppointment(client: PoolClient, appointment: Ap
   if (!result.rows[0]) throw new PersistenceCorruptionError(`authoritative appointment ${appointment.id} conflicts with an existing normalized row`);
 }
 
-async function projectDomain(client: PoolClient, snapshot: StoreSnapshot, normalizedPatientWrite: AnimalPatient | null = null, normalizedAppointmentWrite: Appointment | null = null): Promise<void> {
+async function writeAuthoritativeEncounter(client: PoolClient, encounter: Encounter): Promise<void> {
+  if (!encounter.unitId || !encounter.workspaceId) throw new PersistenceCorruptionError(`encounter ${encounter.id} has no complete unit/workspace scope for authoritative write`);
+  await client.query("select set_config('cvg.unit_id', $1, true)", [encounter.unitId]);
+  await client.query("select set_config('cvg.workspace_id', $1, true)", [encounter.workspaceId]);
+  const result = await client.query<{ id: string }>(
+    "insert into encounters(id, organization_id, unit_id, workspace_id, patient_id, appointment_id, chief_complaint, urgency, status, opened_at, closed_at) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) on conflict (id) do update set organization_id = excluded.organization_id, unit_id = excluded.unit_id, workspace_id = excluded.workspace_id, patient_id = excluded.patient_id, appointment_id = excluded.appointment_id, chief_complaint = excluded.chief_complaint, urgency = excluded.urgency, status = excluded.status, opened_at = excluded.opened_at, closed_at = excluded.closed_at where encounters.organization_id = excluded.organization_id and encounters.unit_id = excluded.unit_id and encounters.workspace_id = excluded.workspace_id and encounters.patient_id = excluded.patient_id and encounters.appointment_id is not distinct from excluded.appointment_id and encounters.chief_complaint = excluded.chief_complaint and encounters.urgency = excluded.urgency and encounters.status = excluded.status and encounters.opened_at = excluded.opened_at and encounters.closed_at is not distinct from excluded.closed_at returning id::text",
+    [encounter.id, encounter.organizationId, encounter.unitId, encounter.workspaceId, encounter.patientId, encounter.appointmentId, encounter.chiefComplaint, encounter.urgency, encounter.status, encounter.openedAt, encounter.closedAt]
+  );
+  if (!result.rows[0]) throw new PersistenceCorruptionError(`authoritative encounter ${encounter.id} conflicts with an existing normalized row`);
+}
+
+async function projectDomain(client: PoolClient, snapshot: StoreSnapshot, normalizedPatientWrite: AnimalPatient | null = null, normalizedAppointmentWrite: Appointment | null = null, normalizedEncounterWrite: Encounter | null = null): Promise<void> {
   await writeScopedRows(client,
     "insert into guardians(id, organization_id, unit_id, workspace_id, display_name, phone, email, data_class, status) values ($1, $2, $3, $4, $5, $6, $7, $8, $9) on conflict (id) do update set organization_id = excluded.organization_id, unit_id = excluded.unit_id, workspace_id = excluded.workspace_id, display_name = excluded.display_name, phone = excluded.phone, email = excluded.email, data_class = excluded.data_class, status = excluded.status",
     snapshot.guardians,
@@ -1642,9 +1659,21 @@ async function projectDomain(client: PoolClient, snapshot: StoreSnapshot, normal
     (entry) => entry.unitId,
     (entry) => [entry.id, entry.organizationId, entry.unitId, entry.appointmentId, entry.patientId, entry.status, entry.priority, entry.checkedInAt]
   );
+  let encounters = snapshot.encounters;
+  if (normalizedEncounterWrite) {
+    const snapshotEncounter = snapshot.encounters.find((encounter) => encounter.id === normalizedEncounterWrite.id);
+    if (!snapshotEncounter || digest(snapshotEncounter) !== digest(normalizedEncounterWrite)) throw new PersistenceCorruptionError(`authoritative encounter ${normalizedEncounterWrite.id} is not identical to the canonical snapshot`);
+    const encounterPatient = snapshot.patients.find((patient) => patient.id === normalizedEncounterWrite.patientId);
+    const encounterAppointment = normalizedEncounterWrite.appointmentId ? snapshot.appointments.find((appointment) => appointment.id === normalizedEncounterWrite.appointmentId) : null;
+    if (!snapshot.organizations.some((organization) => organization.id === normalizedEncounterWrite.organizationId) || !encounterPatient || encounterPatient.organizationId !== normalizedEncounterWrite.organizationId || encounterPatient.unitId !== normalizedEncounterWrite.unitId || encounterPatient.workspaceId !== normalizedEncounterWrite.workspaceId || (normalizedEncounterWrite.appointmentId && (!encounterAppointment || encounterAppointment.organizationId !== normalizedEncounterWrite.organizationId || encounterAppointment.unitId !== normalizedEncounterWrite.unitId || encounterAppointment.workspaceId !== normalizedEncounterWrite.workspaceId || encounterAppointment.patientId !== normalizedEncounterWrite.patientId))) {
+      throw new PersistenceCorruptionError(`authoritative encounter ${normalizedEncounterWrite.id} has unresolved organization or scope dependencies`);
+    }
+    await writeAuthoritativeEncounter(client, normalizedEncounterWrite);
+    encounters = snapshot.encounters.filter((encounter) => encounter.id !== normalizedEncounterWrite.id);
+  }
   await writeScopedRows(client,
     "insert into encounters(id, organization_id, unit_id, workspace_id, patient_id, appointment_id, chief_complaint, urgency, status, opened_at, closed_at) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) on conflict (id) do update set organization_id = excluded.organization_id, unit_id = excluded.unit_id, workspace_id = excluded.workspace_id, patient_id = excluded.patient_id, appointment_id = excluded.appointment_id, chief_complaint = excluded.chief_complaint, urgency = excluded.urgency, status = excluded.status, opened_at = excluded.opened_at, closed_at = excluded.closed_at",
-    snapshot.encounters,
+    encounters,
     (encounter) => ({ unitId: encounter.unitId, workspaceId: encounter.workspaceId }),
     (encounter) => [encounter.id, encounter.organizationId, encounter.unitId, encounter.workspaceId, encounter.patientId, encounter.appointmentId, encounter.chiefComplaint, encounter.urgency, encounter.status, encounter.openedAt, encounter.closedAt]
   );
@@ -2068,7 +2097,7 @@ export class PostgresPersistence {
       const snapshotJson = canonicalSnapshot(input.snapshot);
       const snapshotDigest = digest(snapshotJson);
       await projectIdentity(client, input.snapshot);
-      await projectDomain(client, input.snapshot, input.normalizedPatientWrite ?? null, input.normalizedAppointmentWrite ?? null);
+      await projectDomain(client, input.snapshot, input.normalizedPatientWrite ?? null, input.normalizedAppointmentWrite ?? null, input.normalizedEncounterWrite ?? null);
       await projectOutbox(client, organizationId, input.outboxRecords ?? []);
       await projectRecoveredOutbox(client, organizationId, input.recoveredOutboxRecords ?? []);
       await projectRecoveredUsage(client, organizationId, input.recoveredUsageRecords ?? []);

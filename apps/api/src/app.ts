@@ -22,6 +22,7 @@ import {
   contextSelectorSchema,
   dispensationInputSchema,
   diagnosticRequestInputSchema,
+  encounterInputSchema,
   failure,
   governedExportInputSchema,
   hospitalEpisodeInputSchema,
@@ -53,6 +54,7 @@ import {
   type ApiResponse,
   type CvgContext,
   type DataClass,
+  type Encounter,
   type ErrorCode,
   type OpaqueId,
   type Role
@@ -82,6 +84,7 @@ import { PersistenceConflictError, PersistenceCorruptionError, PersistenceSignat
 import { registerHealthRoutes } from "./routes/health.ts";
 import { AgentApplicationService } from "./application/agent-service.ts";
 import { AppointmentApplicationService, PostgresAppointmentRepository, StoreAppointmentRepository } from "./application/appointment-service.ts";
+import { EncounterApplicationService, PostgresEncounterRepository, StoreEncounterRepository } from "./application/encounter-service.ts";
 import { PatientApplicationService, PostgresPatientRepository, StorePatientRepository } from "./application/patient-service.ts";
 import { createReadApplicationService } from "./application/read-services.ts";
 import { DomainCommandService } from "./application/domain-command-service.ts";
@@ -494,6 +497,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
   const agentApplication = new AgentApplicationService(store, agentRuntime);
   const patientApplication = new PatientApplicationService(persistence ? new PostgresPatientRepository(persistence, store) : new StorePatientRepository(store));
   const appointmentApplication = new AppointmentApplicationService(persistence ? new PostgresAppointmentRepository(store) : new StoreAppointmentRepository(store));
+  const encounterApplication = new EncounterApplicationService(persistence ? new PostgresEncounterRepository(store) : new StoreEncounterRepository(store));
   const readApplication = createReadApplicationService(store, persistence);
   const domainCommands = new DomainCommandService(store);
   const exportApplication = new ExportApplicationService(store, persistence, secretProvider, config.recoveryEncryptionKeyRef);
@@ -518,7 +522,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
   const durableRequests = new WeakMap<FastifyRequest, DurableRequestTransaction>();
   const durableReleases = new WeakMap<FastifyRequest, () => void>();
   const durableOutboxes = new WeakMap<FastifyRequest, import("@cvg/persistence").DurableOutboxInput[]>();
-  let commitDurableRequest: ((request: FastifyRequest, reply: FastifyReply, normalizedPatientWrite?: AnimalPatient, normalizedAppointmentWrite?: Appointment) => Promise<void>) | null = null;
+  let commitDurableRequest: ((request: FastifyRequest, reply: FastifyReply, normalizedPatientWrite?: AnimalPatient, normalizedAppointmentWrite?: Appointment, normalizedEncounterWrite?: Encounter) => Promise<void>) | null = null;
   let persistenceQueue = Promise.resolve();
   const acquireDurableRequest = async (): Promise<() => void> => {
     let release!: () => void;
@@ -544,11 +548,11 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
         throw error;
       }
     });
-    const commitRequest = async (request: FastifyRequest, reply: FastifyReply, normalizedPatientWrite?: AnimalPatient, normalizedAppointmentWrite?: Appointment): Promise<void> => {
+    const commitRequest = async (request: FastifyRequest, reply: FastifyReply, normalizedPatientWrite?: AnimalPatient, normalizedAppointmentWrite?: Appointment, normalizedEncounterWrite?: Encounter): Promise<void> => {
       const transaction = durableRequests.get(request);
       if (!transaction || transaction.committed || transaction.failed) return;
       const snapshot = store.snapshot();
-      if (!normalizedPatientWrite && !normalizedAppointmentWrite && snapshotFingerprint(snapshot) === snapshotFingerprint(transaction.baseline)) return;
+      if (!normalizedPatientWrite && !normalizedAppointmentWrite && !normalizedEncounterWrite && snapshotFingerprint(snapshot) === snapshotFingerprint(transaction.baseline)) return;
       const baselineAuditIds = new Set(transaction.baseline.auditRecords.map((record) => record.id));
       const baselineReceiptDigests = new Map(transaction.baseline.commandReceipts.map((receipt) => [receipt.id, digest(receipt)]));
       const auditRecords = snapshot.auditRecords.filter((record) => !baselineAuditIds.has(record.id));
@@ -572,7 +576,8 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
           commandReceipts,
           ...(outboxRecords ? { outboxRecords } : {}),
           ...(normalizedPatientWrite ? { normalizedPatientWrite } : {}),
-          ...(normalizedAppointmentWrite ? { normalizedAppointmentWrite } : {})
+          ...(normalizedAppointmentWrite ? { normalizedAppointmentWrite } : {}),
+          ...(normalizedEncounterWrite ? { normalizedEncounterWrite } : {})
         });
         transaction.committed = true;
       } catch (error) {
@@ -1194,11 +1199,15 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
 
   app.post("/api/v1/encounters", async (request, reply) => {
     const session = requireSession(request); requireCsrf(request, session);
-    const input = parse(z.object({ patientId: idSchema, appointmentId: idSchema.nullable().default(null), chiefComplaint: z.string().trim().min(2).max(500), urgency: z.enum(["ROUTINE", "URGENT", "EMERGENCY"]).default("ROUTINE") }).strict(), request.body);
+    const input = parse(encounterInputSchema, request.body);
     const { context } = requestContext(request, "encounters.create", input.patientId);
     const key = requireIdempotencyKey(request);
-    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, sessionId: context.sessionId, operation: "encounters.create", key, resourceId: input.patientId, unitId: context.unitId, workspaceId: context.workspaceId, body: input }, () => domainCommands.createEncounter(context, input));
+    const result = await idempotentAsync(store, { organizationId: context.organizationId, actorId: context.actorId, sessionId: context.sessionId, operation: "encounters.create", key, resourceId: input.patientId, unitId: context.unitId, workspaceId: context.workspaceId, body: input }, () => encounterApplication.create(context, input));
     audit(context, "encounters.create", "Encounter", result.value.id, "ALLOWED");
+    if (persistence && !result.replayed) {
+      reply.code(201);
+      await commitDurableRequest?.(request, reply, undefined, undefined, result.value);
+    }
     return response(reply, success({ encounter: result.value, receiptId: result.receipt.id }, context.correlationId), 201);
   });
 

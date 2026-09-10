@@ -13,9 +13,10 @@ import { createRecoveryBundleManifest, decryptRecoveryBundle, encryptRecoveryBun
 
 type QueryResult = { rows: Array<Record<string, unknown>> };
 
-function fakePool(options: { revision?: string; failSnapshotInsert?: boolean; auditLedgerConflict?: boolean } = {}): { pool: Pool; statements: string[] } {
+function fakePool(options: { revision?: string; failSnapshotInsert?: boolean; auditLedgerConflict?: boolean; clinicalSignUpdateRows?: boolean } = {}): { pool: Pool; statements: string[] } {
   let revision = options.revision ?? "0";
   let auditTail: string | null = null;
+  const durableReceipts = new Map<string, Record<string, unknown>>();
   const statements: string[] = [];
   const client = {
     async query(sql: string, params: unknown[] = []): Promise<QueryResult> {
@@ -25,13 +26,47 @@ function fakePool(options: { revision?: string; failSnapshotInsert?: boolean; au
       if (sql.startsWith("insert into patients") && sql.includes("returning id::text")) return { rows: [{ id: String(params[0]) }] };
       if (sql.startsWith("insert into appointments") && sql.includes("returning id::text")) return { rows: [{ id: String(params[0]) }] };
       if (sql.startsWith("insert into encounters") && sql.includes("returning id::text")) return { rows: [{ id: String(params[0]) }] };
+      if (sql.startsWith("update clinical_documents") && sql.includes("returning id::text")) return options.clinicalSignUpdateRows === false ? { rows: [] } : { rows: [{ id: String(params[4]) }] };
+      if (sql.startsWith("insert into command_receipts") && sql.includes("on conflict (idempotency_lookup)")) {
+        const lookup = String(params[6]);
+        const existing = durableReceipts.get(lookup);
+        if (existing) return { rows: [] };
+        const row = { id: String(params[0]), organization_id: String(params[1]), actor_id: String(params[2]), unit_id: params[3] ?? null, workspace_id: params[4] ?? null, audit_record_id: null, operation: String(params[5]), idempotency_lookup: lookup, body_digest: String(params[7]), status: "IN_FLIGHT", result: null, created_at: String(params[8]), completed_at: null };
+        durableReceipts.set(lookup, row);
+        return { rows: [row] };
+      }
+      if (sql.startsWith("select id::text as id") && sql.includes("from command_receipts") && sql.includes("idempotency_lookup = $1")) {
+        const row = durableReceipts.get(String(params[0]));
+        return { rows: row ? [row] : [] };
+      }
+      if (sql.startsWith("select id::text as id") && sql.includes("from command_receipts") && sql.includes("and id = $1")) {
+        const row = [...durableReceipts.values()].find((candidate) => candidate.id === String(params[0]));
+        return { rows: row ? [row] : [] };
+      }
+      if (sql.startsWith("update command_receipts") && sql.includes("returning id::text")) {
+        const row = [...durableReceipts.values()].find((candidate) => candidate.id === String(params[2]));
+        if (!row || row.status !== "IN_FLIGHT") return { rows: [] };
+        row.status = String(params[0]);
+        row.completed_at = params[1];
+        return { rows: [row] };
+      }
       if (sql.startsWith("select record_hash from cvg_audit_ledger")) return { rows: auditTail ? [{ record_hash: auditTail }] : [] };
       if (sql.startsWith("insert into cvg_audit_ledger")) {
         if (options.auditLedgerConflict) return { rows: [] };
         auditTail = String(params[5]);
         return { rows: [{ audit_id: String(params[0]) }] };
       }
-      if (sql.startsWith("insert into command_receipts")) return { rows: [{ id: String(params[0]) }] };
+      if (sql.startsWith("insert into command_receipts")) {
+        const lookup = String(params[7]);
+        const row = durableReceipts.get(lookup);
+        if (row) {
+          row.audit_record_id = params[5] ?? null;
+          row.status = String(params[9]);
+          row.result = params[10] === null ? null : typeof params[10] === "string" ? JSON.parse(params[10]) : params[10];
+          row.completed_at = params[12] ?? null;
+        }
+        return { rows: [{ id: String(params[0]) }] };
+      }
       if (sql.startsWith("insert into cvg_command_receipt_ledger")) return { rows: [{ receipt_id: String(params[0]) }] };
       if (sql.startsWith("insert into cvg_state_snapshots")) {
         if (options.failSnapshotInsert) throw new Error("synthetic snapshot write failure");
@@ -128,6 +163,24 @@ test("Postgres persistence commits journal and snapshot atomically", async () =>
   assert.ok(fake.statements.some((statement) => statement.includes("insert into cvg_command_receipt_ledger")));
   assert.ok(fake.statements.some((statement) => statement.includes("insert into cvg_state_snapshots")));
   assert.ok(fake.statements.some((statement) => statement === "COMMIT"));
+});
+
+test("durable command receipt claim is serialized and body-digest bound", async () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const persistence = new PostgresPersistence({ connectionString: "postgres://synthetic.invalid", pool: fakePool().pool });
+  const input = { organizationId: store.bootstrapCredentials.organizationId, actorId: store.bootstrapCredentials.userId, sessionId: null, operation: "clinical.sign", key: "durable-claim-001", resourceId: null, unitId: null, workspaceId: null, body: { expectedVersion: "1" } };
+  const claimed = await persistence.claimCommandReceipt(input);
+  assert.equal(claimed.status, "CLAIMED");
+  assert.equal(claimed.receipt.status, "IN_FLIGHT");
+  const concurrent = await persistence.claimCommandReceipt(input);
+  assert.equal(concurrent.status, "IN_FLIGHT");
+  const divergent = await persistence.claimCommandReceipt({ ...input, body: { expectedVersion: "2" } });
+  assert.equal(divergent.status, "CONFLICT");
+  claimed.receipt.status = "FAILED";
+  claimed.receipt.completedAt = new Date().toISOString();
+  await persistence.settleCommandReceipt(claimed.receipt);
+  const failed = await persistence.claimCommandReceipt(input);
+  assert.equal(failed.status, "FAILED");
 });
 
 test("patient creation can own one authoritative normalized write inside the durable commit", async () => {
@@ -697,6 +750,70 @@ test("PostgreSQL encounter creation commits its normalized source row before the
   } finally {
     await runtime.app.close();
   }
+});
+
+test("PostgreSQL clinical signing commits one authoritative update and replays idempotently", async () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const fake = fakePool();
+  const persistence = new PostgresPersistence({ connectionString: "postgres://synthetic.invalid", pool: fake.pool });
+  const runtime = await createRuntime({ store, persistence, config: { storageMode: "postgres", demoMode: true } });
+  try {
+    const login = await runtime.app.inject({ method: "POST", url: "/api/v1/auth/login", headers: { "content-type": "application/json" }, payload: JSON.stringify({ login: "ana.vet@cvg.local", password: "veterinario-synthetic-0002" }) });
+    assert.equal(login.statusCode, 200, login.body);
+    const cookieValues = (Array.isArray(login.headers["set-cookie"]) ? login.headers["set-cookie"] : [login.headers["set-cookie"]]).filter((value): value is string => typeof value === "string");
+    const cookiePairs = cookieValues.map((value) => value.split(";")[0]).filter((value): value is string => Boolean(value));
+    const cookie = cookiePairs.join("; ");
+    const csrfCookie = cookiePairs.find((pair) => pair.startsWith("cvg_csrf="));
+    assert.ok(csrfCookie);
+    const csrf = decodeURIComponent(csrfCookie.slice("cvg_csrf=".length));
+    const unit = [...runtime.store.units.values()][0];
+    const workspace = [...runtime.store.workspaces.values()][0];
+    const patient = [...runtime.store.patients.values()].find((candidate) => candidate.unitId === unit?.id && candidate.workspaceId === workspace?.id);
+    assert.ok(unit && workspace && patient);
+    const scopeHeaders = { cookie, "x-csrf-token": csrf, "x-cvg-unit-id": unit.id, "x-cvg-workspace-id": workspace.id, "content-type": "application/json" };
+    const encounter = await runtime.app.inject({ method: "POST", url: "/api/v1/encounters", headers: { ...scopeHeaders, "idempotency-key": "clinical-sign-encounter-001" }, payload: JSON.stringify({ patientId: patient.id, appointmentId: null, chiefComplaint: "assinatura clínica", urgency: "ROUTINE" }) });
+    assert.equal(encounter.statusCode, 201, encounter.body);
+    const encounterId = (encounter.json() as { data: { encounter: { id: string } } }).data.encounter.id;
+    const document = await runtime.app.inject({ method: "POST", url: "/api/v1/clinical/documents", headers: { ...scopeHeaders, "idempotency-key": "clinical-sign-document-001" }, payload: JSON.stringify({ encounterId, documentType: "EVOLUTION", title: "Evolução assinável", content: "observação para assinatura", dataClass: "D3" }) });
+    assert.equal(document.statusCode, 201, document.body);
+    const documentId = (document.json() as { data: { document: { id: string } } }).data.document.id;
+    const clinicalInsertsBeforeSign = fake.statements.filter((statement) => statement.startsWith("insert into clinical_documents")).length;
+    const signHeaders = { ...scopeHeaders, "idempotency-key": "clinical-sign-001" };
+    const signPayload = JSON.stringify({ expectedVersion: "1" });
+    const signed = await runtime.app.inject({ method: "POST", url: `/api/v1/clinical/documents/${documentId}/sign`, headers: signHeaders, payload: signPayload });
+    assert.equal(signed.statusCode, 200, signed.body);
+    assert.equal((signed.json() as { data: { document: { status: string; version: number } } }).data.document.status, "SIGNED");
+    assert.equal((signed.json() as { data: { document: { status: string; version: number } } }).data.document.version, 2);
+    const originalReceipt = [...runtime.store.commandReceipts.values()].find((receipt) => receipt.operation === "clinical.sign");
+    assert.ok(originalReceipt?.auditRecordId);
+    const originalAuditId = originalReceipt.auditRecordId;
+    const replay = await runtime.app.inject({ method: "POST", url: `/api/v1/clinical/documents/${documentId}/sign`, headers: signHeaders, payload: signPayload });
+    assert.equal(replay.statusCode, 200, replay.body);
+    assert.equal(fake.statements.filter((statement) => statement.startsWith("update clinical_documents") && statement.includes("returning id::text")).length, 1);
+    assert.equal(fake.statements.filter((statement) => statement.startsWith("insert into clinical_documents")).length, clinicalInsertsBeforeSign);
+    assert.equal([...runtime.store.commandReceipts.values()].find((receipt) => receipt.operation === "clinical.sign")?.auditRecordId, originalAuditId);
+    assert.equal([...runtime.store.auditRecords.values()].filter((record) => record.action === "clinical.sign").length, 2);
+  } finally {
+    await runtime.app.close();
+  }
+});
+
+test("authoritative clinical signing fails closed when the CAS update affects no row", async () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const vetId = [...store.users.values()].find((user) => user.login.startsWith("ana."))?.id;
+  const unit = [...store.units.values()][0];
+  const workspace = [...store.workspaces.values()][0];
+  const patient = [...store.patients.values()].find((candidate) => candidate.unitId === unit?.id && candidate.workspaceId === workspace?.id);
+  assert.ok(vetId && unit && workspace && patient);
+  const context = store.resolveContext(vetId, { unitId: unit.id, workspaceId: workspace.id }, "clinical.sign", "clinical-sign-cas-failure");
+  const encounter = store.createEncounter(context, { patientId: patient.id, appointmentId: null, chiefComplaint: "CAS clínico", urgency: "ROUTINE" });
+  const document = store.createClinicalDocument(context, { encounterId: encounter.id, documentType: "EVOLUTION", title: "CAS", content: "conteúdo", dataClass: "D3" });
+  const signed = store.signClinicalDocument(context, document.id, "1");
+  const fake = fakePool({ clinicalSignUpdateRows: false });
+  const persistence = new PostgresPersistence({ connectionString: "postgres://synthetic.invalid", pool: fake.pool });
+  await assert.rejects(() => persistence.commit({ ...commitInput(store), normalizedClinicalSignWrite: signed }), (error: unknown) => error instanceof PersistenceCorruptionError && error.message.includes("clinical sign"));
+  assert.equal(fake.statements.filter((statement) => statement.startsWith("update clinical_documents") && statement.includes("returning id::text")).length, 1);
+  assert.ok(fake.statements.includes("ROLLBACK"));
 });
 
 test("PostgreSQL runtime routes audit reads through the normalized repository", async () => {

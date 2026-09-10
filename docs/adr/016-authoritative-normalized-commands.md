@@ -22,6 +22,19 @@ Cada comando que assumir a posse de uma linha normalizada expõe um `Repository`
 
 Nesta rodada, `POST /api/v1/encounters` foi incluído na mesma boundary de `patients.create` e `appointments.create`. O appointment opcional de um encounter é validado por organização, unidade, workspace e paciente; sem appointment, o valor nulo é preservado e comparado com `IS NOT DISTINCT FROM`.
 
+Também foi normalizada a transição crítica `clinical.sign`: o contrato exige
+`expectedVersion`, o domínio aplica `N -> N+1` e a persistência usa `UPDATE`
+contextual com pré-condições de estado draft/review, assinatura nula e todos
+os campos imutáveis do documento. O replay idempotente exclui o documento já
+assinado da projeção genérica para que atividade de sessão não repita DML
+clínico. Após a revisão fresh, a mesma operação passou a reservar o
+`idempotency_lookup` em PostgreSQL como `IN_FLIGHT` antes de executar o domínio;
+concorrentes são bloqueados/reproduzem o receipt durável, e falhas de execução
+são assentadas como `FAILED`/`OUTCOME_UNKNOWN` sem inferir sucesso. O domínio
+também verifica a consistência de organização e paciente entre documento e
+encounter, e cada replay gera uma auditoria de observação sem substituir o
+vínculo do receipt original.
+
 ## Alternativas consideradas
 
 - **Projeção genérica do snapshot:** rejeitada como fonte operacional primária; mantém o risco de sobrescrita silenciosa e não expressa a autoridade do comando.
@@ -43,4 +56,10 @@ Não há migration nesta fatia: a tabela `encounters` existente já contém todo
 
 ## Verificação e limites
 
-Os testes locais cobrem DML autoritativo sintético, dependências de contexto, divergência do snapshot, boundary HTTP PostgreSQL injetada e replay sem segunda escrita. Eles não provam concorrência PostgreSQL/RLS em serviço real, staging, carga, recovery operacional ou aceitação humana. Portanto esta decisão melhora a segurança local sem alterar o veredito global `FAIL_WITH_LIMITATIONS` / `AAA_NOT_PROVEN`.
+Os testes locais cobrem claim durável sintético, conflito de digest, settlement
+de falha, DML autoritativo, dependências de contexto, divergência do snapshot,
+boundary HTTP PostgreSQL injetada, CAS de versão, replay sem segunda escrita e
+falha de `UPDATE ... RETURNING` sem linha. Eles não provam concorrência
+PostgreSQL/RLS em serviço real, staging, carga, recovery operacional ou
+aceitação humana. Portanto esta decisão melhora a segurança local sem alterar
+o veredito global `FAIL_WITH_LIMITATIONS` / `AAA_NOT_PROVEN`.

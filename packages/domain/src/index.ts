@@ -886,14 +886,24 @@ export class CvgStore {
     return document;
   }
 
-  signClinicalDocument(context: CvgContext, documentId: OpaqueId): ClinicalDocument {
+  signClinicalDocument(context: CvgContext, documentId: OpaqueId, expectedVersion: string | null = null): ClinicalDocument {
     this.requireRole(context, ["veterinario"], "clinical:sign");
     const document = this.clinicalDocuments.get(documentId);
     if (!document || document.organizationId !== context.organizationId) throw new DomainError("NOT_FOUND", "Documento não encontrado.", 404);
     const encounter = this.encounters.get(document.encounterId);
-    if (!encounter || (context.unitId && encounter.unitId !== context.unitId) || (context.workspaceId && encounter.workspaceId !== context.workspaceId)) throw new DomainError("NOT_FOUND", "Documento não encontrado.", 404);
+    if (!encounter || encounter.organizationId !== context.organizationId || encounter.patientId !== document.patientId || (context.unitId && encounter.unitId !== context.unitId) || (context.workspaceId && encounter.workspaceId !== context.workspaceId)) throw new DomainError("NOT_FOUND", "Documento não encontrado.", 404);
+    if (expectedVersion !== null) {
+      let parsedVersion: bigint;
+      try {
+        parsedVersion = BigInt(expectedVersion);
+      } catch {
+        throw new DomainError("INVALID_INPUT", "A versão esperada do documento é inválida.", 400);
+      }
+      if (parsedVersion !== BigInt(document.version)) throw new DomainError("REVISION_CONFLICT", "O documento clínico mudou; recarregue-o antes de assinar.", 409);
+    }
     if (document.status === "SIGNED" || document.status === "PUBLISHED") throw new DomainError("CONFLICT", "Documento clínico já está assinado e não pode ser sobrescrito.", 409);
     document.status = "SIGNED";
+    document.version += 1;
     document.signedAt = now();
     document.signedBy = context.actorId;
     return document;
@@ -1133,6 +1143,24 @@ export interface IdempotencyInput {
   body: unknown;
 }
 
+export function newCommandReceipt(input: IdempotencyInput): CommandReceipt {
+  return {
+    id: makeId(),
+    organizationId: input.organizationId,
+    actorId: input.actorId,
+    unitId: input.unitId,
+    workspaceId: input.workspaceId,
+    auditRecordId: null,
+    operation: input.operation,
+    idempotencyLookup: idempotencyLookup(input),
+    bodyDigest: digest({ v: 1, body: input.body }),
+    status: "IN_FLIGHT",
+    result: null,
+    createdAt: now(),
+    completedAt: null
+  };
+}
+
 export function idempotencyLookup(input: IdempotencyInput): string {
   return digest({ v: 2, organizationId: input.organizationId, actorId: input.actorId, sessionId: input.sessionId ?? null, operation: input.operation, key: input.key, resourceId: input.resourceId, unitId: input.unitId, workspaceId: input.workspaceId });
 }
@@ -1147,7 +1175,7 @@ export function idempotent<T>(store: CvgStore, input: IdempotencyInput, execute:
     if (existing.status === "IN_FLIGHT" || existing.status === "OUTCOME_UNKNOWN") throw new DomainError("OUTCOME_UNKNOWN", "A execução anterior permanece em reconciliação.", 409, { receiptId: existing.id });
     throw new DomainError("CONFLICT", "A execução anterior falhou; use uma nova intenção.", 409);
   }
-  const receipt: CommandReceipt = { id: makeId(), organizationId: input.organizationId, actorId: input.actorId, unitId: input.unitId, workspaceId: input.workspaceId, auditRecordId: null, operation: input.operation, idempotencyLookup: lookup, bodyDigest, status: "IN_FLIGHT", result: null, createdAt: now(), completedAt: null };
+  const receipt = newCommandReceipt(input);
   store.commandReceipts.set(lookup, receipt);
   try {
     const value = execute();
@@ -1163,18 +1191,25 @@ export function idempotent<T>(store: CvgStore, input: IdempotencyInput, execute:
   }
 }
 
+export interface IdempotentAsyncOptions {
+  /** A database-backed IN_FLIGHT receipt reserved before the command starts. */
+  reservedReceipt?: CommandReceipt;
+}
+
 /** Runs one idempotent command whose implementation crosses an asynchronous adapter. */
-export async function idempotentAsync<T>(store: CvgStore, input: IdempotencyInput, execute: () => Promise<T>): Promise<{ receipt: CommandReceipt; value: T; replayed: boolean }> {
+export async function idempotentAsync<T>(store: CvgStore, input: IdempotencyInput, execute: () => Promise<T>, options: IdempotentAsyncOptions = {}): Promise<{ receipt: CommandReceipt; value: T; replayed: boolean }> {
   const lookup = idempotencyLookup(input);
   const bodyDigest = digest({ v: 1, body: input.body });
+  const reservedReceipt = options.reservedReceipt;
+  if (reservedReceipt && (reservedReceipt.idempotencyLookup !== lookup || reservedReceipt.bodyDigest !== bodyDigest || reservedReceipt.status !== "IN_FLIGHT")) throw new DomainError("INVALID_INPUT", "A reserva de idempotência não corresponde ao comando.", 400);
   const existing = store.commandReceipts.get(lookup);
-  if (existing) {
+  if (existing && (!reservedReceipt || existing.id !== reservedReceipt.id)) {
     if (existing.bodyDigest !== bodyDigest) throw new DomainError("IDEMPOTENCY_CONFLICT", "A chave já foi usada com outro corpo.", 409);
     if (existing.status === "SUCCEEDED") return { receipt: existing, value: existing.result as T, replayed: true };
     if (existing.status === "IN_FLIGHT" || existing.status === "OUTCOME_UNKNOWN") throw new DomainError("OUTCOME_UNKNOWN", "A execução anterior permanece em reconciliação.", 409, { receiptId: existing.id });
     throw new DomainError("CONFLICT", "A execução anterior falhou; use uma nova intenção.", 409);
   }
-  const receipt: CommandReceipt = { id: makeId(), organizationId: input.organizationId, actorId: input.actorId, unitId: input.unitId, workspaceId: input.workspaceId, auditRecordId: null, operation: input.operation, idempotencyLookup: lookup, bodyDigest, status: "IN_FLIGHT", result: null, createdAt: now(), completedAt: null };
+  const receipt = reservedReceipt ?? newCommandReceipt(input);
   store.commandReceipts.set(lookup, receipt);
   try {
     const value = await execute();

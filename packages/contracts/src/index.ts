@@ -224,6 +224,11 @@ export const clinicalDocumentInputSchema = z.object({
 }).strict();
 export type ClinicalDocumentInput = z.infer<typeof clinicalDocumentInputSchema>;
 
+export const clinicalSignInputSchema = z.object({
+  expectedVersion: revisionSchema
+}).strict();
+export type ClinicalSignInput = z.infer<typeof clinicalSignInputSchema>;
+
 export const diagnosticRequestInputSchema = z.object({
   patientId: idSchema,
   encounterId: idSchema.nullable().default(null),

@@ -91,10 +91,23 @@ test("signed clinical document requires addendum instead of overwrite", () => {
   const patient = [...store.patients.values()][0]; assert.ok(patient);
   const encounter = store.createEncounter(ctx, { patientId: patient.id, appointmentId: null, chiefComplaint: "revisão", urgency: "ROUTINE" });
   const doc = store.createClinicalDocument(ctx, { encounterId: encounter.id, documentType: "EVOLUTION", title: "Evolução", content: "observação", dataClass: "D3" });
-  store.signClinicalDocument(ctx, doc.id);
+  store.signClinicalDocument(ctx, doc.id, "1");
+  assert.equal(doc.version, 2);
   assert.throws(() => store.signClinicalDocument(ctx, doc.id), (error: unknown) => error instanceof DomainError && error.code === "CONFLICT");
   const addendum = store.addClinicalAddendum(ctx, doc.id, "correção", "texto complementar");
   assert.equal(addendum.documentId, doc.id);
+});
+
+test("clinical sign rejects a stale expected version before mutation", () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const vetId = [...store.users.values()].find((user) => user.login.startsWith("ana."))?.id; assert.ok(vetId);
+  const ctx = context(store, vetId);
+  const patient = [...store.patients.values()][0]; assert.ok(patient);
+  const encounter = store.createEncounter(ctx, { patientId: patient.id, appointmentId: null, chiefComplaint: "versão", urgency: "ROUTINE" });
+  const doc = store.createClinicalDocument(ctx, { encounterId: encounter.id, documentType: "EVOLUTION", title: "Versão", content: "observação", dataClass: "D3" });
+  assert.throws(() => store.signClinicalDocument(ctx, doc.id, "0"), (error: unknown) => error instanceof DomainError && error.code === "REVISION_CONFLICT");
+  assert.equal(doc.status, "DRAFT");
+  assert.equal(doc.version, 1);
 });
 
 test("same idempotency key returns the original receipt without re-running", () => {

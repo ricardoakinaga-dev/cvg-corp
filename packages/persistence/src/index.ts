@@ -2,7 +2,7 @@ import { createCipheriv, createDecipheriv, randomBytes, randomUUID } from "node:
 import { Pool, type PoolClient, type PoolConfig } from "pg";
 import type { AiSession, AnimalPatient, Appointment, AuditRecord, Bed, Charge, ClinicalDocument, CommunicationMessage, CommandReceipt, CvgContext, DiagnosticRequest, DiagnosticResult, Encounter, Guardian, HospitalEpisode, KnowledgeDocument, LedgerEntry, Lot, MedicationOrder, OpaqueId, Payment, Product, QueueEntry, Specimen, StockLocation } from "@cvg/contracts";
 import { id } from "@cvg/contracts";
-import { auditRecordHash, digest, now, parseSnapshot, serializeSnapshot, type StoreSnapshot } from "@cvg/domain";
+import { auditRecordHash, digest, idempotencyLookup, newCommandReceipt, now, parseSnapshot, serializeSnapshot, type IdempotencyInput, type StoreSnapshot } from "@cvg/domain";
 
 const LOCK_KEY = "cvg-corp:canonical-state:v1";
 
@@ -99,7 +99,25 @@ export interface DurableCommitInput {
    * normalized writes.
    */
   normalizedEncounterWrite?: Encounter;
+  /**
+   * A clinical sign transition. It is an update-only normalized write: the
+   * existing draft/review row must match the signed snapshot and version
+   * predecessor, so a missing or divergent source row fails closed.
+   */
+  normalizedClinicalSignWrite?: ClinicalDocument;
+  /**
+   * A replay already materialized the signed row. It may be excluded from
+   * the generic snapshot projection while session activity is committed.
+   */
+  normalizedClinicalSignReplayId?: OpaqueId;
   eventId?: string;
+}
+
+export type DurableCommandReceiptClaimStatus = "CLAIMED" | "REPLAY" | "IN_FLIGHT" | "OUTCOME_UNKNOWN" | "FAILED" | "CONFLICT";
+
+export interface DurableCommandReceiptClaim {
+  status: DurableCommandReceiptClaimStatus;
+  receipt: CommandReceipt;
 }
 
 export interface DurableOutboxInput {
@@ -685,6 +703,22 @@ interface RevisionRow {
   revision: string;
 }
 
+interface CommandReceiptRow {
+  id: string;
+  organization_id: string;
+  actor_id: string;
+  unit_id: string | null;
+  workspace_id: string | null;
+  audit_record_id: string | null;
+  operation: string;
+  idempotency_lookup: string;
+  body_digest: string;
+  status: CommandReceipt["status"];
+  result: unknown;
+  created_at: SqlTimestamp;
+  completed_at: SqlTimestamp;
+}
+
 interface MigrationRow {
   version: string;
   checksum: string;
@@ -1151,6 +1185,24 @@ function sqlEnum<T extends string>(value: unknown, allowed: readonly T[], field:
   throw new PersistenceCorruptionError(`normalized ${field} has an unsupported value`);
 }
 
+function mapCommandReceiptRow(row: CommandReceiptRow): CommandReceipt {
+  return {
+    id: sqlId(row.id, "command receipt.id"),
+    organizationId: sqlId(row.organization_id, "command receipt.organization_id"),
+    actorId: sqlId(row.actor_id, "command receipt.actor_id"),
+    unitId: row.unit_id === null ? null : sqlId(row.unit_id, "command receipt.unit_id"),
+    workspaceId: row.workspace_id === null ? null : sqlId(row.workspace_id, "command receipt.workspace_id"),
+    auditRecordId: row.audit_record_id === null ? null : sqlId(row.audit_record_id, "command receipt.audit_record_id"),
+    operation: sqlText(row.operation, "command receipt.operation"),
+    idempotencyLookup: sqlText(row.idempotency_lookup, "command receipt.idempotency_lookup"),
+    bodyDigest: sqlText(row.body_digest, "command receipt.body_digest"),
+    status: sqlEnum(row.status, ["IN_FLIGHT", "SUCCEEDED", "FAILED", "OUTCOME_UNKNOWN"] as const, "command receipt.status"),
+    result: row.result === undefined ? null : row.result,
+    createdAt: sqlTimestamp(row.created_at, "command receipt.created_at"),
+    completedAt: sqlNullableTimestamp(row.completed_at)
+  };
+}
+
 function sqlInteger(value: unknown, field: string): number {
   if (!Number.isSafeInteger(value)) throw new PersistenceCorruptionError(`normalized ${field} is not a safe integer`);
   return value as number;
@@ -1593,7 +1645,19 @@ async function writeAuthoritativeEncounter(client: PoolClient, encounter: Encoun
   if (!result.rows[0]) throw new PersistenceCorruptionError(`authoritative encounter ${encounter.id} conflicts with an existing normalized row`);
 }
 
-async function projectDomain(client: PoolClient, snapshot: StoreSnapshot, normalizedPatientWrite: AnimalPatient | null = null, normalizedAppointmentWrite: Appointment | null = null, normalizedEncounterWrite: Encounter | null = null): Promise<void> {
+async function writeAuthoritativeClinicalDocument(client: PoolClient, document: ClinicalDocument, encounter: Encounter): Promise<void> {
+  if (!encounter.unitId || !encounter.workspaceId) throw new PersistenceCorruptionError(`clinical document ${document.id} has no complete encounter scope for authoritative sign`);
+  if (document.status !== "SIGNED" || document.version < 2 || !document.signedAt || !document.signedBy) throw new PersistenceCorruptionError(`authoritative clinical sign ${document.id} has an incomplete signed state`);
+  await client.query("select set_config('cvg.unit_id', $1, true)", [encounter.unitId]);
+  await client.query("select set_config('cvg.workspace_id', $1, true)", [encounter.workspaceId]);
+  const result = await client.query<{ id: string }>(
+    "update clinical_documents set status = $1, version = $2, signed_at = $3, signed_by = $4 where id = $5 and organization_id = $6 and unit_id = $7 and workspace_id = $8 and encounter_id = $9 and patient_id = $10 and author_id = $11 and document_type = $12 and title = $13 and content = $14 and data_class = $15 and status in ('DRAFT', 'REVIEW') and version = $2 - 1 and signed_at is null and signed_by is null and created_at = $16 returning id::text",
+    [document.status, document.version, document.signedAt, document.signedBy, document.id, document.organizationId, encounter.unitId, encounter.workspaceId, document.encounterId, document.patientId, document.authorId, document.documentType, document.title, document.content, document.dataClass, document.createdAt]
+  );
+  if (!result.rows[0]) throw new PersistenceCorruptionError(`authoritative clinical sign ${document.id} conflicts with an existing normalized row`);
+}
+
+async function projectDomain(client: PoolClient, snapshot: StoreSnapshot, normalizedPatientWrite: AnimalPatient | null = null, normalizedAppointmentWrite: Appointment | null = null, normalizedEncounterWrite: Encounter | null = null, normalizedClinicalSignWrite: ClinicalDocument | null = null, normalizedClinicalSignReplayId: OpaqueId | null = null): Promise<void> {
   await writeScopedRows(client,
     "insert into guardians(id, organization_id, unit_id, workspace_id, display_name, phone, email, data_class, status) values ($1, $2, $3, $4, $5, $6, $7, $8, $9) on conflict (id) do update set organization_id = excluded.organization_id, unit_id = excluded.unit_id, workspace_id = excluded.workspace_id, display_name = excluded.display_name, phone = excluded.phone, email = excluded.email, data_class = excluded.data_class, status = excluded.status",
     snapshot.guardians,
@@ -1678,18 +1742,32 @@ async function projectDomain(client: PoolClient, snapshot: StoreSnapshot, normal
     (encounter) => [encounter.id, encounter.organizationId, encounter.unitId, encounter.workspaceId, encounter.patientId, encounter.appointmentId, encounter.chiefComplaint, encounter.urgency, encounter.status, encounter.openedAt, encounter.closedAt]
   );
   const encounterById = new Map(snapshot.encounters.map((encounter) => [encounter.id, encounter]));
-  const clinicalDocumentRows = snapshot.clinicalDocuments.map((document) => {
+  const clinicalDocuments = snapshot.clinicalDocuments.map((document) => {
     const encounter = encounterById.get(document.encounterId);
-    if (!encounter || encounter.organizationId !== document.organizationId) throw new PersistenceCorruptionError(`clinical document ${document.id} has no organization-bound encounter`);
+    if (!encounter || encounter.organizationId !== document.organizationId || encounter.patientId !== document.patientId) throw new PersistenceCorruptionError(`clinical document ${document.id} has no organization-bound encounter`);
     return { document, encounter };
   });
+  let clinicalDocumentRows = clinicalDocuments;
+  if (normalizedClinicalSignWrite) {
+    const signed = clinicalDocuments.find(({ document }) => document.id === normalizedClinicalSignWrite.id);
+    if (!signed || digest(signed.document) !== digest(normalizedClinicalSignWrite)) throw new PersistenceCorruptionError(`authoritative clinical sign ${normalizedClinicalSignWrite.id} is not identical to the canonical snapshot`);
+    const signer = snapshot.users.find((user) => user.id === normalizedClinicalSignWrite.signedBy);
+    if (normalizedClinicalSignWrite.organizationId !== signed.encounter.organizationId || normalizedClinicalSignWrite.patientId !== signed.encounter.patientId || !signer || signer.organizationId !== normalizedClinicalSignWrite.organizationId) throw new PersistenceCorruptionError(`authoritative clinical sign ${normalizedClinicalSignWrite.id} has unresolved organization, patient or signer dependencies`);
+    await writeAuthoritativeClinicalDocument(client, normalizedClinicalSignWrite, signed.encounter);
+    clinicalDocumentRows = clinicalDocuments.filter(({ document }) => document.id !== normalizedClinicalSignWrite.id);
+  }
+  if (normalizedClinicalSignReplayId) {
+    const replayed = clinicalDocuments.find(({ document }) => document.id === normalizedClinicalSignReplayId);
+    if (!replayed || replayed.document.status !== "SIGNED" || replayed.document.version < 2 || !replayed.document.signedAt || !replayed.document.signedBy) throw new PersistenceCorruptionError(`clinical sign replay ${normalizedClinicalSignReplayId} has no durable signed state`);
+    clinicalDocumentRows = clinicalDocumentRows.filter(({ document }) => document.id !== normalizedClinicalSignReplayId);
+  }
   await writeScopedRows(client,
     "insert into clinical_documents(id, organization_id, unit_id, workspace_id, encounter_id, patient_id, author_id, document_type, title, content, data_class, status, version, signed_at, signed_by, created_at) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) on conflict (id) do update set organization_id = excluded.organization_id, unit_id = excluded.unit_id, workspace_id = excluded.workspace_id, encounter_id = excluded.encounter_id, patient_id = excluded.patient_id, author_id = excluded.author_id, document_type = excluded.document_type, title = excluded.title, content = excluded.content, data_class = excluded.data_class, status = excluded.status, version = excluded.version, signed_at = excluded.signed_at, signed_by = excluded.signed_by",
     clinicalDocumentRows,
     ({ encounter }) => ({ unitId: encounter.unitId, workspaceId: encounter.workspaceId }),
     ({ document, encounter }) => [document.id, document.organizationId, encounter.unitId, encounter.workspaceId, document.encounterId, document.patientId, document.authorId, document.documentType, document.title, document.content, document.dataClass, document.status, document.version, document.signedAt, document.signedBy, document.createdAt]
   );
-  const documentById = new Map(clinicalDocumentRows.map(({ document, encounter }) => [document.id, { document, encounter }]));
+  const documentById = new Map(clinicalDocuments.map(({ document, encounter }) => [document.id, { document, encounter }]));
   const clinicalAddendumRows = snapshot.clinicalAddenda.map((addendum) => {
     const scope = documentById.get(addendum.documentId);
     if (!scope) throw new PersistenceCorruptionError(`clinical addendum ${addendum.id} has no organization-bound document`);
@@ -2040,6 +2118,65 @@ export class PostgresPersistence {
     }
   }
 
+  /**
+   * Reserves a command receipt before a high-impact command mutates the
+   * runtime. The unique idempotency_lookup constraint is the cross-process
+   * admission point; a committed IN_FLIGHT row is intentionally sticky until
+   * the owner settles it or the durable command commit promotes it.
+   */
+  async claimCommandReceipt(input: IdempotencyInput): Promise<DurableCommandReceiptClaim> {
+    const proposed = newCommandReceipt(input);
+    return this.organizationTransaction(input.organizationId, "command receipt claim", async (client) => {
+      const inserted = await client.query<CommandReceiptRow>(
+        "insert into command_receipts(id, organization_id, actor_id, unit_id, workspace_id, audit_record_id, operation, idempotency_lookup, body_digest, status, result, created_at, completed_at) values ($1, $2, $3, $4, $5, null, $6, $7, $8, 'IN_FLIGHT', null, $9, null) on conflict (idempotency_lookup) do nothing returning id::text as id, organization_id::text as organization_id, actor_id::text as actor_id, unit_id::text as unit_id, workspace_id::text as workspace_id, audit_record_id::text as audit_record_id, operation, idempotency_lookup, body_digest, status, result, created_at, completed_at",
+        [proposed.id, proposed.organizationId, proposed.actorId, proposed.unitId, proposed.workspaceId, proposed.operation, proposed.idempotencyLookup, proposed.bodyDigest, proposed.createdAt]
+      );
+      const row = inserted.rows[0] ?? (await client.query<CommandReceiptRow>(
+        "select id::text as id, organization_id::text as organization_id, actor_id::text as actor_id, unit_id::text as unit_id, workspace_id::text as workspace_id, audit_record_id::text as audit_record_id, operation, idempotency_lookup, body_digest, status, result, created_at, completed_at from command_receipts where organization_id = cvg_request_organization() and idempotency_lookup = $1 for update",
+        [proposed.idempotencyLookup]
+      )).rows[0];
+      if (!row) throw new PersistenceCorruptionError(`command receipt ${proposed.idempotencyLookup} disappeared after a unique conflict`);
+      const receipt = mapCommandReceiptRow(row);
+      if (receipt.organizationId !== proposed.organizationId || receipt.actorId !== proposed.actorId || receipt.unitId !== proposed.unitId || receipt.workspaceId !== proposed.workspaceId || receipt.operation !== proposed.operation || receipt.idempotencyLookup !== proposed.idempotencyLookup) throw new PersistenceCorruptionError(`command receipt ${receipt.id} immutable scope changed after it was durably recorded`);
+      if (receipt.bodyDigest !== proposed.bodyDigest) return { status: "CONFLICT", receipt };
+      if (inserted.rows[0]) {
+        if (receipt.status !== "IN_FLIGHT") throw new PersistenceCorruptionError(`new command receipt ${receipt.id} was not admitted as IN_FLIGHT`);
+        return { status: "CLAIMED", receipt };
+      }
+      if (receipt.status === "SUCCEEDED") return { status: "REPLAY", receipt };
+      if (receipt.status === "IN_FLIGHT") return { status: "IN_FLIGHT", receipt };
+      if (receipt.status === "OUTCOME_UNKNOWN") return { status: "OUTCOME_UNKNOWN", receipt };
+      return { status: "FAILED", receipt };
+    }, false, { unitId: input.unitId, workspaceId: input.workspaceId });
+  }
+
+  /** Settles a pre-admitted receipt when command execution fails before commit. */
+  async settleCommandReceipt(receipt: CommandReceipt): Promise<void> {
+    if ((receipt.status !== "FAILED" && receipt.status !== "OUTCOME_UNKNOWN") || receipt.result !== null || receipt.completedAt === null) throw new PersistenceStateError(`command receipt ${receipt.id} cannot be settled from its current state`);
+    await this.organizationTransaction(receipt.organizationId, "command receipt settlement", async (client) => {
+      const updated = await client.query<CommandReceiptRow>(
+        "update command_receipts set status = $1, result = null, completed_at = $2 where id = $3 and organization_id = cvg_request_organization() and actor_id = $4 and unit_id is not distinct from $5::uuid and workspace_id is not distinct from $6::uuid and operation = $7 and idempotency_lookup = $8 and body_digest = $9 and status = 'IN_FLIGHT' returning id::text as id, organization_id::text as organization_id, actor_id::text as actor_id, unit_id::text as unit_id, workspace_id::text as workspace_id, audit_record_id::text as audit_record_id, operation, idempotency_lookup, body_digest, status, result, created_at, completed_at",
+        [receipt.status, receipt.completedAt, receipt.id, receipt.actorId, receipt.unitId, receipt.workspaceId, receipt.operation, receipt.idempotencyLookup, receipt.bodyDigest]
+      );
+      let durable = updated.rows[0];
+      if (!durable) {
+        durable = (await client.query<CommandReceiptRow>(
+          "select id::text as id, organization_id::text as organization_id, actor_id::text as actor_id, unit_id::text as unit_id, workspace_id::text as workspace_id, audit_record_id::text as audit_record_id, operation, idempotency_lookup, body_digest, status, result, created_at, completed_at from command_receipts where organization_id = cvg_request_organization() and id = $1 for update",
+          [receipt.id]
+        )).rows[0];
+        if (!durable) throw new PersistenceCorruptionError(`command receipt ${receipt.id} disappeared before settlement`);
+        const existing = mapCommandReceiptRow(durable);
+        if (existing.status === receipt.status && existing.bodyDigest === receipt.bodyDigest) return;
+        throw new PersistenceCorruptionError(`command receipt ${receipt.id} changed before settlement`);
+      }
+      const settled = mapCommandReceiptRow(durable);
+      await client.query(
+        "insert into cvg_command_receipt_ledger(receipt_id, organization_id, record, record_digest) values ($1, $2, $3::jsonb, $4) on conflict (receipt_id, record_digest) do nothing",
+        [settled.id, settled.organizationId, JSON.stringify(settled), digest(settled)]
+      );
+    }, false, { unitId: receipt.unitId, workspaceId: receipt.workspaceId });
+  }
+
   async exportRecoveryBundle(organizationId: OpaqueId): Promise<DurableRecoveryBundle | null> {
     return this.organizationTransaction(organizationId, "recovery bundle", async (client) => {
       const snapshotResult = await client.query<SnapshotRow>("select s.revision::text as revision, s.organization_id::text as organization_id, s.schema_version, s.snapshot, s.snapshot_digest, s.event_id::text as event_id, j.snapshot_digest as journal_snapshot_digest from cvg_state_snapshots s left join cvg_event_journal j on j.event_id = s.event_id and j.organization_id = s.organization_id where s.organization_id = cvg_request_organization() order by s.revision desc limit 1");
@@ -2097,7 +2234,7 @@ export class PostgresPersistence {
       const snapshotJson = canonicalSnapshot(input.snapshot);
       const snapshotDigest = digest(snapshotJson);
       await projectIdentity(client, input.snapshot);
-      await projectDomain(client, input.snapshot, input.normalizedPatientWrite ?? null, input.normalizedAppointmentWrite ?? null, input.normalizedEncounterWrite ?? null);
+      await projectDomain(client, input.snapshot, input.normalizedPatientWrite ?? null, input.normalizedAppointmentWrite ?? null, input.normalizedEncounterWrite ?? null, input.normalizedClinicalSignWrite ?? null, input.normalizedClinicalSignReplayId ?? null);
       await projectOutbox(client, organizationId, input.outboxRecords ?? []);
       await projectRecoveredOutbox(client, organizationId, input.recoveredOutboxRecords ?? []);
       await projectRecoveredUsage(client, organizationId, input.recoveredUsageRecords ?? []);

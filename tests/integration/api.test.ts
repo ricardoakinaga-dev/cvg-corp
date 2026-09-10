@@ -176,8 +176,10 @@ test("API exposes the core clinical, treatment, finance and knowledge boundaries
   const encounterId = (encounter.body.data as { encounter: { id: string } }).encounter.id;
   const document = await vet.request("/clinical/documents", { method: "POST", headers: { "idempotency-key": "api-clinical-document-1" }, payload: { encounterId, documentType: "EVOLUTION", title: "Evolução sintética", content: "Achados para validação humana.", dataClass: "D3" } }); assert.equal(document.statusCode, 201);
   const documentId = (document.body.data as { document: { id: string } }).document.id;
-  const signed = await vet.request(`/clinical/documents/${documentId}/sign`, { method: "POST", headers: { "idempotency-key": "api-clinical-sign-1" } });
+  const signed = await vet.request(`/clinical/documents/${documentId}/sign`, { method: "POST", headers: { "idempotency-key": "api-clinical-sign-1" }, payload: { expectedVersion: "1" } });
   assert.equal(signed.statusCode, 200);
+  assert.equal((signed.body.data as { document: { status: string; version: number } }).document.status, "SIGNED");
+  assert.equal((signed.body.data as { document: { status: string; version: number } }).document.version, 2);
   const addendum = await vet.request(`/clinical/documents/${documentId}/addenda`, { method: "POST", headers: { "idempotency-key": "api-clinical-addendum-1" }, payload: { reason: "corrigir registro", content: "Adendo explícito." } });
   assert.equal(addendum.statusCode, 201);
   const diagnostic = await vet.request("/diagnostics/requests", { method: "POST", headers: { "idempotency-key": "api-diagnostic-request-1" }, payload: { patientId, encounterId, testName: "Hemograma sintético", priority: "ROUTINE" } }); assert.equal(diagnostic.statusCode, 201);

@@ -47,8 +47,8 @@ export class DomainCommandService {
     return this.run(context, "clinical.write", () => this.store.createClinicalDocument(context, input));
   }
 
-  signClinicalDocument(context: CvgContext, documentId: OpaqueId): ReturnType<CvgStore["signClinicalDocument"]> {
-    return this.run(context, "clinical.sign", () => this.store.signClinicalDocument(context, documentId));
+  signClinicalDocument(context: CvgContext, documentId: OpaqueId, expectedVersion: string | null = null): ReturnType<CvgStore["signClinicalDocument"]> {
+    return this.run(context, "clinical.sign", () => this.store.signClinicalDocument(context, documentId, expectedVersion));
   }
 
   addClinicalAddendum(context: CvgContext, documentId: OpaqueId, reason: string, content: string): ReturnType<CvgStore["addClinicalAddendum"]> {

@@ -384,3 +384,17 @@ Provider/DeepSeek/secret authority, staging/TLS operacional, Collector/SLO,
 carga/chaos/recovery production-like, browser/assistive-tech/zoom completo,
 crítica independente aprovadora e aceite humano continuam ausentes. O
 veredito permanece `FAIL_WITH_LIMITATIONS` / `AAA_NOT_PROVEN`.
+
+## Observação CI — escrita normalizada autoritativa de appointment
+
+O commit publicado `9c304f39621736ad8bb5f4b39447c4ac9d94fd25` teve o run
+GitHub Actions `34462488394` concluído com `success`. O job principal
+`102823305023` passou os gates públicos de lint, typecheck, contratos,
+segurança, banco, fault, testes, provider loopback, build/static, Browser E2E,
+migrations/PostgreSQL/RLS, restore, Compose/release, performance sintética,
+SBOM, artefatos e whitespace; o job de imagens `102825161621` passou build e
+scan das imagens API e web. O resultado está vinculado ao SHA exato e não
+substitui staging, provider/DeepSeek/secret authority, Collector/SLO medido,
+carga/chaos/recovery production-like, browser completo, crítica aprovadora ou
+aceite humano. O veredito global permanece `FAIL_WITH_LIMITATIONS` /
+`AAA_NOT_PROVEN`.

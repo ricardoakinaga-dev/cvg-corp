@@ -41,6 +41,21 @@ Os testes de persistência e boundary HTTP usam pool sintético. Eles comprovam
 o contrato de chamada, SQL, escopo e falha local, mas não substituem
 PostgreSQL concorrente/RLS em ambiente real, staging ou carga production-like.
 
+## Evidência remota do SHA exato
+
+O commit `9c304f39621736ad8bb5f4b39447c4ac9d94fd25` foi publicado em
+`origin/main` e o run GitHub Actions `34462488394`
+(https://github.com/ricardoakinaga-dev/cvg-corp/actions/runs/34462488394)
+terminou `success`. O job principal `102823305023` passou lint, typecheck,
+contratos, segurança, banco, fault, testes unit/integration, provider loopback,
+build/static, Browser E2E, migrations/PostgreSQL/RLS, restore, Compose/release,
+performance sintética, SBOM, artefatos e whitespace. O job de imagens
+`102825161621` passou os builds e scans das imagens API e web.
+
+Essa observação fecha a publicação e o CI do SHA exato, mas CI não equivale a
+staging, provedor externo, DeepSeek nativo, autoridade de segredos, telemetria
+operacional, carga/recuperação production-like ou aceite humano.
+
 ## Crítica e limites
 
 Dois critics frescos, não herdados e somente leitura, foram comissionados após

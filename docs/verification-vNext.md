@@ -115,6 +115,20 @@ WebKit/assistive-tech/zoom real ou aceite humano. As críticas fresh desta onda
 foram encerradas como `NOT_COMPLETED`, sem aprovação. O veredito permanece
 `FAIL_WITH_LIMITATIONS` / `AAA_NOT_PROVEN`.
 
+## Remote CI observation — authoritative appointment write
+
+Commit `9c304f39621736ad8bb5f4b39447c4ac9d94fd25` was published to
+`origin/main`. GitHub Actions run `34462488394`
+(https://github.com/ricardoakinaga-dev/cvg-corp/actions/runs/34462488394)
+completed with `success`: main job `102823305023` passed the public test,
+Browser E2E, migrations/PostgreSQL/RLS, restore, release/Compose, synthetic
+performance, SBOM and artifact gates; image job `102825161621` passed API/web
+builds and scans. This is exact-SHA CI evidence only. Staging, external
+provider/DeepSeek, secret authority, operational telemetry/SLO, production-like
+load/chaos/recovery, complete browser/assistive/zoom evidence, approving fresh
+critique and human acceptance remain unproven; verdict remains
+`FAIL_WITH_LIMITATIONS` / `AAA_NOT_PROVEN`.
+
 ## Observação CI — escrita normalizada de paciente
 
 O commit publicado `78bd717442e99ef6f7c4aadbc45a9ea17dbd7d4a` teve o run

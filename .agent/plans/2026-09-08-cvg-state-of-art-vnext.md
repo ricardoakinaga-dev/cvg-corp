@@ -20,7 +20,7 @@ O resultado esperado é um produto executável com uma rota completa de desenvol
 - [ ] Onda E — deploy, CI, SBOM, observabilidade, SLOs e runbooks.
 - [ ] Onda F — adapter DeepSeek/provider e vertical real, somente se autoridade e endpoint existirem.
 - [ ] Onda G — verificação de produção, críticas independentes frescas e scorecard honesto.
-- [x] (2026-09-10T06:38:00-03:00) — criação de appointment fechada localmente com port assíncrono, idempotência e escrita normalizada autoritativa contextual no commit durável; CI exato ainda pendente.
+- [x] (2026-09-10T06:56:21-03:00) — criação de appointment fechada localmente e publicada no SHA `9c304f39621736ad8bb5f4b39447c4ac9d94fd25`; o run remoto `34462488394` passou nos jobs principal e de imagens.
 
 ## Context and Orientation
 
@@ -81,10 +81,10 @@ Outbox/inbox/effect ledger têm lease/fencing, retry bounded, backoff, quarantin
 
 ## Concrete Steps
 
-<!-- engineering-framework: active_action_id=CVG-FULL-STATE-OF-THE-ART:REMOTE-CI-OBSERVATION-APPOINTMENT-WRITE -->
+<!-- engineering-framework: active_action_id=CVG-FULL-STATE-OF-THE-ART:EXTERNAL-EVIDENCE-AND-HUMAN-ACCEPTANCE -->
 
 1. `CVG-FULL-STATE-OF-THE-ART:AUTHORITATIVE-NORMALIZED-APPOINTMENT-WRITE` — concluída localmente: create assíncrono, `idempotentAsync`, escrita SQL contextual autoritativa, omissão da projeção genérica e testes SQL/HTTP/regressão; sem alegar PostgreSQL externo/staging.
-2. `CVG-FULL-STATE-OF-THE-ART:REMOTE-CI-OBSERVATION-APPOINTMENT-WRITE` — publicar o candidato, observar o run no SHA exato e registrar jobs/steps sem converter CI em staging.
+2. `CVG-FULL-STATE-OF-THE-ART:REMOTE-CI-OBSERVATION-APPOINTMENT-WRITE` — concluída: SHA `9c304f39621736ad8bb5f4b39447c4ac9d94fd25` publicado; run `34462488394`, job principal `102823305023` e job de imagens `102825161621` terminaram `success`.
 3. `CVG-FULL-STATE-OF-THE-ART:EXTERNAL-EVIDENCE-AND-HUMAN-ACCEPTANCE` — obter evidência autorizada de staging/provider/DeepSeek/observabilidade/carga/recuperação, executar crítica independente fresca e registrar aceite humano; até lá manter `FAIL_WITH_LIMITATIONS`/`AAA_NOT_PROVEN`.
 4. `CVG-FULL-STATE-OF-THE-ART:DEEPSEEK-NATIVE-ADAPTER` — somente quando houver contrato/authority externos; manter native/LLM como `BLOCKED` sem inventar protocolo.
 5. `CVG-FULL-STATE-OF-THE-ART:PRODUCTION-LIKE-EVIDENCE` — executar somente as evidências production-like que tenham ambiente e autoridade correspondentes; manter os gaps externos como `NOT_RUN` e continuar a evolução local nos maiores gaps reproduzíveis.

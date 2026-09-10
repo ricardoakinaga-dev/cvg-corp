@@ -441,3 +441,37 @@ permissão negada e handoff de foco no `main` após navegação SPA, inclusive n
 mobile. O próximo passo é observar o CI no SHA `a77c966`; staging, provider/
 DeepSeek/secret authority, operação medida, recovery/load e aceite humano
 continuam bloqueios, sem promoção AAA.
+
+## Current action — 2026-09-10 08:32
+
+A fatia `CVG-FULL-STATE-OF-THE-ART:AUTHORITATIVE-NORMALIZED-CLINICAL-SIGN`
+foi implementada no commit `05e417975bd83701105d378a7aef53a34245e7c5` e
+publicada em `origin/main`. O endpoint agora usa application/repository
+assíncronos, exige `expectedVersion`, executa transição `N -> N+1` e grava a
+linha clínica com `UPDATE ... RETURNING` contextual e CAS, fora da projeção
+genérica. Antes da mutação PostgreSQL, `command_receipts` admite a chave por
+claim durável `IN_FLIGHT`; replay reproduz o resultado e cria auditoria sem
+repetir o DML clínico; falhas são assentadas sem inferir sucesso.
+
+O crítico fresh Nash retornou revisão read-only com um HIGH de idempotência
+memória-local, duas lacunas MEDIUM e uma LOW; os achados aplicáveis foram
+reparados, e a fronteira transacional final no request hook permanece anotada
+como limitação arquitetural. A regressão passou 147 testes (146/1 skip), E2E
+64/4 skips, typecheck, build, lint 127, static 51/129, PDP, produção
+estrutural e diff check. Os gates triplo-AAA, staging e DeepSeek permanecem
+`AAA_NOT_PROVEN`, `STAGING_EVIDENCE_INCOMPLETE` e `BLOCKED`. O CI remoto exato
+é o run `34471837382`, ainda `in_progress`; a próxima ação é observar sua
+conclusão sem promover AAA.
+
+## Current action — 2026-09-10 08:43
+
+O run GitHub Actions `34471837382` terminou `success` no SHA exato
+`05e417975bd83701105d378a7aef53a34245e7c5`. O job principal
+`102853294375` e o job de build/scan de imagens `102855264534` também
+terminaram `success`, com artifacts de verificação e Browser E2E publicados.
+Essa observação fecha o gate de CI remoto desta fatia; não prova staging,
+provider/DeepSeek/autoridade de segredos, SLO operacional,
+carga/chaos/recovery production-like, matriz completa browser/a11y ou aceite
+humano. O próximo action permanece
+`CVG-FULL-STATE-OF-THE-ART:EXTERNAL-EVIDENCE-AND-HUMAN-ACCEPTANCE`, e o
+veredito global permanece `FAIL_WITH_LIMITATIONS` / `AAA_NOT_PROVEN`.

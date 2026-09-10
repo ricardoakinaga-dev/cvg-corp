@@ -438,3 +438,38 @@ SPA entrega foco ao `main` inclusive após fechar o menu móvel. Typecheck, lint
 build e E2E 64/4 passaram localmente; a nova fatia ainda precisa de seu SHA e
 CI próprios. O veredito permanece `FAIL_WITH_LIMITATIONS` /
 `AAA_NOT_PROVEN`.
+
+## Current checkpoint — authoritative clinical signing
+
+`clinical.sign` now has an explicit application/repository boundary, requires
+`expectedVersion`, increments the document version atomically in the domain and
+uses an update-only contextual CAS in PostgreSQL. The same operation claims its
+unique `idempotency_lookup` durably as `IN_FLIGHT` before mutation, settles
+pre-commit failures, excludes the signed document from generic projection on
+replay and records replay observation without replacing the original receipt
+audit link. Encounter organization/patient consistency is checked in the
+domain as well as persistence.
+
+The fresh Nash review is recorded in
+`.gauntlet/critique-clinical-sign-20260910.md`; it found one HIGH, two MEDIUM
+and one LOW issue, with the applicable findings repaired and the transaction
+boundary limitation retained explicitly. Local evidence is 147 tests (146
+pass, 1 skip), E2E 64/4 intentional skips, lint 127, static 51/129, typecheck,
+build, PDP, production structural verification and diff check green. Commit
+`05e417975bd83701105d378a7aef53a34245e7c5` is published; exact-SHA CI run
+`34471837382` completed successfully. Global verdict remains
+`FAIL_WITH_LIMITATIONS` / `AAA_NOT_PROVEN`.
+
+## Remote CI observation — authoritative clinical signing
+
+The technical commit `05e417975bd83701105d378a7aef53a34245e7c5` was published
+to `origin/main`. [GitHub Actions run 34471837382](https://github.com/ricardoakinaga-dev/cvg-corp/actions/runs/34471837382)
+completed with conclusion `success` for the exact SHA. The main job
+`102853294375` and image build/scan job `102855264534` also completed
+`success`, and the verification and Browser E2E artifacts were published.
+
+This is exact-SHA CI evidence only. It does not establish authorized
+staging/TLS operation, real provider/DeepSeek/secret authority, operational
+Collector/SLO evidence, production-like load/chaos/recovery, the full
+browser/assistive-technology matrix, or human AAA acceptance. The global
+verdict remains `FAIL_WITH_LIMITATIONS` / `AAA_NOT_PROVEN`.

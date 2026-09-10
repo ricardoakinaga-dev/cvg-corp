@@ -76,11 +76,26 @@ recovery ou aceite humano.
 
 ## Limitações e veredito
 
-Esta fatia local é `PASS_WITH_LIMITATIONS` após o reteste; a publicação e o
-CI do novo SHA ainda precisam ser observados. O programa global continua
+Esta fatia é `PASS_WITH_LIMITATIONS`: a regressão local passou e o CI remoto
+do SHA exato terminou com sucesso. O programa global continua
 `FAIL_WITH_LIMITATIONS` / `AAA_NOT_PROVEN`. Provider externo, turno DeepSeek
 real, autoridade de segredos, staging/TLS operacional, Collector/SLO medido,
 carga/chaos/recovery production-like, WebKit/assistive-tech/zoom real, as
 demais mutações normalizadas, replay seguro de `ops.restore` e aceite humano
 continuam sem prova. Nenhuma promoção, credencial, dado real, egress ou
 release foi acionado.
+
+## Observação CI remoto — assinatura clínica autoritativa
+
+O commit técnico `05e417975bd83701105d378a7aef53a34245e7c5` foi publicado em
+`origin/main`. O workflow público [CVG CI #68 / run
+34471837382](https://github.com/ricardoakinaga-dev/cvg-corp/actions/runs/34471837382)
+terminou `success` para o SHA exato; o job principal `102853294375` e o job de
+build/scan de imagens `102855264534` também terminaram `success`. Os artifacts
+de verificação e Browser E2E foram publicados.
+
+Isso confirma o CI remoto do commit técnico, mas não staging/TLS operacional,
+provider/DeepSeek/autoridade de segredos, Collector/SLO medido,
+carga/chaos/recovery production-like, matriz completa de browsers e tecnologia
+assistiva ou aceite humano. O veredito global permanece
+`FAIL_WITH_LIMITATIONS` / `AAA_NOT_PROVEN`.

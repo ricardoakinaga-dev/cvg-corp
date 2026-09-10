@@ -203,3 +203,38 @@ longer restores focus to the menu trigger after a route selection. Local
 typecheck, lint, build and E2E passed (64 pass, 4 intentional skips). The
 candidate is not yet observed in remote CI; verdict remains
 `FAIL_WITH_LIMITATIONS` / `AAA_NOT_PROVEN`.
+
+## Current checkpoint — authoritative clinical signing
+
+`clinical.sign` now has an explicit application/repository boundary, requires
+`expectedVersion`, increments the document version atomically in the domain and
+uses an update-only contextual CAS in PostgreSQL. The same operation claims its
+unique `idempotency_lookup` durably as `IN_FLIGHT` before mutation, settles
+pre-commit failures, excludes the signed document from generic projection on
+replay and records replay observation without replacing the original receipt
+audit link. Encounter organization/patient consistency is checked in the
+domain as well as persistence.
+
+The fresh Nash review is recorded in
+`.gauntlet/critique-clinical-sign-20260910.md`; it found one HIGH, two MEDIUM
+and one LOW issue, with the applicable findings repaired and the transaction
+boundary limitation retained explicitly. Local evidence is 147 tests (146
+pass, 1 skip), E2E 64/4 intentional skips, lint 127, static 51/129, typecheck,
+build, PDP, production structural verification and diff check green. Commit
+`05e417975bd83701105d378a7aef53a34245e7c5` is published; exact-SHA CI run
+`34471837382` completed successfully. Global verdict remains
+`FAIL_WITH_LIMITATIONS` / `AAA_NOT_PROVEN`.
+
+## Remote CI observation — authoritative clinical signing
+
+The technical commit `05e417975bd83701105d378a7aef53a34245e7c5` was published
+to `origin/main`. [GitHub Actions run 34471837382](https://github.com/ricardoakinaga-dev/cvg-corp/actions/runs/34471837382)
+completed successfully for the exact SHA; main job `102853294375` and image
+build/scan job `102855264534` also completed successfully. Verification and
+Browser E2E artifacts were published.
+
+This confirms exact-SHA remote CI only. Staging/TLS, real provider/DeepSeek/
+secret authority, operational Collector/SLO, production-like load/chaos/
+recovery, the full browser/assistive-technology matrix and human acceptance
+remain unproven. Global verdict remains `FAIL_WITH_LIMITATIONS` /
+`AAA_NOT_PROVEN`.

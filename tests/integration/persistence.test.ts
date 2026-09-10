@@ -15,13 +15,19 @@ type QueryResult = { rows: Array<Record<string, unknown>> };
 
 function fakePool(options: { revision?: string; failSnapshotInsert?: boolean; auditLedgerConflict?: boolean } = {}): { pool: Pool; statements: string[] } {
   let revision = options.revision ?? "0";
+  let auditTail: string | null = null;
   const statements: string[] = [];
   const client = {
     async query(sql: string, params: unknown[] = []): Promise<QueryResult> {
       statements.push(sql.trim().replace(/\s+/g, " "));
       if (sql.includes("select revision::text")) return { rows: revision === "0" ? [] : [{ revision }] };
       if (sql.startsWith("insert into ai_usage_ledger")) return { rows: [{ id: String(params[0]) }] };
-      if (sql.startsWith("insert into cvg_audit_ledger")) return { rows: options.auditLedgerConflict ? [] : [{ audit_id: String(params[0]) }] };
+      if (sql.startsWith("select record_hash from cvg_audit_ledger")) return { rows: auditTail ? [{ record_hash: auditTail }] : [] };
+      if (sql.startsWith("insert into cvg_audit_ledger")) {
+        if (options.auditLedgerConflict) return { rows: [] };
+        auditTail = String(params[5]);
+        return { rows: [{ audit_id: String(params[0]) }] };
+      }
       if (sql.startsWith("insert into command_receipts")) return { rows: [{ id: String(params[0]) }] };
       if (sql.startsWith("insert into cvg_command_receipt_ledger")) return { rows: [{ receipt_id: String(params[0]) }] };
       if (sql.startsWith("insert into cvg_state_snapshots")) {
@@ -63,7 +69,7 @@ function commitInput(store: CvgStore) {
   };
 }
 
-function normalizedReadPool(): { pool: Pool; statements: string[]; scope: { organizationId: string | null } } {
+function normalizedReadPool(options: { auditMetadata?: unknown; auditChainVersion?: number } = {}): { pool: Pool; statements: string[]; scope: { organizationId: string | null } } {
   const statements: string[] = [];
   const scope = { organizationId: null as string | null };
   const client = {
@@ -72,6 +78,7 @@ function normalizedReadPool(): { pool: Pool; statements: string[]; scope: { orga
       if (sql.includes("set_config('cvg.organization_id'")) scope.organizationId = String(params[0]);
       if (sql.startsWith("select g.id::text")) return { rows: [{ id: "00000000-0000-4000-0000-000000000101", display_name: "Marina Souza", phone: "+55 11 98888-1200", email: "marina@example.test", data_class: "D2", status: "ACTIVE" }] };
       if (sql.startsWith("select p.id::text")) return { rows: [{ id: "00000000-0000-4000-0000-000000000111", guardian_id: "00000000-0000-4000-0000-000000000101", name: "Luna", species: "Canina", breed: "Golden retriever", sex: "FEMALE", reproductive_status: "NEUTERED", birth_date: "2020-05-19", identifiers: ["MICRO-9812"], data_class: "D3", status: "ACTIVE", merged_into_id: null, status_changed_at: null, created_at: "2026-01-01T00:00:00.000Z", guardian_display_name: "Marina Souza", guardian_phone: "+55 11 98888-1200" }] };
+      if (sql.includes("from audit_records a")) return { rows: [{ id: "00000000-0000-4000-0000-000000000161", organization_id: scope.organizationId, actor_id: "00000000-0000-4000-0000-000000000001", unit_id: "00000000-0000-4000-0000-000000000011", workspace_id: "00000000-0000-4000-0000-000000000021", action: "patients.read", resource_type: "AnimalPatient", resource_id: "00000000-0000-4000-0000-000000000111", result: "ALLOWED", reason: null, correlation_id: "audit-read", metadata: options.auditMetadata ?? { count: 1 }, chain_version: options.auditChainVersion ?? 2, previous_hash: null, record_hash: "audit-hash", created_at: "2026-01-01T00:00:00.000Z" }] };
       if (sql.startsWith("select a.id::text")) return { rows: [{ id: "00000000-0000-4000-0000-000000000151", organization_id: "00000000-0000-4000-0000-000000000010", unit_id: "00000000-0000-4000-0000-000000000011", workspace_id: "00000000-0000-4000-0000-000000000021", patient_id: "00000000-0000-4000-0000-000000000111", provider_id: "00000000-0000-4000-0000-000000000121", resource_id: null, service_id: "00000000-0000-4000-0000-000000000131", starts_at: "2026-01-01T10:00:00.000Z", ends_at: "2026-01-01T10:45:00.000Z", purpose: "Retorno", status: "CONFIRMED", version: 1, created_at: "2026-01-01T00:00:00.000Z", patient_name: "Luna", provider_name: "Dra. Ana Martins" }] };
       return { rows: [] };
     },
@@ -149,15 +156,30 @@ test("normalized read repositories scope the transaction and preserve joined pro
   const guardians = await persistence.listGuardians(context, "Marina");
   const patients = await persistence.listPatients(context, "Luna");
   const appointments = await persistence.listAppointments(context);
+  const audit = await persistence.listAudit(context, 10);
 
   assert.equal(fake.scope.organizationId, context.organizationId);
   assert.equal(guardians[0]?.displayName, "Marina Souza");
   assert.equal(patients[0]?.guardian?.displayName, "Marina Souza");
   assert.equal(appointments[0]?.patient?.name, "Luna");
-  assert.ok(fake.statements.filter((statement) => statement === "BEGIN READ ONLY").length === 3);
-  assert.ok(fake.statements.filter((statement) => statement === "COMMIT").length === 3);
+  assert.equal(audit[0]?.action, "patients.read");
+  assert.deepEqual(audit[0]?.metadata, { count: 1 });
+  assert.ok(fake.statements.filter((statement) => statement === "BEGIN READ ONLY").length === 4);
+  assert.ok(fake.statements.filter((statement) => statement === "COMMIT").length === 4);
   assert.ok(fake.statements.some((statement) => statement.includes("p.organization_id = cvg_request_organization()")));
   assert.ok(fake.statements.some((statement) => statement.includes("a.workspace_id = $2::uuid")));
+  assert.ok(fake.statements.some((statement) => statement.includes("from audit_records a")));
+  assert.ok(fake.statements.some((statement) => statement.includes("cvg_request_scope_allows(a.unit_id, a.workspace_id)")));
+});
+
+test("normalized audit reads quarantine malformed durable rows", async () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const context = store.resolveContext(store.bootstrapCredentials.userId, { unitId: [...store.units.values()][0]?.id ?? null, workspaceId: [...store.workspaces.values()][0]?.id ?? null }, "persistence.read", "persistence-audit-corruption");
+  const fake = normalizedReadPool({ auditMetadata: { unsafe: ["secret"] } });
+  const persistence = new PostgresPersistence({ connectionString: "postgres://synthetic.invalid", pool: fake.pool });
+
+  await assert.rejects(() => persistence.listAudit(context), (error: unknown) => error instanceof PersistenceCorruptionError && error.message.includes("audit.metadata.unsafe"));
+  assert.ok(fake.statements.includes("ROLLBACK"));
 });
 
 test("durable break-glass lifecycle keeps evidence immutable behind the transaction boundary", async () => {
@@ -366,4 +388,26 @@ test("PostgreSQL runtime wires bootstrap and HTTP mutations through the durable 
   assert.ok(fake.statements.filter((statement) => statement === "COMMIT").length >= 2);
   assert.ok(fake.statements.some((statement) => statement.includes("insert into cvg_event_journal")));
   await runtime.app.close();
+});
+
+test("PostgreSQL runtime routes audit reads through the normalized repository", async () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const fake = fakePool();
+  const persistence = new PostgresPersistence({ connectionString: "postgres://synthetic.invalid", pool: fake.pool });
+  const runtime = await createRuntime({ store, persistence, config: { storageMode: "postgres", demoMode: true } });
+  try {
+    const login = await runtime.app.inject({ method: "POST", url: "/api/v1/auth/login", headers: { "content-type": "application/json" }, payload: JSON.stringify({ login: "admin@cvg.local", password: "synthetic-password-123" }) });
+    assert.equal(login.statusCode, 200);
+    const loginBody = login.json<{ data: { contexts: Array<{ unit: { id: string }; workspace: { id: string } }> } }>();
+    const context = loginBody.data.contexts[0];
+    assert.ok(context);
+    const setCookie = login.headers["set-cookie"];
+    const cookie = (Array.isArray(setCookie) ? setCookie[0] : setCookie)?.split(";")[0];
+    assert.ok(cookie);
+    const audit = await runtime.app.inject({ method: "GET", url: "/api/v1/audit", headers: { cookie, "x-cvg-unit-id": context.unit.id, "x-cvg-workspace-id": context.workspace.id } });
+    assert.equal(audit.statusCode, 200, audit.body);
+    assert.ok(fake.statements.some((statement) => statement.includes("from audit_records a")));
+  } finally {
+    await runtime.app.close();
+  }
 });

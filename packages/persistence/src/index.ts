@@ -733,6 +733,25 @@ export interface NormalizedAppointmentRead extends Appointment {
   provider: string | null;
 }
 
+interface AuditReadRow {
+  id: string;
+  organization_id: string;
+  actor_id: string | null;
+  unit_id: string | null;
+  workspace_id: string | null;
+  action: string;
+  resource_type: string;
+  resource_id: string | null;
+  result: AuditRecord["result"];
+  reason: string | null;
+  correlation_id: string;
+  metadata: unknown;
+  chain_version: number;
+  previous_hash: string | null;
+  record_hash: string;
+  created_at: SqlTimestamp;
+}
+
 function sqlId(value: unknown, field: string): OpaqueId {
   if (typeof value !== "string") throw new PersistenceCorruptionError(`normalized ${field} is not a UUID string`);
   return id(value);
@@ -766,6 +785,24 @@ function sqlObject(value: unknown, field: string): Record<string, unknown> {
 
 function sqlNullableObject(value: unknown, field: string): Record<string, unknown> | null {
   return value === null ? null : sqlObject(value, field);
+}
+
+function sqlAuditMetadata(value: unknown): AuditRecord["metadata"] {
+  const object = sqlObject(value, "audit.metadata");
+  for (const [key, entry] of Object.entries(object)) {
+    if (entry !== null && typeof entry !== "string" && typeof entry !== "number" && typeof entry !== "boolean") throw new PersistenceCorruptionError(`normalized audit.metadata.${key} is not a scalar value`);
+  }
+  return object as AuditRecord["metadata"];
+}
+
+function sqlAuditResult(value: unknown): AuditRecord["result"] {
+  if (value !== "ALLOWED" && value !== "DENIED" && value !== "ERROR" && value !== "UNKNOWN") throw new PersistenceCorruptionError("normalized audit.result is invalid");
+  return value;
+}
+
+function sqlAuditChainVersion(value: unknown): 2 {
+  if (value !== 2) throw new PersistenceCorruptionError("normalized audit.chain_version is unsupported");
+  return 2;
 }
 
 function outboxDigest(input: DurableOutboxInput): string {
@@ -1706,6 +1743,38 @@ export class PostgresPersistence {
         patient: row.patient_name === null ? null : { id: sqlId(row.patient_id, "patient.id"), name: row.patient_name },
         provider: row.provider_name
       }));
+    });
+  }
+
+  async listAudit(context: CvgContext, limit = 25, cursor: string | null = null): Promise<AuditRecord[]> {
+    const boundedLimit = Number.isSafeInteger(limit) ? Math.min(100, Math.max(1, limit)) : 25;
+    return this.scopedRead(context, "audit", async (client) => {
+      const result = await client.query<AuditReadRow>(
+        "select a.id::text as id, a.organization_id::text as organization_id, a.actor_id::text as actor_id, a.unit_id::text as unit_id, a.workspace_id::text as workspace_id, a.action, a.resource_type, a.resource_id::text as resource_id, a.result, a.reason, a.correlation_id, a.metadata, a.chain_version, a.previous_hash, a.record_hash, a.created_at from audit_records a where a.organization_id = cvg_request_organization() and cvg_request_scope_allows(a.unit_id, a.workspace_id) and ($1::text is null or a.id::text > $1) order by a.id limit $2::integer",
+        [cursor, boundedLimit]
+      );
+      return result.rows.map((row) => {
+        const organizationId = sqlId(row.organization_id, "audit.organization_id");
+        if (organizationId !== context.organizationId) throw new PersistenceCorruptionError(`normalized audit ${row.id} belongs to another organization`);
+        return {
+          id: sqlId(row.id, "audit.id"),
+          organizationId,
+          actorId: row.actor_id ? sqlId(row.actor_id, "audit.actor_id") : null,
+          unitId: row.unit_id ? sqlId(row.unit_id, "audit.unit_id") : null,
+          workspaceId: row.workspace_id ? sqlId(row.workspace_id, "audit.workspace_id") : null,
+          action: sqlText(row.action, "audit.action"),
+          resourceType: sqlText(row.resource_type, "audit.resource_type"),
+          resourceId: row.resource_id ? sqlId(row.resource_id, "audit.resource_id") : null,
+          result: sqlAuditResult(row.result),
+          reason: row.reason,
+          correlationId: sqlText(row.correlation_id, "audit.correlation_id"),
+          metadata: sqlAuditMetadata(row.metadata),
+          chainVersion: sqlAuditChainVersion(row.chain_version),
+          previousHash: row.previous_hash,
+          recordHash: sqlText(row.record_hash, "audit.record_hash"),
+          createdAt: sqlTimestamp(row.created_at, "audit.created_at")
+        };
+      });
     });
   }
 

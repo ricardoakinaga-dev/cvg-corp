@@ -1047,7 +1047,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const query = request.query as Record<string, unknown>;
     const limit = Math.min(100, Math.max(1, Number(query.limit ?? 25)));
     const cursor = typeof query.cursor === "string" ? query.cursor : null;
-    const records = store.listAudit(context, Number.isFinite(limit) ? limit : 25, cursor);
+    const records = await readApplication.listAudit(context, Number.isFinite(limit) ? limit : 25, cursor);
     audit(context, "audit.read", "AuditRecord", null, "ALLOWED", null, { count: records.length });
     return response(reply, success({ items: records.map((record) => ({ ...record, metadata: { ...record.metadata } })), nextCursor: records.at(-1)?.id ?? null, revision: store.organizations.get(context.organizationId)?.authorizationRevision.toString() ?? "0" }, context.correlationId));
   });

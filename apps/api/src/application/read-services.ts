@@ -1,4 +1,4 @@
-import type { AnimalPatient, Appointment, CvgContext, Guardian, OpaqueId } from "@cvg/contracts";
+import type { AnimalPatient, Appointment, AuditRecord, CvgContext, Guardian, OpaqueId } from "@cvg/contracts";
 import type { CvgStore } from "@cvg/domain";
 import type { NormalizedAppointmentRead, PostgresPersistence } from "@cvg/persistence";
 import { enforceApplicationPolicy } from "@cvg/agent-policy";
@@ -12,6 +12,10 @@ export interface GuardianReadRepository {
 
 export interface AppointmentReadRepository {
   list(context: CvgContext, range?: "today" | "week"): Promise<AppointmentRead[]>;
+}
+
+export interface AuditRepository {
+  list(context: CvgContext, limit?: number, cursor?: string | null): Promise<AuditRecord[]>;
 }
 
 class StoreGuardianReadRepository implements GuardianReadRepository {
@@ -50,9 +54,25 @@ class PostgresAppointmentReadRepository implements AppointmentReadRepository {
   }
 }
 
+class StoreAuditRepository implements AuditRepository {
+  constructor(private readonly store: CvgStore) {}
+
+  list(context: CvgContext, limit = 25, cursor: string | null = null): Promise<AuditRecord[]> {
+    return Promise.resolve(this.store.listAudit(context, limit, cursor));
+  }
+}
+
+class PostgresAuditRepository implements AuditRepository {
+  constructor(private readonly persistence: PostgresPersistence) {}
+
+  list(context: CvgContext, limit = 25, cursor: string | null = null): Promise<AuditRecord[]> {
+    return this.persistence.listAudit(context, limit, cursor);
+  }
+}
+
 /** Read-side use cases select a repository behind one application boundary. */
 export class ReadApplicationService {
-  constructor(private readonly guardians: GuardianReadRepository, private readonly appointments: AppointmentReadRepository) {}
+  constructor(private readonly guardians: GuardianReadRepository, private readonly appointments: AppointmentReadRepository, private readonly audit: AuditRepository) {}
 
   listGuardians(context: CvgContext, query?: string): Promise<Guardian[]> {
     enforceApplicationPolicy(context, "guardians.read");
@@ -63,11 +83,17 @@ export class ReadApplicationService {
     enforceApplicationPolicy(context, "appointments.read");
     return this.appointments.list(context, range);
   }
+
+  listAudit(context: CvgContext, limit = 25, cursor: string | null = null): Promise<AuditRecord[]> {
+    enforceApplicationPolicy(context, "audit.read");
+    return this.audit.list(context, limit, cursor);
+  }
 }
 
 export function createReadApplicationService(store: CvgStore, persistence: PostgresPersistence | null): ReadApplicationService {
   return new ReadApplicationService(
     persistence ? new PostgresGuardianReadRepository(persistence) : new StoreGuardianReadRepository(store),
-    persistence ? new PostgresAppointmentReadRepository(persistence) : new StoreAppointmentReadRepository(store)
+    persistence ? new PostgresAppointmentReadRepository(persistence) : new StoreAppointmentReadRepository(store),
+    persistence ? new PostgresAuditRepository(persistence) : new StoreAuditRepository(store)
   );
 }

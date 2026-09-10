@@ -80,9 +80,9 @@ Outbox/inbox/effect ledger têm lease/fencing, retry bounded, backoff, quarantin
 
 ## Concrete Steps
 
-<!-- engineering-framework: active_action_id=CVG-FULL-STATE-OF-THE-ART:REMOTE-CI-OBSERVATION -->
+<!-- engineering-framework: active_action_id=CVG-FULL-STATE-OF-THE-ART:EXTERNAL-EVIDENCE-AND-HUMAN-ACCEPTANCE -->
 
-1. `CVG-FULL-STATE-OF-THE-ART:REMOTE-CI-OBSERVATION` — observar o run remoto do CI para o SHA publicado e registrar conclusões por job, mantendo ausência de acesso/run como `NOT_RUN`/`BLOCKED`.
+1. `CVG-FULL-STATE-OF-THE-ART:EXTERNAL-EVIDENCE-AND-HUMAN-ACCEPTANCE` — obter evidência autorizada de staging/provider/DeepSeek/observabilidade/carga/recuperação, executar crítica independente fresca e registrar aceite humano; até lá manter `FAIL_WITH_LIMITATIONS`/`AAA_NOT_PROVEN`.
 2. `CVG-FULL-STATE-OF-THE-ART:DEEPSEEK-NATIVE-ADAPTER` — somente quando houver contrato/authority externos; manter native/LLM como `BLOCKED` sem inventar protocolo.
 3. `CVG-FULL-STATE-OF-THE-ART:PRODUCTION-LIKE-EVIDENCE` — executar somente as evidências production-like que tenham ambiente e autoridade correspondentes; manter os gaps externos como `NOT_RUN` e continuar a evolução local nos maiores gaps reproduzíveis.
 4. `CVG-FULL-STATE-OF-THE-ART:SLO-CONTRACTS-ALERTS` — concluída localmente: tipar targets SLO propostos, avaliar observações somente com amostra explícita e testar alertas/runbooks em harness sintético; não promover medição local a evidência de produção.
@@ -392,3 +392,9 @@ O focused test e o verificador passaram (`sendRequests=4`, `queryRequests=2`, `c
 ## Current checkpoint — 2026-09-09 23:12
 
 `VER-CVG-068` registra o run remoto `34427884550` no SHA `b232648bfbc3f1ae37ec099705ac16d045582b4d`: o job principal passou Browser E2E, migrations, PostgreSQL/RLS, restore, release/Compose, performance, SBOM, artifacts e whitespace; o job de containers passou Build API image, Build web image, Scan API image e Scan web image. `VER-CVG-069` registra o fechamento do plano de controle. O CI do repositório está verde para o SHA publicado; o próximo estado é manter o artefato bloqueado para promoção até que os gates externos e o aceite humano sejam executados, sem declarar AAA.
+
+## Current checkpoint — 2026-09-10 local closure
+
+Esta rodada corrigiu três classes locais de risco: (1) o harness local passou de `authorize()` para `ToolGateway.execute()` com ledger/timeout/executor `LOCAL_ONLY`; (2) o frontend diferencia autenticação inicial, sessão expirada, permissão negada e estado stale sem loop de retry; (3) `/internal/metrics` foi ligado à rede privada de observabilidade e `verify-static` passou a reconhecer a exceção não pública explicitamente. Também foram endurecidos o fail-closed do adapter DeepSeek, a lease expirada de outbox e a asserção das migrations 026–028.
+
+Evidência: `docs/verification-2026-09-10-local-closure.md`; `npm test` 117 (`116 pass`, `1 skip`), typecheck/build/lint/static/PDP/security/database, provider loopback, produção estrutural, contrast/tokens/licenses/audit e E2E direcionado 2/2 passaram. `verify:triplo-aaa` continua `AAA_NOT_PROVEN`, `verify:staging` continua `STAGING_EVIDENCE_INCOMPLETE` e `verify:deepseek-acp` está bloqueado sem configuração explícita. O próximo action permanece `CVG-FULL-STATE-OF-THE-ART:EXTERNAL-EVIDENCE-AND-HUMAN-ACCEPTANCE`; nenhum provider, segredo, dado real, egress ou release foi acionado.

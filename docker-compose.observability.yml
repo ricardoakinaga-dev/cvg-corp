@@ -103,4 +103,5 @@ volumes:
 
 networks:
   observability:
+    name: ${CVG_OBSERVABILITY_NETWORK:-cvg-corp-observability}
     internal: true

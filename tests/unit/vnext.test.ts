@@ -9,7 +9,7 @@ import { DeepSeekHarnessAdapter, MockHarnessAdapter } from "@cvg/harness-adapter
 import { ConfigError, loadCvgConfig } from "@cvg/config";
 import { createRuntime, MemoryRateLimiter } from "@cvg/api";
 import { EnvironmentSecretProvider } from "@cvg/integrations";
-import { ApiError, isContextRevalidationError } from "../../apps/web/src/api/client.ts";
+import { ApiError, createApiClient, isContextRevalidationError, isPermissionDeniedError, isStaleDataError } from "../../apps/web/src/api/client.ts";
 import { canRenderContextData, isWriteAllowed, RUNTIME_STATES, runtimeStateReducer, type RuntimeSnapshot } from "../../apps/web/src/state/runtime-state.ts";
 
 function contextFor(store: CvgStore, purpose: string) {
@@ -176,6 +176,18 @@ test("DeepSeek adapter fails closed on unavailable or mismatched harness", async
   assert.deepEqual(calls, ["http://127.0.0.1:9999/v1/health", "http://127.0.0.1:9999/v1/health"]);
 });
 
+test("DeepSeek adapter fails closed when the harness omits mandatory capabilities", async () => {
+  const adapter = new DeepSeekHarnessAdapter({ baseUrl: "http://127.0.0.1:9997", expectedEngineCommit: "approved-commit", expectedManifestVersion: "approved-manifest", expectedToolNames: [], requestTimeoutMs: 500, allowInsecureHttp: true }, async () => ({
+    ok: true,
+    status: 200,
+    json: async () => ({ status: "READY", engineCommit: "approved-commit", manifestVersion: "approved-manifest", tools: [], supports: { cancellation: true, approvals: false, replay: false, provenance: true } })
+  }));
+  const health = await adapter.health();
+  assert.equal(health.status, "UNAVAILABLE");
+  assert.match(health.reason ?? "", /capabilities obrigatórias/i);
+  await assert.rejects(() => adapter.createSession(contextFor(new CvgStore({ bootstrapPassword: "synthetic-password-123" }), "OPERATIONS"), { purpose: "OPERATIONS", patientId: null, encounterId: null }));
+});
+
 test("DeepSeek adapter never sends a request without a resolved credential", async () => {
   let calls = 0;
   const adapter = new DeepSeekHarnessAdapter({ baseUrl: "http://127.0.0.1:9998", expectedEngineCommit: "approved-commit", expectedManifestVersion: "approved-manifest", expectedToolNames: [], requestTimeoutMs: 500, allowInsecureHttp: true, resolveBearerToken: async () => null }, async () => {
@@ -280,13 +292,44 @@ test("web runtime state machine never grants writes during reconnect or context 
 
 test("context authorization failures force a safe revalidation boundary", () => {
   const initial: RuntimeSnapshot = { state: RUNTIME_STATES.ONLINE, reconnectVersion: 2 };
-  assert.equal(isContextRevalidationError(new ApiError("forbidden", { status: 403, code: "FORBIDDEN", correlationId: "corr-1", details: null })), true);
-  assert.equal(isContextRevalidationError(new ApiError("conflict", { status: 409, code: "CONFLICT", correlationId: "corr-2", details: null })), true);
+  const forbidden = new ApiError("forbidden", { status: 403, code: "FORBIDDEN", correlationId: "corr-1", details: null });
+  assert.equal(isPermissionDeniedError(forbidden), true);
+  assert.equal(isContextRevalidationError(forbidden), false);
+  assert.equal(isContextRevalidationError(new ApiError("conflict", { status: 409, code: "CONFLICT", correlationId: "corr-2", details: null })), false);
   assert.equal(isContextRevalidationError(new ApiError("policy", { status: 400, code: "POLICY_DENIED", correlationId: "corr-3", details: null })), true);
+  assert.equal(isStaleDataError(new ApiError("revision", { status: 409, code: "REVISION_CONFLICT", correlationId: "corr-4", details: null })), true);
   const revalidating = runtimeStateReducer(initial, { type: "REQUEST_REVALIDATION", reason: "context authority changed" });
   assert.equal(revalidating.state, RUNTIME_STATES.REVALIDATING);
   assert.equal(revalidating.reconnectVersion, 3);
   assert.equal(runtimeStateReducer(revalidating, { type: "REQUEST_REVALIDATION", reason: "duplicate" }), revalidating);
   const blocked = runtimeStateReducer(revalidating, { type: "CONTEXT_INVALIDATED", reason: "revalidation failed" });
   assert.equal(runtimeStateReducer(blocked, { type: "REQUEST_REVALIDATION", reason: "retry later" }), blocked);
+});
+
+test("permission and stale states remain stable until an explicit retry", () => {
+  const initial: RuntimeSnapshot = { state: RUNTIME_STATES.ONLINE, reconnectVersion: 2 };
+  const denied = runtimeStateReducer(initial, { type: "REQUEST_PERMISSION_DENIED", reason: "role not allowed" });
+  assert.equal(denied.state, RUNTIME_STATES.PERMISSION_DENIED);
+  assert.equal(isWriteAllowed(denied.state), false);
+  assert.equal(canRenderContextData(denied.state), false);
+  const stale = runtimeStateReducer(initial, { type: "REQUEST_STALE", reason: "revision changed" });
+  assert.equal(stale.state, RUNTIME_STATES.STALE);
+  assert.equal(runtimeStateReducer(denied, { type: "REQUEST_PERMISSION_DENIED", reason: "same denial" }), denied);
+  const retry = runtimeStateReducer(denied, { type: "NETWORK_ONLINE" });
+  assert.equal(retry.state, RUNTIME_STATES.REVALIDATING);
+  assert.equal(retry.reconnectVersion, 3);
+  assert.equal(runtimeStateReducer(stale, { type: "NETWORK_ONLINE" }).state, RUNTIME_STATES.REVALIDATING);
+});
+
+test("initial authentication failure remains a login state instead of a session-expired state", async () => {
+  const originalFetch = globalThis.fetch;
+  let failures = 0;
+  globalThis.fetch = async () => new Response(JSON.stringify({ schemaVersion: 1, error: { code: "UNAUTHENTICATED", message: "É necessário iniciar uma sessão." }, correlationId: "initial-auth" }), { status: 401, headers: { "content-type": "application/json" } });
+  try {
+    const client = createApiClient(() => RUNTIME_STATES.ONLINE, () => { failures += 1; });
+    await assert.rejects(() => client.get("/me"), (error: unknown) => error instanceof ApiError && error.status === 401);
+    assert.equal(failures, 0);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });

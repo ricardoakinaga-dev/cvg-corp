@@ -146,7 +146,7 @@ export class GovernedHarness {
     return this.createSession(context, input);
   }
 
-  executeTurn(context: CvgContext, input: AiTurnInput, approvalId: OpaqueId | null = null): HarnessTurnResult {
+  async executeTurn(context: CvgContext, input: AiTurnInput, approvalId: OpaqueId | null = null): Promise<HarnessTurnResult> {
     const session = this.getOrCreateSession(context, input);
     if (!isInContext(session, context) || session.patientId !== input.patientId || session.encounterId !== input.encounterId || session.purpose !== input.purpose) throw new DomainError("POLICY_DENIED", "O contexto do turno não pode mudar a finalidade, o escopo, o paciente ou atendimento de uma sessão existente.", 403);
     const prompt = input.prompt;
@@ -189,20 +189,26 @@ export class GovernedHarness {
         throw new DomainError("POLICY_DENIED", "A aprovação está vinculada a outros argumentos.", 403, { turnId: turn.id });
       }
     }
-    if (tool) {
-      const approval = approvalId ? this.store.aiApprovals.get(approvalId) : undefined;
-      try {
-        this.toolGateway.authorize(tool.name, this.gatewayRequest(context, session, input, tool, approval));
-      } catch (error) {
-        if (error instanceof ToolGatewayError) throw new DomainError(error.code, error.message, error.code === "APPROVAL_REQUIRED" ? 409 : 403, error.details);
-        throw error;
-      }
-    }
     const estimated = this.estimateInput(prompt);
     const available = this.availableBudget(session.id);
     if (available < estimated + 400) {
       const turn = this.persistTurn(session, prompt, "DENIED", "Budget insuficiente antes do turno; nenhuma chamada a provider foi feita.", estimated, 0, []);
       throw new DomainError("BUDGET_EXCEEDED", "O budget disponível não cobre este turno.", 429, { available, required: estimated + 400, turnId: turn.id });
+    }
+    if (tool) {
+      const approval = approvalId ? this.store.aiApprovals.get(approvalId) : undefined;
+      try {
+        await this.toolGateway.execute(tool.name, this.gatewayRequest(context, session, input, tool, approval), async (_toolInput, signal) => {
+          if (signal.aborted) throw new ToolGatewayError("OUTCOME_UNKNOWN", "A execução sintética foi cancelada antes de produzir um resultado.");
+          return { status: "COMPLETED", provider: "local-stub", egress: "NONE" };
+        });
+      } catch (error) {
+        if (error instanceof ToolGatewayError) {
+          const statusCode = error.code === "INVALID_INPUT" ? 400 : error.code === "APPROVAL_REQUIRED" ? 409 : error.code === "OUTCOME_UNKNOWN" || error.code === "CAPABILITY_DISABLED" ? 503 : 403;
+          throw new DomainError(error.code, error.message, statusCode, error.details);
+        }
+        throw error;
+      }
     }
     const references = [...this.store.knowledgeDocuments.values()]
       .filter((doc) => isInContext(doc, context) && doc.status === "APPROVED" && ["D0", "D1", "D2"].includes(doc.dataClass))

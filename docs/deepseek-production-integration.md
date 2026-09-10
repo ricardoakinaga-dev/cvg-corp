@@ -1,6 +1,6 @@
 # Integração DeepSeek em produção
 
-Status em 2026-09-09: `CURRENT/PARTIAL`, com contrato local verificável e integração nativa real `BLOCKED/NOT_RUN`. Este documento não transforma o port injetado de testes em provider conectado.
+Status em 2026-09-10: `CURRENT/PARTIAL`, com contrato local verificável e integração nativa real `BLOCKED/NOT_RUN`. O harness local agora atravessa o `ToolGateway`; isso não transforma o port ACP nem o provider DeepSeek em runtime conectado. Este documento não transforma o port injetado de testes em provider conectado.
 
 ## Boundary implementado
 
@@ -38,7 +38,7 @@ Falhas retornam `{ schemaVersion, correlationId, error: { code, message, retryab
 | JSON/schema de resposta inválido | `INVALID_RESPONSE` | `NOT_RUN` |
 | Timeout | `TIMEOUT`, signal abortado, sem retry cego | `NOT_RUN` |
 | Cancelamento do cliente | `CANCELLED`, correlation preservada | `NOT_RUN` |
-| Approval/replay/provenance | round-trip sintético e validação de vínculo | `NOT_RUN` com dados e modelo reais |
+| Approval/replay/provenance | round-trip sintético, validação de vínculo e execução local pelo Tool Gateway | `NOT_RUN` com dados e modelo reais |
 | Modelo/engine real e uso/custo | não executado | `BLOCKED` por adapter nativo, credencial e ambiente |
 
 ## Verificação reproduzível
@@ -54,7 +54,7 @@ O teste conhecido-good usa uma implementação injetada e explicitamente sintét
 
 Antes de habilitar `CVG_DEEPSEEK_RUNTIME_ENABLED=true`, ainda são obrigatórios:
 
-1. adapter nativo compatível com a interface `DeepSeekNativeHarnessPort`, acompanhado de commit, manifest, catálogo de tools, perfil e digest aprovados; o port ACP atual permanece bloqueado para turnos até o ToolGateway governar tools, approval, replay, provenance e egress;
+1. adapter nativo compatível com a interface `DeepSeekNativeHarnessPort`, acompanhado de commit, manifest, catálogo de tools, perfil e digest aprovados; o harness local já passa pelo ToolGateway, mas o port ACP atual permanece bloqueado para turnos até expor capabilities completas e executar tools, approval, replay, provenance e egress sob o mesmo boundary;
 2. URL HTTPS de staging, token entregue por SecretProvider autorizado, rotação e revogação testadas;
 3. execução do contrato completo em staging com resposta redigida, correlation, replay, cancel, timeout, refusal, partial, approval e provenance;
 4. evidência de OTel, SLO, carga, recovery e revisão independente para o mesmo commit;

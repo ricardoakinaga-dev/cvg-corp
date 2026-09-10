@@ -1,6 +1,6 @@
 # Verification vNext
 
-**Data:** 2026-09-09 — fotografia local final desta implementação após Tool Gateway durável, provider fail-closed, reconciliação, rate limit distribuído, Compose endurecido e gates AAA/staging
+**Data:** 2026-09-10 — fotografia local após Tool Gateway universal no harness, estados de falha frontend, métricas privadas e correções de lease/schema
 
 ## Passe local atual
 
@@ -12,12 +12,12 @@
 | `npm run test:security` | PASS | Auth, policy, gateway e fault-deny |
 | `npm run test:database` | PASS | Persistência/recovery sintéticos |
 | `npm run test:fault` | PASS | Worker e fault harness local |
-| `npm test` | PASS — 112 testes (111 pass, 1 skip condicional) | Unitário + integração, incluindo MFA, lockout, rotação, recovery manifest, PDP target-bound, Tool Gateway/ledger, provider loopback/reconciliação, assinatura HMAC de contexto, scheduler/lifecycle do worker, OTLP redaction, fault harness e projeção RLS fail-closed |
+| `npm test` | PASS — 117 testes (116 pass, 1 skip condicional) | Unitário + integração, incluindo MFA, lockout, rotação, recovery manifest, PDP target-bound, Tool Gateway/ledger, harness assíncrono com execução universal, provider loopback/reconciliação, assinatura HMAC de contexto, scheduler/lifecycle do worker, OTLP redaction, fault harness, projeção RLS fail-closed e estados frontend |
 | `npm run build` | PASS | Vite web + typecheck |
 | `npm run verify:static` | PASS | 43 artefatos e 120 arquivos-fonte |
 | recovery bundle manifest | PASS — bundle completo + 5 rejeições | watermark, tenant, digests de ledgers, partial, stale, migration mismatch, ciphertext adulterado e chave errada |
 | application PDP / patient detail | PASS — fatia target-bound | Sessão autenticada, capability/operation registrada, resourceId, escopo persistido, projeção pelo `PatientApplicationService` e testes negativos de API/policy |
-| `npm run test:e2e` | PASS — 52 pass, 4 skips | Gate local executável: Chromium + Firefox × 375/768/1440 + Chromium stress (320 CSS px, DPR 2, touch, reduced-motion); skips intencionais de busca rápida em viewports móveis; axe passou 8/8 incluindo stress |
+| `npm run test:e2e` | PASS no gate completo de `verify:production`; E2E direcionado 2/2 | Gate executável: Chromium + Firefox × 375/768/1440 + Chromium stress (320 CSS px, DPR 2, touch, reduced-motion); os dois novos cenários cobrem 403 estável sem repetição e 401 durante sessão; WebKit permanece bloqueado no host |
 | `npm run test:e2e:full` | BLOCKED local | Declara e tenta WebKit × 3, mas o host não tem bibliotecas nativas e sudo exige senha; CI instala os três engines com dependências |
 | `npm run audit:contrast` | PASS — 7/7 | pares WCAG de texto, banner, CTA e indicador de foco |
 | `npm run audit:tokens -- --strict` | PASS | zero high/critical; 73 sinais medium heurísticos, explicitamente não bloqueantes |
@@ -34,7 +34,7 @@
 | `git diff --check` | PASS | Sem erro de whitespace |
 | `npm run verify:triplo-aaa` | `AAA_NOT_PROVEN` — exit 2 | gates locais PASS; registry bloqueado pela política de rede; provider, secret authority, staging, observabilidade operacional, WebKit, recovery e carga permanecem `NOT_RUN`/`BLOCKED` |
 | `npm run verify:staging` | `STAGING_EVIDENCE_INCOMPLETE` — exit 2 | sem URL staging configurada; nenhuma chamada de rede foi feita |
-| `npm run verify:deepseek-acp` | PASS local — boundary real | processo DeepSeek Harness ACP externo local; attestation de commit/manifesto, `initialize` e `session/new`; turn nativo bloqueado até ToolGateway governado; `modelTurn=NOT_RUN_NO_API_KEY` |
+| `npm run verify:deepseek-acp` | BLOCKED — exit 2 no ambiente atual | exige conjunto explícito `CVG_DEEPSEEK_ACP_*` e atestação; evidência ACP local anterior (`initialize`/`session/new`) permanece histórica, sem turno de modelo |
 | `npm run verify:provider-sandbox` | PASS local — boundary HTTP | servidor loopback real; replay idempotente, resposta perdida→`OUTCOME_UNKNOWN`, query por chave, callback HMAC válido/inválido; `externalProvider=NOT_RUN` |
 | `npm run verify:postgres` | PASS local — PostgreSQL 16.15 efêmero | migrations `001`–`028`, role runtime sem `BYPASSRLS`, restart/read, idempotência na mesma sessão, outbox/effects/inbox/usage, CAS e RLS `56/56` tabelas; 98 FKs organizacionais |
 | `npm run verify:postgres:restore` | PASS local — destino efêmero | backup AES-256-GCM, tamper/partial/stale/migration mismatch rejeitados, destino `QUARANTINED`, login/readiness bloqueados e origem inalterada |
@@ -55,6 +55,6 @@ PostgreSQL production-like com containers, turno DeepSeek/LLM real, secret manag
 
 O passe demonstra uma base compilável, testável e com controles locais de supply chain, uma fatia de autorização target-bound verificável, um ciclo de worker com default-deny observável e contratos de avaliação SLO fail-closed. Não demonstra disponibilidade, segurança, durabilidade, desempenho ou entrega externa em produção. A classificação correta continua `FAIL_WITH_LIMITATIONS`.
 
-## Current checkpoint — 2026-09-09 23:12
+## Current checkpoint — 2026-09-10 local closure
 
-`VER-CVG-068` registra o run remoto `34427884550` no SHA `b232648bfbc3f1ae37ec099705ac16d045582b4d`: o job principal passou Browser E2E, migrations, PostgreSQL/RLS, restore, release/Compose, performance, SBOM, artifacts e whitespace; o job de containers passou Build API image, Build web image, Scan API image e Scan web image. `VER-CVG-069` fecha os registros de controle e confirma que o CI do repositório está verde para o SHA publicado. O resultado global permanece `FAIL_WITH_LIMITATIONS`/`AAA_NOT_PROVEN` porque staging, provider/secret authority, turno DeepSeek, collector/SLO, carga/recuperação production-like, WebKit/assistive-tech/zoom real, crítica independente aprovadora e aceite humano continuam sem evidência autorizada.
+`docs/verification-2026-09-10-local-closure.md` registra a fotografia atual: `npm test` 117 (116/1 skip), typecheck/build/lint/static/PDP/security/database, provider loopback, produção estrutural, contrast/tokens/licenses/audit e os E2E direcionados passaram. A implementação local também conecta o harness ao `ToolGateway.execute()` e distingue `PERMISSION_DENIED`, `REAUTH_REQUIRED` e `STALE`. O CI remoto anterior `34427884550` continua verde no SHA `b232648bfbc3f1ae37ec099705ac16d045582b4d`, mas o código desta rodada ainda exige publicação e observação de um novo SHA. O resultado global permanece `FAIL_WITH_LIMITATIONS`/`AAA_NOT_PROVEN` por falta de staging, provider/secret authority, turno DeepSeek, collector/SLO, carga/recuperação production-like, WebKit/assistive-tech/zoom real, crítica independente aprovadora e aceite humano.

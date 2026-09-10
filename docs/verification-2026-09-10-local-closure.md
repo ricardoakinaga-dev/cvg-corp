@@ -1,0 +1,45 @@
+# Fechamento local — 2026-09-10
+
+Fotografia executada no workspace `/home/ricardo/Área de trabalho/cvg-corp` em 2026-09-09/10, antes da publicação desta rodada. O prompt normativo permanece em [`prompt-state-of-the-art-triplo-aaa-2026-09-09-v2.txt`](prompt-state-of-the-art-triplo-aaa-2026-09-09-v2.txt), SHA-256 `34e886f59adacf8fda46d8d54bdede259705adc6e1521590cd3c281509b0e0d9`.
+
+## Alterações verificadas
+
+- `DeepSeekHarnessAdapter.health()` agora rejeita `READY` quando cancellation, approvals, replay e provenance não estão completos; nenhuma capability incompleta é promovida.
+- O harness local executa tools pelo `ToolGateway.execute()`, com PDP, timeout, ledger, idempotência e executor sintético `LOCAL_ONLY`; o receipt de uma aprovação de alto impacto foi observado como `SUCCEEDED`.
+- Lease expirada de outbox falha fechado e o startup exige explicitamente as migrations de cadeia de auditoria 026–028.
+- A API expõe `/internal/metrics` somente para a rede privada de observabilidade, com métricas agregadas sem tenant/rota; Prometheus, alertas de dependência, `OUTCOME_UNKNOWN`, reconciliação e poison outbox foram ligados estruturalmente.
+- A UI separa login inicial de sessão expirada, `PERMISSION_DENIED` de revalidação, e `STALE` de degradação; 403 não repete a mesma solicitação e 401 durante sessão oculta o conteúdo.
+
+## Evidência local
+
+| Procedimento | Resultado observado |
+|---|---|
+| `npm test` | PASS — 117 testes: 116 pass, 1 skip condicional |
+| `npm run typecheck` | PASS |
+| `npm run build` | PASS — typecheck + Vite |
+| `npm run lint` | PASS — 118 fontes |
+| `npm run verify:static` | PASS — 43 artefatos, 120 fontes; `/internal/metrics` possui exceção explícita e rede privada documentada |
+| `npm run verify:pdp` | PASS — 64 operações, 68 regras, 6 policies canônicas, 12 domínios |
+| `npm run test:security` | PASS — 26 testes |
+| `npm run test:database` | PASS — 10 testes |
+| `npm run verify:provider-sandbox` | PASS — loopback HTTP, replay, `OUTCOME_UNKNOWN`, reconciliação e HMAC; `externalProvider=NOT_RUN` |
+| `npm run verify:production` | PASS limitado — gates locais completos, Compose principal/observabilidade renderizado; nenhum serviço de produção foi iniciado |
+| `npm run audit:contrast` | PASS — 7/7 pares |
+| `npm run audit:tokens` | PASS — 0 high/critical; 73 sinais medium heurísticos não bloqueantes |
+| `npm run audit:licenses` | PASS — 207 dependências |
+| `npm audit --omit=dev` | PASS — 0 vulnerabilidades |
+| E2E direcionado de sessão/permissão | PASS — 2/2 em Chromium 1440; 403 fez uma chamada e 401 exibiu sessão expirada |
+| `npm run benchmark:local` | PASS limitado — baseline do stub local; não é SLO/capacidade |
+| `git diff --check` | PASS |
+
+## Gates que corretamente não promovem AAA
+
+- `npm run verify:triplo-aaa`: `AAA_NOT_PROVEN`, exit 2. Gates locais passaram; registry ficou bloqueado pela rede e não houve provider real, secret authority, staging, Collector/SLO, recovery/load production-like, WebKit, assistive tech, zoom real ou aceite humano.
+- `npm run verify:staging`: `STAGING_EVIDENCE_INCOMPLETE`, exit 2. Nenhuma URL foi configurada e nenhuma chamada de rede foi feita.
+- `npm run verify:deepseek-acp`: bloqueado, exit 2, sem o conjunto explícito `CVG_DEEPSEEK_ACP_*` e atestação. O bridge permanece fail-closed; não houve prompt/turno LLM real.
+
+## Limitações mantidas
+
+O artifact continua local-first e sintético. A prova do Tool Gateway é do harness local, não de um turno DeepSeek real. A ligação durável de usage/provenance por execução, a cobertura automática universal de repositories/jobs/export, políticas DML RLS equivalentes em todos os caminhos, secret authority/WebAuthn operacional, collector/alert dispatch/SLO medidos, staging/TLS, carga/chaos, backup/RTO/RPO, WebKit, leitor de tela e zoom de 200% continuam `PARTIAL`, `NOT_RUN` ou `BLOCKED`. A crítica independente fresca de 2026-09-10 foi concluída e confirmou `FAIL_WITH_LIMITATIONS`; ela não é aceite humano nem aprovação AAA. O veredito global permanece `FAIL_WITH_LIMITATIONS` / `AAA_NOT_PROVEN`.
+
+Nenhum segredo, dado real, provider externo, publicação de efeito ou alteração no repositório `/home/ricardo/deepseek-harness` foi realizada.

@@ -17,13 +17,15 @@ function percentile(samples: number[], percentileValue: number): number {
   return samples[index] ?? 0;
 }
 
-function measure(operation: string, callback: () => void): Measurement {
-  for (let index = 0; index < warmup; index += 1) callback();
-  const samples = Array.from({ length: repetitions }, () => {
+async function measure(operation: string, callback: () => void | Promise<void>): Promise<Measurement> {
+  for (let index = 0; index < warmup; index += 1) await callback();
+  const samples: number[] = [];
+  for (let index = 0; index < repetitions; index += 1) {
     const started = performance.now();
-    callback();
-    return performance.now() - started;
-  }).sort((left, right) => left - right);
+    await callback();
+    samples.push(performance.now() - started);
+  }
+  samples.sort((left, right) => left - right);
   return {
     operation,
     repetitions,
@@ -38,14 +40,14 @@ function measure(operation: string, callback: () => void): Measurement {
   };
 }
 
-const measurements: Measurement[] = [
+const measurements: Measurement[] = await Promise.all([
   measure("patient_lookup", () => { store.listPatients(context); }),
   measure("appointment_list", () => { store.listAppointments(context); }),
-  measure("ai_turn_local_stub", () => {
+  measure("ai_turn_local_stub", async () => {
     const session = harness.createSession(context, { purpose: "OPERATIONS", patientId: null, encounterId: null });
-    harness.executeTurn(context, { sessionId: session.id, prompt: "organizar a fila sintética", purpose: "OPERATIONS", patientId: null, encounterId: null, requestedTool: null, approvalId: null, idempotencyKey: `benchmark-${session.id}` });
+    await harness.executeTurn(context, { sessionId: session.id, prompt: "organizar a fila sintética", purpose: "OPERATIONS", patientId: null, encounterId: null, requestedTool: null, approvalId: null, idempotencyKey: `benchmark-${session.id}` });
   })
-];
+]);
 
 process.stdout.write(`${JSON.stringify({
   schemaVersion: 1,

@@ -5,6 +5,7 @@ export interface MetricsSignals {
   dependencies?: Partial<CvgMetrics["dependencies"]>;
   domain?: Partial<CvgMetrics["domain"]>;
   queues?: Partial<CvgMetrics["queues"]>;
+  agentRuntime?: CvgMetrics["agentRuntime"];
 }
 
 export interface RedactedLog {
@@ -160,9 +161,65 @@ export class OpsTelemetry {
       dependencies,
       domain,
       queues,
+      agentRuntime: signals.agentRuntime ?? "UNAVAILABLE",
       telemetry: { mode: this.telemetryMode, logsStored: this.logs.length, dropped: this.droppedSpans, duplicates: 0 }
     };
   }
+}
+
+const prometheusStatus = (status: string): number => status === "READY" ? 1 : 0;
+
+/**
+ * Render only aggregate, redacted process metrics. Dynamic route names and
+ * tenant/actor identifiers are deliberately excluded from labels so the
+ * endpoint can be scraped by an internal collector without becoming a data
+ * export surface. SLO evaluation remains separate and is never inferred here.
+ */
+export function renderPrometheusMetrics(metrics: CvgMetrics): string {
+  const lines = [
+    "# HELP cvg_api_requests_total Total HTTP requests observed by the API process.",
+    "# TYPE cvg_api_requests_total counter",
+    `cvg_api_requests_total ${metrics.requestsTotal}`,
+    "# HELP cvg_api_requests_denied_total Total HTTP requests denied by the API process.",
+    "# TYPE cvg_api_requests_denied_total counter",
+    `cvg_api_requests_denied_total ${metrics.requestsDenied}`,
+    "# HELP cvg_api_errors_total Total HTTP 5xx responses observed by the API process.",
+    "# TYPE cvg_api_errors_total counter",
+    `cvg_api_errors_total ${metrics.requestsError}`,
+    "# HELP cvg_api_latency_ms API latency percentile gauges in milliseconds.",
+    "# TYPE cvg_api_latency_ms gauge",
+    `cvg_api_latency_ms{quantile="0.50"} ${metrics.latencyMs.p50}`,
+    `cvg_api_latency_ms{quantile="0.95"} ${metrics.latencyMs.p95}`,
+    `cvg_api_latency_ms{quantile="0.99"} ${metrics.latencyMs.p99}`,
+    "# HELP cvg_active_sessions Active authenticated sessions observed by the process.",
+    "# TYPE cvg_active_sessions gauge",
+    `cvg_active_sessions ${metrics.activeSessions}`,
+    "# HELP cvg_agent_runtime_ready Whether the configured agent runtime is ready.",
+    "# TYPE cvg_agent_runtime_ready gauge",
+    `cvg_agent_runtime_ready ${prometheusStatus(metrics.agentRuntime)}`,
+    "# HELP cvg_dependency_ready Whether a named local dependency is ready.",
+    "# TYPE cvg_dependency_ready gauge",
+    ...Object.entries(metrics.dependencies).map(([dependency, status]) => `cvg_dependency_ready{dependency="${dependency}"} ${prometheusStatus(status)}`),
+    "# HELP cvg_outbox_depth Current pending or claimed outbox records.",
+    "# TYPE cvg_outbox_depth gauge",
+    `cvg_outbox_depth ${metrics.queues.outboxDepth}`,
+    "# HELP cvg_outbox_oldest_age_ms Age of the oldest pending or claimed outbox record.",
+    "# TYPE cvg_outbox_oldest_age_ms gauge",
+    `cvg_outbox_oldest_age_ms ${metrics.queues.oldestAgeMs}`,
+    "# HELP cvg_outbox_poison_messages Quarantined outbox records.",
+    "# TYPE cvg_outbox_poison_messages gauge",
+    `cvg_outbox_poison_messages ${metrics.queues.poisonMessages}`,
+    "# HELP cvg_reconciliation_lag External effects awaiting reconciliation.",
+    "# TYPE cvg_reconciliation_lag gauge",
+    `cvg_reconciliation_lag ${metrics.queues.reconciliationLag}`,
+    "# HELP cvg_outcome_unknown_total Command receipts with an unknown external outcome.",
+    "# TYPE cvg_outcome_unknown_total gauge",
+    `cvg_outcome_unknown_total ${metrics.domain.outcomeUnknown}`,
+    "# HELP cvg_quarantined_total Quarantined domain records observed by the API process.",
+    "# TYPE cvg_quarantined_total gauge",
+    `cvg_quarantined_total ${metrics.domain.quarantined}`
+  ];
+  return `${lines.join("\n")}\n`;
 }
 
 export type SloId =

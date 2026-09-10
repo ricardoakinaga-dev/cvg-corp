@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
-import { createOpenTelemetryRuntime, evaluateSlo, evaluateSloAlerts, OpsTelemetry, PROPOSED_SLO_ALERT_RULES, PROPOSED_SLO_DEFINITIONS } from "@cvg/ops";
+import { createOpenTelemetryRuntime, evaluateSlo, evaluateSloAlerts, OpsTelemetry, PROPOSED_SLO_ALERT_RULES, PROPOSED_SLO_DEFINITIONS, renderPrometheusMetrics } from "@cvg/ops";
 
 test("redacted telemetry preserves safe diagnostics and removes sensitive metadata", () => {
   const telemetry = new OpsTelemetry();
@@ -26,6 +26,25 @@ test("telemetry exposes an OpenTelemetry-compatible span seam without sensitive 
   assert.deepEqual(exported, ["GET /patients"]);
   const metrics = telemetry.metrics("memory");
   assert.equal(metrics.telemetry.dropped, 0);
+});
+
+test("Prometheus rendering exposes aggregate operational signals without tenant or route labels", () => {
+  const telemetry = new OpsTelemetry();
+  telemetry.requestStarted();
+  telemetry.requestFinished(Date.now() - 25, 503, "GET /internal");
+  const metrics = telemetry.metrics("postgres", {
+    agentRuntime: "UNAVAILABLE",
+    dependencies: { database: "READY", outbox: "UNAVAILABLE" },
+    queues: { outboxDepth: 4, oldestAgeMs: 900, poisonMessages: 1, reconciliationLag: 2 },
+    domain: { outcomeUnknown: 3 }
+  });
+  const rendered = renderPrometheusMetrics(metrics);
+  assert.match(rendered, /cvg_api_requests_total 1/);
+  assert.match(rendered, /cvg_dependency_ready\{dependency="outbox"\} 0/);
+  assert.match(rendered, /cvg_outbox_depth 4/);
+  assert.match(rendered, /cvg_agent_runtime_ready 0/);
+  assert.equal(rendered.includes("GET /internal"), false);
+  assert.equal(rendered.includes("organization"), false);
 });
 
 test("OTLP runtime exports a real protobuf span only after redaction", async () => {

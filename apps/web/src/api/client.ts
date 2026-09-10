@@ -43,8 +43,16 @@ export function isAuthenticationError(error: unknown): boolean {
   return error instanceof ApiError && (error.status === 401 || error.code === "UNAUTHENTICATED" || error.code === "UNAUTHORIZED");
 }
 
+export function isPermissionDeniedError(error: unknown): boolean {
+  return error instanceof ApiError && (error.code === "FORBIDDEN" || (error.status === 403 && error.code !== "POLICY_DENIED" && error.code !== "CONTEXT_INVALID"));
+}
+
 export function isContextRevalidationError(error: unknown): boolean {
-  return error instanceof ApiError && (error.status === 403 || error.status === 409 || error.code === "POLICY_DENIED" || error.code === "CONTEXT_INVALID");
+  return error instanceof ApiError && (error.code === "POLICY_DENIED" || error.code === "CONTEXT_INVALID");
+}
+
+export function isStaleDataError(error: unknown): boolean {
+  return error instanceof ApiError && (error.code === "CONFLICT" || error.code === "REVISION_CONFLICT" || error.code === "POLICY_STALE" || error.status === 409);
 }
 
 export function isDegradedRequestError(error: unknown): boolean {
@@ -105,7 +113,7 @@ export function createApiClient(getRuntimeState: () => RuntimeState, onFailure?:
       const payload = parseEnvelope<T>(await response.text());
       if (!payload) {
         const error = new ApiError("A API retornou um envelope inválido ou incompatível.", { status: response.status, code: "INTERNAL_ERROR", correlationId: null, details: null });
-        if (!PUBLIC_AUTH_WRITES.has(path)) onFailure?.(error);
+        if (!PUBLIC_AUTH_WRITES.has(path) && !(path === "/me" && isAuthenticationError(error))) onFailure?.(error);
         throw error;
       }
       if (!response.ok || payload?.error) {
@@ -115,7 +123,7 @@ export function createApiClient(getRuntimeState: () => RuntimeState, onFailure?:
           correlationId: payload?.correlationId ?? null,
           details: payload?.error?.details ?? null
         });
-        if (!PUBLIC_AUTH_WRITES.has(path)) onFailure?.(error);
+        if (!PUBLIC_AUTH_WRITES.has(path) && !(path === "/me" && isAuthenticationError(error))) onFailure?.(error);
         throw error;
       }
       return payload?.data as T;

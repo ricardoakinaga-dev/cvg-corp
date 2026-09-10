@@ -38,6 +38,9 @@ for (const match of apiSource.matchAll(/requestContext\(request,\s*(?:"([^"]+)"|
 }
 for (const match of apiSource.matchAll(/app\.(get|post|delete)\("([^\"]+)"[\s\S]*?(?=\n  app\.(?:get|post|delete)\(|\n  app\.setNotFoundHandler|\n  app\.setErrorHandler)/g)) {
   const path = match[2] ?? "";
+  // Prometheus scrapes this redacted aggregate endpoint over the private observability network;
+  // it is deliberately outside /api/v1, has no tenant/route labels and is not a user operation.
+  if (path === "/internal/metrics") continue;
   if (["/api/v1/auth/login", "/api/v1/auth/mfa/verify", "/api/v1/auth/recovery/start", "/api/v1/auth/recovery/complete", "/api/v1/auth/demo", "/api/v1/auth/logout", "/api/v1/integrations/:provider/events"].includes(path)) continue;
   if (!match[0].includes("requestContext(request") && !match[0].includes("enforceApplicationPolicy(request")) failures.push(`apps/api/src/app.ts: protected route ${path} bypasses requestContext/application policy`);
 }

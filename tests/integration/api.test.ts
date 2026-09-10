@@ -86,6 +86,11 @@ test("health, readiness and metrics distinguish live process from dependencies",
   assert.equal(metricData.dependencies.auditLedger, "DEGRADED");
   assert.equal(metricData.telemetry.mode, "REDACTED_BEST_EFFORT");
   assert.equal(typeof metricData.domain.unlinkedReceipts, "number");
+  const internalMetrics = await runtime.app.inject({ method: "GET", url: "/internal/metrics" });
+  assert.equal(internalMetrics.statusCode, 200);
+  assert.match(internalMetrics.headers["content-type"] ?? "", /text\/plain/);
+  assert.match(internalMetrics.body, /cvg_api_requests_total/);
+  assert.equal(internalMetrics.body.includes("organization"), false);
 });
 
 test("readiness does not promote a degraded secret provider for an enabled DeepSeek runtime", async () => {

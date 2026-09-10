@@ -47,6 +47,10 @@ export function useSession(client: ApiClient, runtime: SessionRuntime): SessionC
       if (sequence !== validationSequence.current) return;
       const message = reason instanceof Error ? reason.message : "Não foi possível revalidar sessão e contexto.";
       if (isAuthenticationError(reason)) {
+        if (mode === "initial" && !previous.user) {
+          updateSnapshot(emptySession());
+          return;
+        }
         updateSnapshot(emptySession());
         transition({ type: "AUTH_REQUIRED", reason: message });
         return;

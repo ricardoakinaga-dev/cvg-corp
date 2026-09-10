@@ -2,10 +2,11 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { randomBytes, randomUUID } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
+import { id } from "@cvg/contracts";
 import { CvgStore, digest, idempotent, serializeSnapshot } from "@cvg/domain";
 import { GovernedHarness } from "@cvg/harness";
 import { createRuntime } from "@cvg/api";
-import { createRecoveryBundleManifest, decryptRecoveryBundle, encryptRecoveryBundle, PersistenceConflictError, PersistenceCorruptionError, PersistenceStateError, PersistenceUnavailableError, PostgresPersistence, validateRecoveryBundle, type DurableRecoveryBundle } from "@cvg/persistence";
+import { createRecoveryBundleManifest, decryptRecoveryBundle, encryptRecoveryBundle, OutboxLeaseLostError, PersistenceConflictError, PersistenceCorruptionError, PersistenceStateError, PersistenceUnavailableError, PostgresPersistence, validateRecoveryBundle, type DurableRecoveryBundle } from "@cvg/persistence";
 
 type QueryResult = { rows: Array<Record<string, unknown>> };
 
@@ -32,7 +33,7 @@ function fakePool(options: { revision?: string; failSnapshotInsert?: boolean; au
       const normalized = sql.trim().replace(/\s+/g, " ");
       statements.push(normalized);
       if (sql.includes("current_database()")) return { rows: [{ database: "cvg_synthetic", server_version: "16.0" }] };
-      if (sql.includes("to_regclass('public.cvg_state_snapshots')")) return { rows: [{ snapshots: true, journal: true, audit: true, receipts: true, communications: true, outbox: true, usage_ledger: true, inbox: true, external_effects: true, rate_limit_buckets: true, runtime_role: true, runtime_scope_guards: true, auth_security: true, ai_turn_scope: true, ai_draft_scope: true }] };
+      if (sql.includes("to_regclass('public.cvg_state_snapshots')")) return { rows: [{ snapshots: true, journal: true, audit: true, receipts: true, communications: true, outbox: true, usage_ledger: true, inbox: true, external_effects: true, rate_limit_buckets: true, runtime_role: true, runtime_scope_guards: true, auth_security: true, ai_turn_scope: true, ai_draft_scope: true, audit_tamper_evident_chain: true, append_only_audit_guard: true, append_only_lock_privileges: true }] };
       if (sql.includes("as snapshot_scope_revision")) return { rows: [{ snapshot_scope_revision: true }] };
       if (sql.includes("from cvg_state_snapshots s")) return { rows: [] };
       if (sql.includes("select revision::text as revision")) return { rows: revision === "0" ? [] : [{ revision }] };
@@ -118,7 +119,7 @@ test("AI projections derive mandatory tenant scope from the persisted session", 
   const option = store.contextOptions(store.bootstrapCredentials.userId)[0];
   assert.ok(option);
   const context = store.resolveContext(store.bootstrapCredentials.userId, { unitId: option.unit.id, workspaceId: option.workspace.id }, "ai.turn.SUMMARY", "ai-projection");
-  new GovernedHarness(store).executeTurn(context, { sessionId: null, prompt: "resumir a fila", purpose: "SUMMARY", patientId: null, encounterId: null, requestedTool: null, approvalId: null, idempotencyKey: "ai-projection-1" });
+  await new GovernedHarness(store).executeTurn(context, { sessionId: null, prompt: "resumir a fila", purpose: "SUMMARY", patientId: null, encounterId: null, requestedTool: null, approvalId: null, idempotencyKey: "ai-projection-1" });
   const fake = fakePool();
   const persistence = new PostgresPersistence({ connectionString: "postgres://synthetic.invalid", pool: fake.pool });
   await persistence.commit({ ...commitInput(store), snapshot: store.snapshot() });
@@ -166,6 +167,25 @@ test("Postgres persistence preserves corruption signals instead of downgrading t
   const persistence = new PostgresPersistence({ connectionString: "postgres://synthetic.invalid", pool: corrupt.pool });
   await assert.rejects(() => persistence.commit({ ...commitInput(store), auditRecords: store.snapshot().auditRecords }), (error: unknown) => error instanceof Error && error.name === "PersistenceCorruptionError");
   assert.ok(corrupt.statements.some((statement) => statement === "ROLLBACK"));
+});
+
+test("outbox failure cannot mutate an expired lease", async () => {
+  const statements: string[] = [];
+  const client = {
+    async query(sql: string): Promise<QueryResult> {
+      statements.push(sql.trim().replace(/\s+/g, " "));
+      return { rows: [] };
+    },
+    release(): void { /* no-op fake */ }
+  } as unknown as PoolClient;
+  const pool = { connect: async (): Promise<PoolClient> => client } as unknown as Pool;
+  const persistence = new PostgresPersistence({ connectionString: "postgres://synthetic.invalid", pool });
+  await assert.rejects(
+    () => persistence.failOutbox(id("00000000-0000-4000-0000-000000000010"), id("00000000-0000-4000-0000-000000000905"), "worker-a", 7n, "expired lease"),
+    (error: unknown) => error instanceof OutboxLeaseLostError
+  );
+  assert.ok(statements.some((statement) => statement.includes("and lease_until > now() returning status")));
+  assert.ok(statements.includes("ROLLBACK"));
 });
 
 test("recovery bundle encryption round-trips BigInt state and rejects tampering", () => {

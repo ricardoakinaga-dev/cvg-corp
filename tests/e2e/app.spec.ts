@@ -147,6 +147,43 @@ test("administração expõe concessão e trilha de auditoria", async ({ page })
   await expect(page.getByRole("dialog")).toHaveCount(0);
 });
 
+test("403 de autorização exibe estado estável sem repetir a solicitação", async ({ page }) => {
+  let userRequests = 0;
+  await page.route("**/api/v1/users**", async (route) => {
+    userRequests += 1;
+    await route.fulfill({ status: 403, contentType: "application/json", body: JSON.stringify({ schemaVersion: 1, error: { code: "FORBIDDEN", message: "A policy negou a operação." }, correlationId: "e2e-permission-denied" }) });
+  });
+  await page.goto("/");
+  await page.getByRole("button", { name: /Abrir demonstração sintética/i }).click();
+  await expect(page.getByRole("heading", { name: "Bom dia, Ricardo." })).toBeVisible();
+  const menu = page.getByRole("button", { name: "Abrir menu" });
+  if (await menu.isVisible()) await menu.click();
+  await page.getByRole("button", { name: "Administração", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Acesso não autorizado.", exact: true })).toBeVisible();
+  await expect(page.getByText("não repetirá a solicitação automaticamente")).toBeVisible();
+  await expect.poll(() => userRequests).toBe(1);
+});
+
+test("401 durante uma sessão exibe sessão expirada e oculta o conteúdo", async ({ page }) => {
+  let interceptPatients = false;
+  await page.route("**/api/v1/patients**", async (route) => {
+    if (!interceptPatients) {
+      await route.continue();
+      return;
+    }
+    await route.fulfill({ status: 401, contentType: "application/json", body: JSON.stringify({ schemaVersion: 1, error: { code: "UNAUTHENTICATED", message: "A sessão expirou." }, correlationId: "e2e-session-expired" }) });
+  });
+  await page.goto("/");
+  await page.getByRole("button", { name: /Abrir demonstração sintética/i }).click();
+  await expect(page.getByRole("heading", { name: "Bom dia, Ricardo." })).toBeVisible();
+  const menu = page.getByRole("button", { name: "Abrir menu" });
+  if (await menu.isVisible()) await menu.click();
+  interceptPatients = true;
+  await page.getByRole("button", { name: "Pacientes", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Sua sessão expirou.", exact: true })).toBeVisible();
+  await expect(page.getByText("Nenhuma escrita crítica foi executada.")).toBeVisible();
+});
+
 test("enters OFFLINE_READ_ONLY without exposing the composer buffer", async ({ page, context }) => {
   await page.goto("/");
   await page.getByRole("button", { name: /Abrir demonstração sintética/i }).click();

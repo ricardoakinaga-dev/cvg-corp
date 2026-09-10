@@ -33,3 +33,35 @@ groups:
           runbook: docs/runbooks/deepseek-bridge-outage.md
         annotations:
           summary: DeepSeek runtime is unavailable
+      - alert: CvgDatabaseUnavailable
+        expr: cvg_dependency_ready{dependency="database"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          runbook: docs/runbooks/database-incident.md
+        annotations:
+          summary: CVG database dependency is unavailable
+      - alert: CvgOutcomeUnknown
+        expr: cvg_outcome_unknown_total > 0
+        for: 5m
+        labels:
+          severity: critical
+          runbook: docs/runbooks/provider-outage.md
+        annotations:
+          summary: CVG has external outcomes requiring reconciliation
+      - alert: CvgReconciliationBacklog
+        expr: cvg_reconciliation_lag > 0
+        for: 5m
+        labels:
+          severity: warning
+          runbook: docs/runbooks/provider-outage.md
+        annotations:
+          summary: CVG external reconciliation backlog is non-zero
+      - alert: CvgOutboxPoisonMessages
+        expr: cvg_outbox_poison_messages > 0
+        for: 5m
+        labels:
+          severity: warning
+          runbook: docs/runbooks/worker-backlog.md
+        annotations:
+          summary: CVG has quarantined outbox messages

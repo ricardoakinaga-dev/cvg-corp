@@ -24,9 +24,12 @@ export function Admin({ client, actorId, context, notify, canWrite }: { client: 
   const [submitting, setSubmitting] = useState(false);
   const dialogRef = useRef<HTMLElement | null>(null);
   const restoreFocusRef = useRef<HTMLElement | null>(null);
+  const loadInFlightRef = useRef(false);
   const canManage = context?.roles.includes("admin") ?? false;
 
   const load = useCallback(async () => {
+    if (loadInFlightRef.current) return;
+    loadInFlightRef.current = true;
     setLoading(true);
     setError("");
     try {
@@ -46,6 +49,7 @@ export function Admin({ client, actorId, context, notify, canWrite }: { client: 
       setError(reason instanceof Error ? reason.message : "Administração indisponível.");
     } finally {
       setLoading(false);
+      loadInFlightRef.current = false;
     }
   }, [actorId, canManage, client, context]);
 

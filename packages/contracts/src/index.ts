@@ -984,6 +984,7 @@ export interface CvgMetrics {
   requestsError: number;
   latencyMs: { p50: number; p95: number; p99: number };
   activeSessions: number;
+  agentRuntime: "READY" | "DEGRADED" | "UNAVAILABLE" | "DISABLED";
   storageMode: "memory" | "postgres";
   operations: Record<string, number>;
   statusCodes: Record<string, number>;

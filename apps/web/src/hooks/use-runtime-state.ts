@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useReducer } from "react";
-import { isAuthenticationError, isContextRevalidationError, isDegradedRequestError } from "../api/client";
+import { isAuthenticationError, isContextRevalidationError, isDegradedRequestError, isPermissionDeniedError, isStaleDataError } from "../api/client";
 import { initialRuntimeState, runtimeStateReducer, type RuntimeEvent, type RuntimeSnapshot } from "../state/runtime-state";
 
 export type RuntimeController = RuntimeSnapshot & {
@@ -15,8 +15,16 @@ export function useRuntimeState(): RuntimeController {
       transition({ type: "AUTH_REQUIRED", reason: error instanceof Error ? error.message : "A sessão precisa ser confirmada novamente." });
       return;
     }
+    if (isPermissionDeniedError(error)) {
+      transition({ type: "REQUEST_PERMISSION_DENIED", reason: error instanceof Error ? error.message : "A operação não está autorizada neste contexto." });
+      return;
+    }
     if (isContextRevalidationError(error)) {
       transition({ type: "REQUEST_REVALIDATION", reason: error instanceof Error ? error.message : "A autoridade do contexto precisa ser confirmada novamente." });
+      return;
+    }
+    if (isStaleDataError(error)) {
+      transition({ type: "REQUEST_STALE", reason: error instanceof Error ? error.message : "A autoridade mudou; os dados precisam ser revalidados." });
       return;
     }
     if (isDegradedRequestError(error)) transition({ type: "REQUEST_DEGRADED", reason: error instanceof Error ? error.message : "Uma dependência do CVG está indisponível." });

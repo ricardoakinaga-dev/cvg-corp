@@ -28,7 +28,7 @@ export class MockHarnessAdapter implements AgentRuntime {
   }
 
   async createSession(context: CvgContext, input: Pick<AiTurnInput, "purpose" | "patientId" | "encounterId">) { return this.harness.createSession(context, input); }
-  async executeTurn(context: CvgContext, input: AiTurnInput, approvalId: OpaqueId | null = null): Promise<AgentTurnResult> { return fromMockResult(this.harness.executeTurn(context, input, approvalId), context.correlationId); }
+  async executeTurn(context: CvgContext, input: AiTurnInput, approvalId: OpaqueId | null = null): Promise<AgentTurnResult> { return fromMockResult(await this.harness.executeTurn(context, input, approvalId), context.correlationId); }
   async approve(context: CvgContext, approvalId: OpaqueId, decision: "allowed-once" | "rejected", reason: string | null) { return this.harness.approve(context, approvalId, decision, reason); }
   async promoteDraft(context: CvgContext, draftId: OpaqueId): Promise<AgentDraftPromotion> { return this.harness.promoteDraft(context, draftId); }
   async replay(context: CvgContext, sessionId: OpaqueId): Promise<AgentReplayResult> { const replay = this.harness.replay(context, sessionId); const health = await this.health(); return { ...replay, provenance: health.capabilities }; }
@@ -217,8 +217,13 @@ export class DeepSeekHarnessAdapter implements AgentRuntime {
       const requiredTools = [...new Set(expectedTools)].sort();
       const toolsMatch = actualTools.length === requiredTools.length && actualTools.every((tool, index) => tool === requiredTools[index]);
       const manifestMatches = data.engineCommit === this.config.expectedEngineCommit && data.manifestVersion === this.config.expectedManifestVersion && toolsMatch;
-      const status = data.status === "READY" && manifestMatches ? "READY" : "UNAVAILABLE";
-      const reason = manifestMatches ? data.status === "READY" ? null : `Harness reportou ${data.status}.` : "Commit, manifest ou catálogo de tools do DeepSeek Harness não corresponde ao profile aprovado.";
+      const supportsComplete = data.supports.cancellation && data.supports.approvals && data.supports.replay && data.supports.provenance;
+      const status = data.status === "READY" && manifestMatches && supportsComplete ? "READY" : "UNAVAILABLE";
+      const reason = !manifestMatches
+        ? "Commit, manifest ou catálogo de tools do DeepSeek Harness não corresponde ao profile aprovado."
+        : !supportsComplete
+          ? "O DeepSeek Harness não expõe todas as capabilities obrigatórias (cancellation, approvals, replay e provenance)."
+          : data.status === "READY" ? null : `Harness reportou ${data.status}.`;
       const result: AgentRuntimeHealth = { status, capabilities: { ...capabilities(this.adapterId, "deepseek", data.engineCommit, data.manifestVersion, data.tools), supports: data.supports }, checkedAt: nowIso(), reason };
       this.lastHealth = result;
       return result;

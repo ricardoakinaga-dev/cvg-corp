@@ -53,7 +53,7 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    if (runtime.state === RUNTIME_STATES.CONTEXT_INVALID || runtime.state === RUNTIME_STATES.REAUTH_REQUIRED) setComposerBuffer("");
+    if (runtime.state === RUNTIME_STATES.CONTEXT_INVALID || runtime.state === RUNTIME_STATES.REAUTH_REQUIRED || runtime.state === RUNTIME_STATES.PERMISSION_DENIED || runtime.state === RUNTIME_STATES.STALE) setComposerBuffer("");
   }, [runtime.state]);
 
   const handleLogin = (user: Parameters<typeof session.signIn>[0], contexts: Parameters<typeof session.signIn>[1]) => {
@@ -77,8 +77,18 @@ export function App() {
     session.reset();
   };
 
+  const handlePermissionRecovery = () => {
+    setComposerBuffer("");
+    setView("overview");
+    setPatientSearchQuery("");
+    window.history.replaceState({}, "", "/");
+    runtime.transition({ type: "NETWORK_ONLINE" });
+  };
+
+  if (runtime.state === RUNTIME_STATES.REAUTH_REQUIRED) return <SessionBlockedState runtimeState={runtime.state} onReset={handleReset} />;
+  if (runtime.state === RUNTIME_STATES.PERMISSION_DENIED) return <SessionBlockedState runtimeState={runtime.state} onReset={handlePermissionRecovery} />;
   if (!session.user) return <Login client={client} onLogin={handleLogin} />;
-  if (runtime.state === RUNTIME_STATES.REAUTH_REQUIRED || runtime.state === RUNTIME_STATES.CONTEXT_INVALID || !session.context) return <SessionBlockedState runtimeState={runtime.state} onReset={handleReset} />;
+  if (runtime.state === RUNTIME_STATES.CONTEXT_INVALID || !session.context) return <SessionBlockedState runtimeState={runtime.state} onReset={handleReset} />;
 
   return <Shell client={client} user={session.user} contexts={session.contexts} context={session.context} onContextChange={handleContextChange} view={view} onViewChange={changeView} globalSearchQuery={patientSearchQuery} onGlobalSearchQueryChange={setPatientSearchQuery} patientSearchQuery={patientSearchQuery} onLogout={() => void session.signOut()} toast={toast} notify={notify} runtimeState={runtime.state} composerBuffer={composerBuffer} onComposerBufferChange={setComposerBuffer} onRetry={() => runtime.transition({ type: "NETWORK_ONLINE" })} />;
 }

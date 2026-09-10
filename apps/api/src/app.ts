@@ -74,7 +74,7 @@ import type { AgentRuntime } from "@cvg/agent-runtime";
 import { DeepSeekHarnessAdapter, MockHarnessAdapter } from "@cvg/harness-adapters";
 import { AgentRuntimeUnavailableError } from "@cvg/agent-runtime";
 import { configuredSecretProvider, IntegrationGateway, inboxEventToOutbox, integrationContracts, isSecretReferenceUsable, OutboxWorker, reconcileUnknownExternalEffect, verifyMessagingCallback, type ExternalEffectQueryAdapter, type OutboxSink, type OutboxWorkerResult, type SecretProvider, type SecretProviderStatus } from "@cvg/integrations";
-import { createOpenTelemetryRuntime, OpsTelemetry, type OpenTelemetryRuntime } from "@cvg/ops";
+import { createOpenTelemetryRuntime, OpsTelemetry, renderPrometheusMetrics, type OpenTelemetryRuntime } from "@cvg/ops";
 import { PersistenceConflictError, PersistenceCorruptionError, PersistenceSignatureError, PersistenceStateError, PersistenceUnavailableError, PostgresPersistence, type DurableExternalEffectRecord, type InboxSignatureVerifier } from "@cvg/persistence";
 import { registerHealthRoutes } from "./routes/health.ts";
 import { AgentApplicationService } from "./application/agent-service.ts";
@@ -1574,6 +1574,8 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const receipts = [...store.commandReceipts.values()];
     let queueSignals = { outboxDepth: 0, oldestAgeMs: 0, poisonMessages: 0, reconciliationLag: 0 };
     let outboxDependency: "READY" | "UNAVAILABLE" | "NOT_CONFIGURED" = "NOT_CONFIGURED";
+    let agentRuntimeStatus: "READY" | "DEGRADED" | "UNAVAILABLE" | "DISABLED" = "UNAVAILABLE";
+    try { agentRuntimeStatus = (await agentRuntime.health()).status; } catch { agentRuntimeStatus = "UNAVAILABLE"; }
     if (persistence) {
       try {
         const stats = await persistence.outboxStats(context.organizationId);
@@ -1588,8 +1590,49 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     return response(reply, success(telemetry.metrics(store.storageMode, {
       dependencies: { database: persistence ? "READY" : "NOT_CONFIGURED", auditLedger: persistence ? "READY" : "DEGRADED", secretProvider: secretProviderStatus, outbox: outboxDependency },
       queues: queueSignals,
+      agentRuntime: agentRuntimeStatus,
       domain: { auditRecords: store.auditRecords.size, commandReceipts: receipts.length, unlinkedReceipts: receipts.filter((receipt) => receipt.status === "SUCCEEDED" && receipt.auditRecordId === null).length, outcomeUnknown: receipts.filter((receipt) => receipt.status === "OUTCOME_UNKNOWN").length, quarantined: store.quarantined.length }
     }), context.correlationId));
+  });
+
+  /**
+   * Internal scrape boundary for the observability stack. It is intentionally
+   * outside the public /api/v1 catalog, is not routed by the proxy, and emits
+   * aggregate redacted metrics only; tenant data and route labels never cross
+   * this boundary. Production still requires the deployment network policy and
+   * collector to be exercised before any SLO claim is made.
+   */
+  app.get("/internal/metrics", async (_request, reply) => {
+    const receipts = [...store.commandReceipts.values()];
+    let queueSignals = { outboxDepth: 0, oldestAgeMs: 0, poisonMessages: 0, reconciliationLag: 0 };
+    let database: "READY" | "UNAVAILABLE" | "NOT_CONFIGURED" = persistence ? "READY" : "NOT_CONFIGURED";
+    let outboxDependency: "READY" | "UNAVAILABLE" | "NOT_CONFIGURED" = "NOT_CONFIGURED";
+    try {
+      const agentHealth = await agentRuntime.health();
+      if (persistence) {
+        await persistence.check();
+        const stats = await persistence.outboxStats(store.bootstrapCredentials.organizationId);
+        const effectStats = await persistence.externalEffectStats(store.bootstrapCredentials.organizationId);
+        queueSignals = { outboxDepth: stats.depth, oldestAgeMs: stats.oldestAgeMs, poisonMessages: stats.poisonMessages, reconciliationLag: effectStats.reconciliationRequired };
+        outboxDependency = "READY";
+      }
+      const metrics = telemetry.metrics(store.storageMode, {
+        agentRuntime: agentHealth.status,
+        dependencies: { database, auditLedger: persistence ? "READY" : "DEGRADED", secretProvider: secretProviderStatus, outbox: outboxDependency },
+        queues: queueSignals,
+        domain: { auditRecords: store.auditRecords.size, commandReceipts: receipts.length, unlinkedReceipts: receipts.filter((receipt) => receipt.status === "SUCCEEDED" && receipt.auditRecordId === null).length, outcomeUnknown: receipts.filter((receipt) => receipt.status === "OUTCOME_UNKNOWN").length, quarantined: store.quarantined.length }
+      });
+      return reply.type("text/plain; version=0.0.4").header("cache-control", "no-store").send(renderPrometheusMetrics(metrics));
+    } catch {
+      database = persistence ? "UNAVAILABLE" : "NOT_CONFIGURED";
+      const metrics = telemetry.metrics(store.storageMode, {
+        agentRuntime: "UNAVAILABLE",
+        dependencies: { database, auditLedger: persistence ? "UNAVAILABLE" : "DEGRADED", secretProvider: secretProviderStatus, outbox: "UNAVAILABLE" },
+        queues: queueSignals,
+        domain: { auditRecords: store.auditRecords.size, commandReceipts: receipts.length, unlinkedReceipts: receipts.filter((receipt) => receipt.status === "SUCCEEDED" && receipt.auditRecordId === null).length, outcomeUnknown: receipts.filter((receipt) => receipt.status === "OUTCOME_UNKNOWN").length, quarantined: store.quarantined.length }
+      });
+      return reply.type("text/plain; version=0.0.4").header("cache-control", "no-store").send(renderPrometheusMetrics(metrics));
+    }
   });
 
   app.get("/api/v1/ops/snapshot", async (request, reply) => {

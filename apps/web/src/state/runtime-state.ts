@@ -3,6 +3,8 @@ export const RUNTIME_STATES = {
   OFFLINE_READ_ONLY: "OFFLINE_READ_ONLY",
   REVALIDATING: "REVALIDATING",
   DEGRADED: "DEGRADED",
+  STALE: "STALE",
+  PERMISSION_DENIED: "PERMISSION_DENIED",
   CONTEXT_INVALID: "CONTEXT_INVALID",
   REAUTH_REQUIRED: "REAUTH_REQUIRED"
 } as const;
@@ -22,6 +24,8 @@ export type RuntimeEvent =
   | { type: "SESSION_VALIDATED" }
   | { type: "REQUEST_REVALIDATION"; reason: string }
   | { type: "REQUEST_DEGRADED"; reason: string }
+  | { type: "REQUEST_STALE"; reason: string }
+  | { type: "REQUEST_PERMISSION_DENIED"; reason: string }
   | { type: "CONTEXT_INVALIDATED"; reason: string }
   | { type: "AUTH_REQUIRED"; reason?: string }
   | { type: "SIGNED_IN" }
@@ -42,7 +46,7 @@ export function runtimeStateReducer(snapshot: RuntimeSnapshot, event: RuntimeEve
     case "NETWORK_OFFLINE":
       return snapshotWith(snapshot, RUNTIME_STATES.OFFLINE_READ_ONLY, "O navegador informou que a conexão foi interrompida.");
     case "NETWORK_ONLINE":
-      return snapshot.state === RUNTIME_STATES.OFFLINE_READ_ONLY || snapshot.state === RUNTIME_STATES.DEGRADED
+      return snapshot.state === RUNTIME_STATES.OFFLINE_READ_ONLY || snapshot.state === RUNTIME_STATES.DEGRADED || snapshot.state === RUNTIME_STATES.STALE || snapshot.state === RUNTIME_STATES.PERMISSION_DENIED
         ? { state: RUNTIME_STATES.REVALIDATING, reconnectVersion: snapshot.reconnectVersion + 1, reason: "A conexão voltou; sessão e contexto aguardam revalidação." }
         : snapshot;
     case "RECONNECT_STARTED":
@@ -57,6 +61,10 @@ export function runtimeStateReducer(snapshot: RuntimeSnapshot, event: RuntimeEve
       return snapshot.state === RUNTIME_STATES.OFFLINE_READ_ONLY
         ? snapshot
         : snapshotWith(snapshot, RUNTIME_STATES.DEGRADED, event.reason);
+    case "REQUEST_STALE":
+      return snapshot.state === RUNTIME_STATES.STALE ? snapshot : snapshotWith(snapshot, RUNTIME_STATES.STALE, event.reason);
+    case "REQUEST_PERMISSION_DENIED":
+      return snapshot.state === RUNTIME_STATES.PERMISSION_DENIED ? snapshot : snapshotWith(snapshot, RUNTIME_STATES.PERMISSION_DENIED, event.reason);
     case "CONTEXT_INVALIDATED":
       return snapshotWith(snapshot, RUNTIME_STATES.CONTEXT_INVALID, event.reason);
     case "AUTH_REQUIRED":
@@ -90,6 +98,10 @@ export function runtimeStatePresentation(state: RuntimeState): { label: string; 
       return { label: "REVALIDATING", message: "Sessão, escopo e policy estão sendo confirmados antes de exibir dados", tone: "amber" };
     case RUNTIME_STATES.DEGRADED:
       return { label: "DEGRADED", message: "Conectividade parcial · leituras podem falhar · escritas críticas permanecem bloqueadas", tone: "amber" };
+    case RUNTIME_STATES.STALE:
+      return { label: "STALE", message: "A autoridade mudou · dados e ações aguardam uma revalidação explícita", tone: "amber" };
+    case RUNTIME_STATES.PERMISSION_DENIED:
+      return { label: "PERMISSION_DENIED", message: "Esta operação não está autorizada para o perfil ou contexto atual", tone: "coral" };
     case RUNTIME_STATES.CONTEXT_INVALID:
       return { label: "CONTEXT_INVALID", message: "O contexto atual foi invalidado e nenhum dado será exibido até uma nova resolução", tone: "coral" };
     case RUNTIME_STATES.REAUTH_REQUIRED:

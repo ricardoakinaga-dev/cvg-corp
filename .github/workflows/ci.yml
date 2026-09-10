@@ -93,6 +93,16 @@ jobs:
       - name: Browser E2E
         run: npm run test:e2e:full
 
+      - name: Upload browser E2E artifacts
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: cvg-browser-e2e-${{ github.sha }}
+          path: |
+            artifacts/playwright-report/
+            test-results/
+          if-no-files-found: warn
+
       - name: Apply migrations in ephemeral PostgreSQL
         env:
           DATABASE_URL: postgresql://cvg_migration:cvg_ci_password@localhost:5432/cvg_ci

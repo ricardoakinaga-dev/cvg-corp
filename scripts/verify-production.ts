@@ -247,6 +247,7 @@ function inspectStaticContracts(): void {
   requireText(".github/workflows/ci.yml", "npm run test:database");
   requireText(".github/workflows/ci.yml", "npm run test:fault");
   requireText(".github/workflows/ci.yml", "npm run test:e2e");
+  requirePattern(".github/workflows/ci.yml", /- name: Upload browser E2E artifacts\s+if: \$\{\{ !cancelled\(\) \}\}[\s\S]+?path:\s+\|\s+artifacts\/playwright-report\/\s+test-results\/\s+if-no-files-found: warn/, "Browser E2E report and traces must be uploaded on failure");
   requireText(".github/workflows/ci.yml", "npm run db:migrate");
   requireText(".github/workflows/ci.yml", "npm run verify:postgres");
   requireText(".github/workflows/ci.yml", "npm run verify:postgres:restore");

@@ -65,14 +65,15 @@ const boundarySources = await Promise.all([
   readFile("apps/api/src/application/domain-command-service.ts", "utf8"),
   readFile("apps/api/src/application/agent-service.ts", "utf8"),
   readFile("apps/api/src/application/patient-service.ts", "utf8"),
+  readFile("apps/api/src/application/guardian-service.ts", "utf8"),
   readFile("apps/api/src/application/read-services.ts", "utf8"),
   readFile("apps/api/src/application/export-service.ts", "utf8"),
   readFile("apps/worker/src/worker.ts", "utf8"),
   readFile("packages/integrations/src/index.ts", "utf8"),
   readFile("packages/persistence/src/index.ts", "utf8")
 ]);
-const [commandSource, agentSource, patientSource, readServiceSource, exportSource, workerSource, integrationSource, persistenceSource] = boundarySources;
-for (const [name, source] of [["DomainCommandService", commandSource], ["AgentApplicationService", agentSource], ["PatientApplicationService", patientSource], ["ReadApplicationService", readServiceSource], ["ExportApplicationService", exportSource]] as const) {
+const [commandSource, agentSource, patientSource, guardianSource, readServiceSource, exportSource, workerSource, integrationSource, persistenceSource] = boundarySources;
+for (const [name, source] of [["DomainCommandService", commandSource], ["AgentApplicationService", agentSource], ["PatientApplicationService", patientSource], ["GuardianApplicationService", guardianSource], ["ReadApplicationService", readServiceSource], ["ExportApplicationService", exportSource]] as const) {
   if (!source.includes("enforceApplicationPolicy")) failures.push(`${name} does not enforce the application PDP at its use-case boundary`);
 }
 if (!exportSource.includes('enforceApplicationPolicy(context, "ops.export"') || !exportSource.includes("encryptRecoveryBundle") || !exportSource.includes("this.commands.execute")) failures.push("ExportApplicationService is missing policy, encryption or idempotency controls");

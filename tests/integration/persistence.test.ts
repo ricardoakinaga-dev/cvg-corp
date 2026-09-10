@@ -13,7 +13,7 @@ import { createRecoveryBundleManifest, decryptRecoveryBundle, encryptRecoveryBun
 
 type QueryResult = { rows: Array<Record<string, unknown>> };
 
-function fakePool(options: { revision?: string; failSnapshotInsert?: boolean; auditLedgerConflict?: boolean; clinicalSignUpdateRows?: boolean } = {}): { pool: Pool; statements: string[] } {
+function fakePool(options: { revision?: string; failSnapshotInsert?: boolean; auditLedgerConflict?: boolean; clinicalSignUpdateRows?: boolean; guardianWriteRows?: boolean } = {}): { pool: Pool; statements: string[] } {
   let revision = options.revision ?? "0";
   let auditTail: string | null = null;
   const durableReceipts = new Map<string, Record<string, unknown>>();
@@ -23,6 +23,7 @@ function fakePool(options: { revision?: string; failSnapshotInsert?: boolean; au
       statements.push(sql.trim().replace(/\s+/g, " "));
       if (sql.includes("select revision::text")) return { rows: revision === "0" ? [] : [{ revision }] };
       if (sql.startsWith("insert into ai_usage_ledger")) return { rows: [{ id: String(params[0]) }] };
+      if (sql.startsWith("insert into guardians") && sql.includes("returning id::text")) return options.guardianWriteRows === false ? { rows: [] } : { rows: [{ id: String(params[0]) }] };
       if (sql.startsWith("insert into patients") && sql.includes("returning id::text")) return { rows: [{ id: String(params[0]) }] };
       if (sql.startsWith("insert into appointments") && sql.includes("returning id::text")) return { rows: [{ id: String(params[0]) }] };
       if (sql.startsWith("insert into encounters") && sql.includes("returning id::text")) return { rows: [{ id: String(params[0]) }] };
@@ -199,6 +200,58 @@ test("patient creation can own one authoritative normalized write inside the dur
   assert.ok(fake.statements.some((statement) => statement.startsWith("insert into patients") && statement.includes("on conflict (id) do update") && statement.includes("returning id::text")));
   assert.ok(fake.statements.some((statement) => statement === "select set_config('cvg.unit_id', $1, true)"));
   assert.ok(fake.statements.some((statement) => statement === "select set_config('cvg.workspace_id', $1, true)"));
+});
+
+test("guardian creation can own one authoritative normalized write inside the durable commit", async () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const option = store.contextOptions(store.bootstrapCredentials.userId)[0];
+  assert.ok(option);
+  const context = store.resolveContext(store.bootstrapCredentials.userId, { unitId: option.unit.id, workspaceId: option.workspace.id }, "guardians.create", "guardian-source-write");
+  const guardian = store.createGuardian(context, { displayName: "Marina Fonte", phone: "+55 11 98888-1200", email: "marina.fonte@example.test" });
+  const fake = fakePool();
+  const persistence = new PostgresPersistence({ connectionString: "postgres://synthetic.invalid", pool: fake.pool });
+
+  await persistence.commit({ ...commitInput(store), snapshot: store.snapshot(), normalizedGuardianWrite: guardian });
+
+  const authoritative = fake.statements.filter((statement) => statement.startsWith("insert into guardians") && statement.includes("returning id::text"));
+  assert.equal(authoritative.length, 1);
+  assert.match(authoritative[0]!, /on conflict \(id\) do update/);
+  assert.match(authoritative[0]!, /guardians\.email is not distinct from excluded\.email/);
+  assert.ok(fake.statements.some((statement) => statement === "select set_config('cvg.unit_id', $1, true)"));
+  assert.ok(fake.statements.some((statement) => statement === "select set_config('cvg.workspace_id', $1, true)"));
+});
+
+test("authoritative guardian writes fail closed when the candidate diverges from the canonical snapshot", async () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const option = store.contextOptions(store.bootstrapCredentials.userId)[0];
+  assert.ok(option);
+  const context = store.resolveContext(store.bootstrapCredentials.userId, { unitId: option.unit.id, workspaceId: option.workspace.id }, "guardians.create", "guardian-source-corruption");
+  const guardian = store.createGuardian(context, { displayName: "Guardian canônico", phone: "+55 11 98888-1201", email: null });
+  const fake = fakePool();
+  const persistence = new PostgresPersistence({ connectionString: "postgres://synthetic.invalid", pool: fake.pool });
+
+  await assert.rejects(
+    () => persistence.commit({ ...commitInput(store), normalizedGuardianWrite: { ...guardian, displayName: "Guardian divergente" } }),
+    (error: unknown) => error instanceof PersistenceCorruptionError && error.message.includes("not identical to the canonical snapshot")
+  );
+  assert.ok(fake.statements.some((statement) => statement === "ROLLBACK"));
+  assert.equal(fake.statements.filter((statement) => statement.startsWith("insert into guardians") && statement.includes("returning id::text")).length, 0);
+});
+
+test("guardian replay advances the audit/receipt snapshot without issuing a second guardian DML", async () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const option = store.contextOptions(store.bootstrapCredentials.userId)[0];
+  assert.ok(option);
+  const context = store.resolveContext(store.bootstrapCredentials.userId, { unitId: option.unit.id, workspaceId: option.workspace.id }, "guardians.create", "guardian-replay");
+  const guardian = [...store.guardians.values()].find((candidate) => candidate.unitId === context.unitId && candidate.workspaceId === context.workspaceId);
+  assert.ok(guardian);
+  const fake = fakePool();
+  const persistence = new PostgresPersistence({ connectionString: "postgres://synthetic.invalid", pool: fake.pool });
+
+  await persistence.commit({ ...commitInput(store), snapshot: store.snapshot(), normalizedGuardianReplayId: guardian.id });
+
+  assert.equal(fake.statements.filter((statement) => statement.startsWith("insert into guardians") && statement.includes("returning id::text")).length, 0);
+  assert.equal(fake.statements.filter((statement) => statement.startsWith("insert into guardians")).length, store.snapshot().guardians.length - 1);
 });
 
 test("appointment creation can own one authoritative normalized write inside the durable commit", async () => {
@@ -681,6 +734,36 @@ test("PostgreSQL patient creation commits its normalized source row before the H
     });
     assert.equal(created.statusCode, 201, created.body);
     assert.ok(fake.statements.some((statement) => statement.startsWith("insert into patients") && statement.includes("returning id::text")));
+  } finally {
+    await runtime.app.close();
+  }
+});
+
+test("PostgreSQL guardian creation commits one normalized row and replays without a second guardian DML", async () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const fake = fakePool();
+  const persistence = new PostgresPersistence({ connectionString: "postgres://synthetic.invalid", pool: fake.pool });
+  const runtime = await createRuntime({ store, persistence, config: { storageMode: "postgres", demoMode: true } });
+  try {
+    const login = await runtime.app.inject({ method: "POST", url: "/api/v1/auth/login", headers: { "content-type": "application/json" }, payload: JSON.stringify({ login: "admin@cvg.local", password: "synthetic-password-123" }) });
+    assert.equal(login.statusCode, 200, login.body);
+    const cookieValues = (Array.isArray(login.headers["set-cookie"]) ? login.headers["set-cookie"] : [login.headers["set-cookie"]]).filter((value): value is string => typeof value === "string");
+    const cookiePairs = cookieValues.map((value) => value.split(";")[0]).filter((value): value is string => Boolean(value));
+    const cookie = cookiePairs.join("; ");
+    const csrfCookie = cookiePairs.find((pair) => pair.startsWith("cvg_csrf="));
+    assert.ok(csrfCookie);
+    const csrf = decodeURIComponent(csrfCookie.slice("cvg_csrf=".length));
+    const unit = [...runtime.store.units.values()][0];
+    const workspace = [...runtime.store.workspaces.values()][0];
+    assert.ok(unit && workspace);
+    const headers = { cookie, "x-csrf-token": csrf, "x-cvg-unit-id": unit.id, "x-cvg-workspace-id": workspace.id, "idempotency-key": "guardian-http-source-001", "content-type": "application/json" };
+    const payload = JSON.stringify({ displayName: "Marina HTTP", phone: "+55 11 98888-1202", email: "marina.http@example.test" });
+    const created = await runtime.app.inject({ method: "POST", url: "/api/v1/guardians", headers, payload });
+    assert.equal(created.statusCode, 201, created.body);
+    const replay = await runtime.app.inject({ method: "POST", url: "/api/v1/guardians", headers, payload });
+    assert.equal(replay.statusCode, 201, replay.body);
+    assert.equal(fake.statements.filter((statement) => statement.startsWith("insert into guardians") && statement.includes("returning id::text")).length, 1);
+    assert.equal(fake.statements.filter((statement) => statement.startsWith("insert into command_receipts") && statement.includes("on conflict (idempotency_lookup)")).length, 2);
   } finally {
     await runtime.app.close();
   }

@@ -26,6 +26,7 @@ import {
   encounterInputSchema,
   failure,
   governedExportInputSchema,
+  guardianInputSchema,
   hospitalEpisodeInputSchema,
   id,
   idSchema,
@@ -58,6 +59,7 @@ import {
   type DataClass,
   type Encounter,
   type ErrorCode,
+  type Guardian,
   type OpaqueId,
   type Role
 } from "@cvg/contracts";
@@ -88,6 +90,7 @@ import { AppointmentApplicationService, PostgresAppointmentRepository, StoreAppo
 import { ClinicalSignApplicationService, PostgresClinicalSignRepository, StoreClinicalSignRepository } from "./application/clinical-command-service.ts";
 import { EncounterApplicationService, PostgresEncounterRepository, StoreEncounterRepository } from "./application/encounter-service.ts";
 import { PatientApplicationService, PostgresPatientRepository, StorePatientRepository } from "./application/patient-service.ts";
+import { GuardianApplicationService, PostgresGuardianRepository, StoreGuardianRepository } from "./application/guardian-service.ts";
 import { createReadApplicationService } from "./application/read-services.ts";
 import { DomainCommandService } from "./application/domain-command-service.ts";
 import { ExportApplicationService, governedExportDigest } from "./application/export-service.ts";
@@ -502,6 +505,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
   });
   const agentApplication = new AgentApplicationService(store, agentRuntime, commandExecutor);
   const patientApplication = new PatientApplicationService(persistence ? new PostgresPatientRepository(persistence, store) : new StorePatientRepository(store));
+  const guardianApplication = new GuardianApplicationService(persistence ? new PostgresGuardianRepository(store) : new StoreGuardianRepository(store));
   const appointmentApplication = new AppointmentApplicationService(persistence ? new PostgresAppointmentRepository(store) : new StoreAppointmentRepository(store));
   const clinicalSignApplication = new ClinicalSignApplicationService(persistence ? new PostgresClinicalSignRepository(store) : new StoreClinicalSignRepository(store));
   const encounterApplication = new EncounterApplicationService(persistence ? new PostgresEncounterRepository(store) : new StoreEncounterRepository(store));
@@ -529,7 +533,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
   const durableRequests = new WeakMap<FastifyRequest, DurableRequestTransaction>();
   const durableReleases = new WeakMap<FastifyRequest, () => void>();
   const durableOutboxes = new WeakMap<FastifyRequest, import("@cvg/persistence").DurableOutboxInput[]>();
-  let commitDurableRequest: ((request: FastifyRequest, reply: FastifyReply, normalizedPatientWrite?: AnimalPatient, normalizedAppointmentWrite?: Appointment, normalizedEncounterWrite?: Encounter, normalizedClinicalSignWrite?: ClinicalDocument, normalizedClinicalSignReplayId?: OpaqueId) => Promise<void>) | null = null;
+  let commitDurableRequest: ((request: FastifyRequest, reply: FastifyReply, normalizedPatientWrite?: AnimalPatient, normalizedAppointmentWrite?: Appointment, normalizedEncounterWrite?: Encounter, normalizedClinicalSignWrite?: ClinicalDocument, normalizedClinicalSignReplayId?: OpaqueId, normalizedGuardianWrite?: Guardian, normalizedGuardianReplayId?: OpaqueId) => Promise<void>) | null = null;
   let persistenceQueue = Promise.resolve();
   const acquireDurableRequest = async (): Promise<() => void> => {
     let release!: () => void;
@@ -555,11 +559,11 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
         throw error;
       }
     });
-    const commitRequest = async (request: FastifyRequest, reply: FastifyReply, normalizedPatientWrite?: AnimalPatient, normalizedAppointmentWrite?: Appointment, normalizedEncounterWrite?: Encounter, normalizedClinicalSignWrite?: ClinicalDocument, normalizedClinicalSignReplayId?: OpaqueId): Promise<void> => {
+    const commitRequest = async (request: FastifyRequest, reply: FastifyReply, normalizedPatientWrite?: AnimalPatient, normalizedAppointmentWrite?: Appointment, normalizedEncounterWrite?: Encounter, normalizedClinicalSignWrite?: ClinicalDocument, normalizedClinicalSignReplayId?: OpaqueId, normalizedGuardianWrite?: Guardian, normalizedGuardianReplayId?: OpaqueId): Promise<void> => {
       const transaction = durableRequests.get(request);
       if (!transaction || transaction.committed || transaction.failed) return;
       const snapshot = store.snapshot();
-      if (!normalizedPatientWrite && !normalizedAppointmentWrite && !normalizedEncounterWrite && !normalizedClinicalSignWrite && !normalizedClinicalSignReplayId && snapshotFingerprint(snapshot) === snapshotFingerprint(transaction.baseline)) return;
+      if (!normalizedPatientWrite && !normalizedAppointmentWrite && !normalizedEncounterWrite && !normalizedClinicalSignWrite && !normalizedClinicalSignReplayId && !normalizedGuardianWrite && !normalizedGuardianReplayId && snapshotFingerprint(snapshot) === snapshotFingerprint(transaction.baseline)) return;
       const baselineAuditIds = new Set(transaction.baseline.auditRecords.map((record) => record.id));
       const baselineReceiptDigests = new Map(transaction.baseline.commandReceipts.map((receipt) => [receipt.id, digest(receipt)]));
       const auditRecords = snapshot.auditRecords.filter((record) => !baselineAuditIds.has(record.id));
@@ -586,7 +590,9 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
           ...(normalizedAppointmentWrite ? { normalizedAppointmentWrite } : {}),
           ...(normalizedEncounterWrite ? { normalizedEncounterWrite } : {}),
           ...(normalizedClinicalSignWrite ? { normalizedClinicalSignWrite } : {}),
-          ...(normalizedClinicalSignReplayId ? { normalizedClinicalSignReplayId } : {})
+          ...(normalizedClinicalSignReplayId ? { normalizedClinicalSignReplayId } : {}),
+          ...(normalizedGuardianWrite ? { normalizedGuardianWrite } : {}),
+          ...(normalizedGuardianReplayId ? { normalizedGuardianReplayId } : {})
         });
         transaction.committed = true;
       } catch (error) {
@@ -1098,8 +1104,15 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const { context } = requestContext(request, "guardians.create");
     const input = parse(z.object({ displayName: z.string().trim().min(2).max(120), phone: z.string().trim().min(8).max(40), email: z.string().email().nullable().default(null) }).strict(), request.body);
     const key = requireIdempotencyKey(request);
-    const result = await commandExecutor.execute(commandInput(context, "guardians.create", key, null, input), () => domainCommands.createGuardian(context, input));
+    const result = await commandExecutor.execute(commandInput(context, "guardians.create", key, null, input), () => guardianApplication.create(context, input));
     audit(context, "guardians.create", "Guardian", result.value.id, "ALLOWED", null, { replay: result.replayed });
+    if (persistence) {
+      if (result.replayed) await commitDurableRequest?.(request, reply, undefined, undefined, undefined, undefined, undefined, undefined, result.value.id);
+      else {
+        reply.code(201);
+        await commitDurableRequest?.(request, reply, undefined, undefined, undefined, undefined, undefined, result.value);
+      }
+    }
     return response(reply, success({ guardian: publicGuardian(result.value), receiptId: result.receipt.id }, context.correlationId), 201);
   });
 

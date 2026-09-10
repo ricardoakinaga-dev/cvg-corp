@@ -67,3 +67,17 @@ O worker continua com a exceção arquitetural documentada: sua autoridade é o
 job/outbox durável já admitido, com tenant, lease, fencing, backpressure e
 effect ledger; ele não recebe uma sessão de usuário sintética. A verificação
 local não transforma isso em prova de PDP de ator/sessão para worker.
+
+## Atualização — 2026-09-10 — Guardian command-owned write
+
+`POST /api/v1/guardians` agora atravessa `GuardianApplicationService` e um
+`GuardianRepository` tipado. Em PostgreSQL, o resultado novo é gravado como
+`normalizedGuardianWrite` no mesmo commit do snapshot, journal, auditoria,
+receipt e outbox; o UPSERT exige escopo completo, igualdade dos campos e
+`RETURNING`. O ID command-owned é removido da projeção genérica. Replay usa
+`normalizedGuardianReplayId` e não repete Guardian DML.
+
+Isso melhora a linha de escrita do contexto Guardian, mas não fecha
+`V3-DATA-001`: os demais contextos ainda dependem parcialmente da projeção
+genérica e concorrência PostgreSQL/RLS multi-processo, staging, provider,
+telemetria operacional e aceite humano continuam sem prova.

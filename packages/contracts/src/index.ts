@@ -170,6 +170,14 @@ export const roleAssignmentInputSchema = z.object({
 });
 export type RoleAssignmentInput = z.infer<typeof roleAssignmentInputSchema>;
 
+export const guardianInputSchema = z.object({
+  displayName: z.string().trim().min(2).max(120),
+  phone: z.string().trim().min(8).max(40),
+  email: z.string().email().nullable().default(null)
+}).strict();
+
+export type GuardianInput = z.infer<typeof guardianInputSchema>;
+
 export const patientInputSchema = z.object({
   guardianId: idSchema,
   name: z.string().trim().min(1).max(120),

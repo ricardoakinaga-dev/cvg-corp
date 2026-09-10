@@ -110,6 +110,17 @@ export interface DurableCommitInput {
    * the generic snapshot projection while session activity is committed.
    */
   normalizedClinicalSignReplayId?: OpaqueId;
+  /**
+   * A guardian command's authoritative normalized row. It is written in the
+   * same transaction as the canonical snapshot and removed from generic
+   * projection to prevent a second competing write path.
+   */
+  normalizedGuardianWrite?: Guardian;
+  /**
+   * A replay already materialized the guardian row. The canonical snapshot,
+   * audit and receipt may still advance without issuing another guardian DML.
+   */
+  normalizedGuardianReplayId?: OpaqueId;
   eventId?: string;
 }
 
@@ -1657,10 +1668,38 @@ async function writeAuthoritativeClinicalDocument(client: PoolClient, document: 
   if (!result.rows[0]) throw new PersistenceCorruptionError(`authoritative clinical sign ${document.id} conflicts with an existing normalized row`);
 }
 
-async function projectDomain(client: PoolClient, snapshot: StoreSnapshot, normalizedPatientWrite: AnimalPatient | null = null, normalizedAppointmentWrite: Appointment | null = null, normalizedEncounterWrite: Encounter | null = null, normalizedClinicalSignWrite: ClinicalDocument | null = null, normalizedClinicalSignReplayId: OpaqueId | null = null): Promise<void> {
+async function writeAuthoritativeGuardian(client: PoolClient, guardian: Guardian): Promise<void> {
+  if (!guardian.unitId || !guardian.workspaceId) throw new PersistenceCorruptionError(`guardian ${guardian.id} has no complete unit/workspace scope for authoritative write`);
+  await client.query("select set_config('cvg.unit_id', $1, true)", [guardian.unitId]);
+  await client.query("select set_config('cvg.workspace_id', $1, true)", [guardian.workspaceId]);
+  const result = await client.query<{ id: string }>(
+    "insert into guardians(id, organization_id, unit_id, workspace_id, display_name, phone, email, data_class, status) values ($1, $2, $3, $4, $5, $6, $7, $8, $9) on conflict (id) do update set organization_id = excluded.organization_id, unit_id = excluded.unit_id, workspace_id = excluded.workspace_id, display_name = excluded.display_name, phone = excluded.phone, email = excluded.email, data_class = excluded.data_class, status = excluded.status where guardians.organization_id = excluded.organization_id and guardians.unit_id is not distinct from excluded.unit_id and guardians.workspace_id is not distinct from excluded.workspace_id and guardians.display_name = excluded.display_name and guardians.phone = excluded.phone and guardians.email is not distinct from excluded.email and guardians.data_class = excluded.data_class and guardians.status = excluded.status returning id::text",
+    [guardian.id, guardian.organizationId, guardian.unitId, guardian.workspaceId, guardian.displayName, guardian.phone, guardian.email, guardian.dataClass, guardian.status]
+  );
+  if (!result.rows[0]) throw new PersistenceCorruptionError(`authoritative guardian ${guardian.id} conflicts with an existing normalized row`);
+}
+
+async function projectDomain(client: PoolClient, snapshot: StoreSnapshot, normalizedPatientWrite: AnimalPatient | null = null, normalizedAppointmentWrite: Appointment | null = null, normalizedEncounterWrite: Encounter | null = null, normalizedClinicalSignWrite: ClinicalDocument | null = null, normalizedClinicalSignReplayId: OpaqueId | null = null, normalizedGuardianWrite: Guardian | null = null, normalizedGuardianReplayId: OpaqueId | null = null): Promise<void> {
+  if (normalizedGuardianWrite && normalizedGuardianReplayId) throw new PersistenceCorruptionError("authoritative guardian write and replay cannot be requested together");
+  let guardians = snapshot.guardians;
+  if (normalizedGuardianWrite) {
+    const snapshotGuardian = snapshot.guardians.find((guardian) => guardian.id === normalizedGuardianWrite.id);
+    const organization = snapshot.organizations.find((candidate) => candidate.id === normalizedGuardianWrite.organizationId);
+    const unit = normalizedGuardianWrite.unitId ? snapshot.units.find((candidate) => candidate.id === normalizedGuardianWrite.unitId) : null;
+    const workspace = normalizedGuardianWrite.workspaceId ? snapshot.workspaces.find((candidate) => candidate.id === normalizedGuardianWrite.workspaceId) : null;
+    if (!snapshotGuardian || digest(snapshotGuardian) !== digest(normalizedGuardianWrite)) throw new PersistenceCorruptionError(`authoritative guardian ${normalizedGuardianWrite.id} is not identical to the canonical snapshot`);
+    if (!organization || !unit || unit.organizationId !== normalizedGuardianWrite.organizationId || !workspace || workspace.organizationId !== normalizedGuardianWrite.organizationId || workspace.unitId !== normalizedGuardianWrite.unitId) throw new PersistenceCorruptionError(`authoritative guardian ${normalizedGuardianWrite.id} has unresolved organization or scope dependencies`);
+    await writeAuthoritativeGuardian(client, normalizedGuardianWrite);
+    guardians = snapshot.guardians.filter((guardian) => guardian.id !== normalizedGuardianWrite.id);
+  }
+  if (normalizedGuardianReplayId) {
+    const replayed = snapshot.guardians.find((guardian) => guardian.id === normalizedGuardianReplayId);
+    if (!replayed || !replayed.unitId || !replayed.workspaceId) throw new PersistenceCorruptionError(`guardian replay ${normalizedGuardianReplayId} has no durable scoped state`);
+    guardians = snapshot.guardians.filter((guardian) => guardian.id !== normalizedGuardianReplayId);
+  }
   await writeScopedRows(client,
     "insert into guardians(id, organization_id, unit_id, workspace_id, display_name, phone, email, data_class, status) values ($1, $2, $3, $4, $5, $6, $7, $8, $9) on conflict (id) do update set organization_id = excluded.organization_id, unit_id = excluded.unit_id, workspace_id = excluded.workspace_id, display_name = excluded.display_name, phone = excluded.phone, email = excluded.email, data_class = excluded.data_class, status = excluded.status",
-    snapshot.guardians,
+    guardians,
     (guardian) => ({ unitId: guardian.unitId, workspaceId: guardian.workspaceId }),
     (guardian) => [guardian.id, guardian.organizationId, guardian.unitId, guardian.workspaceId, guardian.displayName, guardian.phone, guardian.email, guardian.dataClass, guardian.status]
   );
@@ -2234,7 +2273,7 @@ export class PostgresPersistence {
       const snapshotJson = canonicalSnapshot(input.snapshot);
       const snapshotDigest = digest(snapshotJson);
       await projectIdentity(client, input.snapshot);
-      await projectDomain(client, input.snapshot, input.normalizedPatientWrite ?? null, input.normalizedAppointmentWrite ?? null, input.normalizedEncounterWrite ?? null, input.normalizedClinicalSignWrite ?? null, input.normalizedClinicalSignReplayId ?? null);
+      await projectDomain(client, input.snapshot, input.normalizedPatientWrite ?? null, input.normalizedAppointmentWrite ?? null, input.normalizedEncounterWrite ?? null, input.normalizedClinicalSignWrite ?? null, input.normalizedClinicalSignReplayId ?? null, input.normalizedGuardianWrite ?? null, input.normalizedGuardianReplayId ?? null);
       await projectOutbox(client, organizationId, input.outboxRecords ?? []);
       await projectRecoveredOutbox(client, organizationId, input.recoveredOutboxRecords ?? []);
       await projectRecoveredUsage(client, organizationId, input.recoveredUsageRecords ?? []);

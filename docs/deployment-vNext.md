@@ -2,7 +2,7 @@
 
 ## Artifact
 
-O caminho de release contém `Dockerfile.api`, `Dockerfile.web`, `docker-compose.yml`, proxy Nginx, worker separado, `.github/workflows/ci.yml`, `.github/dependabot.yml`, lint repository-owned, política SPDX local, scan Trivy de imagens no CI, `scripts/verify-production.ts`, baseline sintético, SBOM CycloneDX e runbooks de deploy, rollback e backup/incidente.
+O caminho de release contém `Dockerfile.api`, `Dockerfile.web`, `docker-compose.yml`, o overlay `docker-compose.production.yml` com `docker/nginx/proxy.tls.conf`, proxy Nginx, worker separado, `.github/workflows/ci.yml`, `.github/dependabot.yml`, lint repository-owned, política SPDX local, scan Trivy de imagens no CI, `scripts/verify-production.ts`, baseline sintético, SBOM CycloneDX e runbooks de deploy, rollback e backup/incidente.
 
 Compose define PostgreSQL, migration job, API, web, worker e proxy com healthchecks, dependências ordenadas, rede backend interna, containers read-only, non-root quando aplicável, capabilities removidas e sem publicação direta de API/worker. O worker Compose usa o mesmo `CvgWorkerApplication` de `apps/worker`, executa o ciclo observável de outbox/jobs/schedule/reconciliation/notifications/maintenance e exige `CVG_WORKER_ORGANIZATION_ID` explícito.
 

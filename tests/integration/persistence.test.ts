@@ -221,6 +221,8 @@ test("recovery bundle encryption round-trips BigInt state and rejects tampering"
   const key = randomBytes(32);
   const encrypted = encryptRecoveryBundle(bundle, key, "synthetic-kms-key");
   assert.equal(encrypted.algorithm, "AES-256-GCM");
+  assert.equal(encrypted.version, 2);
+  assert.equal(encrypted.expiresAt, null);
   assert.doesNotMatch(JSON.stringify(encrypted), /Marina Souza/);
   const restored = decryptRecoveryBundle(encrypted, key);
   assert.equal(restored.revision, 7n);
@@ -234,6 +236,9 @@ test("recovery bundle encryption round-trips BigInt state and rejects tampering"
   assert.throws(() => decryptRecoveryBundle({ ...encrypted, ciphertext: ciphertext.toString("base64") }, key), (error: unknown) => error instanceof PersistenceCorruptionError);
   assert.throws(() => decryptRecoveryBundle(encrypted, randomBytes(32)), (error: unknown) => error instanceof PersistenceCorruptionError);
   assert.throws(() => encryptRecoveryBundle(bundle, randomBytes(31), "synthetic-kms-key"), (error: unknown) => error instanceof Error && error.name === "PersistenceStateError");
+  const expired = encryptRecoveryBundle(bundle, key, "synthetic-kms-key", { expiresAt: new Date(Date.now() - 1_000).toISOString() });
+  assert.throws(() => decryptRecoveryBundle(expired, key), (error: unknown) => error instanceof PersistenceStateError && error.message.includes("expired"));
+  assert.throws(() => decryptRecoveryBundle({ ...expired, expiresAt: "2099-01-01T00:00:00.000Z" }, key), (error: unknown) => error instanceof PersistenceCorruptionError);
 });
 
 test("governed export binds policy, secret resolution and idempotent encrypted delivery", async () => {
@@ -254,6 +259,9 @@ test("governed export binds policy, secret resolution and idempotent encrypted d
   assert.equal(first.replayed, false);
   assert.equal(replay.replayed, true);
   assert.equal(replay.value.envelope.ciphertext, first.value.envelope.ciphertext);
+  assert.equal(replay.value.envelope.expiresAt, first.value.envelope.expiresAt);
+  assert.equal(first.value.purpose, "incident recovery validation");
+  assert.equal(first.value.purposeDigest, digest("incident recovery validation"));
   assert.doesNotMatch(JSON.stringify(first.value.envelope), /Marina Souza/);
   assert.equal(first.value.scope.organizationId, store.bootstrapCredentials.organizationId);
 });

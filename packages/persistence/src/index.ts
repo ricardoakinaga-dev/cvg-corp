@@ -260,17 +260,23 @@ export interface DurableRecoveryBundle extends DurableSnapshot {
 
 export interface EncryptedRecoveryBundle {
   format: "CVG-RECOVERY-BUNDLE";
-  version: 1;
+  version: 1 | 2;
   algorithm: "AES-256-GCM";
   keyRef: string;
   payloadDigest: string;
+  expiresAt: string | null;
   nonce: string;
   ciphertext: string;
   authTag: string;
 }
 
+export interface RecoveryBundleEncryptionOptions {
+  expiresAt?: string | null;
+}
+
 const RECOVERY_BUNDLE_FORMAT = "CVG-RECOVERY-BUNDLE" as const;
-const RECOVERY_BUNDLE_VERSION = 1 as const;
+const RECOVERY_BUNDLE_VERSION = 2 as const;
+const RECOVERY_BUNDLE_LEGACY_VERSION = 1 as const;
 const RECOVERY_BUNDLE_ALGORITHM = "AES-256-GCM" as const;
 const RECOVERY_MANIFEST_FORMAT = "CVG-RECOVERY-MANIFEST" as const;
 const RECOVERY_MANIFEST_VERSION = 1 as const;
@@ -290,8 +296,10 @@ function recoveryPlaintext(bundle: DurableRecoveryBundle): string {
   return JSON.stringify(bundle, (_key, value) => typeof value === "bigint" ? `${value}` : value);
 }
 
-function recoveryAssociatedData(keyRef: string, payloadDigest: string): Buffer {
-  return Buffer.from(JSON.stringify({ format: RECOVERY_BUNDLE_FORMAT, version: RECOVERY_BUNDLE_VERSION, algorithm: RECOVERY_BUNDLE_ALGORITHM, keyRef, payloadDigest }), "utf8");
+function recoveryAssociatedData(keyRef: string, payloadDigest: string, version: 1 | 2, expiresAt: string | null): Buffer {
+  const associatedData: { format: typeof RECOVERY_BUNDLE_FORMAT; version: 1 | 2; algorithm: typeof RECOVERY_BUNDLE_ALGORITHM; keyRef: string; payloadDigest: string; expiresAt?: string | null } = { format: RECOVERY_BUNDLE_FORMAT, version, algorithm: RECOVERY_BUNDLE_ALGORITHM, keyRef, payloadDigest };
+  if (version === RECOVERY_BUNDLE_VERSION) associatedData.expiresAt = expiresAt;
+  return Buffer.from(JSON.stringify(associatedData), "utf8");
 }
 
 function recoveryBase64(value: unknown, field: string): Buffer {
@@ -348,6 +356,12 @@ function recoveryTimestamp(value: unknown, field: string): string {
   const timestamp = recoveryString(value, field);
   if (!Number.isFinite(Date.parse(timestamp))) throw new PersistenceCorruptionError(`encrypted recovery bundle ${field} is not a valid timestamp`);
   return timestamp;
+}
+
+function recoveryExpirationTimestamp(value: string | null | undefined): string | null {
+  if (value === undefined || value === null) return null;
+  if (!Number.isFinite(Date.parse(value))) throw new PersistenceStateError("recovery envelope expiresAt must be a valid timestamp");
+  return value;
 }
 
 function recoveryCreationTimestamp(value: string | undefined): string {
@@ -470,16 +484,19 @@ export function validateRecoveryBundle(bundle: DurableRecoveryBundle, options: R
 
 function parseEncryptedRecoveryBundle(value: unknown): EncryptedRecoveryBundle {
   const envelope = recoveryRecord(value, "envelope");
-  if (envelope.format !== RECOVERY_BUNDLE_FORMAT || envelope.version !== RECOVERY_BUNDLE_VERSION || envelope.algorithm !== RECOVERY_BUNDLE_ALGORITHM) throw new PersistenceCorruptionError("encrypted recovery bundle format is unsupported");
+  const version = envelope.version === RECOVERY_BUNDLE_LEGACY_VERSION ? RECOVERY_BUNDLE_LEGACY_VERSION : envelope.version === RECOVERY_BUNDLE_VERSION ? RECOVERY_BUNDLE_VERSION : null;
+  if (envelope.format !== RECOVERY_BUNDLE_FORMAT || version === null || envelope.algorithm !== RECOVERY_BUNDLE_ALGORITHM) throw new PersistenceCorruptionError("encrypted recovery bundle format is unsupported");
   const keyRef = recoveryKeyRef(recoveryString(envelope.keyRef, "keyRef"));
   const payloadDigest = recoveryString(envelope.payloadDigest, "payloadDigest");
   if (!/^[a-f0-9]{64}$/.test(payloadDigest)) throw new PersistenceCorruptionError("encrypted recovery bundle payload digest is invalid");
+  const expiresAt = version === RECOVERY_BUNDLE_VERSION ? (envelope.expiresAt === null ? null : recoveryTimestamp(envelope.expiresAt, "expiresAt")) : null;
   return {
     format: RECOVERY_BUNDLE_FORMAT,
-    version: RECOVERY_BUNDLE_VERSION,
+    version,
     algorithm: RECOVERY_BUNDLE_ALGORITHM,
     keyRef,
     payloadDigest,
+    expiresAt,
     nonce: recoveryString(envelope.nonce, "nonce"),
     ciphertext: recoveryString(envelope.ciphertext, "ciphertext"),
     authTag: recoveryString(envelope.authTag, "authTag")
@@ -515,15 +532,16 @@ function hydrateRecoveryBundle(raw: unknown): DurableRecoveryBundle {
   return hydrated;
 }
 
-export function encryptRecoveryBundle(bundle: DurableRecoveryBundle, key: Uint8Array, keyRef: string): EncryptedRecoveryBundle {
+export function encryptRecoveryBundle(bundle: DurableRecoveryBundle, key: Uint8Array, keyRef: string, options: RecoveryBundleEncryptionOptions = {}): EncryptedRecoveryBundle {
   const safeKey = recoveryKey(key);
   const safeKeyRef = recoveryKeyRef(keyRef);
+  const expiresAt = recoveryExpirationTimestamp(options.expiresAt);
   validateRecoveryBundle(bundle);
   const plaintext = Buffer.from(recoveryPlaintext(bundle), "utf8");
   const payloadDigest = digest(JSON.parse(plaintext.toString("utf8")));
   const nonce = randomBytes(12);
   const cipher = createCipheriv("aes-256-gcm", safeKey, nonce);
-  cipher.setAAD(recoveryAssociatedData(safeKeyRef, payloadDigest));
+  cipher.setAAD(recoveryAssociatedData(safeKeyRef, payloadDigest, RECOVERY_BUNDLE_VERSION, expiresAt));
   const ciphertext = Buffer.concat([cipher.update(plaintext), cipher.final()]);
   return {
     format: RECOVERY_BUNDLE_FORMAT,
@@ -531,6 +549,7 @@ export function encryptRecoveryBundle(bundle: DurableRecoveryBundle, key: Uint8A
     algorithm: RECOVERY_BUNDLE_ALGORITHM,
     keyRef: safeKeyRef,
     payloadDigest,
+    expiresAt,
     nonce: nonce.toString("base64"),
     ciphertext: ciphertext.toString("base64"),
     authTag: cipher.getAuthTag().toString("base64")
@@ -546,11 +565,12 @@ export function decryptRecoveryBundle(encrypted: unknown, key: Uint8Array): Dura
   if (nonce.length !== 12 || authTag.length !== 16) throw new PersistenceCorruptionError("encrypted recovery bundle cryptographic parameters are invalid");
   try {
     const decipher = createDecipheriv("aes-256-gcm", safeKey, nonce);
-    decipher.setAAD(recoveryAssociatedData(envelope.keyRef, envelope.payloadDigest));
+    decipher.setAAD(recoveryAssociatedData(envelope.keyRef, envelope.payloadDigest, envelope.version, envelope.expiresAt));
     decipher.setAuthTag(authTag);
     const plaintext = Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString("utf8");
     const parsed: unknown = JSON.parse(plaintext);
     if (digest(parsed) !== envelope.payloadDigest) throw new PersistenceCorruptionError("encrypted recovery bundle payload digest mismatch");
+    if (envelope.expiresAt !== null && Date.parse(envelope.expiresAt) <= Date.now()) throw new PersistenceStateError("encrypted recovery bundle has expired");
     return hydrateRecoveryBundle(parsed);
   } catch (error) {
     if (error instanceof PersistenceCorruptionError || error instanceof PersistenceStateError) throw error;

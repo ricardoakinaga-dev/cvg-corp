@@ -1657,7 +1657,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const input = parse(governedExportInputSchema, request.body);
     const idempotencyKey = requireIdempotencyKey(request);
     const result = await exportApplication.create(context, input, idempotencyKey);
-    audit(context, "ops.export", "RecoveryBundle", result.value.exportId, "ALLOWED", null, { expiresAt: result.value.expiresAt, payloadDigest: result.value.envelope.payloadDigest, exportDigest: governedExportDigest(result.value) });
+    audit(context, "ops.export", "RecoveryBundle", result.value.exportId, "ALLOWED", null, { purposeDigest: result.value.purposeDigest, expiresAt: result.value.expiresAt, payloadDigest: result.value.envelope.payloadDigest, exportDigest: governedExportDigest(result.value) });
     return response(reply, success({ ...result.value, receiptId: result.receipt.id, replayed: result.replayed }, context.correlationId), 201);
   });
 

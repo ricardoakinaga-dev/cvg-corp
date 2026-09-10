@@ -6,6 +6,8 @@ import type { SecretProvider } from "@cvg/integrations";
 
 export interface GovernedExportResult {
   exportId: OpaqueId;
+  purpose: string;
+  purposeDigest: string;
   createdAt: string;
   expiresAt: string;
   scope: { organizationId: OpaqueId; unitId: OpaqueId | null; workspaceId: OpaqueId | null };
@@ -59,9 +61,11 @@ export class ExportApplicationService {
       if (!bundle) throw new DomainError("DEPENDENCY_UNAVAILABLE", "Não existe um estado durável confirmado para exportar.", 503);
       const createdAt = now();
       const expiresAt = new Date(Date.parse(createdAt) + input.ttlSeconds * 1_000).toISOString();
-      const envelope = encryptRecoveryBundle(bundle, recoveryKey(rawKey), this.keyRef);
+      const envelope = encryptRecoveryBundle(bundle, recoveryKey(rawKey), this.keyRef, { expiresAt });
       return {
         exportId: makeId(),
+        purpose: input.purpose,
+        purposeDigest: digest(input.purpose),
         createdAt,
         expiresAt,
         scope: { organizationId: context.organizationId, unitId: context.unitId, workspaceId: context.workspaceId },
@@ -73,5 +77,5 @@ export class ExportApplicationService {
 }
 
 export function governedExportDigest(result: GovernedExportResult): string {
-  return digest({ exportId: result.exportId, expiresAt: result.expiresAt, payloadDigest: result.envelope.payloadDigest, snapshotDigest: result.manifest.snapshotDigest });
+  return digest({ exportId: result.exportId, purposeDigest: result.purposeDigest, expiresAt: result.expiresAt, payloadDigest: result.envelope.payloadDigest, snapshotDigest: result.manifest.snapshotDigest });
 }

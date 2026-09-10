@@ -14,6 +14,7 @@ const requiredFiles = [
   "Dockerfile.api",
   "Dockerfile.web",
   "docker-compose.yml",
+  "docker-compose.production.yml",
   "docker-compose.observability.yml",
   "docker/observability/otel-collector.yml",
   "docker/observability/tempo.yml",
@@ -26,6 +27,7 @@ const requiredFiles = [
   "docker/.env.example",
   "docker/nginx/web.conf",
   "docker/nginx/proxy.conf",
+  "docker/nginx/proxy.tls.conf",
   "docker/worker.ts",
   "apps/api/src/app.ts",
   "apps/api/src/application/export-service.ts",
@@ -175,6 +177,13 @@ function inspectStaticContracts(): void {
   requireText("docker/nginx/web.conf", "Content-Security-Policy");
   requireText("docker/nginx/proxy.conf", "Strict-Transport-Security");
   requireText("docker/nginx/web.conf", "Strict-Transport-Security");
+  requireText("docker/nginx/proxy.tls.conf", "listen 8443 ssl");
+  requireText("docker/nginx/proxy.tls.conf", "ssl_protocols TLSv1.2 TLSv1.3");
+  requireText("docker/nginx/proxy.tls.conf", "ssl_certificate /etc/nginx/tls/fullchain.pem");
+  requireText("docker/nginx/proxy.tls.conf", "return 308 https://$host$request_uri");
+  requireText("docker-compose.production.yml", "CVG_TLS_DIR");
+  requireText("docker-compose.production.yml", "CVG_WEB_ORIGIN");
+  requireText("docker-compose.production.yml", "ports: !override");
   requireText("docker/worker.ts", "CvgWorkerApplication");
   requireText("docker/worker.ts", "process.exitCode = 1");
   requireText("apps/worker/src/main.ts", "createConfiguredWorkerSink");
@@ -252,6 +261,8 @@ type ComposeService = {
   depends_on?: Record<string, { condition?: string }>;
   healthcheck?: { test?: unknown };
   ports?: Array<{ host_ip?: string; published?: string | number; target?: number }>;
+  volumes?: Array<{ source?: string; target?: string; read_only?: boolean } | string>;
+  environment?: Record<string, string>;
   read_only?: boolean;
   user?: string;
   security_opt?: string[];
@@ -334,6 +345,24 @@ function runObservabilityComposeConfig(): { available: boolean; config: ComposeC
   }
 }
 
+function runProductionComposeConfig(): { available: boolean; config: ComposeConfig | null } {
+  const environment = { ...syntheticComposeEnvironment(), NODE_ENV: "production", CVG_WEB_ORIGIN: "https://cvg.example.test", CVG_TRUST_PROXY: "true", CVG_DEMO_MODE: "false", CVG_TLS_DIR: "/srv/cvg/tls" };
+  const version = spawnSync("docker", ["compose", "version"], { cwd: root, env: environment, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+  if (commandNotFound(version.error) || version.status !== 0) return { available: false, config: null };
+  const result = spawnSync("docker", ["compose", "-f", "docker-compose.yml", "-f", "docker-compose.production.yml", "config", "--format", "json"], { cwd: root, env: environment, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+  if (commandNotFound(result.error)) return { available: false, config: null };
+  if (result.status !== 0 || !result.stdout.trim()) {
+    failures.push("docker-compose.production.yml: docker compose config failed");
+    return { available: true, config: null };
+  }
+  try {
+    return { available: true, config: JSON.parse(result.stdout) as ComposeConfig };
+  } catch {
+    failures.push("docker-compose.production.yml: docker compose config did not return JSON");
+    return { available: true, config: null };
+  }
+}
+
 function inspectObservabilityComposeConfig(config: ComposeConfig): void {
   const services = config.services ?? {};
   for (const name of ["otel-collector", "tempo", "prometheus", "alertmanager", "grafana"]) {
@@ -341,6 +370,28 @@ function inspectObservabilityComposeConfig(config: ComposeConfig): void {
     if (name !== "grafana" && services[name]?.ports && services[name]?.ports.length) failures.push(`docker-compose.observability.yml: ${name} must not publish a host port`);
   }
   if (config.networks?.observability?.internal !== true) failures.push("docker-compose.observability.yml: observability network must be internal");
+}
+
+function inspectProductionComposeConfig(config: ComposeConfig): void {
+  const proxy = config.services?.proxy;
+  const api = config.services?.api;
+  if (!proxy || !api) {
+    failures.push("docker-compose.production.yml: rendered API/proxy services are missing");
+    return;
+  }
+  const ports = proxy.ports ?? [];
+  const hasPort = (published: string, target: number): boolean => ports.some((port) => String(port.published) === published && port.target === target);
+  if (!hasPort("80", 8080) || !hasPort("443", 8443)) failures.push("docker-compose.production.yml: proxy must publish HTTP redirect on 80 and TLS on 443");
+  if (ports.some((port) => String(port.published) === "8080")) failures.push("docker-compose.production.yml: cleartext development port 8080 must not be published");
+  const volumes = proxy.volumes ?? [];
+  for (const target of ["/etc/nginx/conf.d/default.conf", "/etc/nginx/tls/fullchain.pem", "/etc/nginx/tls/privkey.pem"]) {
+    const volume = volumes.find((entry) => typeof entry !== "string" && entry.target === target);
+    if (!volume || typeof volume === "string" || volume.read_only !== true) failures.push(`docker-compose.production.yml: ${target} must be mounted read-only`);
+  }
+  const environment = api.environment ?? {};
+  if (environment.NODE_ENV !== "production" || environment.CVG_TRUST_PROXY !== "true" || environment.CVG_DEMO_MODE !== "false") failures.push("docker-compose.production.yml: API production environment is not fail-closed");
+  if (!environment.CVG_WEB_ORIGIN?.startsWith("https://")) failures.push("docker-compose.production.yml: API web origin must use HTTPS");
+  if (proxy.image !== "nginxinc/nginx-unprivileged:1.31.5-alpine3.24@sha256:2ddec616f1cb58bcac057aa388f28cb81e35137641ef4226d321714499329bd1") failures.push("docker-compose.production.yml: proxy image must match the approved immutable digest");
 }
 
 function inspectComposeConfig(config: ComposeConfig): void {
@@ -451,6 +502,13 @@ if (failures.length === 0) {
     observations.push("observability Compose config validated with synthetic non-secret values; no collector, dashboard or alert service was started");
   } else if (!observability.available) {
     observations.push("Docker Compose unavailable for observability; only observability artifact/static checks were executed");
+  }
+  const production = runProductionComposeConfig();
+  if (production.config) {
+    inspectProductionComposeConfig(production.config);
+    observations.push("production TLS overlay Compose config validated with synthetic non-secret values; no service was started");
+  } else if (!production.available) {
+    observations.push("Docker Compose unavailable for production TLS overlay; only production artifact/static checks were executed");
   }
 }
 

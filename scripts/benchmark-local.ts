@@ -7,7 +7,8 @@ const repetitions = 30;
 const store = new CvgStore({ bootstrapPassword: "benchmark-synthetic-password-123" });
 const option = store.contextOptions(store.bootstrapCredentials.userId)[0];
 if (!option) throw new Error("benchmark fixture has no context");
-const context = store.resolveContext(store.bootstrapCredentials.userId, { unitId: option.unit.id, workspaceId: option.workspace.id }, "OPERATIONS", "benchmark-local");
+const benchmarkSession = store.createSession(store.bootstrapCredentials.userId, "benchmark-local-session", "benchmark-local-csrf", 60);
+const context = store.resolveContext(store.bootstrapCredentials.userId, { unitId: option.unit.id, workspaceId: option.workspace.id }, "OPERATIONS", "benchmark-local", null, null, benchmarkSession.id);
 const harness = new GovernedHarness(store);
 
 type Measurement = { operation: string; repetitions: number; samplesMs: number[]; metricsMs: { min: number; p50: number; p95: number; p99: number; max: number } };

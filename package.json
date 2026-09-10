@@ -36,7 +36,7 @@
     "verify:static": "tsx scripts/verify-static.ts",
     "verify:production": "tsx scripts/verify-production.ts",
     "verify:pdp": "tsx scripts/verify-pdp-coverage.ts",
-    "verify:m1": "npm run typecheck && npm test && npm run build && npm run verify:static",
+    "verify:m1": "npm run typecheck && npm test && npm run build && npm run verify:pdp && npm run verify:static",
     "verify:all": "npm run verify:m1 && npm run test:e2e",
     "verify:postgres": "tsx scripts/verify-postgres.ts",
     "verify:postgres:restore": "tsx scripts/verify-postgres-restore.ts",

@@ -46,3 +46,24 @@ Isso reduz a lacuna de idempotência local, mas não prova concorrência
 multi-processo em PostgreSQL, restart/crash recovery, exactly-once de provider,
 staging ou AAA. Emissão/revogação de credenciais e webhooks permanecem com
 semânticas específicas, conforme ADR 019.
+
+## Atualização — 2026-09-10 — guard universal e harness
+
+O guard foi ampliado para analisar por AST todos os `ApplicationService`, o
+`DomainCommandService` e o `GovernedHarness`. Cada método público precisa de
+enforcement direto ou de uma delegação estática para `run`/`authorize`; cada
+operação é resolvida contra o registry canônico. Fixtures known-good e
+known-bad cobrem serviço sem PDP, operação desconhecida, operação dinâmica e
+delegação enumerada.
+
+O `GovernedHarness` agora aplica o mesmo PDP nos lifecycle operations de sessão,
+turno, aprovação, promoção e replay. `health` é a única exceção anotada, pois
+é metadata de readiness sem acesso a dados ou recursos. A divergência de
+`ai.approval.retry` também foi corrigida na aplicação, alinhando rota,
+contexto, policy e receipt.
+
+`verify:pdp` tornou-se gate explícito de `verify:m1`, `verify:production` e CI.
+O worker continua com a exceção arquitetural documentada: sua autoridade é o
+job/outbox durável já admitido, com tenant, lease, fencing, backpressure e
+effect ledger; ele não recebe uma sessão de usuário sintética. A verificação
+local não transforma isso em prova de PDP de ator/sessão para worker.

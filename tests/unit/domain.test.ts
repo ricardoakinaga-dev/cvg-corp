@@ -229,8 +229,11 @@ test("scoped knowledge, communications and AI replay never cross workspaces", ()
   assert.equal(store.listMessages(clinicalContext).length, 1);
   assert.equal(store.listMessages(receptionContext).length, 0);
   const harness = new GovernedHarness(store);
-  const session = harness.createSession(clinicalContext, { purpose: "SUMMARY", patientId: null, encounterId: null });
-  assert.throws(() => harness.replay(receptionContext, session.id), (error: unknown) => error instanceof DomainError && error.code === "NOT_FOUND");
+  const harnessSession = store.createSession(adminId, "synthetic-harness-scope", "synthetic-harness-csrf", 60);
+  const harnessContext = store.resolveContext(adminId, { unitId: clinical.unit.id, workspaceId: clinical.workspace.id }, "test", "scope-harness", null, null, harnessSession.id);
+  const receptionHarnessContext = store.resolveContext(adminId, { unitId: reception.unit.id, workspaceId: reception.workspace.id }, "test", "scope-replay", null, null, harnessSession.id);
+  const session = harness.createSession(harnessContext, { purpose: "SUMMARY", patientId: null, encounterId: null });
+  assert.throws(() => harness.replay(receptionHarnessContext, session.id), (error: unknown) => error instanceof DomainError && error.code === "NOT_FOUND");
 });
 
 test("communication approval requires a second actor and produces a queued message", () => {

@@ -84,6 +84,9 @@ jobs:
       - name: Static verification
         run: npm run verify:static
 
+      - name: Application PDP coverage
+        run: npm run verify:pdp
+
       - name: Contrast audit
         run: npm run audit:contrast
 

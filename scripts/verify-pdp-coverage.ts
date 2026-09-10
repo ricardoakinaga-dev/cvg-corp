@@ -1,13 +1,41 @@
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
+import { join } from "node:path";
 import { API_ROUTE_CATALOG } from "@cvg/contracts";
 import { applicationPolicyFor, APPLICATION_POLICY_REGISTRY, toolPolicyFor, TOOL_POLICY_REGISTRY } from "@cvg/agent-policy";
 import { TOOL_REGISTRY } from "@cvg/harness";
+import { inspectApplicationPdpBoundaries, type PdpBoundarySource } from "./pdp-boundary.ts";
 
 const failures: string[] = [];
 const apiSources = await Promise.all([
   readFile("apps/api/src/app.ts", "utf8"),
   readFile("apps/api/src/routes/health.ts", "utf8")
 ]);
+
+async function collectApplicationSources(directory: string): Promise<PdpBoundarySource[]> {
+  const entries = await readdir(directory, { withFileTypes: true });
+  const sources: PdpBoundarySource[] = [];
+  for (const entry of entries.sort((left, right) => left.name.localeCompare(right.name))) {
+    const path = join(directory, entry.name);
+    if (entry.isDirectory()) {
+      sources.push(...await collectApplicationSources(path));
+    } else if (entry.isFile() && entry.name.endsWith(".ts")) {
+      sources.push({ path, source: await readFile(path, "utf8") });
+    }
+  }
+  return sources;
+}
+
+const applicationPdpInspection = inspectApplicationPdpBoundaries([
+  ...await collectApplicationSources("apps/api/src/application"),
+  { path: "packages/harness/src/index.ts", source: await readFile("packages/harness/src/index.ts", "utf8") }
+]);
+for (const violation of applicationPdpInspection.findings) {
+  const method = violation.method ? `.${violation.method}` : "";
+  const operation = violation.operation ? ` (${violation.operation})` : "";
+  failures.push(`PDP boundary ${violation.path}:${violation.className}${method}: ${violation.code}${operation} — ${violation.detail}`);
+}
+if (applicationPdpInspection.boundaryCount === 0) failures.push("application PDP boundary scan found no ApplicationService or DomainCommandService");
+
 const operations = new Set<string>();
 for (const source of apiSources) {
   for (const match of source.matchAll(/requestContext\(request,\s*(?:"([^"]+)"|`([^`]+)`)/g)) {
@@ -49,6 +77,7 @@ for (const [name, source] of [["DomainCommandService", commandSource], ["AgentAp
 }
 if (!exportSource.includes('enforceApplicationPolicy(context, "ops.export"') || !exportSource.includes("encryptRecoveryBundle") || !exportSource.includes("this.commands.execute")) failures.push("ExportApplicationService is missing policy, encryption or idempotency controls");
 if (!agentSource.includes("this.commands.execute")) failures.push("AgentApplicationService is missing the durable command idempotency boundary");
+if (!agentSource.includes('enforceApplicationPolicy(context, "ai.approval.retry"')) failures.push("AgentApplicationService retry must enforce the ai.approval.retry policy");
 for (const match of commandSource.matchAll(/this\.(?:run|authorize)\(context,\s*"([^"]+)"/g)) {
   const operation = match[1] ?? "";
   if (operation && !applicationPolicyFor(operation)) failures.push(`DomainCommandService operation ${operation} has no application PDP rule`);
@@ -56,7 +85,7 @@ for (const match of commandSource.matchAll(/this\.(?:run|authorize)\(context,\s*
 for (const operation of ["patients.read", "patients.create", "guardians.read", "appointments.read"]) {
   if (!patientSource.includes(`enforceApplicationPolicy(context, "${operation}`) && !readServiceSource.includes(`enforceApplicationPolicy(context, "${operation}`)) failures.push(`repository use-case operation ${operation} has no explicit PDP call`);
 }
-for (const fragment of ["WORKER_LANES", "WorkerLaneContext", "organizationId", "outboxStats", "runBoundedLane", "claimOutbox"]) {
+for (const fragment of ["WORKER_LANES", "WORKER_JOB_LANES", "WorkerLaneContext", "organizationId", "workerId", "outboxStats", "runBoundedLane", "claimOutbox", "claimWorkerJobs", "completeWorkerJob", "failWorkerJob", "reconcileUnknownExternalEffect", "fenceToken"]) {
   if (!workerSource.includes(fragment)) failures.push(`worker boundary is missing ${fragment} tenant/lease control`);
 }
 if (!integrationSource.includes("fenceToken") || !integrationSource.includes("completeOutbox") || !integrationSource.includes("failOutbox")) failures.push("worker boundary is missing fenced outbox completion controls");

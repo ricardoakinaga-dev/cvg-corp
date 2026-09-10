@@ -13,6 +13,7 @@ export class AgentApplicationService {
     this.commands = commands ?? new DurableIdempotencyService(store, null);
   }
 
+  /** @pdp-exempt health — readiness metadata has no actor/resource/data access. */
   health(): Promise<AgentRuntimeHealth> {
     return this.runtime.health();
   }
@@ -31,7 +32,7 @@ export class AgentApplicationService {
 
   async retryTurn(context: CvgContext, input: AiTurnInput, approvalId: OpaqueId): Promise<IdempotentCommandResult<AgentTurnResult>> {
     this.store.validateContext(context);
-    enforceApplicationPolicy(context, `ai.turn.${input.purpose}`, { resourceId: input.resourceId ?? input.encounterId ?? approvalId });
+    enforceApplicationPolicy(context, "ai.approval.retry", { resourceId: input.resourceId ?? input.encounterId ?? approvalId });
     return this.commands.execute(this.command(context, "ai.approval.retry", input.idempotencyKey, approvalId, input), async () => this.persistRuntimeResult(context, await this.runtime.executeTurn(context, input, approvalId)));
   }
 

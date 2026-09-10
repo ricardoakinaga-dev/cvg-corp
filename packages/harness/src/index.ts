@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import type { AiApproval, AiDraft, AiSession, AiTurn, CvgContext, DataClass, OpaqueId, Role } from "@cvg/contracts";
 import type { AiTurnInput } from "@cvg/contracts";
 import { CvgStore, DomainError, digest, isInContext, makeId, now } from "@cvg/domain";
-import { StaticPolicyDecisionPoint } from "@cvg/agent-policy";
+import { enforceApplicationPolicy, StaticPolicyDecisionPoint } from "@cvg/agent-policy";
 import { ToolGateway, ToolGatewayError, toolExecutionDigest, type ToolExecutionLedger, type ToolExecutionLedgerClaim, type ToolExecutionLedgerInput, type ToolExecutionLedgerRecord, type ToolExecutionRequest } from "@cvg/agent-tools";
 
 export const DSH_ENGINE_COMMIT = "6454e3270642c3a7551dcae4f7447e4032febd77";
@@ -129,18 +129,20 @@ export class GovernedHarness {
     for (const tool of TOOL_REGISTRY) this.toolGateway.register({ ...tool, risk: policyRisk(tool.risk), timeoutMs: 5_000, egress: "LOCAL_ONLY", parseInput: (value: unknown) => value });
   }
 
+  /** @pdp-exempt health — readiness metadata has no actor/resource/data access. */
   health(): HarnessHealth {
     return { engine: "READY", provider: "LOCAL_STUB_ONLY", engineCommit: DSH_ENGINE_COMMIT, manifestVersion: DSH_MANIFEST_VERSION, tools: TOOL_REGISTRY.length, profileDigest: this.profileDigest };
   }
 
   createSession(context: CvgContext, input: Pick<AiTurnInput, "purpose" | "patientId" | "encounterId">): AiSession {
+    enforceApplicationPolicy(context, `ai.turn.${input.purpose}`, { resourceId: input.patientId ?? input.encounterId });
     this.store.requireRole(context, ["admin", "veterinario", "recepcao"], "ai:session");
     const session: AiSession = { id: makeId(), organizationId: context.organizationId, actorId: context.actorId, unitId: context.unitId, workspaceId: context.workspaceId, patientId: input.patientId, encounterId: input.encounterId, purpose: input.purpose, engineCommit: DSH_ENGINE_COMMIT, profileDigest: this.profileDigest, status: "ACTIVE", createdAt: now() };
     this.store.aiSessions.set(session.id, session);
     return session;
   }
 
-  getOrCreateSession(context: CvgContext, input: Pick<AiTurnInput, "purpose" | "patientId" | "encounterId" | "sessionId">): AiSession {
+  private getOrCreateSession(context: CvgContext, input: Pick<AiTurnInput, "purpose" | "patientId" | "encounterId" | "sessionId">): AiSession {
     this.store.validateContext(context);
     if (input.sessionId) {
       const existing = this.store.aiSessions.get(input.sessionId);
@@ -151,6 +153,7 @@ export class GovernedHarness {
   }
 
   async executeTurn(context: CvgContext, input: AiTurnInput, approvalId: OpaqueId | null = null): Promise<HarnessTurnResult> {
+    enforceApplicationPolicy(context, `ai.turn.${input.purpose}`, { resourceId: input.resourceId ?? input.encounterId ?? input.patientId });
     const session = this.getOrCreateSession(context, input);
     if (!isInContext(session, context) || session.patientId !== input.patientId || session.encounterId !== input.encounterId || session.purpose !== input.purpose) throw new DomainError("POLICY_DENIED", "O contexto do turno não pode mudar a finalidade, o escopo, o paciente ou atendimento de uma sessão existente.", 403);
     const prompt = input.prompt;
@@ -237,6 +240,7 @@ export class GovernedHarness {
   }
 
   approve(context: CvgContext, approvalId: OpaqueId, decision: "allowed-once" | "rejected", reason: string | null): AiApproval {
+    enforceApplicationPolicy(context, "ai.approval", { resourceId: approvalId });
     this.store.requireRole(context, ["admin", "veterinario", "recepcao", "estoque", "financeiro"], "ai:approval");
    const approval = this.store.aiApprovals.get(approvalId);
    if (!approval || approval.sessionId === undefined) throw new DomainError("NOT_FOUND", "Aprovação não encontrada.", 404);
@@ -258,6 +262,7 @@ export class GovernedHarness {
   }
 
   promoteDraft(context: CvgContext, draftId: OpaqueId): { draft: AiDraft; documentId: OpaqueId } {
+    enforceApplicationPolicy(context, "ai.draft.promote", { resourceId: draftId });
     this.store.requireRole(context, ["veterinario"], "clinical:write");
     const draft = this.store.aiDrafts.get(draftId);
     if (!draft || draft.encounterId === null) throw new DomainError("NOT_FOUND", "Rascunho clínico não encontrado.", 404);
@@ -350,6 +355,7 @@ export class GovernedHarness {
   }
 
   replay(context: CvgContext, sessionId: OpaqueId): { session: AiSession; turns: AiTurn[]; digest: string } {
+    enforceApplicationPolicy(context, "ai.replay", { resourceId: sessionId });
     this.store.requireRole(context, ["admin", "veterinario", "recepcao"], "ai:replay");
     const session = this.store.aiSessions.get(sessionId);
     if (!session || session.organizationId !== context.organizationId || session.actorId !== context.actorId || !isInContext(session, context)) throw new DomainError("NOT_FOUND", "Sessão de copiloto não encontrada.", 404);

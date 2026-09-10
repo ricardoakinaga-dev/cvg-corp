@@ -81,9 +81,9 @@ Outbox/inbox/effect ledger têm lease/fencing, retry bounded, backoff, quarantin
 
 ## Concrete Steps
 
-<!-- engineering-framework: active_action_id=CVG-FULL-STATE-OF-THE-ART:INTEGRATE-WORKER-EFFECT-LEDGER-COMPOSITION -->
+<!-- engineering-framework: active_action_id=CVG-FULL-STATE-OF-THE-ART:INTEGRATE-PDP-UNIVERSAL-COVERAGE -->
 
-1. `CVG-FULL-STATE-OF-THE-ART:AUTHORITATIVE-NORMALIZED-ENCOUNTER-WRITE` — concluída localmente: `encounters.create` usa application/repository assíncrono e `idempotentAsync`, grava a linha `encounters` como escrita normalizada autoritativa dentro do commit durável, omite o ID da projeção genérica e cobre SQL/HTTP/replay/corrupção; sem alegar PostgreSQL externo/staging.
+1. `CVG-FULL-STATE-OF-THE-ART:INTEGRATE-PDP-UNIVERSAL-COVERAGE` — ação corrente: integrar o guard AST, enforcement do harness, correção de `ai.approval.retry`, gates normais/CI e evidências locais; observar o SHA exato sem declarar AAA antes de critic independente e gates externos.
 2. `CVG-FULL-STATE-OF-THE-ART:AUTHORITATIVE-NORMALIZED-APPOINTMENT-WRITE` — concluída localmente: create assíncrono, `idempotentAsync`, escrita SQL contextual autoritativa, omissão da projeção genérica e testes SQL/HTTP/regressão; sem alegar PostgreSQL externo/staging.
 3. `CVG-FULL-STATE-OF-THE-ART:REMOTE-CI-OBSERVATION-APPOINTMENT-WRITE` — concluída: SHA `9c304f39621736ad8bb5f4b39447c4ac9d94fd25` publicado; run `34462488394`, job principal `102823305023` e job de imagens `102825161621` terminaram `success`.
 4. `CVG-FULL-STATE-OF-THE-ART:EXTERNAL-EVIDENCE-AND-HUMAN-ACCEPTANCE` — obter evidência autorizada de staging/provider/DeepSeek/observabilidade/carga/recuperação, executar crítica independente fresca e registrar aceite humano; até lá manter `FAIL_WITH_LIMITATIONS`/`AAA_NOT_PROVEN`.
@@ -674,3 +674,35 @@ gate é `EXTERNAL-EVIDENCE-AND-HUMAN-ACCEPTANCE`. O programa continua
 `FAIL_WITH_LIMITATIONS` / `AAA_NOT_PROVEN`, pois staging, provider/DeepSeek,
 segredos, Collector/SLO, carga/chaos/recovery, matriz assistiva completa e
 aceite humano não foram executados.
+
+## Recovery / replan — PDP universal — 2026-09-10 11:26
+
+A continuação foi reconciliada contra o worktree limpo em
+`25987b13d18706374c4c030bfbf283339897dd06`. O pointer anterior apontava para
+evidência externa, mas essa evidência exige autoridade que não está disponível.
+Ainda existe uma lacuna local, segura e reproduzível na ordem do prompt:
+`V3-PDP-001` declara cobertura de catálogo e alguns boundaries, porém a
+proteção automática não enumera todos os application services nem rejeita de
+forma estrutural um novo boundary sensível sem chamada de PDP.
+
+O próximo action executável é
+`CVG-FULL-STATE-OF-THE-ART:PDP-UNIVERSAL-COVERAGE`. O escopo será limitado ao
+contrato de enforcement/guard, application boundaries, teste known-good/
+known-bad e documentação/evidência; nenhuma integração externa, credencial,
+provider, dado real ou alteração de migration será feita.
+
+## PDP universal — fechamento local pré-integração — 2026-09-10 12:00
+
+O scanner AST foi implementado e passou a enumerar nove boundaries: todos os
+serviços de aplicação encontrados e o `GovernedHarness`. Métodos públicos
+exigem enforcement direto ou delegação explícita enumerável; operação dinâmica,
+ausente ou fora do registry falha. A rota e o serviço de `ai.approval.retry`
+foram alinhados, e o harness agora falha fechado sem sessão autenticada.
+
+O guard está conectado a `verify:pdp`, `verify:static`, `verify:m1`,
+`verify:production` e CI. A primeira falha do benchmark sintético por contexto
+sem sessão foi corrigida com uma sessão autenticada de fixture e revalidada por
+`verify:production`. Evidência: `VER-CVG-142`, `VER-CVG-143`, `VER-CVG-144` e
+`VER-CVG-145`. O critic fresh não completou e não aprovou. A integração local
+aguarda commit e observação do SHA exato; o global continua
+`FAIL_WITH_LIMITATIONS` / `AAA_NOT_PROVEN`.

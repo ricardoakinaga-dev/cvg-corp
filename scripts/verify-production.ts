@@ -40,6 +40,7 @@ const requiredFiles = [
   "packages/ops/src/otel.ts",
   "packages/config/src/index.ts",
   "packages/agent-runtime/src/index.ts",
+  "packages/harness/src/index.ts",
   "packages/agent-policy/src/index.ts",
   "packages/agent-tools/src/index.ts",
   "packages/deepseek-bridge/src/index.ts",
@@ -102,6 +103,7 @@ const requiredFiles = [
   "docs/runbooks/deepseek-bridge-outage.md",
   "scripts/verify-licenses.ts",
   "scripts/lint.ts",
+  "scripts/verify-static.ts",
   "scripts/audit-design-tokens.ts",
   "scripts/check-contrast.ts",
   "tests/unit/worker.test.ts",
@@ -113,6 +115,7 @@ const requiredFiles = [
   "scripts/verify-production.ts",
   "scripts/verify-triplo-aaa.ts",
   "scripts/verify-pdp-coverage.ts",
+  "scripts/pdp-boundary.ts",
   "scripts/verify-staging.ts",
   "scripts/verify-deepseek-acp.ts",
   "scripts/verify-provider-sandbox.ts",
@@ -214,6 +217,7 @@ function inspectStaticContracts(): void {
   requireText("packages/deepseek-bridge/src/acp.ts", "methods.client.session.requestPermission");
   requireText("packages/deepseek-bridge/src/acp.ts", "rev-parse");
   requireText("packages/deepseek-bridge/src/acp.ts", "read-only");
+  requireText("packages/harness/src/index.ts", "enforceApplicationPolicy");
   requireText("packages/auth/src/index.ts", "validateWebAuthnAssertion");
   requireText("packages/auth/src/index.ts", "evaluateBreakGlass");
   requireText("packages/agent-tools/src/index.ts", "OUTCOME_UNKNOWN");
@@ -241,6 +245,11 @@ function inspectStaticContracts(): void {
   requireText("apps/api/src/application/export-service.ts", "this.commands.execute");
   requireText("apps/api/src/application/idempotency-service.ts", "claimCommandReceipt");
   requireText("apps/api/src/application/idempotency-service.ts", "settleCommandReceipt");
+  requireText("scripts/pdp-boundary.ts", "inspectApplicationPdpBoundaries");
+  requireText("scripts/verify-pdp-coverage.ts", "inspectApplicationPdpBoundaries");
+  requireText("scripts/verify-static.ts", "inspectApplicationPdpBoundaries");
+  requireText("package.json", "npm run verify:pdp");
+  requireText(".github/workflows/ci.yml", "npm run verify:pdp");
   requireText("apps/api/src/app.ts", "new DurableIdempotencyService");
   requireText(".gauntlet/bar-v3.json", "V3-AAA-001");
   requireText(".github/workflows/ci.yml", "npm ci --ignore-scripts");
@@ -500,6 +509,7 @@ function runLocalGates(): void {
   runLocalGate("fault/worker tests", "npm", ["run", "test:fault"]);
   runLocalGate("unit/integration tests", "npm", ["test"]);
   runLocalGate("web build", "npm", ["run", "build"]);
+  runLocalGate("application PDP coverage", "npm", ["run", "verify:pdp"]);
   runLocalGate("static verification", "npm", ["run", "verify:static"]);
   runLocalGate("browser E2E", "npm", ["run", "test:e2e"]);
   runLocalGate("contrast audit", "npm", ["run", "audit:contrast"]);

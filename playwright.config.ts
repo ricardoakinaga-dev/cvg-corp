@@ -27,7 +27,9 @@ export default defineConfig({
   reporter: [["list"], ["html", { outputFolder: "artifacts/playwright-report", open: "never" }]],
   use: { baseURL: "http://127.0.0.1:5173", trace: "retain-on-failure", screenshot: "only-on-failure" },
   webServer: [
-    { command: "CVG_HOST=127.0.0.1 CVG_API_PORT=4310 CVG_STORAGE=memory CVG_DEMO_MODE=true npm run dev:api", url: "http://127.0.0.1:4310/api/v1/health", reuseExistingServer: false, timeout: 30_000 },
+    // The synthetic server is shared by parallel browser projects. Keep its route bucket
+    // above the suite's aggregate request volume while leaving production limits unchanged.
+    { command: "CVG_HOST=127.0.0.1 CVG_API_PORT=4310 CVG_STORAGE=memory CVG_DEMO_MODE=true CVG_RATE_LIMIT_REQUESTS_PER_WINDOW=10000 npm run dev:api", url: "http://127.0.0.1:4310/api/v1/health", reuseExistingServer: false, timeout: 30_000 },
     { command: "npm run dev:web", url: "http://127.0.0.1:5173", reuseExistingServer: false, timeout: 30_000 }
   ],
   projects: [...browserProjects, {

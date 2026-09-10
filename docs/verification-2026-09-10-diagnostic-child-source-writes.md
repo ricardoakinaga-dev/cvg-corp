@@ -19,19 +19,32 @@ quando a cadeia pedido→espécime→resultado perde proveniência.
 ## Evidência local direcionada
 
 - `npm run typecheck`: **pass**;
-- `node --import tsx --test tests/integration/persistence.test.ts`: **42/42**;
+- `node --import tsx --test tests/integration/persistence.test.ts`: **43/43**;
+- `npm test`: **172 testes, 171 pass, 1 skip**;
+- `npm run lint`, `npm run build`, `npm run verify:static`, `npm run verify:pdp`,
+  `npm run test:database`, `npm run test:fault`, `npm run verify:production` e
+  `git diff --check`: **pass**;
 - testes cobrem UPSERT autoritativo, igualdade do snapshot, ausência de
   `RETURNING`, replay sem segundo DML e rollback;
 - `db/migrations/033_diagnostic_specimen_result_scope.sql` contém backfill,
   shape checks, FKs compostas, índices e policies RLS/DML;
-- o gate real `verify:postgres` foi ampliado para criação/replay, reads,
-  colunas persistidas e isolamento RLS, mas sua execução neste checkpoint ainda
-  depende do CI PostgreSQL efêmero.
+- `db/migrations/034_diagnostic_child_integrity_backstop.sql` adiciona FKs de
+  paciente/cadeia, guards contra bypass `NULL/NULL` e policy de leitura exata;
+- o gate real `verify:postgres` cobre criação/replay, reads sem contexto,
+  tentativa de espécime sem escopo, cadeia resultado→pedido/espécime inválida,
+  colunas persistidas e isolamento RLS.
 
 ## Evidência remota
 
-`PENDING`: o CI precisa executar a migration 033 e o gate PostgreSQL completo.
-Nenhuma prova sintética é promovida a prova de banco real.
+O CI exato do SHA `400e40f5a76529f9a661c31a66d6950d7d0bfc2e` terminou com
+sucesso no run `34507439496`, jobs `102972978597` (gates locais, migrations e
+PostgreSQL/RLS efêmero) e `102975332632` (imagens API/web). Foram publicados
+`cvg-verification-400e40f5a76529f9a661c31a66d6950d7d0bfc2e` e
+`cvg-browser-e2e-400e40f5a76529f9a661c31a66d6950d7d0bfc2e`.
+
+Essa evidência é válida para o SHA anterior à migration 034; o CI do SHA
+corrigido ainda precisa executar a migration 034 e os novos negativos. Nenhuma
+prova sintética ou CI anterior é promovida a prova do banco corrigido.
 
 ## Limites preservados
 

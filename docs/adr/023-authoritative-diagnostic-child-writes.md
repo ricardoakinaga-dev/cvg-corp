@@ -39,11 +39,24 @@ escopo parcial ou divergente, adiciona FKs compostas e instala policies RLS de
 leitura e DML. Linhas legadas de pedidos sem atendimento continuam explícitas
 como `null/null` e não aparecem nas leituras clínicas contextualizadas.
 
+A migration 034 fecha o backstop que não pode depender apenas da aplicação:
+adiciona FKs compostas para paciente e para a cadeia
+pedido→espécime→resultado, instala guards `BEFORE` que rejeitam o bypass
+`NULL/NULL` de pedidos vinculados a atendimento e impede mudanças de pedido que
+deixariam filhos com escopo ou paciente divergentes. As leituras dos filhos
+também usam a policy DML exata, portanto um contexto organizacional sem unidade
+não enumera filhos de atendimentos.
+
 ## Invariantes
 
 - A resposta PostgreSQL só é liberada depois do commit durável.
 - O escopo persistido do filho é o mesmo escopo do atendimento do pedido.
 - Um resultado só pode referenciar o espécime e o pedido da mesma organização.
+- Um espécime mantém o paciente e o pedido de origem; um resultado mantém o
+  mesmo pedido, espécime e paciente, inclusive em SQL direto.
+- Filho de pedido vinculado a atendimento carrega exatamente o par
+  `unit_id`/`workspace_id` do atendimento; `null/null` é reservado ao legado
+  organizacional sem atendimento.
 - Divergência de snapshot ou de `RETURNING` falha fechado, sem sucesso inferido.
 - Replay não duplica DML do espécime ou do resultado.
 
@@ -56,9 +69,11 @@ como `null/null` e não aparecem nas leituras clínicas contextualizadas.
 ## Verificação e limites
 
 Os testes de persistência cobrem criação autoritativa conjunta, replay,
-divergência e ausência de `RETURNING`; o gate PostgreSQL deve exercitar as duas
-rotas, leitura contextual, colunas armazenadas e updates fora de workspace ou
-unidade. O pool local é sintético e não substitui essa prova.
+divergência e ausência de `RETURNING`; o gate PostgreSQL exercita as duas
+rotas, leitura contextual sem escopo, tentativa de `NULL/NULL` em filho
+vinculado, cadeia pedido/espécime inconsistente, colunas armazenadas e updates
+fora de workspace ou unidade. O pool local é sintético e não substitui essa
+prova.
 
 Isto não prova ainda staging, provider/DeepSeek, segredos, observabilidade
 operacional, carga/chaos/recovery ou aceite humano. O veredito global permanece

@@ -86,7 +86,7 @@ function fakePool(options: { revision?: string; failSnapshotInsert?: boolean; au
       statements.push(normalized);
       if (sql.includes("current_database()")) return { rows: [{ database: "cvg_synthetic", server_version: "16.0" }] };
       if (sql.includes("to_regclass('public.cvg_state_snapshots')")) return { rows: [{ snapshots: true, journal: true, audit: true, receipts: true, communications: true, outbox: true, usage_ledger: true, inbox: true, external_effects: true, rate_limit_buckets: true, break_glass_grants: true, break_glass_lifecycle: true, runtime_role: true, runtime_scope_guards: true, auth_security: true, ai_turn_scope: true, ai_draft_scope: true, ai_turn_provenance_usage: true, audit_tamper_evident_chain: true, append_only_audit_guard: true, append_only_lock_privileges: true, worker_jobs: true, worker_heartbeats: true, worker_lane_schema: true }] };
-      if (sql.includes("033_diagnostic_specimen_result_scope")) return { rows: [{ diagnostic_child_scope: true }] };
+      if (sql.includes("034_diagnostic_child_integrity_backstop")) return { rows: [{ diagnostic_child_scope: true }] };
       if (sql.includes("as snapshot_scope_revision")) return { rows: [{ snapshot_scope_revision: true }] };
       if (sql.includes("from cvg_state_snapshots s")) return { rows: [] };
       if (sql.includes("select revision::text as revision")) return { rows: revision === "0" ? [] : [{ revision }] };
@@ -1026,6 +1026,9 @@ test("PostgreSQL diagnostic child creation commits authoritative specimen/result
     assert.equal(fake.statements.filter((statement) => statement.startsWith("insert into diagnostic_results") && statement.includes("returning id::text")).length, 1);
     assert.equal((specimenReplay.json() as { data: { specimen: { id: string } } }).data.specimen.id, specimenId);
     assert.equal((resultReplay.json() as { data: { result: { id: string } } }).data.result.id, resultId);
+    const malformedKey = await runtime.app.inject({ method: "POST", url: `/api/v1/diagnostics/requests/${requestId}/specimens`, headers: { ...scopeHeaders, "idempotency-key": "invalid key with spaces" }, payload: specimenPayload });
+    assert.equal(malformedKey.statusCode, 400, malformedKey.body);
+    assert.equal((malformedKey.json() as { error: { code: string } }).error.code, "INVALID_INPUT");
   } finally {
     await runtime.app.close();
   }

@@ -64,6 +64,7 @@ const requiredFiles = [
   "db/migrations/031_worker_jobs_and_heartbeats.sql",
   "db/migrations/032_diagnostic_request_scope.sql",
   "db/migrations/033_diagnostic_specimen_result_scope.sql",
+  "db/migrations/034_diagnostic_child_integrity_backstop.sql",
   "docs/runbooks/deploy.md",
   "docs/runbooks/deployment.md",
   "docs/runbooks/rollback.md",
@@ -105,6 +106,7 @@ const requiredFiles = [
   "docs/adr/023-authoritative-diagnostic-child-writes.md",
   "docs/verification-2026-09-10-diagnostic-child-source-writes.md",
   ".gauntlet/critique-diagnostic-request-scope-20260910.md",
+  ".gauntlet/critique-diagnostic-child-writes-20260910.md",
   "docs/observability-production.md",
   "docs/staging.md",
   "docs/load-and-chaos.md",
@@ -254,6 +256,9 @@ function inspectStaticContracts(): void {
   requireText("db/migrations/033_diagnostic_specimen_result_scope.sql", "specimens_organization_request_scope_fk");
   requireText("db/migrations/033_diagnostic_specimen_result_scope.sql", "diagnostic_results_organization_specimen_scope_fk");
   requireText("db/migrations/033_diagnostic_specimen_result_scope.sql", "cvg_request_dml_scope_allows(unit_id, workspace_id)");
+  requireText("db/migrations/034_diagnostic_child_integrity_backstop.sql", "cvg_diagnostic_specimen_integrity_guard");
+  requireText("db/migrations/034_diagnostic_child_integrity_backstop.sql", "diagnostic_results_organization_request_specimen_patient_fk");
+  requireText("db/migrations/034_diagnostic_child_integrity_backstop.sql", "cvg_request_dml_scope_allows(unit_id, workspace_id)");
   requireText("packages/persistence/src/index.ts", "claimWorkerJobs");
   requireText("packages/persistence/src/index.ts", "recordWorkerHeartbeat");
   requireText("apps/worker/src/worker.ts", "defaultDurableJobRunner");

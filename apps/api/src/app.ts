@@ -1351,8 +1351,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const requestId = id(parse(idSchema, (request.params as { id: string }).id));
     const input = parse(specimenInputSchema, request.body);
     const { context } = requestContext(request, "diagnostics.specimen", null, null, false, false, requestId);
-    const key = header(request, "idempotency-key");
-    if (!key) throw new DomainError("INVALID_INPUT", "Idempotency-Key é obrigatório.", 400);
+    const key = requireIdempotencyKey(request);
     const result = await commandExecutor.execute(commandInput(context, "diagnostics.specimen", key, requestId, input), () => diagnosticSpecimenApplication.create(context, requestId, input.label));
     audit(context, "diagnostics.specimen", "Specimen", result.value.id, "ALLOWED");
     if (persistence) {

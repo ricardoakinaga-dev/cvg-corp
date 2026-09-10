@@ -42,6 +42,15 @@ function newDurablePersistence(): PostgresPersistence {
   return new PostgresPersistence({ connectionString: configuredDatabaseUrl, inboxSignatureVerifier: verifySyntheticInboxSignature });
 }
 
+async function expectSqlRejected(client: { query: (text: string, values?: unknown[]) => Promise<unknown> }, label: string, text: string, values: unknown[]): Promise<void> {
+  try {
+    await client.query(text, values);
+  } catch {
+    return;
+  }
+  throw new Error(`${label} unexpectedly succeeded`);
+}
+
 type AuthenticatedContext = {
   headers: Record<string, string>;
   unitId: string;
@@ -205,6 +214,14 @@ try {
   if (results.statusCode !== 200) throw new Error(`normalized diagnostic result read failed with ${results.statusCode}: ${results.body}`);
   const resultsBody = JSON.parse(results.body) as { data: { items: Array<{ id: string }> } };
   if (!resultsBody.data.items.some((item) => item.id === diagnosticVerification.resultId)) throw new Error("normalized diagnostic result read did not return the authoritative result");
+  const chainProbe = await second.app.inject({
+    method: "POST",
+    url: "/api/v1/diagnostics/requests",
+    headers: { ...diagnosticVerification.auth.headers, "idempotency-key": "verify-postgres-diagnostic-chain-probe-v1" },
+    payload: JSON.stringify({ patientId: luna.id, encounterId: diagnosticVerification.encounterId, testName: "Postgres diagnostic chain probe", priority: "ROUTINE" })
+  });
+  if (chainProbe.statusCode !== 201) throw new Error(`diagnostic chain probe request failed with ${chainProbe.statusCode}: ${chainProbe.body}`);
+  const chainProbeRequestId = (JSON.parse(chainProbe.body) as { data: { request: { id: string } } }).data.request.id;
 
   const organizationId = second.store.bootstrapCredentials.organizationId;
   const outboxId = id(randomUUID());
@@ -437,6 +454,8 @@ try {
     "select (select count(*)::int from cvg_state_snapshots) as snapshots, (select count(*)::int from cvg_event_journal) as journal, (select count(*)::int from audit_records) as audits, (select count(*)::int from cvg_audit_ledger) as \"auditLedger\", (select count(*)::int from command_receipts) as receipts, (select count(*)::int from cvg_command_receipt_ledger) as \"receiptLedger\", (select count(*)::int from guardians) as guardians, (select count(*)::int from diagnostic_requests) as \"diagnosticRequests\", (select count(*)::int from specimens) as specimens, (select count(*)::int from diagnostic_results) as \"diagnosticResults\", (select count(*)::int from outbox_records) as outbox, (select count(*)::int from ai_usage_ledger) as \"usageLedger\", (select count(*)::int from integration_inbox_records) as inbox, (select count(*)::int from external_effects) as \"externalEffects\", (select count(*)::int from break_glass_grants) as \"breakGlass\""
   )).rows[0];
   const rlsRole = `cvg_rls_verify_${randomUUID().replaceAll("-", "")}`;
+  const invalidSpecimenId = randomUUID();
+  const invalidResultId = randomUUID();
   const currentRole = (await client.query<{ rolsuper: boolean; rolbypassrls: boolean; rolcreaterole: boolean; rolcreatedb: boolean }>(
     "select rolsuper, rolbypassrls, rolcreaterole, rolcreatedb from pg_roles where rolname = current_user"
   )).rows[0];
@@ -482,6 +501,23 @@ try {
     const missingScopeClinicalAddendumCount = (await client.query<{ count: number }>("select count(*)::int as count from clinical_addenda")).rows[0]?.count;
     const missingContextPatientCount = (await client.query<{ count: number }>("select count(*)::int as count from patients")).rows[0]?.count;
     const missingContextGuardianCount = (await client.query<{ count: number }>("select count(*)::int as count from guardians")).rows[0]?.count;
+    const missingContextDiagnosticRequestCount = (await client.query<{ count: number }>("select count(*)::int as count from diagnostic_requests")).rows[0]?.count;
+    const missingContextSpecimenCount = (await client.query<{ count: number }>("select count(*)::int as count from specimens")).rows[0]?.count;
+    const missingContextDiagnosticResultCount = (await client.query<{ count: number }>("select count(*)::int as count from diagnostic_results")).rows[0]?.count;
+    await expectSqlRejected(
+      client,
+      "encounter-bound specimen with null scope",
+      "insert into specimens (id, organization_id, request_id, patient_id, label, collected_at, status, unit_id, workspace_id) values ($1, $2, $3, $4, $5, now(), $6, null, null)",
+      [invalidSpecimenId, latestOrganization, diagnosticVerification.requestId, luna.id, "invalid null-scope specimen", "COLLECTED"]
+    );
+    await client.query("select set_config('cvg.unit_id', $1, false)", [auth.unitId]);
+    await client.query("select set_config('cvg.workspace_id', $1, false)", [auth.workspaceId]);
+    await expectSqlRejected(
+      client,
+      "result with mismatched request/specimen chain",
+      "insert into diagnostic_results (id, organization_id, request_id, specimen_id, patient_id, value, source, source_version, status, created_at, unit_id, workspace_id) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, now(), $10, $11)",
+      [invalidResultId, latestOrganization, chainProbeRequestId, diagnosticVerification.specimenId, luna.id, "invalid chain", "synthetic-negative", "v1", "VALID", auth.unitId, auth.workspaceId]
+    );
     await client.query("select set_config('cvg.unit_id', $1, false)", [auth.unitId]);
     await client.query("select set_config('cvg.workspace_id', $1, false)", [randomUUID()]);
     const hiddenWorkspaceAppointmentCount = (await client.query<{ count: number }>("select count(*)::int as count from appointments")).rows[0]?.count;
@@ -523,8 +559,10 @@ try {
     const hiddenExternalEffectsCount = (await client.query<{ count: number }>("select count(*)::int as count from external_effects")).rows[0]?.count;
     const hiddenBreakGlassCount = (await client.query<{ count: number }>("select count(*)::int as count from break_glass_grants")).rows[0]?.count;
     const unprotectedTables = (await client.query<{ table_name: string }>("select c.relname as table_name from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' and c.relkind = 'r' and c.relname <> 'schema_migrations' and (not c.relrowsecurity or not c.relforcerowsecurity) order by c.relname")).rows;
-    if (visibleOrganizationCount !== 1 || (visibleSnapshotCount ?? 0) < 1 || (visibleJournalCount ?? 0) < 1 || (visibleOutboxCount ?? 0) < 1 || (visibleUsageCount ?? 0) < 1 || (visibleInboxCount ?? 0) < 1 || (visibleExternalEffectsCount ?? 0) < 1 || (visibleBreakGlassCount ?? 0) < 2 || (visiblePatientCount ?? 0) < 1 || (visibleGuardianCount ?? 0) < 1 || (visibleDiagnosticRequestCount ?? 0) < 1 || (visibleSpecimenCount ?? 0) < 1 || (visibleDiagnosticResultCount ?? 0) < 1 || (visibleAppointmentCount ?? 0) < 1 || (visibleClinicalDocumentCount ?? 0) < 1 || (visibleClinicalAddendumCount ?? 0) < 1 || (visibleKnowledgeCount ?? 0) < 1 || (visibleProviderCount ?? 0) < 1 || (visibleRoleCount ?? 0) < 1 || (visibleAiTurnCount ?? 0) !== 0 || (visibleAiDraftCount ?? 0) !== 0 || (visibleLifecycleDecisionCount ?? 0) !== 0 || (visibleLifecycleEventCount ?? 0) !== 0 || (visibleLegacyInboxCount ?? 0) !== 0 || missingScopeClinicalDocumentCount !== 0 || missingScopeClinicalAddendumCount !== 0 || missingContextPatientCount !== 0 || missingContextGuardianCount !== 0 || hiddenWorkspacePatientCount !== 0 || hiddenWorkspaceGuardianCount !== 0 || hiddenWorkspaceDiagnosticRequestCount !== 0 || hiddenWorkspaceSpecimenCount !== 0 || hiddenWorkspaceDiagnosticResultCount !== 0 || hiddenWorkspaceAppointmentCount !== 0 || hiddenWorkspaceClinicalDocumentCount !== 0 || hiddenWorkspaceClinicalAddendumCount !== 0 || hiddenWorkspaceKnowledgeCount !== 0 || hiddenUnitPatientCount !== 0 || hiddenUnitGuardianCount !== 0 || hiddenUnitDiagnosticRequestCount !== 0 || hiddenUnitSpecimenCount !== 0 || hiddenUnitDiagnosticResultCount !== 0 || hiddenUnitAppointmentCount !== 0 || hiddenUnitClinicalDocumentCount !== 0 || hiddenUnitClinicalAddendumCount !== 0 || hiddenUnitKnowledgeCount !== 0 || hiddenUnitProviderCount !== 0 || hiddenOrganizationCount !== 0 || hiddenSnapshotCount !== 0 || hiddenJournalCount !== 0 || hiddenOutboxCount !== 0 || hiddenUsageCount !== 0 || hiddenInboxCount !== 0 || hiddenExternalEffectsCount !== 0 || hiddenBreakGlassCount !== 0 || forbiddenWorkspaceClinicalUpdate.rowCount !== 0 || forbiddenWorkspaceDiagnosticUpdate.rowCount !== 0 || forbiddenWorkspaceSpecimenUpdate.rowCount !== 0 || forbiddenWorkspaceDiagnosticResultUpdate.rowCount !== 0 || forbiddenUnitClinicalUpdate.rowCount !== 0 || forbiddenUnitDiagnosticUpdate.rowCount !== 0 || forbiddenUnitSpecimenUpdate.rowCount !== 0 || forbiddenUnitDiagnosticResultUpdate.rowCount !== 0 || unprotectedTables.length !== 0) throw new Error(`RLS did not isolate the complete domain catalog: ${JSON.stringify(unprotectedTables)}`);
+    if (visibleOrganizationCount !== 1 || (visibleSnapshotCount ?? 0) < 1 || (visibleJournalCount ?? 0) < 1 || (visibleOutboxCount ?? 0) < 1 || (visibleUsageCount ?? 0) < 1 || (visibleInboxCount ?? 0) < 1 || (visibleExternalEffectsCount ?? 0) < 1 || (visibleBreakGlassCount ?? 0) < 2 || (visiblePatientCount ?? 0) < 1 || (visibleGuardianCount ?? 0) < 1 || (visibleDiagnosticRequestCount ?? 0) < 1 || (visibleSpecimenCount ?? 0) < 1 || (visibleDiagnosticResultCount ?? 0) < 1 || (visibleAppointmentCount ?? 0) < 1 || (visibleClinicalDocumentCount ?? 0) < 1 || (visibleClinicalAddendumCount ?? 0) < 1 || (visibleKnowledgeCount ?? 0) < 1 || (visibleProviderCount ?? 0) < 1 || (visibleRoleCount ?? 0) < 1 || (visibleAiTurnCount ?? 0) !== 0 || (visibleAiDraftCount ?? 0) !== 0 || (visibleLifecycleDecisionCount ?? 0) !== 0 || (visibleLifecycleEventCount ?? 0) !== 0 || (visibleLegacyInboxCount ?? 0) !== 0 || missingScopeClinicalDocumentCount !== 0 || missingScopeClinicalAddendumCount !== 0 || missingContextPatientCount !== 0 || missingContextGuardianCount !== 0 || missingContextDiagnosticRequestCount !== 0 || missingContextSpecimenCount !== 0 || missingContextDiagnosticResultCount !== 0 || hiddenWorkspacePatientCount !== 0 || hiddenWorkspaceGuardianCount !== 0 || hiddenWorkspaceDiagnosticRequestCount !== 0 || hiddenWorkspaceSpecimenCount !== 0 || hiddenWorkspaceDiagnosticResultCount !== 0 || hiddenWorkspaceAppointmentCount !== 0 || hiddenWorkspaceClinicalDocumentCount !== 0 || hiddenWorkspaceClinicalAddendumCount !== 0 || hiddenWorkspaceKnowledgeCount !== 0 || hiddenUnitPatientCount !== 0 || hiddenUnitGuardianCount !== 0 || hiddenUnitDiagnosticRequestCount !== 0 || hiddenUnitSpecimenCount !== 0 || hiddenUnitDiagnosticResultCount !== 0 || hiddenUnitAppointmentCount !== 0 || hiddenUnitClinicalDocumentCount !== 0 || hiddenUnitClinicalAddendumCount !== 0 || hiddenUnitKnowledgeCount !== 0 || hiddenUnitProviderCount !== 0 || hiddenOrganizationCount !== 0 || hiddenSnapshotCount !== 0 || hiddenJournalCount !== 0 || hiddenOutboxCount !== 0 || hiddenUsageCount !== 0 || hiddenInboxCount !== 0 || hiddenExternalEffectsCount !== 0 || hiddenBreakGlassCount !== 0 || forbiddenWorkspaceClinicalUpdate.rowCount !== 0 || forbiddenWorkspaceDiagnosticUpdate.rowCount !== 0 || forbiddenWorkspaceSpecimenUpdate.rowCount !== 0 || forbiddenWorkspaceDiagnosticResultUpdate.rowCount !== 0 || forbiddenUnitClinicalUpdate.rowCount !== 0 || forbiddenUnitDiagnosticUpdate.rowCount !== 0 || forbiddenUnitSpecimenUpdate.rowCount !== 0 || forbiddenUnitDiagnosticResultUpdate.rowCount !== 0 || unprotectedTables.length !== 0) throw new Error(`RLS did not isolate the complete domain catalog: ${JSON.stringify(unprotectedTables)}`);
     await client.query("reset role");
+    const rejectedDiagnosticChildren = (await client.query<{ count: number }>("select count(*)::int as count from specimens where id = $1 union all select count(*)::int as count from diagnostic_results where id = $2", [invalidSpecimenId, invalidResultId])).rows;
+    if (rejectedDiagnosticChildren.some((row) => row.count !== 0)) throw new Error("negative diagnostic child writes left rows behind");
     const protection = (await client.query<{ domain_tables: number; protected_tables: number; organization_foreign_keys: number }>("select count(*) filter (where c.relkind = 'r' and c.relname <> 'schema_migrations')::int as domain_tables, count(*) filter (where c.relkind = 'r' and c.relname <> 'schema_migrations' and c.relrowsecurity and c.relforcerowsecurity)::int as protected_tables, (select count(*)::int from pg_constraint where contype = 'f' and pg_get_constraintdef(oid) like 'FOREIGN KEY (organization_id,%') as organization_foreign_keys from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public'")).rows[0];
     catalogProtection = { domainTables: protection?.domain_tables ?? 0, protectedTables: protection?.protected_tables ?? 0, organizationForeignKeys: protection?.organization_foreign_keys ?? 0 };
     if (catalogProtection.domainTables === 0 || catalogProtection.protectedTables !== catalogProtection.domainTables || catalogProtection.organizationForeignKeys < 1) throw new Error(`domain catalog protection is incomplete: ${JSON.stringify(catalogProtection)}`);
@@ -573,4 +611,4 @@ try {
   await contenderB.close();
 }
 
-console.log(JSON.stringify({ postgres: "PASS", restartRead: "PASS", normalizedReads: "PASS", diagnosticRequest: "PASS", diagnosticSpecimen: "PASS", diagnosticResult: "PASS", idempotency: "PASS", outbox: "PASS", externalEffects: "PASS", inbox: "PASS", usageLedger: "PASS", breakGlass: "PASS", cas: "PASS", rls: "PASS", rlsDomainTables: catalogProtection.domainTables, rlsProtectedTables: catalogProtection.protectedTables, organizationForeignKeys: catalogProtection.organizationForeignKeys, receiptId: firstResult.receiptId, counts }, null, 2));
+console.log(JSON.stringify({ postgres: "PASS", restartRead: "PASS", normalizedReads: "PASS", diagnosticRequest: "PASS", diagnosticSpecimen: "PASS", diagnosticResult: "PASS", diagnosticChildIntegrity: "PASS", idempotency: "PASS", outbox: "PASS", externalEffects: "PASS", inbox: "PASS", usageLedger: "PASS", breakGlass: "PASS", cas: "PASS", rls: "PASS", rlsDomainTables: catalogProtection.domainTables, rlsProtectedTables: catalogProtection.protectedTables, organizationForeignKeys: catalogProtection.organizationForeignKeys, receiptId: firstResult.receiptId, counts }, null, 2));

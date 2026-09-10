@@ -777,3 +777,23 @@ integração, commit e observação do SHA exato. Contextos normalizados restant
 staging, provider/DeepSeek/segredos, Collector/SLO, carga/chaos/recovery,
 matriz assistiva completa e aceite humano mantêm o programa em
 `FAIL_WITH_LIMITATIONS` / `AAA_NOT_PROVEN`.
+
+## Diagnostics request — integração, reparo do fixture e CI limpo — 2026-09-10 13:50
+
+A lane `diagnostics.create` foi integrada no commit limpo
+`539d34e48e4b94d83d161797219bbc95fb43fec4`. Os runs #78
+(`34501098381`) e #79 (`34502017016`) falharam no fixture do gate PostgreSQL
+porque admin não possui a permissão vet-only; o diagnóstico temporário expôs
+essa causa sem alterar o PDP. O fixture passou a usar
+`ana.vet@cvg.local`, o run #80 (`34502712247`) passou e a telemetria
+temporária foi removida antes da publicação final.
+
+O CI limpo #81 (`34503647191`) terminou `success` no SHA exato, com jobs
+`102960325660` e `102962889899` e artifacts de verificação/E2E publicados.
+`VER-CVG-152` e os eventos `INTEGRATE-209` a `OBSERVE-213` registram a
+sequência completa, incluindo a falha do fixture e a correção. O próximo
+recorte local seguro é replanificar outra escrita normalizada, priorizando
+specimen/result. O veredito global continua
+`FAIL_WITH_LIMITATIONS` / `AAA_NOT_PROVEN`: staging, provider/DeepSeek,
+segredos, Collector/SLO, carga/chaos/recovery, PostgreSQL concorrente fora do
+runner, matriz assistiva completa e aceite humano continuam sem evidência.

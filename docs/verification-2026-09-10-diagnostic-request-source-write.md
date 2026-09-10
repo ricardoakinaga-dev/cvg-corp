@@ -65,11 +65,28 @@ A lane anterior foi observada no SHA exato
 terminou `success`, com job principal `102936758677`, job de imagens
 `102939189944` e os dois artifacts de verificação publicados.
 
+## Integração e CI remoto exato — diagnostics.create
+
+A lane foi integrada no commit limpo
+`539d34e48e4b94d83d161797219bbc95fb43fec4`. Os runs #78 (`34501098381`) e
+#79 (`34502017016`) falharam exclusivamente porque o fixture do gate usava
+admin para uma operação permitida somente a veterinário; o segundo run tornou
+a negação 403 observável. O fixture foi corrigido para usar o veterinário
+sintético autorizado, sem relaxar o PDP, e o run #80 (`34502712247`) passou.
+Depois, a telemetria temporária foi removida.
+
+O run limpo #81 (`34503647191`) terminou `success` para o SHA exato. O job
+principal `102960325660` (`Typecheck, tests and release artifacts`) e o job de
+imagens `102962889899` (`Build API and web images`) passaram. Foram publicados:
+
+- `cvg-verification-539d34e48e4b94d83d161797219bbc95fb43fec4`;
+- `cvg-browser-e2e-539d34e48e4b94d83d161797219bbc95fb43fec4`.
+
 ## Resultado e limites
 
-Esta fatia só pode ser marcada `PASS_WITH_LIMITATIONS` depois da regressão
-focada final, da revisão independente registrada e do CI do SHA exato desta
-alteração. O CI não substitui PostgreSQL concorrente fora do runner, staging,
+Esta fatia está marcada `PASS_WITH_LIMITATIONS` após a regressão focada final,
+a revisão independente registrada e o CI do SHA exato. O CI não substitui
+PostgreSQL concorrente fora do runner, staging,
 provider/DeepSeek, segredos, Collector/SLO, carga/chaos/recovery, matriz
 assistiva completa ou aceite humano.
 

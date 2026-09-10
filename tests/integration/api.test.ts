@@ -344,8 +344,15 @@ test("production-auth boundary requires MFA, tracks redacted sessions, rotates c
     const currentSessionId = (afterSecondLogin.body.data as { currentSessionId: string }).currentSessionId;
     const other = [...store.sessions.values()].find((session) => session.id !== currentSessionId && session.revokedAt === null);
     assert.ok(other);
-    const revoked = await request(`/auth/sessions/${other.id}/revoke`, { method: "POST" });
+    const revokeKey = "session-revoke-replay-001";
+    const revoked = await request(`/auth/sessions/${other.id}/revoke`, { method: "POST", headers: { "idempotency-key": revokeKey } });
     assert.equal(revoked.statusCode, 200);
+    assert.notEqual(store.sessions.get(other.id)?.revokedAt, null);
+    assert.equal(revoked.body.data?.replayed, false);
+    const revokedReplay = await request(`/auth/sessions/${other.id}/revoke`, { method: "POST", headers: { "idempotency-key": revokeKey } });
+    assert.equal(revokedReplay.statusCode, 200);
+    assert.equal(revokedReplay.body.data?.replayed, true);
+    assert.equal(revokedReplay.body.data?.receiptId, revoked.body.data?.receiptId);
     assert.notEqual(store.sessions.get(other.id)?.revokedAt, null);
     const recoveryChallenge = await request("/auth/recovery/start", { method: "POST", payload: { login: user.login } });
     const recovered = await request("/auth/recovery/complete", { method: "POST", payload: { challengeId: recoveryChallenge.body.data?.challengeId, recoveryCode: recoveryCodes[0], newPassword: "Recovered-Password-321!" } });

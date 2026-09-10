@@ -350,6 +350,7 @@ function publicGuardian(guardian: { id: OpaqueId; displayName: string; phone: st
 const commandOperationByAuditAction: Record<string, string> = {
   "identity.mfa.enroll": "identity.mfa.enroll",
   "identity.mfa.revoke": "identity.mfa.revoke",
+  "identity.sessions.revoke": "identity.sessions.revoke",
   "role.grant": "role.grant",
   "role.revoke": "role.revoke",
   "guardians.create": "guardians.create",
@@ -951,16 +952,20 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const sessionId = id(parse(idSchema, (request.params as { id: string }).id));
     const { session, context } = requestContext(request, "identity.sessions.revoke", null, null, true, true, sessionId);
     requireCsrf(request, session);
+    const key = requireIdempotencyKey(request);
     const target = store.sessions.get(sessionId);
     if (!target || target.userId !== session.userId) throw new DomainError("NOT_FOUND", "Sessão não encontrada.", 404);
-    store.revokeSession(target);
-    audit(context, "identity.sessions.revoke", "Session", target.id, "ALLOWED", null, { current: target.id === session.id });
-    if (target.id === session.id) {
+    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, sessionId: context.sessionId, operation: "identity.sessions.revoke", key, resourceId: target.id, unitId: context.unitId, workspaceId: context.workspaceId, body: { sessionId: target.id } }, () => {
+      store.revokeSession(target);
+      return { revoked: true, sessionId: target.id, current: target.id === session.id };
+    });
+    audit(context, "identity.sessions.revoke", "Session", target.id, "ALLOWED", null, { current: result.value.current, replay: result.replayed });
+    if (result.value.current) {
       reply.clearCookie(SESSION_COOKIE, { path: "/" });
       reply.clearCookie(CSRF_COOKIE, { path: "/" });
       telemetry.sessionClosed();
     }
-    return response(reply, success({ revoked: true, sessionId: target.id, current: target.id === session.id }, context.correlationId));
+    return response(reply, success({ ...result.value, receiptId: result.receipt.id, replayed: result.replayed }, context.correlationId));
   });
 
   app.post("/api/v1/auth/demo", async (request, reply) => {

@@ -81,7 +81,7 @@ Outbox/inbox/effect ledger têm lease/fencing, retry bounded, backoff, quarantin
 
 ## Concrete Steps
 
-<!-- engineering-framework: active_action_id=CVG-FULL-STATE-OF-THE-ART:REMOTE-CI-OBSERVATION-ENCOUNTER-WRITE -->
+<!-- engineering-framework: active_action_id=CVG-FULL-STATE-OF-THE-ART:REMOTE-CI-OBSERVATION-SESSION-AND-NAVIGATION -->
 
 1. `CVG-FULL-STATE-OF-THE-ART:AUTHORITATIVE-NORMALIZED-ENCOUNTER-WRITE` — concluída localmente: `encounters.create` usa application/repository assíncrono e `idempotentAsync`, grava a linha `encounters` como escrita normalizada autoritativa dentro do commit durável, omite o ID da projeção genérica e cobre SQL/HTTP/replay/corrupção; sem alegar PostgreSQL externo/staging.
 2. `CVG-FULL-STATE-OF-THE-ART:AUTHORITATIVE-NORMALIZED-APPOINTMENT-WRITE` — concluída localmente: create assíncrono, `idempotentAsync`, escrita SQL contextual autoritativa, omissão da projeção genérica e testes SQL/HTTP/regressão; sem alegar PostgreSQL externo/staging.
@@ -429,3 +429,15 @@ A nova evidência é local/sintética e não prova PostgreSQL concorrente, handl
 ## Current action — 2026-09-10 07:16
 
 `CVG-FULL-STATE-OF-THE-ART:AUTHORITATIVE-NORMALIZED-ENCOUNTER-WRITE` foi fechada localmente. `POST /api/v1/encounters` usa `EncounterApplicationService`/repository assíncronos, `idempotentAsync` e, em PostgreSQL, `normalizedEncounterWrite` no mesmo commit de snapshot, journal, auditoria, receipt e outbox. A escrita SQL é contextual e equality-guarded, com dependências de organização/unidade/workspace/paciente/appointment validadas e sem duplicação pela projeção genérica. A regressão local passou; a crítica fresca não foi concluída. O próximo passo é observar CI no SHA exato. O estado global segue `FAIL_WITH_LIMITATIONS` / `AAA_NOT_PROVEN`.
+
+## Current action — 2026-09-10 07:43
+
+O CI exato do encounter foi observado com sucesso no run `34466375415`, jobs
+`102835822550` e `102837781437`, para o SHA `0f4018fc6143b179f49a1f7ad97b37b4fd0fea04`.
+Na sequência, a fatia `CVG-FULL-STATE-OF-THE-ART:SESSION-AND-NAVIGATION-TRUTH`
+foi implementada e verificada localmente no commit `a77c96665f328eba9fff3f26c5d86dd95403581a`:
+loading inicial sem flash de login, seleção de contexto autorizado após
+permissão negada e handoff de foco no `main` após navegação SPA, inclusive no
+mobile. O próximo passo é observar o CI no SHA `a77c966`; staging, provider/
+DeepSeek/secret authority, operação medida, recovery/load e aceite humano
+continuam bloqueios, sem promoção AAA.

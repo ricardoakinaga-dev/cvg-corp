@@ -12,7 +12,7 @@ stage -> approval independente -> outbox durável -> worker com lease/fence
 
 O worker default mantém o sink externo em quarentena quando o provider real não está habilitado. `OUTCOME_UNKNOWN` nunca é convertido em reenvio cego: o efeito precisa de consulta/reconciliação ou revisão manual. A reconciliação PostgreSQL agora reivindica atomicamente o efeito em `RECONCILING`, com lease e fence token; uma segunda tentativa concorrente é recusada enquanto a primeira mantém o lease.
 
-O scheduler local mantém seis lanes com concorrência em lotes, budgets por lane, backpressure medido antes do claim e métricas de poison/falha. O limite de outbox é configurável por `CVG_WORKER_MAX_OUTSTANDING`; o default é conservador (`1000`) e não habilita provider. O heartbeat e o encerramento por `SIGINT`/`SIGTERM` são conectados no entrypoint Docker. A execução do container, banco, provider e collector continua `NOT_RUN` nesta revisão.
+O scheduler local mantém seis lanes com concorrência em lotes, budgets por lane, backpressure medido antes do claim e métricas de poison/falha. `CVG_WORKER_MAX_OUTSTANDING` é configurável e aplicado ao outbox e às cinco lanes duráveis; o default é conservador (`1000`) e não habilita provider. O heartbeat e o encerramento por `SIGINT`/`SIGTERM` são conectados no entrypoint Docker. A execução do container, banco, provider e collector continua `NOT_RUN` nesta revisão.
 
 | Etapa | Código local | Evidência real |
 |---|---|---|

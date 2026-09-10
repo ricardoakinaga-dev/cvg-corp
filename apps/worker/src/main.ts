@@ -10,7 +10,7 @@ if (!config.workerOrganizationId) throw new Error("CVG_WORKER_ORGANIZATION_ID is
 
 const persistence = new PostgresPersistence({ connectionString: config.databaseUrl });
 const configuredSink = createConfiguredWorkerSink(config);
-const worker = new CvgWorkerApplication({ persistence, sink: configuredSink.sink, sinkMode: configuredSink.sinkMode, maxOutstandingOutbox: config.workerMaxOutstandingOutbox, ...(configuredSink.queryAdapter ? { reconciliationAdapter: configuredSink.queryAdapter } : {}) });
+const worker = new CvgWorkerApplication({ persistence, sink: configuredSink.sink, sinkMode: configuredSink.sinkMode, maxOutstandingOutbox: config.workerMaxOutstandingOutbox, maxOutstandingJobs: config.workerMaxOutstandingOutbox, ...(configuredSink.queryAdapter ? { reconciliationAdapter: configuredSink.queryAdapter } : {}) });
 const otelRuntime = createOpenTelemetryRuntime({ serviceName: "cvg-worker", requireTls: config.nodeEnv === "production" });
 if (config.nodeEnv === "production" && otelRuntime.status !== "READY") throw new Error("Produção exige exportação OTLP OpenTelemetry pronta para o worker.");
 const telemetry = new OpsTelemetry({

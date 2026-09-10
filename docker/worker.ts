@@ -34,7 +34,7 @@ async function main(): Promise<void> {
   await mkdir(dirname(config.workerHeartbeatFile), { recursive: true, mode: 0o700 });
   const persistence = new PostgresPersistence({ connectionString: config.databaseUrl, max: 2, connectionTimeoutMillis: 2_500, idleTimeoutMillis: 30_000 });
   const configuredSink = createConfiguredWorkerSink(config);
-  const worker = new CvgWorkerApplication({ persistence, sink: configuredSink.sink, sinkMode: configuredSink.sinkMode, maxOutstandingOutbox: config.workerMaxOutstandingOutbox, ...(configuredSink.queryAdapter ? { reconciliationAdapter: configuredSink.queryAdapter } : {}) });
+  const worker = new CvgWorkerApplication({ persistence, sink: configuredSink.sink, sinkMode: configuredSink.sinkMode, maxOutstandingOutbox: config.workerMaxOutstandingOutbox, maxOutstandingJobs: config.workerMaxOutstandingOutbox, ...(configuredSink.queryAdapter ? { reconciliationAdapter: configuredSink.queryAdapter } : {}) });
   activeWorker = worker;
   try {
     const health = await worker.health();

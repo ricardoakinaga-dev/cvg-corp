@@ -40,7 +40,7 @@
         "target": "staging autorizado; SecretProvider/secret authority; provider externo; DeepSeek model turn governado; collector/SLO; carga/chaos/recovery; WebKit/assistive-tech/zoom; aprovação humana",
         "completion_signal": "evidência externa reproduzível e aprovação humana registradas; até lá manter FAIL_WITH_LIMITATIONS e sem declarar AAA"
       },
-      "latest_control_updates": ["VER-CVG-077", "VER-CVG-078", "VER-CVG-079", ".gauntlet/critique-post-push-attempt-20260910.md", "docker-compose.production.yml", "docker/nginx/proxy.tls.conf"]
+      "latest_control_updates": ["VER-CVG-077", "VER-CVG-078", "VER-CVG-079", "VER-CVG-080", "VER-CVG-081", "e846904", "db/migrations/030_break_glass_durable_lifecycle.sql", ".gauntlet/critique-post-push-attempt-20260910.md", "docker-compose.production.yml", "docker/nginx/proxy.tls.conf"]
     }
   ]
 }

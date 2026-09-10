@@ -1,14 +1,14 @@
 # Auditoria de fechamento — CVG-Corp State of the Art / Triplo AAA
 
 **Auditoria:** F0-2026-09-09-v2
-**Revisão de referência do CVG:** `8b122ea` (`feat: harden recovery expiry and production edge`; fechamento técnico desta rodada, publicado em `main`)
+**Revisão de referência do CVG:** `e846904` (`feat: persist break-glass lifecycle with RLS guards`; fechamento técnico desta rodada, publicado em `main`)
 **Revisão observada do DeepSeek Harness:** `5dda764ed3aa172535a7967b06ff95d9cbfe536a`
 **Probe ACP local:** `READY`; `initialize` + `session/new` passaram pelo processo real via stdio; turno de modelo deliberadamente não executado sem API key.
 **Prompt normativo:** [prompt v2](prompt-state-of-the-art-triplo-aaa-2026-09-09-v2.txt), SHA-256 `34e886f59adacf8fda46d8d54bdede259705adc6e1521590cd3c281509b0e0d9`
 **Ambiente:** workspace local, Node 24.20.0, npm 11.19.0; Docker CLI/Compose presentes, daemon sem permissão; sem URL de staging, credencial, secret authority, provider, dados reais ou autorização de release.
 **Estado da auditoria:** a fotografia F0 foi revalidada durante o worktree atual; além da cópia v2, o bridge/contrato local, a boundary de secrets/auth/MFA/break-glass e o exporter OTLP protobuf foram implementados/testados sem credencial, egress, dado real ou release.
 
-**Checkpoint local final — 2026-09-10:** a rodada revalidou `118` testes (`117 pass`, `1 skip`), lint, typecheck, build, E2E Chromium/Firefox/stress (`64 pass`, `4 skips`), `verify:pdp` (`68` operações, `70` regras, `6` policies canônicas, `12` domínios), migration 029, usage/provenance, exportação governada, provider HTTP loopback, Compose estrutural e os gates fail-closed. A crítica independente fresca de 2026-09-10 concluiu `FAIL_WITH_LIMITATIONS`; não é aprovação AAA.
+**Checkpoint local final — 2026-09-10:** a rodada revalidou `119` testes (`118 pass`, `1 skip`), lint, typecheck, build, E2E Chromium/Firefox/stress (`64 pass`, `4 skips`), `verify:pdp` (`68` operações, `70` regras, `6` policies canônicas, `12` domínios), migrations 029–030, usage/provenance, exportação governada, ciclo break-glass durável, provider HTTP loopback, Compose estrutural e os gates fail-closed. A crítica independente fresca de 2026-09-10 concluiu `FAIL_WITH_LIMITATIONS`; não é aprovação AAA.
 
 ## 1. Escopo, método e veredito
 
@@ -39,7 +39,7 @@ HTTP/Fastify
   -> normalized reads, receipts, outbox, inbox and effect ledgers
 ```
 
-Há migrations aditivas 001–029, papel de runtime não-superusuário, RLS, escopo organizacional/unidade/workspace, leases/fencing, cadeia local de auditoria com guard append-only e restore em quarentena. A migration 028 é um forward-fix para preservar o privilégio necessário ao `SELECT ... FOR UPDATE` dos writers sem liberar mutações efetivas, que continuam protegidas pelo guard da 027. A migration 029 adiciona proveniência/usage de turnos de IA e escopo DML estrito para tabelas unit/workspace. O snapshot JSONB ainda participa da reconstrução; repositories normalizados existem para uma parte dos caminhos, não para todos os bounded contexts exigidos pelo prompt.
+Há migrations aditivas 001–030, papel de runtime não-superusuário, RLS, escopo organizacional/unidade/workspace, leases/fencing, cadeia local de auditoria com guard append-only e restore em quarentena. A migration 028 é um forward-fix para preservar o privilégio necessário ao `SELECT ... FOR UPDATE` dos writers sem liberar mutações efetivas, que continuam protegidas pelo guard da 027. A migration 029 adiciona proveniência/usage de turnos de IA e escopo DML estrito para tabelas unit/workspace. A migration 030 persiste o ciclo break-glass com WebAuthn-only, FKs de ator/aprovador/revisor, janela de 15 minutos e transições forward-only sob RLS; a verificação criptográfica e a habilitação pública continuam ausentes. O snapshot JSONB ainda participa da reconstrução; repositories normalizados existem para uma parte dos caminhos, não para todos os bounded contexts exigidos pelo prompt.
 
 ### 2.2 Caminho de IA e Harness
 
@@ -89,7 +89,7 @@ API e worker são processos separados. O worker nomeia seis lanes (`outbox`, `jo
 | Fail-closed | config production, secret/provider ausente, Tool Gateway, approvals, worker e staging/AAA bloqueiam | o bloqueio real de cada deployment depende de startup production-like |
 | Tool Gateway | sessão, alvo, escopo, digest, idempotência, approval e ledger durável | concorrência/distribuição PostgreSQL real não executada |
 | Efeitos externos | outbox/inbox/effect ledger, receipt, unknown outcome e reconciliação | provider e callback reais ausentes |
-| Dados | migrations 001–029, RLS, CAS, locks, runtime role, restore manifest/quarantine, guard append-only e usage/provenance | volume, mixed-version, backup gerenciado e restore operacional ausentes |
+| Dados | migrations 001–030, RLS, CAS, locks, runtime role, restore manifest/quarantine, guard append-only, usage/provenance e ciclo break-glass durável | volume, mixed-version, backup gerenciado e restore operacional ausentes |
 | Identidade | password policy, lockout, TOTP, recuperação, rotação e revogação local | secret authority, WebAuthn real e sessão distribuída ausentes |
 | Supply chain | actions pinadas, SBOM, licença, npm audit e Compose estrutural | execução remota e imagem/Trivy reais não observadas |
 | UI | shell modular, estados offline, E2E Chromium/Firefox, projeto stress de reflow/DPR/touch/reduced-motion, axe e screenshots reais | WebKit/assistive tech/zoom real/baseline visual ausentes |
@@ -111,7 +111,7 @@ API e worker são processos separados. O worker nomeia seis lanes (`outbox`, `jo
 | 10 Secrets | **PARTIAL/LOCAL-GUARDED** | providers de ambiente/diretório/Docker, refs aprovadas, verificação sem material, readiness fail-closed para provider degradado e token DeepSeek | Docker secret em container, Vault/cloud authority, rotação real e prova operacional de não exposição |
 | 11 Auth | **PARTIAL/SYNTHETIC_ONLY** | password, aging config, lockout, sessions, recovery, enrollment/revogação TOTP e audit local | sessões distribuídas e operação production-like |
 | 12 MFA | **PARTIAL/SYNTHETIC_ONLY** | TOTP, enrollment por referência, expiração/replay/bloqueio de challenge, recovery e limites; WebAuthn seam | enrollment/challenge/revoke/recovery em ambiente real e WebAuthn/passkey |
-| 13 Break-glass | **PARTIAL/LOCAL-GUARDED** | registry provider-neutral com ativação explícita, aprovação independente, TTL, expiração, revogação, revisão e testes | provider WebAuthn real, persistência autorizada, decisão humana e exercício pós-evento |
+| 13 Break-glass | **PARTIAL/LOCAL-GUARDED** | migration 030, adapter PostgreSQL, RLS/FKs, WebAuthn-only, TTL, expiração lazy, revogação, revisão e testes sintéticos; capability pública segue `BLOCKED` | provider WebAuthn real, prova criptográfica ligada ao approver, decisão humana, auditoria operacional/notificação e exercício pós-evento |
 | 14 Rate limit distribuído | **PARTIAL** | PostgreSQL-safe schema/API limiter | execução multi-instância e métricas de login/MFA/AI/export/callback/high-impact |
 | 15 Circuit breaker | **SYNTHETIC_ONLY** | provider breaker e failure tests | DeepSeek/provider real, métricas e half-open observado |
 | 16 Observability real | **PARTIAL/LOCAL-EVIDENCED** | redaction, SDK/exporter OTLP protobuf real, teste local de envio e SLO/alert contracts | collector/staging executado e traces/metrics/logs correlacionados |
@@ -297,7 +297,7 @@ O último CI remoto observado antes deste patch é o run `34422825560` no SHA `0
 
 ## Current checkpoint — 2026-09-10 local closure
 
-`docs/verification-2026-09-10-local-closure.md` registra a nova fotografia: `npm test` 118 (`117 pass`, `1 skip`), typecheck/build/lint/static/PDP/security/database/restore, provider loopback, exportação governada, produção estrutural/TLS overlay, contrast/tokens/licenses/audit e os E2E completos (`64 pass`, `4 skips`) passaram. O harness local agora usa `ToolGateway.execute()` com ledger e timeout; a UI diferencia 401 inicial, sessão expirada, 403 estável e `STALE`; métricas Prometheus agregadas estão isoladas na rede privada de observabilidade. `verify:triplo-aaa` permanece `AAA_NOT_PROVEN`, `verify:staging` permanece `STAGING_EVIDENCE_INCOMPLETE` e `verify:deepseek-acp` está bloqueado sem configuração explícita. O CI verde `34427884550` pertence ao SHA anterior; o commit técnico `8b122ea` foi publicado e disparou novo check, ainda sem resultado final observável nesta fotografia. O veredito permanece `FAIL_WITH_LIMITATIONS`.
+`docs/verification-2026-09-10-local-closure.md` registra a nova fotografia: `npm test` 119 (`118 pass`, `1 skip`), typecheck/build/lint/static/PDP/security/database/restore, provider loopback, exportação governada, ciclo break-glass durável, produção estrutural/TLS overlay, contrast/tokens/licenses/audit e os E2E completos (`64 pass`, `4 skips`) passaram. O harness local agora usa `ToolGateway.execute()` com ledger e timeout; a UI diferencia 401 inicial, sessão expirada, 403 estável e `STALE`; métricas Prometheus agregadas estão isoladas na rede privada de observabilidade. `verify:triplo-aaa` permanece `AAA_NOT_PROVEN`, `verify:staging` permanece `STAGING_EVIDENCE_INCOMPLETE` e `verify:deepseek-acp` está bloqueado sem configuração explícita. O CI verde `34427884550` pertence ao SHA anterior; o commit técnico `e846904` foi publicado, mas sua página de checks não apresentou resultado final observável nesta fotografia. O veredito permanece `FAIL_WITH_LIMITATIONS`.
 
 ## Current checkpoint — 2026-09-10 governed data closure
 

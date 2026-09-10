@@ -1,6 +1,6 @@
 # Fechamento local — 2026-09-10
 
-Fotografia executada no workspace `/home/ricardo/Área de trabalho/cvg-corp` em 2026-09-10, consolidada tecnicamente no commit `1f066327b6d992a233e5bffae921af8377054899` (qualificação explícita do `RETURNING` do claim durável), sobre a implementação de jobs em `c3c18de9282159fa25022d7f8ce591889b73445d`, após `bf0cc50` (repositories operacionais), `6b3df2f` (reads clínicos) e `135ae56` (AuditRepository), além do ciclo durável de break-glass em `e846904`. O prompt normativo permanece em [`prompt-state-of-the-art-triplo-aaa-2026-09-09-v2.txt`](prompt-state-of-the-art-triplo-aaa-2026-09-09-v2.txt), SHA-256 `34e886f59adacf8fda46d8d54bdede259705adc6e1521590cd3c281509b0e0d9`.
+Fotografia executada no workspace `/home/ricardo/Área de trabalho/cvg-corp` em 2026-09-10, consolidada tecnicamente no commit `39024ca03af5a78ad1edabaf9e5be6654a98327d` (contrato compartilhado e gates reais dos entrypoints do worker), sobre a implementação de jobs em `c3c18de9282159fa25022d7f8ce591889b73445d`, após `bf0cc50` (repositories operacionais), `6b3df2f` (reads clínicos) e `135ae56` (AuditRepository), além do ciclo durável de break-glass em `e846904`. O prompt normativo permanece em [`prompt-state-of-the-art-triplo-aaa-2026-09-09-v2.txt`](prompt-state-of-the-art-triplo-aaa-2026-09-09-v2.txt), SHA-256 `34e886f59adacf8fda46d8d54bdede259705adc6e1521590cd3c281509b0e0d9`.
 
 ## Alterações verificadas
 
@@ -23,7 +23,7 @@ Fotografia executada no workspace `/home/ricardo/Área de trabalho/cvg-corp` em 
 
 | Procedimento | Resultado observado |
 |---|---|
-| `npm test` | PASS — 135 testes: 134 pass, 1 skip condicional |
+| `npm test` | PASS — 136 testes: 135 pass, 1 skip condicional |
 | `npm run typecheck` | PASS |
 | `npm run build` | PASS — typecheck + Vite |
 | `npm run lint` | PASS — 122 fontes |
@@ -86,3 +86,15 @@ Essa evidência usa pools sintéticos/fakes para as novas integrações; não pr
 No commit `c6048e4eb2b3714d4eb4ffc9603727b0cd2fe586`, `scripts/verify-postgres-restore.ts` passou a reaplicar `recoveredWorkerJobs` no destino quarentenado e comparar os digests de `workerJobs` após o restore e na verificação de que a origem não mudou. O round-trip criptografado também compara a cardinalidade desse ledger, e o payload de auditoria registra a contagem reaplicada.
 
 Evidência local desta correção: typecheck, `npm test` 135 (`134 pass`, `1 skip`), `test:database` 25/25, worker 12/12, lint, build, static, PDP, `verify:production` estrutural e `git diff --check` passaram. O script de restore com PostgreSQL real não foi executado neste host sem `DATABASE_URL`/daemon Docker; portanto a nova asserção é preparada e compilável, não uma prova PostgreSQL concorrente ou de RTO/RPO. A crítica fresh correspondente terminou `NOT_COMPLETED` após janelas bounded, registrada em [critique-restore-worker-ledger-attempt-20260910.md](../.gauntlet/critique-restore-worker-ledger-attempt-20260910.md), sem aprovação. O veredito permanece `FAIL_WITH_LIMITATIONS` / `AAA_NOT_PROVEN`.
+
+## Incremento local — contrato de backpressure nos entrypoints — 2026-09-10
+
+O commit `fe02a54f363952fc2d9da3956013c63a516265af` alinhou os dois entrypoints do worker: `apps/worker/src/main.ts` e `docker/worker.ts` passaram `maxOutstandingJobs` junto de `maxOutstandingOutbox`, ambos derivados de `config.workerMaxOutstandingOutbox`/`CVG_WORKER_MAX_OUTSTANDING`. A mudança preserva o limite operacional único para outbox e as cinco lanes duráveis.
+
+A primeira crítica fresh read-only (`01a08a37-0a18-7881-a485-bf58c7a64309`, `Ohm`) confirmou o contrato, mas apontou um gap baixo: não havia teste da composição dos entrypoints e `docker/worker.ts` não entrava em typecheck/lint. O reparo nos commits `7971d27f039ae93530bf8eac93f573bbd2b77d9a` e `3b57fd5b7104e89bf8a0c5cb224b8e5dc611b147` extraiu `createWorkerDependencies`, adicionou teste unitário, incluiu `docker/**/*.ts` no `tsconfig` e `docker` nas raízes do lint; também corrigiu o narrowing do `workerOrganizationId` revelado pelo novo typecheck.
+
+O commit `39024ca03af5a78ad1edabaf9e5be6654a98327d` endureceu os gates: `verify-static` exige os dois entrypoints, o call real compartilhado, `tsconfig.json` e a inclusão de `docker` no lint; `verify-production` exige os padrões de construção e os mesmos includes. A crítica fresh final (`01a08a42-8e65-7bf0-b101-bccc0eb54af5`, `Sartre`) concluiu `REVIEW_ONLY_PASS` para este recorte, sem aprovação AAA; o registro está em [critique-worker-entrypoint-final-attempt-20260910.md](../.gauntlet/critique-worker-entrypoint-final-attempt-20260910.md).
+
+No SHA `39024ca`, a evidência local reproduzida foi: `npm test` 136 (`135 pass`, `1 skip`), `test:database` 25/25, worker 13/13, typecheck, lint (124 fontes), build, `verify:static` (50 artefatos/126 fontes), `verify:pdp` (68 operações/70 regras/6 policies/12 domínios), `verify:production` estrutural e `git diff --check` passaram. `verify:triplo-aaa` retornou `AAA_NOT_PROVEN`/exit 2, `verify:staging` retornou `STAGING_EVIDENCE_INCOMPLETE`/exit 2 e `verify:deepseek-acp` permaneceu bloqueado/exit 2. Nenhum serviço foi iniciado e nenhum egress foi autorizado.
+
+O run remoto `34450040820` do SHA intermediário `fe02a54` terminou com falha somente no `Browser E2E`; typecheck, contratos, segurança, banco/recovery, testes, build, static e audits anteriores passaram, e os logs detalhados não estavam acessíveis sem autenticação. O run `34450659921` do SHA `7971d27` foi observado como `in_progress` antes dos commits de gates; não há conclusão remota observada para o SHA final nesta fotografia. O veredito global permanece `FAIL_WITH_LIMITATIONS` / `AAA_NOT_PROVEN` por ausência de evidência externa e aceite humano.

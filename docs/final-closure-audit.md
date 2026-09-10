@@ -1,14 +1,14 @@
 # Auditoria de fechamento — CVG-Corp State of the Art / Triplo AAA
 
 **Auditoria:** F0-2026-09-09-v2
-**Revisão de referência do CVG:** `1f066327b6d992a233e5bffae921af8377054899` (qualificação explícita do `RETURNING` do claim durável sobre a fila/heartbeat implementada em `c3c18de`, após `bf0cc50`/`6b3df2f`/`135ae56` e o ciclo durável de break-glass)
+**Revisão de referência do CVG:** `39024ca03af5a78ad1edabaf9e5be6654a98327d` (contrato compartilhado e gates reais dos entrypoints do worker, sobre a fila/heartbeat implementada em `c3c18de`, após `bf0cc50`/`6b3df2f`/`135ae56` e o ciclo durável de break-glass)
 **Revisão observada do DeepSeek Harness:** `5dda764ed3aa172535a7967b06ff95d9cbfe536a`
 **Probe ACP local:** `READY`; `initialize` + `session/new` passaram pelo processo real via stdio; turno de modelo deliberadamente não executado sem API key.
 **Prompt normativo:** [prompt v2](prompt-state-of-the-art-triplo-aaa-2026-09-09-v2.txt), SHA-256 `34e886f59adacf8fda46d8d54bdede259705adc6e1521590cd3c281509b0e0d9`
 **Ambiente:** workspace local, Node 24.20.0, npm 11.19.0; Docker CLI/Compose presentes, daemon sem permissão; sem URL de staging, credencial, secret authority, provider, dados reais ou autorização de release.
 **Estado da auditoria:** a fotografia F0 foi revalidada durante o worktree atual; além da cópia v2, o bridge/contrato local, a boundary de secrets/auth/MFA/break-glass e o exporter OTLP protobuf foram implementados/testados sem credencial, egress, dado real ou release.
 
-**Checkpoint local final — 2026-09-10:** a rodada revalidou `135` testes (`134 pass`, `1 skip`), `test:database` `25/25`, lint, typecheck, build, `verify:static` (`48` artefatos/`124` fontes), `verify:pdp` (`68` operações, `70` regras, `6` policies canônicas, `12` domínios), migration 031, usage/provenance, exportação governada, repositories normalizados, ciclo break-glass durável, provider HTTP loopback, fila/heartbeats duráveis, recovery com `workerJobs`, Compose estrutural e os gates fail-closed. A crítica independente fresca anterior concluiu `FAIL_WITH_LIMITATIONS`; a tentativa fresh desta wave expirou sem parecer e não é aprovação AAA.
+**Checkpoint local final — 2026-09-10:** a rodada revalidou `136` testes (`135 pass`, `1 skip`), `test:database` `25/25`, lint, typecheck, build, `verify:static` (`50` artefatos/`126` fontes), `verify:pdp` (`68` operações, `70` regras, `6` policies canônicas, `12` domínios), migration 031, usage/provenance, exportação governada, repositories normalizados, ciclo break-glass durável, provider HTTP loopback, fila/heartbeats duráveis, recovery com `workerJobs`, Compose estrutural e os gates fail-closed. A crítica fresh final do contrato de entrypoints concluiu `REVIEW_ONLY_PASS` para o recorte, sem aprovação AAA; os bloqueadores de produção permanecem.
 
 ## 1. Escopo, método e veredito
 
@@ -324,3 +324,8 @@ O incremento é uma redução verificável do bypass de snapshot, não uma prova
 ## Current checkpoint — 2026-09-10 restore worker ledger
 
 `c6048e4eb2b3714d4eb4ffc9603727b0cd2fe586` corrige a cobertura do drill de restore: `verify-postgres-restore.ts` reaplica `recoveredWorkerJobs`, compara seus digests no destino e confirma sua preservação na origem; o round-trip cifrado compara também a cardinalidade do ledger e registra a contagem no evento de restore. Os gates locais passaram (`npm test` 135, `test:database` 25/25, worker 12/12, typecheck/lint/build/static/PDP/verify:production/diff check). O script PostgreSQL real não foi executado por falta de `DATABASE_URL`/daemon Docker; o run remoto `34449276645` do SHA publicado ainda estava em execução na última observação. A crítica fresh do incremento foi encerrada como `NOT_COMPLETED`, registrada em [`.gauntlet/critique-restore-worker-ledger-attempt-20260910.md`](../.gauntlet/critique-restore-worker-ledger-attempt-20260910.md), sem aprovação. Isso reforça a preparação de recovery, mas não prova PostgreSQL concorrente, RTO/RPO, backup gerenciado ou produção; o veredito segue `FAIL_WITH_LIMITATIONS`/`AAA_NOT_PROVEN`.
+## Checkpoint atual — 2026-09-10 contrato de entrypoints do worker
+
+O recorte final `39024ca03af5a78ad1edabaf9e5be6654a98327d` centraliza a composição em `createWorkerDependencies`, aplica o mesmo `workerMaxOutstandingOutbox` a `maxOutstandingOutbox` e `maxOutstandingJobs`, compila/linta `docker/worker.ts`, testa a composição e exige o wiring nos gates estáticos e de release. A crítica fresh final registrou `REVIEW_ONLY_PASS` para o recorte, sem decisão AAA.
+
+Evidência local exata: `npm test` 136 (`135 pass`, `1 skip`), `test:database` 25/25, worker 13/13, typecheck, lint 124 fontes, build, `verify:static` 50 artefatos/126 fontes, PDP, `verify:production` estrutural e diff check passaram. O provider, secret authority, staging, turno DeepSeek, PostgreSQL concorrente, worker/container production-like, observabilidade/SLO medidos, carga/chaos/recovery operacional, WebKit/assistive tech/zoom real, CI final concluído e aceite humano continuam sem prova; `FAIL_WITH_LIMITATIONS` / `AAA_NOT_PROVEN` permanece.

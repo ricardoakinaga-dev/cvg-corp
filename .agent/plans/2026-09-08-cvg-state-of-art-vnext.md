@@ -380,3 +380,7 @@ O focused test e o verificador passaram (`sendRequests=4`, `queryRequests=2`, `c
 ## Current checkpoint — 2026-09-09 22:38
 
 `VER-CVG-062` registrou o run remoto `34425442854` no SHA `359c938`: o job principal e os builds API/web passaram, mas `Scan API image` falhou e `Scan web image` foi pulado. A reprodução com Trivy 0.74 na base Node encontrou quatro findings HIGH no npm global. `VER-CVG-063` registra a correção local em `Dockerfile.api`: remover npm/npx somente do estágio runtime, mantendo npm no builder/typecheck. Typecheck, build, static, produção estrutural e diff check passaram; o próximo pointer é publicar e observar o scan.
+
+## Current checkpoint — 2026-09-09 22:47
+
+`VER-CVG-064` registrou o run remoto `34426562885` no SHA `426d9f6`: o job principal falhou no `Browser E2E` com anotação pública genérica antes dos gates de banco, release e containers. `VER-CVG-065` confirmou localmente 52 E2E pass e 4 skips intencionais em Chromium/Firefox/stress e configurou uma única retry somente sob CI; o próximo pointer é publicar e observar o novo run.

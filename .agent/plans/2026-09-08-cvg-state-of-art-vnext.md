@@ -81,9 +81,9 @@ Outbox/inbox/effect ledger têm lease/fencing, retry bounded, backoff, quarantin
 
 ## Concrete Steps
 
-<!-- engineering-framework: active_action_id=CVG-FULL-STATE-OF-THE-ART:INTEGRATE-PDP-UNIVERSAL-COVERAGE -->
+<!-- engineering-framework: active_action_id=CVG-FULL-STATE-OF-THE-ART:REMOTE-CI-OBSERVATION-PDP-UNIVERSAL-COVERAGE -->
 
-1. `CVG-FULL-STATE-OF-THE-ART:INTEGRATE-PDP-UNIVERSAL-COVERAGE` — ação corrente: integrar o guard AST, enforcement do harness, correção de `ai.approval.retry`, gates normais/CI e evidências locais; observar o SHA exato sem declarar AAA antes de critic independente e gates externos.
+1. `CVG-FULL-STATE-OF-THE-ART:REMOTE-CI-OBSERVATION-PDP-UNIVERSAL-COVERAGE` — ação corrente: observar CI no SHA integrado `f84ae97`, confirmar que os gates adicionados realmente executaram e manter `PASS_WITH_LIMITATIONS` até evidências externas e aceite humano.
 2. `CVG-FULL-STATE-OF-THE-ART:AUTHORITATIVE-NORMALIZED-APPOINTMENT-WRITE` — concluída localmente: create assíncrono, `idempotentAsync`, escrita SQL contextual autoritativa, omissão da projeção genérica e testes SQL/HTTP/regressão; sem alegar PostgreSQL externo/staging.
 3. `CVG-FULL-STATE-OF-THE-ART:REMOTE-CI-OBSERVATION-APPOINTMENT-WRITE` — concluída: SHA `9c304f39621736ad8bb5f4b39447c4ac9d94fd25` publicado; run `34462488394`, job principal `102823305023` e job de imagens `102825161621` terminaram `success`.
 4. `CVG-FULL-STATE-OF-THE-ART:EXTERNAL-EVIDENCE-AND-HUMAN-ACCEPTANCE` — obter evidência autorizada de staging/provider/DeepSeek/observabilidade/carga/recuperação, executar crítica independente fresca e registrar aceite humano; até lá manter `FAIL_WITH_LIMITATIONS`/`AAA_NOT_PROVEN`.
@@ -514,6 +514,16 @@ O próximo estado é `BUILD`; após a implementação serão executados testes
 focados, suíte local proporcional, guards estruturais, crítico fresh read-only,
 fingerprint pós-crítico, commit e CI exato. O veredito global continua
 `FAIL_WITH_LIMITATIONS` / `AAA_NOT_PROVEN`.
+
+## PDP universal — integração — 2026-09-10 12:03
+
+A lane foi integrada no commit `f84ae97` (`feat: enforce universal PDP
+boundaries`). O commit contém o scanner AST, enforcement do harness, correção
+de `ai.approval.retry`, fixture autenticada do benchmark, gates normais/CI,
+testes known-good/known-bad e a documentação ADR/evidência. A crítica fresh
+foi `NOT_COMPLETED`, sem aprovação. O próximo passo é observar o CI do SHA
+exato; o veredito global continua `FAIL_WITH_LIMITATIONS` /
+`AAA_NOT_PROVEN`.
 
 ## Critique / repair — 2026-09-10 09:10
 

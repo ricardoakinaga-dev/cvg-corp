@@ -114,3 +114,13 @@ Collector/SLO operacional, carga/chaos/recovery production-like,
 WebKit/assistive-tech/zoom real ou aceite humano. As críticas fresh desta onda
 foram encerradas como `NOT_COMPLETED`, sem aprovação. O veredito permanece
 `FAIL_WITH_LIMITATIONS` / `AAA_NOT_PROVEN`.
+
+## Observação CI — escrita normalizada de paciente
+
+O commit publicado `78bd717442e99ef6f7c4aadbc45a9ea17dbd7d4a` teve o run
+`34458595207` concluído com `success`. O job principal `102810773997` passou
+Browser E2E, migrations/PostgreSQL/RLS, restore, release/Compose, performance,
+SBOM e artefatos; o job `102812568853` passou os builds e scans das imagens API
+e web. O resultado é limitado ao pipeline remoto: não substitui staging,
+providers/DeepSeek, autoridade de segredos, observabilidade operacional,
+carga/chaos/recovery production-like ou aceite humano.

@@ -54,3 +54,15 @@ receipts canônicos. Staging autorizado, provedor/DeepSeek real, autoridade de
 segredos, Collector/SLO operacional, carga/chaos/recovery production-like,
 WebKit/assistive-tech/zoom real e aceite humano continuam ausentes. Nenhum
 destes limites autoriza promoção ou classificação Triplo AAA.
+
+## CI do SHA publicado
+
+O run GitHub Actions `34458595207` concluiu `success` para o SHA
+`78bd717442e99ef6f7c4aadbc45a9ea17dbd7d4a`. O job principal
+`102810773997` passou Browser E2E, migrations/PostgreSQL/RLS, restore,
+release/Compose, performance, SBOM, artefatos e whitespace. O job de imagens
+`102812568853` passou build e scan das imagens API e web.
+
+Essa é evidência de pipeline remoto vinculada ao commit, não evidência de
+staging, provider/DeepSeek, segredo/KMS, Collector/SLO operacional, carga,
+recovery gerenciado ou aceite humano.

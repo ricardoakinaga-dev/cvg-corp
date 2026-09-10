@@ -81,9 +81,9 @@ Outbox/inbox/effect ledger têm lease/fencing, retry bounded, backoff, quarantin
 
 ## Concrete Steps
 
-<!-- engineering-framework: active_action_id=CVG-FULL-STATE-OF-THE-ART:REMOTE-CI-OBSERVATION-PDP-UNIVERSAL-COVERAGE -->
+<!-- engineering-framework: active_action_id=CVG-FULL-STATE-OF-THE-ART:REMOTE-CI-OBSERVATION-NORMALIZED-GUARDIAN-WRITE -->
 
-1. `CVG-FULL-STATE-OF-THE-ART:REMOTE-CI-OBSERVATION-PDP-UNIVERSAL-COVERAGE` — ação corrente: observar CI no SHA integrado `f84ae97`, confirmar que os gates adicionados realmente executaram e manter `PASS_WITH_LIMITATIONS` até evidências externas e aceite humano.
+1. `CVG-FULL-STATE-OF-THE-ART:REMOTE-CI-OBSERVATION-NORMALIZED-GUARDIAN-WRITE` — ação corrente: observar CI no commit Guardian integrado `d73dbd0`, confirmar os gates no SHA exato e manter `PASS_WITH_LIMITATIONS`; a crítica fresh foi `NOT_COMPLETED` e o global continua `FAIL_WITH_LIMITATIONS` / `AAA_NOT_PROVEN`.
 2. `CVG-FULL-STATE-OF-THE-ART:AUTHORITATIVE-NORMALIZED-APPOINTMENT-WRITE` — concluída localmente: create assíncrono, `idempotentAsync`, escrita SQL contextual autoritativa, omissão da projeção genérica e testes SQL/HTTP/regressão; sem alegar PostgreSQL externo/staging.
 3. `CVG-FULL-STATE-OF-THE-ART:REMOTE-CI-OBSERVATION-APPOINTMENT-WRITE` — concluída: SHA `9c304f39621736ad8bb5f4b39447c4ac9d94fd25` publicado; run `34462488394`, job principal `102823305023` e job de imagens `102825161621` terminaram `success`.
 4. `CVG-FULL-STATE-OF-THE-ART:EXTERNAL-EVIDENCE-AND-HUMAN-ACCEPTANCE` — obter evidência autorizada de staging/provider/DeepSeek/observabilidade/carga/recuperação, executar crítica independente fresca e registrar aceite humano; até lá manter `FAIL_WITH_LIMITATIONS`/`AAA_NOT_PROVEN`.
@@ -513,6 +513,31 @@ PostgreSQL, containers, staging e egress permanecem fora desta lane.
 O próximo estado é `BUILD`; após a implementação serão executados testes
 focados, suíte local proporcional, guards estruturais, crítico fresh read-only,
 fingerprint pós-crítico, commit e CI exato. O veredito global continua
+`FAIL_WITH_LIMITATIONS` / `AAA_NOT_PROVEN`.
+
+## PDP universal — integração e CI exato — 2026-09-10 12:18
+
+A lane foi publicada em `origin/main` no commit
+`28b1ea837aaa50c62efefd0ef1b2fbaf02f8db60`. O run público `34493605518`
+(CVG CI #76) terminou `success`: o job principal `102926312185` e o job de
+imagens `102929161273` concluíram com sucesso, com artifacts de verificação e
+E2E publicados. O resultado confirma os gates remotos desta lane, não staging,
+provider/DeepSeek/segredos, Collector/SLO, carga/chaos/recovery, matriz
+assistiva completa ou aceite humano.
+
+## Replan — normalized Guardian write — 2026-09-10 12:18
+
+Após o CI verde, a próxima lacuna local reproduzível selecionada é
+`V3-DATA-001` na escrita normalizada de `Guardian`. O contrato será congelado
+antes da escrita: o comando contextual deve atravessar port/repositório tipado,
+persistir a linha `guardians` com `unit_id`/`workspace_id` no mesmo commit
+durável, manter replay/idempotência e excluir essa entidade da projeção
+genérica. A regressão deve provar sucesso, replay idêntico, conflito de corpo,
+escopo/RLS e rollback; não haverá provider, staging, segredo, dado real ou
+alteração de migration sem necessidade demonstrada.
+
+O scout fresh Newton está realizando o mapeamento read-only de contracts,
+persistence, app e testes antes da implementação. O global permanece
 `FAIL_WITH_LIMITATIONS` / `AAA_NOT_PROVEN`.
 
 ## PDP universal — integração — 2026-09-10 12:03

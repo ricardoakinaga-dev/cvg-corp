@@ -81,14 +81,25 @@ export function createWorkerDependencies(
   config: Pick<CvgConfig, "workerMaxOutstandingOutbox">,
   configuredSink: ConfiguredWorkerSink
 ): WorkerDependencies {
+  const effects = hasDurableEffectLedger(persistence) ? persistence : null;
   return {
     persistence,
+    effects,
     sink: configuredSink.sink,
     sinkMode: configuredSink.sinkMode,
     maxOutstandingOutbox: config.workerMaxOutstandingOutbox,
     maxOutstandingJobs: config.workerMaxOutstandingOutbox,
     ...(configuredSink.queryAdapter ? { reconciliationAdapter: configuredSink.queryAdapter } : {})
   };
+}
+
+function hasDurableEffectLedger(
+  persistence: WorkerDependencies["persistence"]
+): persistence is WorkerDependencies["persistence"] & ExternalEffectLedger {
+  const candidate = persistence as Partial<ExternalEffectLedger>;
+  return typeof candidate.prepareExternalEffect === "function"
+    && typeof candidate.markExternalEffectDispatched === "function"
+    && typeof candidate.recordExternalEffectOutcome === "function";
 }
 
 class WorkerLaneFailure extends Error {
@@ -118,14 +129,15 @@ export class CvgWorkerApplication {
     }
     const blockedLanes = WORKER_LANES.filter((lane) => lanes[lane] === "BLOCKED");
     const dispatchBlocked = lanes.outbox === "BLOCKED";
-    if (blockedLanes.length) return { status: "DEGRADED", process: "READY", lifecycle: this.stopped ? "STOPPED" : "RUNNING", persistence: "READY", dispatch: dispatchBlocked ? "BLOCKED" : "READY", lanes, reason: dispatchBlocked ? "O sink está em quarentena ou não foi configurado; nenhum efeito externo será enviado." : `Lanes sem runner configurado: ${blockedLanes.filter((lane) => lane !== "outbox").join(", ")}.` };
+    if (blockedLanes.length) return { status: "DEGRADED", process: "READY", lifecycle: this.stopped ? "STOPPED" : "RUNNING", persistence: "READY", dispatch: dispatchBlocked ? "BLOCKED" : "READY", lanes, reason: dispatchBlocked ? this.outboxBlockedReason() : `Lanes sem runner configurado: ${blockedLanes.filter((lane) => lane !== "outbox").join(", ")}.` };
     return { status: "READY", process: "READY", lifecycle: this.stopped ? "STOPPED" : "RUNNING", persistence: "READY", dispatch: "READY", lanes, reason: null };
   }
 
   async runOnce(organizationId: OpaqueId, workerId: string, options: WorkerCycleOptions = {}): Promise<OutboxWorkerResult> {
     if (this.stopped) throw new DomainError("INVALID_STATE", "O worker já foi encerrado.", 409);
-    if (!this.dependencies.sink || this.dependencies.sinkMode === "quarantine") throw new DomainError("CAPABILITY_DISABLED", "Nenhum sink governado foi configurado; nenhum dispatch foi realizado.", 503);
-    return this.relay.runOnce(organizationId, workerId, this.dependencies.sink, options);
+    const sink = this.dependencies.sink;
+    if (!sink || !this.outboxDispatchReady()) throw new DomainError("CAPABILITY_DISABLED", this.outboxBlockedReason(), 503);
+    return this.relay.runOnce(organizationId, workerId, sink, options);
   }
 
   async runCycle(organizationId: OpaqueId, workerId: string, options: WorkerCycleOptions = {}): Promise<WorkerCycleResult> {
@@ -194,8 +206,8 @@ export class CvgWorkerApplication {
           }
         }
       }
-      if (!this.dependencies.sink || this.dependencies.sinkMode === "quarantine") {
-        lanes.outbox = { status: "BLOCKED", processed: 0, durationMs: 0, reason: "outbox sink is not enabled; no records were claimed" };
+      if (!this.outboxDispatchReady()) {
+        lanes.outbox = { status: "BLOCKED", processed: 0, durationMs: 0, reason: this.outboxBlockedReason() };
       } else if (outboxBlockedReason) {
         lanes.outbox = { status: "BLOCKED", processed: 0, durationMs: 0, reason: outboxBlockedReason };
       } else {
@@ -296,9 +308,20 @@ export class CvgWorkerApplication {
     for (const controller of this.activeCycles) controller.abort();
   }
 
+  private outboxDispatchReady(): boolean {
+    const sink = this.dependencies.sink;
+    return Boolean(sink && this.dependencies.sinkMode !== "quarantine" && (!sink.requiresDurableEffectLedger || this.dependencies.effects));
+  }
+
+  private outboxBlockedReason(): string {
+    const sink = this.dependencies.sink;
+    if (sink?.requiresDurableEffectLedger && !this.dependencies.effects) return "O sink exige um ledger durável de efeitos, mas ele não foi composto; nenhum efeito externo será enviado.";
+    return "O sink está em quarentena ou não foi configurado; nenhum efeito externo será enviado.";
+  }
+
   private laneAvailability(): Record<WorkerLane, "READY" | "BLOCKED"> {
     return {
-      outbox: this.dependencies.sink && this.dependencies.sinkMode !== "quarantine" ? "READY" : "BLOCKED",
+      outbox: this.outboxDispatchReady() ? "READY" : "BLOCKED",
       jobs: this.dependencies.lanes?.jobs || this.hasDurableJobLane("jobs") ? "READY" : "BLOCKED",
       schedule: this.dependencies.lanes?.schedule || this.hasDurableJobLane("schedule") ? "READY" : "BLOCKED",
       reconciliation: this.dependencies.lanes?.reconciliation || this.hasDefaultReconciliation() || this.hasDurableJobLane("reconciliation") ? "READY" : "BLOCKED",

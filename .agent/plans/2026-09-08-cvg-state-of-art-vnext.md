@@ -81,7 +81,7 @@ Outbox/inbox/effect ledger têm lease/fencing, retry bounded, backoff, quarantin
 
 ## Concrete Steps
 
-<!-- engineering-framework: active_action_id=CVG-FULL-STATE-OF-THE-ART:REMOTE-CI-OBSERVATION-SESSION-AND-NAVIGATION -->
+<!-- engineering-framework: active_action_id=CVG-FULL-STATE-OF-THE-ART:INTEGRATE-WORKER-EFFECT-LEDGER-COMPOSITION -->
 
 1. `CVG-FULL-STATE-OF-THE-ART:AUTHORITATIVE-NORMALIZED-ENCOUNTER-WRITE` — concluída localmente: `encounters.create` usa application/repository assíncrono e `idempotentAsync`, grava a linha `encounters` como escrita normalizada autoritativa dentro do commit durável, omite o ID da projeção genérica e cobre SQL/HTTP/replay/corrupção; sem alegar PostgreSQL externo/staging.
 2. `CVG-FULL-STATE-OF-THE-ART:AUTHORITATIVE-NORMALIZED-APPOINTMENT-WRITE` — concluída localmente: create assíncrono, `idempotentAsync`, escrita SQL contextual autoritativa, omissão da projeção genérica e testes SQL/HTTP/regressão; sem alegar PostgreSQL externo/staging.
@@ -475,3 +475,105 @@ carga/chaos/recovery production-like, matriz completa browser/a11y ou aceite
 humano. O próximo action permanece
 `CVG-FULL-STATE-OF-THE-ART:EXTERNAL-EVIDENCE-AND-HUMAN-ACCEPTANCE`, e o
 veredito global permanece `FAIL_WITH_LIMITATIONS` / `AAA_NOT_PROVEN`.
+
+## Recovery — 2026-09-10 08:49
+
+A sessão foi recuperada a partir de `state.json`, do plano completo, backlog,
+ledgers, barra v3, prompt v2 e estado Git. O anexo original informado na
+solicitação não está mais disponível neste host; a cópia canônica preservada em
+`docs/prompt-state-of-the-art-triplo-aaa-2026-09-09-v2.txt` permanece íntegra,
+com SHA-256 `34e886f59adacf8fda46d8d54bdede259705adc6e1521590cd3c281509b0e0d9`.
+O plano estava com um marcador histórico de CI divergente do `state`/backlog;
+ele foi alinhado ao estado atual antes de continuar.
+
+O commit `05e417975bd83701105d378a7aef53a34245e7c5` tem CI remoto exato verde
+no run `34471837382`, e o commit atual de documentação/controle é
+`728896bc9674c5d34005522e21e3902b9f1b8590`, sincronizado com `origin/main`.
+Como staging, provider/DeepSeek, autoridade de segredos e aceite humano não
+estão autorizados/disponíveis, a continuação segura é uma auditoria read-only
+dos maiores gaps locais reproduzíveis, antes de selecionar a próxima escrita.
+O estado global permanece `FAIL_WITH_LIMITATIONS` / `AAA_NOT_PROVEN`.
+
+## Current action — 2026-09-10 09:02
+
+A auditoria read-only fresh, com fingerprint invariável, confirmou três gaps
+locais: idempotência durável universal ainda ausente, composição do worker sem
+ledger de efeitos durável e evidência visual incompleta. Foi selecionada a lane
+delimitada `CVG-FULL-STATE-OF-THE-ART:WORKER-DURABLE-EFFECT-LEDGER-COMPOSITION`.
+
+Contrato congelado antes da escrita: quando o sink configurado exige ledger de
+efeitos, `createWorkerDependencies` deve conectar a persistência durável ao
+campo `effects` do `CvgWorkerApplication`; se a persistência não expuser todos
+os métodos do ledger, a composição deve permanecer fail-closed. A regressão
+deve exercer a mesma factory usada pelos entrypoints e provar a admissão do
+efeito antes do dispatch, uma entrega e a ausência de provider sem ledger.
+Não serão inventados handlers de negócio para as lanes internas; provider real,
+PostgreSQL, containers, staging e egress permanecem fora desta lane.
+
+O próximo estado é `BUILD`; após a implementação serão executados testes
+focados, suíte local proporcional, guards estruturais, crítico fresh read-only,
+fingerprint pós-crítico, commit e CI exato. O veredito global continua
+`FAIL_WITH_LIMITATIONS` / `AAA_NOT_PROVEN`.
+
+## Critique / repair — 2026-09-10 09:10
+
+O crítico fresh Tesla realizou revisão read-only com fingerprint invariável e
+confirmou `PASS` nos quatro invariantes da lane, sem blocker ou aprovação AAA.
+Foi identificado um achado `MEDIUM` de evidência: o teste precisava exercitar
+um sink `ledger-required` habilitado com persistência parcial e observar
+`completeOutbox` somente depois do outcome. O guard textual foi classificado
+como risco `LOW`, não como blocker.
+
+A ação corrente é reparar apenas essa lacuna nos testes, mantendo o código de
+produção e o escopo de composição inalterados; em seguida repetir checks,
+fingerprint e crítica/integração conforme o protocolo Gauntlet.
+
+## Repair / verification — 2026-09-10 09:18
+
+A regressão foi fortalecida conforme a crítica: persistência parcial com sink
+habilitado e `ledger-required` permanece bloqueada, com zero chamadas ao sink;
+na composição completa, a sequência observada é `ADMISSION_PENDING`,
+`DISPATCHED`, `PROVIDER`, `SUCCEEDED`, `COMPLETE`. A bateria local passou:
+`test:fault` 17/17, `npm test` 149 (148 pass, 1 skip), E2E 64/4 skips,
+typecheck, build, lint, static, PDP, contratos, verificação estrutural de
+produção e diff check.
+
+Antes de integrar, o próximo passo obrigatório é uma crítica fresh pós-reparo
+com sentinel novo e sem autoridade de escrita; provider real, egress,
+PostgreSQL concorrente, staging e aceite AAA continuam bloqueados/ausentes.
+
+## Fresh critique / readiness repair — 2026-09-10 09:25
+
+Helmholtz realizou a crítica fresh pós-reparo, sem mutação e com sentinel
+conferido. Os quatro invariantes da lane passaram e não houve blocker nem
+aprovação AAA. O único achado foi `LOW` operacional: a disponibilidade do
+worker derivava apenas de sink habilitado, podendo anunciar `outbox READY` e
+`dispatch READY` quando `effects` era `null` e o relay só poderia falhar
+fechado.
+
+A correção delimitada é centralizar a capacidade de dispatch do outbox na
+composição: sink `ledger-required` sem ledger deve ficar `BLOCKED` em health,
+não reclamar trabalho em `runCycle` e expor razão operacional explícita. O
+teste manterá a prova de zero chamadas ao provider e zero claim nessa situação.
+
+## Final local verification — 2026-09-10 09:34
+
+Health/readiness, `runOnce` e `runCycle` foram alinhados à capacidade de
+dispatch efetiva. A persistência parcial não anuncia disponibilidade, não
+reclama outbox e mantém o bloqueio explícito. A regressão local passou 17/17 na
+lane, 149 testes (148 pass, 1 skip), E2E 64/4 skips, typecheck, build, lint,
+static, PDP, contratos, verificação estrutural de produção e diff check.
+
+Antes do commit, o protocolo exige uma crítica fresh final sobre o estado
+atual, com sentinel independente; somente depois serão integrados os artefatos
+e observado o CI no SHA exato. O resultado global não muda:
+`FAIL_WITH_LIMITATIONS` / `AAA_NOT_PROVEN`.
+
+## Final critique / integrate — 2026-09-10 09:46
+
+McClintock realizou a crítica fresh final sem mutação e retornou
+`REVIEW_ONLY_NO_BLOCKER`, com `PASS` nos quatro invariantes da lane. O
+sentinel pós-readiness permaneceu `match=true`. A integração local está
+autorizada apenas para este conjunto de arquivos e seus registros de controle;
+após o commit será observado o CI público no SHA exato. Nenhuma aprovação AAA
+ou promoção externa é inferida.

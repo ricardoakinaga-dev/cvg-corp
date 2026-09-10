@@ -2,8 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { id, type OpaqueId } from "@cvg/contracts";
 import { DomainError } from "@cvg/domain";
+import type { ExternalEffectLedger } from "@cvg/integrations";
 import { blockedWorkerSink, createWorkerDependencies, CvgWorkerApplication, WORKER_LANES, type WorkerLane } from "../../apps/worker/src/worker.ts";
-import type { DurableOutboxRecord, DurableWorkerHeartbeatInput, DurableWorkerHeartbeatRecord, DurableWorkerJobRecord, DurableWorkerLane } from "@cvg/persistence";
+import type { DurableExternalEffectRecord, DurableOutboxRecord, DurableWorkerHeartbeatInput, DurableWorkerHeartbeatRecord, DurableWorkerJobRecord, DurableWorkerLane } from "@cvg/persistence";
 
 const organizationId = id("00000000-0000-4000-0000-000000000010");
 
@@ -50,6 +51,32 @@ function workerJob(overrides: Partial<DurableWorkerJobRecord> = {}): DurableWork
   };
 }
 
+function effect(overrides: Partial<DurableExternalEffectRecord> = {}): DurableExternalEffectRecord {
+  return {
+    id: record().id,
+    organizationId,
+    outboxId: record().id,
+    integrationId: "outbox:synthetic.worker.health",
+    idempotencyKey: record().id,
+    request: { synthetic: true },
+    requestDigest: "synthetic-effect-request-digest",
+    status: "ADMISSION_PENDING",
+    attempts: 0,
+    claimedBy: "worker-test",
+    leaseUntil: "2099-01-01T00:00:00.000Z",
+    fenceToken: 1n,
+    providerRequestId: null,
+    response: null,
+    lastError: null,
+    outcomeDigest: null,
+    reconciliationSource: null,
+    reconciledAt: null,
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+    ...overrides
+  };
+}
+
 function persistence(overrides: Partial<{
   check: () => Promise<{ database: string; serverVersion: string }>;
   assertSchema: () => Promise<void>;
@@ -83,6 +110,77 @@ test("worker entrypoint composition applies the configured limit to every durabl
   assert.equal(dependencies.maxOutstandingOutbox, 37);
   assert.equal(dependencies.maxOutstandingJobs, 37);
   assert.equal(dependencies.sinkMode, "quarantine");
+  assert.equal(dependencies.effects, null);
+});
+
+test("worker entrypoint composition wires a complete durable effect ledger before external dispatch", async () => {
+  const transitions: string[] = [];
+  let current = effect();
+  const effects: ExternalEffectLedger = {
+    prepareExternalEffect: async (input, claim) => {
+      transitions.push("ADMISSION_PENDING");
+      current = effect({ ...input, claimedBy: claim.workerId, fenceToken: claim.fenceToken, status: "ADMISSION_PENDING" });
+      return current;
+    },
+    markExternalEffectDispatched: async () => {
+      transitions.push("DISPATCHED");
+      current = effect({ ...current, status: "DISPATCHED", attempts: 1 });
+      return current;
+    },
+    recordExternalEffectOutcome: async (_organizationId, _effectId, _workerId, _fenceToken, outcome) => {
+      transitions.push(outcome.status);
+      current = effect({ ...current, status: outcome.status, providerRequestId: outcome.providerRequestId ?? null, response: outcome.response ?? null, lastError: outcome.error ?? null });
+      return current;
+    }
+  };
+  const durablePersistence = {
+    ...persistence({ completeOutbox: async () => { transitions.push("COMPLETE"); } }),
+    ...effects
+  };
+  let providerCalls = 0;
+  const dependencies = createWorkerDependencies(durablePersistence, { workerMaxOutstandingOutbox: 37 }, {
+    sink: {
+      requiresDurableEffectLedger: true,
+      deliver: async () => {
+        providerCalls += 1;
+        transitions.push("PROVIDER");
+        return { status: "DELIVERED" as const, providerRequestId: "provider-1", receipt: { accepted: true } };
+      }
+    },
+    sinkMode: "enabled"
+  });
+  assert.equal(dependencies.effects, durablePersistence);
+  const result = await new CvgWorkerApplication(dependencies).runOnce(organizationId, "worker-composed");
+  assert.deepEqual(result, { claimed: 1, delivered: 1, retried: 0, quarantined: 0, outcomeUnknown: 0 });
+  assert.equal(providerCalls, 1);
+  assert.deepEqual(transitions, ["ADMISSION_PENDING", "DISPATCHED", "PROVIDER", "SUCCEEDED", "COMPLETE"]);
+});
+
+test("worker factory keeps an enabled ledger-required sink blocked when persistence is partial", async () => {
+  let providerCalls = 0;
+  let claims = 0;
+  const dependencies = createWorkerDependencies(persistence(), { workerMaxOutstandingOutbox: 37 }, {
+    sink: {
+      requiresDurableEffectLedger: true,
+      deliver: async () => {
+        providerCalls += 1;
+        return { status: "DELIVERED" as const, providerRequestId: "provider-should-not-run", receipt: { accepted: true } };
+      }
+    },
+    sinkMode: "enabled"
+  });
+  assert.equal(dependencies.effects, null);
+  const worker = new CvgWorkerApplication({
+    ...dependencies,
+    persistence: persistence({ claimOutbox: async () => { claims += 1; return [record()]; } })
+  });
+  const health = await worker.health();
+  assert.equal(health.lanes.outbox, "BLOCKED");
+  assert.equal(health.dispatch, "BLOCKED");
+  assert.equal(health.reason, "O sink exige um ledger durável de efeitos, mas ele não foi composto; nenhum efeito externo será enviado.");
+  await assert.rejects(() => worker.runOnce(organizationId, "worker-partial-ledger"), (error: unknown) => error instanceof DomainError && error.code === "CAPABILITY_DISABLED");
+  assert.equal(claims, 0);
+  assert.equal(providerCalls, 0);
 });
 
 test("separate worker exposes health, quarantine and stopped lifecycle", async () => {

@@ -9,8 +9,11 @@ reconciliação, não apagados nem repetidos automaticamente.
 
 `CURRENT`: o bundle durável contém tenant, schema, watermark, event id,
 snapshot digest, fingerprint de migrations e digests de outbox/usage/inbox/
-external-effects; AES-256-GCM autentica o payload. A migration 021 corrige a
-chave de revisão por organização.
+external-effects/worker-jobs; o digest de `workerJobs` cobre admission, payload,
+estado, tentativas e fence token. AES-256-GCM autentica o payload. Heartbeats
+não são autoridade histórica: são liveness corrente e devem ser recriados no
+destino. A migration 021 corrige a chave de revisão por organização e a 031
+adiciona a fila durável/liveness com RLS.
 
 ## Procedimento
 
@@ -19,7 +22,7 @@ chave de revisão por organização.
    fingerprint, digests e watermark;
 3. descriptografar somente em memória/volume protegido;
 4. restaurar em destino isolado, validar migrations e colocar em quarentena;
-5. reconciliar outbox/effects/inbox e verificar receipts;
+5. reconciliar outbox/effects/inbox, retomar ou quarentenar `workerJobs` e verificar receipts;
 6. invalidar sessões e revalidar policy/segredos;
 7. executar smoke e replay somente após aprovação independente;
 8. registrar RTO/RPO medidos e liberar ou descartar o destino.

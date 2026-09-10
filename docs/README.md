@@ -6,7 +6,7 @@ Este diretório contém a documentação da arquitetura-alvo de um programa de g
 
 | Campo | Estado |
 |---|---|
-| Fase | BUILD vNext; fundação de runtime/policy/tools, API e web modulares, worker separado, migrations 001–030, boundary local de autenticação, provider/reconciliação fail-closed, cadeia de auditoria local, `AuditRepository` normalizado e verificação determinística |
+| Fase | BUILD vNext; fundação de runtime/policy/tools, API e web modulares, worker separado, migrations 001–031, fila/heartbeats duráveis, boundary local de autenticação, provider/reconciliação fail-closed, cadeia de auditoria local, repositories normalizados e verificação determinística |
 | Escopo desta fase | Evolução brownfield controlada; mock/sintético e PostgreSQL local continuam permitidos; aceite operacional independente e produção continuam pendentes |
 | Motor proposto | `AgentRuntime` com adapter Mock e bridge DeepSeek `/v1` opcional; port nativo e protocolo externo ainda não provados |
 | Qualidade | barra v3 `FAIL_WITH_LIMITATIONS`; `verify:triplo-aaa`/`verify:staging` fail-closed, recorte local executável incluindo sandbox HTTP de provider, produção bloqueada |

@@ -1,6 +1,6 @@
 # Verification vNext
 
-**Data:** 2026-09-10 — fotografia local após Tool Gateway universal no harness, estados de falha frontend, métricas privadas, migration 030, ciclo durável de break-glass e repositories normalizados de domínio (`bf0cc50`)
+**Data:** 2026-09-10 — fotografia local no commit `1f066327b6d992a233e5bffae921af8377054899`, após Tool Gateway universal no harness, estados de falha frontend, métricas privadas, migrations 030–031, ciclo durável de break-glass, repositories normalizados e jobs/heartbeats duráveis
 
 ## Passe local atual
 
@@ -10,11 +10,11 @@
 | `npm run typecheck` | PASS | TypeScript sem emissão |
 | `npm run test:contract` | PASS | Envelopes e descriptors versionados |
 | `npm run test:security` | PASS | Auth, policy, gateway e fault-deny |
-| `npm run test:database` | PASS — 20/20 | Persistência/recovery sintéticos, repositories normalizados de domínio e rotas PostgreSQL-fake |
+| `npm run test:database` | PASS — 25/25 | Persistência/recovery sintéticos, repositories normalizados de domínio, rotas PostgreSQL-fake e jobs/heartbeats duráveis |
 | `npm run test:fault` | PASS | Worker e fault harness local |
-| `npm test` | PASS — 126 testes (125 pass, 1 skip condicional) | Unitário + integração, incluindo MFA, lockout, rotação, recovery manifest, PDP target-bound, Tool Gateway/ledger, harness assíncrono com execução universal, usage/provenance e exportação governada cifrada, provider loopback/reconciliação, break-glass durável, repositories normalizados de diagnostics/care/finance/communication/knowledge/queue/AI, assinatura HMAC de contexto, scheduler/lifecycle do worker, OTLP redaction, fault harness, projeção RLS fail-closed e estados frontend |
+| `npm test` | PASS — 135 testes (134 pass, 1 skip condicional) | Unitário + integração, incluindo MFA, lockout, rotação, recovery manifest com `workerJobs`, PDP target-bound, Tool Gateway/ledger, harness assíncrono com execução universal, usage/provenance e exportação governada cifrada, provider loopback/reconciliação, break-glass durável, repositories normalizados, jobs/heartbeats duráveis, assinatura HMAC de contexto, scheduler/lifecycle do worker, OTLP redaction, fault harness, projeção RLS fail-closed e estados frontend |
 | `npm run build` | PASS | Vite web + typecheck |
-| `npm run verify:static` | PASS | 46 artefatos e 123 arquivos-fonte |
+| `npm run verify:static` | PASS | 48 artefatos e 124 arquivos-fonte |
 | recovery bundle manifest | PASS — bundle completo + 5 rejeições | watermark, tenant, digests de ledgers, partial, stale, migration mismatch, ciphertext adulterado e chave errada |
 | application PDP / patient detail | PASS — fatia target-bound | Sessão autenticada, capability/operation registrada, resourceId, escopo persistido, projeção pelo `PatientApplicationService` e testes negativos de API/policy |
 | `npm run test:e2e` | PASS no gate completo de `verify:production`; E2E direcionado 2/2 | Gate executável: Chromium + Firefox × 375/768/1440 + Chromium stress (320 CSS px, DPR 2, touch, reduced-motion); os dois novos cenários cobrem 403 estável sem repetição e 401 durante sessão; WebKit permanece bloqueado no host |
@@ -26,8 +26,9 @@
 | `npm sbom --sbom-format cyclonedx` | PASS | SBOM gerado a partir do lockfile |
 | `npm run benchmark:local` | PASS limitado | baseline sintético com amostras brutas; não é SLO |
 | `tests/integration/faults.test.ts` | PASS — 2 cenários | crash após marcador de dispatch e perda de lease; fixture determinística, não drill distribuído |
-| `tests/unit/worker.test.ts` | PASS — 6 cenários | health, quarentena, ausência de sink, lifecycle, seis lanes do ciclo e falha isolada de runner |
-| worker lane cycle | PASS — 6 lanes nomeadas | outbox, jobs, schedule, reconciliation, notifications e maintenance; contagens/status por lane e default-deny sem sink |
+| `tests/unit/worker.test.ts` | PASS — cenários locais de health, quarentena, ausência de sink, lifecycle, seis lanes, falha isolada, handlers fenced, heartbeat, poison e backpressure | testes não substituem worker/container production-like |
+| `tests/integration/worker-jobs.test.ts` | PASS — 5/5 | admission tenant-scoped/idempotente, claim/fence/quarantine, heartbeat stale-protected, row corruption fail-closed e recovery encryption/fence token; pool sintético, não PostgreSQL real |
+| worker lane cycle | PASS — 6 lanes nomeadas + fila durável | outbox, jobs, schedule, reconciliation, notifications e maintenance; depth/poison/backpressure antes do claim, handlers explícitos e default-deny sem configuração |
 | SLO/alert evaluator | PASS — harness sintético | oito sinais tipados; targets sem aprovação permanecem `PROPOSED`/`TBD`; amostra ausente e avaliação sem evidência retornam `NOT_RUN`; alertas apontam para runbooks e não fazem dispatch |
 | `npm run verify:production` | PASS limitado | Gates locais completos; Compose estrutural validado com valores sintéticos; nenhum serviço iniciado |
 | `node --import tsx scripts/verify-production.ts --production` | FAIL-CLOSED esperado | configuração real ausente; o gate não autoriza defaults ou produção incompleta |
@@ -36,7 +37,7 @@
 | `npm run verify:staging` | `STAGING_EVIDENCE_INCOMPLETE` — exit 2 | sem URL staging configurada; nenhuma chamada de rede foi feita |
 | `npm run verify:deepseek-acp` | BLOCKED — exit 2 no ambiente atual | exige conjunto explícito `CVG_DEEPSEEK_ACP_*` e atestação; evidência ACP local anterior (`initialize`/`session/new`) permanece histórica, sem turno de modelo |
 | `npm run verify:provider-sandbox` | PASS local — boundary HTTP | servidor loopback real; replay idempotente, resposta perdida→`OUTCOME_UNKNOWN`, query por chave, callback HMAC válido/inválido; `externalProvider=NOT_RUN` |
-| `npm run verify:postgres` | NOT_RUN neste checkpoint | O host não expôs `DATABASE_URL` e o daemon Docker está indisponível; o gate continua preparado para migrations `001`–`030`, role runtime sem `BYPASSRLS`, break-glass, restart/read, outbox/effects/inbox/usage, CAS e RLS |
+| `npm run verify:postgres` | NOT_RUN neste checkpoint | O host não expôs `DATABASE_URL` e o daemon Docker está indisponível; o gate continua preparado para migrations `001`–`031`, role runtime sem `BYPASSRLS`, break-glass, restart/read, outbox/effects/inbox/usage/jobs, CAS e RLS |
 | `npm run verify:postgres:restore` | PASS local — destino efêmero | backup AES-256-GCM, tamper/partial/stale/migration mismatch rejeitados, destino `QUARANTINED`, login/readiness bloqueados e origem inalterada |
 | GitHub Actions run `34421045621` / SHA `53860d0` | FAIL observado | gates prévios passaram; o gate PostgreSQL/RLS falhou após aplicar 027. A causa estrutural foi tratada com a migration forward-only 028, sem editar 027 |
 | GitHub Actions run `34422274248` / SHA `c132d1d` | FAIL observado | o step `Browser E2E` terminou com exit 1; PostgreSQL/RLS e passos posteriores foram pulados. O log detalhado requer autenticação; a suíte local executável passou, mas o novo run não prova 028 |
@@ -57,7 +58,7 @@ O passe demonstra uma base compilável, testável e com controles locais de supp
 
 ## Current checkpoint — 2026-09-10 local closure
 
-`docs/verification-2026-09-10-local-closure.md` registra a fotografia atual: `npm test` 122 (121/1 skip), `test:database` 16/16, typecheck/build/lint/static/PDP/security/restore, provider loopback, exportação governada, ciclo break-glass durável, repositories normalizados de auditoria/encounters/clinical, produção estrutural/TLS overlay, contrast/tokens/licenses/audit e os E2E completos (64 pass/4 skips) passaram. A implementação local também conecta o harness ao `ToolGateway.execute()` e distingue `PERMISSION_DENIED`, `REAUTH_REQUIRED` e `STALE`. O CI remoto anterior `34427884550` continua verde no SHA `b232648bfbc3f1ae37ec099705ac16d045582b4d`; o commit técnico atual é `6b3df2f424ebfbe77acc4b332e4c55fbcb734321`, mas seu check remoto ainda não foi observado como concluído. O resultado global permanece `FAIL_WITH_LIMITATIONS`/`AAA_NOT_PROVEN` por falta de staging, provider/secret authority, turno DeepSeek, collector/SLO, carga/recuperação production-like, WebKit/assistive-tech/zoom real, crítica independente aprovadora e aceite humano.
+`docs/verification-2026-09-10-local-closure.md` registra a fotografia atual: `npm test` 135 (134/1 skip), `test:database` 25/25, typecheck/build/lint/static/PDP e `verify:production` estrutural passaram; a fila durável tem admission idempotente, claim fenced/lease, quarantine, stats/backpressure e heartbeat stale-protected, e o recovery inclui o ledger de jobs. A implementação local também conecta o harness ao `ToolGateway.execute()` e distingue `PERMISSION_DENIED`, `REAUTH_REQUIRED` e `STALE`. O CI remoto anterior `34427884550` pertence ao SHA anterior; o commit técnico corrente é `1f066327b6d992a233e5bffae921af8377054899`, e seu check remoto ainda não foi observado como concluído. O resultado global permanece `FAIL_WITH_LIMITATIONS`/`AAA_NOT_PROVEN` por falta de PostgreSQL concorrente real, handlers production-like, staging, provider/secret authority, turno DeepSeek, collector/SLO, carga/recuperação production-like, WebKit/assistive-tech/zoom real, crítica independente aprovadora e aceite humano.
 
 ## Current checkpoint — 2026-09-10 clinical read closure
 
@@ -70,3 +71,9 @@ O incremento reduz o bypass de snapshot nesta fatia, mas não fecha V3-DATA-001:
 `VER-CVG-087`–`VER-CVG-089` registram o commit `bf0cc506ff2fbbb99c77d334cfa60ba5921ffb22`: diagnostics, hospitalization, medication, stock, finance, communication, knowledge, queue e AI sessions foram extraídos para repositories tipados, com adapters PostgreSQL `READ ONLY`, escopo contextual, joins explícitos e validação fail-closed; as rotas e o resumo operacional não acessam essas coleções diretamente. A regressão passou `npm test` 126 (`125 pass`, `1 skip`), `test:database` 20/20, typecheck, lint, build, static, PDP, `verify:production` estrutural e diff check.
 
 Esta evidência continua local/sintética; não há PostgreSQL concorrente, staging, provider/DeepSeek, secret authority, collector/SLO, carga/chaos/recovery production-like, WebKit/assistive tech/zoom real, crítica independente aprovadora ou aceite humano. O CI remoto do SHA `bf0cc50` ainda precisa ser observado; o veredito permanece `FAIL_WITH_LIMITATIONS`/`AAA_NOT_PROVEN`.
+
+## Current checkpoint — 2026-09-10 durable worker jobs
+
+`c3c18de9282159fa25022d7f8ce591889b73445d` adiciona migration 031, `cvg_worker_jobs` e `cvg_worker_heartbeats` com RLS forçado, admission idempotente por digest, claim `SKIP LOCKED`, lease/fencing, retry/quarantine bounded e stale-protected heartbeat; `1f066327b6d992a233e5bffae921af8377054899` qualifica explicitamente as colunas do `RETURNING` do `UPDATE ... FROM`. `PostgresPersistence` inclui admission/claim/complete/fail/stats/heartbeat e incorpora jobs ao recovery manifest; `CvgWorkerApplication` reclama apenas lanes com handlers explícitos, aplica backpressure antes do claim e mantém poison/unknown visíveis.
+
+Evidência local desta wave: `npm test` 135 (`134 pass`, `1 skip`), `npm run test:database` 25/25, typecheck, lint (122 fontes), build, static (48 artefatos/124 fontes), PDP, produção estrutural e diff check passaram. A integração nova usa fake pools; não é prova de PostgreSQL concorrente, dead-letter/heartbeat em container, handlers de negócio production-like, CI do SHA corrente ou SLO de backlog. A crítica fresh contra o SHA corrente foi encerrada como `NOT_COMPLETED` em [`.gauntlet/critique-worker-jobs-current-attempt-20260910.md`](../.gauntlet/critique-worker-jobs-current-attempt-20260910.md), sem aprovação; o veredito permanece `FAIL_WITH_LIMITATIONS`/`AAA_NOT_PROVEN`.

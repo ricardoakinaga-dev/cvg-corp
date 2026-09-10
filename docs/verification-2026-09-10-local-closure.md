@@ -1,6 +1,6 @@
 # Fechamento local — 2026-09-10
 
-Fotografia executada no workspace `/home/ricardo/Área de trabalho/cvg-corp` em 2026-09-10, consolidada tecnicamente no commit `bf0cc50` (`feat: normalize operational read repositories`), após `6b3df2f` (reads clínicos) e `135ae56` (AuditRepository), além do ciclo durável de break-glass em `e846904`. O prompt normativo permanece em [`prompt-state-of-the-art-triplo-aaa-2026-09-09-v2.txt`](prompt-state-of-the-art-triplo-aaa-2026-09-09-v2.txt), SHA-256 `34e886f59adacf8fda46d8d54bdede259705adc6e1521590cd3c281509b0e0d9`.
+Fotografia executada no workspace `/home/ricardo/Área de trabalho/cvg-corp` em 2026-09-10, consolidada tecnicamente no commit `1f066327b6d992a233e5bffae921af8377054899` (qualificação explícita do `RETURNING` do claim durável), sobre a implementação de jobs em `c3c18de9282159fa25022d7f8ce591889b73445d`, após `bf0cc50` (repositories operacionais), `6b3df2f` (reads clínicos) e `135ae56` (AuditRepository), além do ciclo durável de break-glass em `e846904`. O prompt normativo permanece em [`prompt-state-of-the-art-triplo-aaa-2026-09-09-v2.txt`](prompt-state-of-the-art-triplo-aaa-2026-09-09-v2.txt), SHA-256 `34e886f59adacf8fda46d8d54bdede259705adc6e1521590cd3c281509b0e0d9`.
 
 ## Alterações verificadas
 
@@ -16,19 +16,21 @@ Fotografia executada no workspace `/home/ricardo/Área de trabalho/cvg-corp` em 
 - A API expõe `/internal/metrics` somente para a rede privada de observabilidade, com métricas agregadas sem tenant/rota; Prometheus, alertas de dependência, `OUTCOME_UNKNOWN`, reconciliação e poison outbox foram ligados estruturalmente.
 - A UI separa login inicial de sessão expirada, `PERMISSION_DENIED` de revalidação, e `STALE` de degradação; 403 não repete a mesma solicitação e 401 durante sessão oculta o conteúdo.
 - As leituras PostgreSQL de diagnostics, hospitalization, medication, stock, finance, communication, knowledge, queue e AI sessions agora atravessam repositories tipados em transações `READ ONLY`, com filtros contextuais, joins explícitos e validação fail-closed de linhas duráveis; o resumo operacional também usa esses adapters.
+- A migration 031 adiciona `cvg_worker_jobs` e `cvg_worker_heartbeats` com `FORCE RLS`, admission idempotente por organização/lane/chave e digest imutável, claim com `SKIP LOCKED`, lease/fencing, tentativas limitadas, quarantine e liveness persistida com rejeição de heartbeat obsoleto.
+- A persistência inclui jobs duráveis no bundle de recovery e no digest do manifesto; heartbeats são liveness operacional e não são restaurados como autoridade histórica. O worker aplica backpressure antes do claim, handlers explícitos, completion/failure fenced e métricas locais de depth/poison.
 
 ## Evidência local
 
 | Procedimento | Resultado observado |
 |---|---|
-| `npm test` | PASS — 126 testes: 125 pass, 1 skip condicional |
+| `npm test` | PASS — 135 testes: 134 pass, 1 skip condicional |
 | `npm run typecheck` | PASS |
 | `npm run build` | PASS — typecheck + Vite |
-| `npm run lint` | PASS — 121 fontes |
-| `npm run verify:static` | PASS — 46 artefatos, 123 fontes; `/internal/metrics` possui exceção explícita e rede privada documentada |
+| `npm run lint` | PASS — 122 fontes |
+| `npm run verify:static` | PASS — 48 artefatos, 124 fontes; migration 031 e teste de jobs duráveis incluídos; `/internal/metrics` possui exceção explícita e rede privada documentada |
 | `npm run verify:pdp` | PASS — 68 operações, 70 regras, 6 policies canônicas, 12 domínios |
 | `npm run test:security` | PASS — 26 testes |
-| `npm run test:database` | PASS — 20 testes: persistência, repositories normalizados de domínio, break-glass durável, exportação governada e restore |
+| `npm run test:database` | PASS — 25 testes: persistência, repositories normalizados de domínio, break-glass durável, exportação governada, restore e jobs/heartbeats duráveis |
 | `npm run verify:provider-sandbox` | PASS — loopback HTTP, replay, `OUTCOME_UNKNOWN`, reconciliação e HMAC; `externalProvider=NOT_RUN` |
 | `npm run verify:production` | PASS limitado — gates locais completos, Compose principal/observabilidade e overlay TLS renderizados; nenhum serviço de produção foi iniciado |
 | `npm run audit:contrast` | PASS — 7/7 pares |
@@ -47,7 +49,7 @@ Fotografia executada no workspace `/home/ricardo/Área de trabalho/cvg-corp` em 
 
 ## Limitações mantidas
 
-O artifact continua local-first e sintético. Usage/provenance, exportação governada, as leituras normalizadas de auditoria, encounters, clinical, diagnostics, hospitalization, medication, stock, finance, communication, knowledge, queue e AI sessions e o armazenamento durável do ciclo break-glass estão implementados e cobertos localmente, mas a execução PostgreSQL concorrente, provider WebAuthn/secret authority, provider/DeepSeek, staging/TLS real, collector/alert dispatch/SLO medidos, carga/chaos, backup/RTO/RPO, WebKit, leitor de tela e zoom de 200% continuam `PARTIAL`, `NOT_RUN` ou `BLOCKED`. O host desta fotografia não tinha `DATABASE_URL` nem daemon Docker; por isso migration/role/RLS em PostgreSQL efêmero e startup de containers não foram executados neste checkpoint. A cobertura dos demais repositories/jobs permanece parcial; o commit `bf0cc50` fecha somente esta fatia adicional e não fecha V3-DATA-001. A crítica I1 concluída sobre o SHA publicado anteriormente rejeitou AAA; a tentativa fresh desta onda sem parecer está registrada em [critique-clinical-read-attempt-20260910.md](../.gauntlet/critique-clinical-read-attempt-20260910.md) e não é aprovação. O veredito global permanece `FAIL_WITH_LIMITATIONS` / `AAA_NOT_PROVEN`.
+O artifact continua local-first e sintético. Usage/provenance, exportação governada, as leituras normalizadas de auditoria, encounters, clinical, diagnostics, hospitalization, medication, stock, finance, communication, knowledge, queue e AI sessions, a admission/lease/quarantine local de jobs e o armazenamento durável do ciclo break-glass estão implementados e cobertos localmente, mas a execução PostgreSQL concorrente real, handlers de negócio em produção, provider WebAuthn/secret authority, provider/DeepSeek, staging/TLS real, collector/alert dispatch/SLO medidos, carga/chaos, backup/RTO/RPO, WebKit, leitor de tela e zoom de 200% continuam `PARTIAL`, `NOT_RUN` ou `BLOCKED`. O host desta fotografia não tinha `DATABASE_URL` nem daemon Docker; por isso migration/role/RLS em PostgreSQL efêmero e startup de containers não foram executados neste checkpoint. Os commits `c3c18de` e `1f06632` fecham a fundação local de jobs/heartbeats e a qualificação do claim, mas não fecham V3-DATA-001 nem provam a execução production-like. A crítica fresh contra o SHA atual não retornou parecer e está registrada em [critique-worker-jobs-current-attempt-20260910.md](../.gauntlet/critique-worker-jobs-current-attempt-20260910.md); isso não é aprovação. O veredito global permanece `FAIL_WITH_LIMITATIONS` / `AAA_NOT_PROVEN`.
 
 ## Incremento local — AuditRepository — 2026-09-10
 
@@ -70,3 +72,11 @@ Esta onda não prova PostgreSQL real/concurrente, nem cria repositories para dia
 No commit `bf0cc506ff2fbbb99c77d334cfa60ba5921ffb22`, as rotas de diagnostics, hospitalization, medication, stock, finance, communication, knowledge, queue e AI sessions passaram pelo `ReadApplicationService`. Os adapters PostgreSQL consultam as projeções duráveis em transações `READ ONLY`, aplicam organização/unidade/workspace e, quando necessário, derivam o escopo por encounter, charge/payment ou appointment; joins de produto, localização, paciente e contagem de turnos são explicitamente validados. Enums, IDs, timestamps, inteiros, conteúdo e metadados de proveniência inválidos produzem `PersistenceCorruptionError` e rollback, sem transformar corrupção em lista vazia.
 
 Os testes adicionados cobrem linhas conhecidas, projeções relacionadas, filtros exatos, 20 transações `BEGIN READ ONLY`/`COMMIT`, status durável não suportado em cada tranche e roteamento HTTP PostgreSQL-fake. `npm test` passou com 126 testes (125 pass, 1 skip), `npm run test:database` 20/20, typecheck, lint, build, static, PDP, `verify:production` estrutural e `git diff --check` passaram. Isso reduz o bypass do snapshot no runtime, mas não prova PostgreSQL concorrente, staging, provider, DeepSeek, observabilidade operacional ou AAA.
+
+## Incremento local — Jobs duráveis e heartbeats — 2026-09-10
+
+No commit `c3c18de9282159fa25022d7f8ce591889b73445d`, a migration 031 adiciona a fila tenant-scoped `cvg_worker_jobs` e a tabela de liveness `cvg_worker_heartbeats`. A admission é idempotente por organização/lane/chave e compara o digest da carga imutável; o claim usa `FOR UPDATE SKIP LOCKED`, lease, fence token monotônico e limite de tentativas, enquanto completion/failure exigem o worker e fence vigentes. Jobs com tentativas esgotadas são colocados em `QUARANTINED`; a persistência expõe depth, idade, poison messages e heartbeat stale-protected. Ambas as tabelas têm `FORCE RLS`, políticas de organização e privilégios DML mínimos.
+
+O worker aplica backpressure por lane antes de reclamar trabalho, executa somente handlers registrados, registra sucesso/erro com fencing e mantém desconhecidos/poison visíveis. O bundle de recovery inclui `workerJobs` e seu digest no manifesto; heartbeats são liveness corrente e são recriados, não usados para reativar autoridade histórica. Evidência local: `npm test` 135 (`134 pass`, `1 skip`), `npm run test:database` 25/25, `npm run typecheck`, `npm run lint` (122 fontes), `npm run build`, `npm run verify:static` (48 artefatos/124 fontes), `npm run verify:pdp`, `npm run verify:production` estrutural e `git diff --check` passaram.
+
+Essa evidência usa pools sintéticos/fakes para as novas integrações; não prova PostgreSQL real concorrente, startup de container, handlers de negócio em produção, dead-letter operacional, métricas/heartbeat observados em staging, CI do SHA atual ou aceite humano. A crítica fresh read-only foi encerrada após duas janelas sem relatório; o registro [critique-worker-jobs-attempt-20260910.md](../.gauntlet/critique-worker-jobs-attempt-20260910.md) preserva os sentinelas e `NOT_COMPLETED`. O veredito permanece `FAIL_WITH_LIMITATIONS` / `AAA_NOT_PROVEN`.

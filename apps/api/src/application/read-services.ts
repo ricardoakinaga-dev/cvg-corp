@@ -1,4 +1,4 @@
-import type { AnimalPatient, Appointment, AuditRecord, ClinicalDocument, CvgContext, Encounter, Guardian, OpaqueId } from "@cvg/contracts";
+import type { AnimalPatient, Appointment, AuditRecord, ClinicalDocument, CvgContext, DiagnosticRequest, DiagnosticResult, Encounter, Guardian, OpaqueId, Specimen } from "@cvg/contracts";
 import type { CvgStore } from "@cvg/domain";
 import type { NormalizedAppointmentRead, NormalizedEncounterRead, PostgresPersistence } from "@cvg/persistence";
 import { enforceApplicationPolicy } from "@cvg/agent-policy";
@@ -25,6 +25,12 @@ export interface EncounterRepository {
 
 export interface ClinicalRepository {
   list(context: CvgContext): Promise<ClinicalDocument[]>;
+}
+
+export interface DiagnosticReadRepository {
+  listRequests(context: CvgContext): Promise<DiagnosticRequest[]>;
+  listSpecimens(context: CvgContext): Promise<Specimen[]>;
+  listResults(context: CvgContext): Promise<DiagnosticResult[]>;
 }
 
 class StoreGuardianReadRepository implements GuardianReadRepository {
@@ -121,9 +127,55 @@ class PostgresClinicalRepository implements ClinicalRepository {
   }
 }
 
+class StoreDiagnosticReadRepository implements DiagnosticReadRepository {
+  constructor(private readonly store: CvgStore) {}
+
+  private inScope(context: CvgContext, encounterId: OpaqueId | null): boolean {
+    const encounter = encounterId ? this.store.encounters.get(encounterId) : null;
+    return Boolean(encounter) && encounter!.organizationId === context.organizationId && (!context.unitId || encounter!.unitId === context.unitId) && (!context.workspaceId || encounter!.workspaceId === context.workspaceId);
+  }
+
+  listRequests(context: CvgContext): Promise<DiagnosticRequest[]> {
+    this.store.requireRole(context, ["admin", "veterinario"], "diagnostics:read");
+    return Promise.resolve([...this.store.diagnosticRequests.values()].filter((request) => request.organizationId === context.organizationId && this.inScope(context, request.encounterId)).map((request) => ({ ...request })));
+  }
+
+  listSpecimens(context: CvgContext): Promise<Specimen[]> {
+    this.store.requireRole(context, ["admin", "veterinario"], "diagnostics:read");
+    return Promise.resolve([...this.store.specimens.values()].filter((specimen) => {
+      const request = this.store.diagnosticRequests.get(specimen.requestId);
+      return specimen.organizationId === context.organizationId && Boolean(request) && this.inScope(context, request!.encounterId);
+    }).map((specimen) => ({ ...specimen })));
+  }
+
+  listResults(context: CvgContext): Promise<DiagnosticResult[]> {
+    this.store.requireRole(context, ["admin", "veterinario"], "diagnostics:read");
+    return Promise.resolve([...this.store.diagnosticResults.values()].filter((result) => {
+      const request = this.store.diagnosticRequests.get(result.requestId);
+      return result.organizationId === context.organizationId && Boolean(request) && this.inScope(context, request!.encounterId);
+    }).map((result) => ({ ...result })));
+  }
+}
+
+class PostgresDiagnosticReadRepository implements DiagnosticReadRepository {
+  constructor(private readonly persistence: PostgresPersistence) {}
+
+  listRequests(context: CvgContext): Promise<DiagnosticRequest[]> {
+    return this.persistence.listDiagnosticRequests(context);
+  }
+
+  listSpecimens(context: CvgContext): Promise<Specimen[]> {
+    return this.persistence.listSpecimens(context);
+  }
+
+  listResults(context: CvgContext): Promise<DiagnosticResult[]> {
+    return this.persistence.listDiagnosticResults(context);
+  }
+}
+
 /** Read-side use cases select a repository behind one application boundary. */
 export class ReadApplicationService {
-  constructor(private readonly guardians: GuardianReadRepository, private readonly appointments: AppointmentReadRepository, private readonly audit: AuditRepository, private readonly encounters: EncounterRepository, private readonly clinical: ClinicalRepository) {}
+  constructor(private readonly guardians: GuardianReadRepository, private readonly appointments: AppointmentReadRepository, private readonly audit: AuditRepository, private readonly encounters: EncounterRepository, private readonly clinical: ClinicalRepository, private readonly diagnostics: DiagnosticReadRepository) {}
 
   listGuardians(context: CvgContext, query?: string): Promise<Guardian[]> {
     enforceApplicationPolicy(context, "guardians.read");
@@ -149,6 +201,21 @@ export class ReadApplicationService {
     enforceApplicationPolicy(context, "clinical.read");
     return this.clinical.list(context);
   }
+
+  listDiagnosticRequests(context: CvgContext): Promise<DiagnosticRequest[]> {
+    enforceApplicationPolicy(context, "diagnostics.read");
+    return this.diagnostics.listRequests(context);
+  }
+
+  listSpecimens(context: CvgContext): Promise<Specimen[]> {
+    enforceApplicationPolicy(context, "diagnostics.specimens.read");
+    return this.diagnostics.listSpecimens(context);
+  }
+
+  listDiagnosticResults(context: CvgContext): Promise<DiagnosticResult[]> {
+    enforceApplicationPolicy(context, "diagnostics.results.read");
+    return this.diagnostics.listResults(context);
+  }
 }
 
 export function createReadApplicationService(store: CvgStore, persistence: PostgresPersistence | null): ReadApplicationService {
@@ -157,6 +224,7 @@ export function createReadApplicationService(store: CvgStore, persistence: Postg
     persistence ? new PostgresAppointmentReadRepository(persistence) : new StoreAppointmentReadRepository(store),
     persistence ? new PostgresAuditRepository(persistence) : new StoreAuditRepository(store),
     persistence ? new PostgresEncounterRepository(persistence) : new StoreEncounterRepository(store),
-    persistence ? new PostgresClinicalRepository(persistence) : new StoreClinicalRepository(store)
+    persistence ? new PostgresClinicalRepository(persistence) : new StoreClinicalRepository(store),
+    persistence ? new PostgresDiagnosticReadRepository(persistence) : new StoreDiagnosticReadRepository(store)
   );
 }

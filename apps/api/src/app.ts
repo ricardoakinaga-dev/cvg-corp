@@ -1216,11 +1216,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
 
   app.get("/api/v1/diagnostics/requests", async (request, reply) => {
     const { context } = requestContext(request, "diagnostics.read");
-    store.requireRole(context, ["admin", "veterinario"], "diagnostics:read");
-    const items = [...store.diagnosticRequests.values()].filter((item) => {
-      const encounter = item.encounterId ? store.encounters.get(item.encounterId) : null;
-      return item.organizationId === context.organizationId && Boolean(encounter) && (!context.unitId || encounter!.unitId === context.unitId) && (!context.workspaceId || encounter!.workspaceId === context.workspaceId);
-    });
+    const items = await readApplication.listDiagnosticRequests(context);
     audit(context, "diagnostics.read", "DiagnosticRequest", null, "ALLOWED", null, { count: items.length });
     return response(reply, success({ items }, context.correlationId));
   });
@@ -1237,12 +1233,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
 
   app.get("/api/v1/diagnostics/specimens", async (request, reply) => {
     const { context } = requestContext(request, "diagnostics.specimens.read");
-    store.requireRole(context, ["admin", "veterinario"], "diagnostics:read");
-    const items = [...store.specimens.values()].filter((item) => {
-      const requestRecord = store.diagnosticRequests.get(item.requestId);
-      const encounter = requestRecord?.encounterId ? store.encounters.get(requestRecord.encounterId) : null;
-      return item.organizationId === context.organizationId && Boolean(requestRecord && encounter) && (!context.unitId || encounter!.unitId === context.unitId) && (!context.workspaceId || encounter!.workspaceId === context.workspaceId);
-    });
+    const items = await readApplication.listSpecimens(context);
     audit(context, "diagnostics.specimens.read", "Specimen", null, "ALLOWED", null, { count: items.length });
     return response(reply, success({ items }, context.correlationId));
   });
@@ -1271,12 +1262,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
 
   app.get("/api/v1/diagnostics/results", async (request, reply) => {
     const { context } = requestContext(request, "diagnostics.results.read");
-    store.requireRole(context, ["admin", "veterinario"], "diagnostics:read");
-    const items = [...store.diagnosticResults.values()].filter((item) => {
-      const requestRecord = store.diagnosticRequests.get(item.requestId);
-      const encounter = requestRecord?.encounterId ? store.encounters.get(requestRecord.encounterId) : null;
-      return item.organizationId === context.organizationId && Boolean(requestRecord && encounter) && (!context.unitId || encounter!.unitId === context.unitId) && (!context.workspaceId || encounter!.workspaceId === context.workspaceId);
-    });
+    const items = await readApplication.listDiagnosticResults(context);
     audit(context, "diagnostics.results.read", "DiagnosticResult", null, "ALLOWED", null, { count: items.length });
     return response(reply, success({ items }, context.correlationId));
   });

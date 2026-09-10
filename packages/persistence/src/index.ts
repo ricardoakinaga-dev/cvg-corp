@@ -1,6 +1,6 @@
 import { createCipheriv, createDecipheriv, randomBytes, randomUUID } from "node:crypto";
 import { Pool, type PoolClient, type PoolConfig } from "pg";
-import type { AnimalPatient, Appointment, AuditRecord, ClinicalDocument, CommandReceipt, CvgContext, Encounter, Guardian, OpaqueId } from "@cvg/contracts";
+import type { AnimalPatient, Appointment, AuditRecord, ClinicalDocument, CommandReceipt, CvgContext, DiagnosticRequest, DiagnosticResult, Encounter, Guardian, OpaqueId, Specimen } from "@cvg/contracts";
 import { id } from "@cvg/contracts";
 import { auditRecordHash, digest, now, parseSnapshot, serializeSnapshot, type StoreSnapshot } from "@cvg/domain";
 
@@ -788,6 +788,47 @@ interface ClinicalDocumentReadRow {
   signed_at: SqlTimestamp;
   signed_by: string | null;
   created_at: SqlTimestamp;
+}
+
+interface DiagnosticRequestReadRow {
+  id: string;
+  organization_id: string;
+  patient_id: string;
+  encounter_id: string;
+  test_name: unknown;
+  priority: unknown;
+  status: unknown;
+  requested_by: string;
+  created_at: SqlTimestamp;
+  unit_id: string;
+  workspace_id: string;
+}
+
+interface SpecimenReadRow {
+  id: string;
+  organization_id: string;
+  request_id: string;
+  patient_id: string;
+  label: unknown;
+  collected_at: SqlTimestamp;
+  status: unknown;
+  unit_id: string;
+  workspace_id: string;
+}
+
+interface DiagnosticResultReadRow {
+  id: string;
+  organization_id: string;
+  request_id: string;
+  specimen_id: string;
+  patient_id: string;
+  value: unknown;
+  source: unknown;
+  source_version: unknown;
+  status: unknown;
+  created_at: SqlTimestamp;
+  unit_id: string;
+  workspace_id: string;
 }
 
 function sqlId(value: unknown, field: string): OpaqueId {
@@ -1851,6 +1892,83 @@ export class PostgresPersistence {
           signedAt: sqlNullableTimestamp(row.signed_at),
           signedBy: row.signed_by ? sqlId(row.signed_by, "clinical.signed_by") : null,
           createdAt: sqlTimestamp(row.created_at, "clinical.created_at")
+        };
+      });
+    });
+  }
+
+  async listDiagnosticRequests(context: CvgContext): Promise<DiagnosticRequest[]> {
+    return this.scopedRead(context, "diagnostic requests", async (client) => {
+      const result = await client.query<DiagnosticRequestReadRow>(
+        "select r.id::text as id, r.organization_id::text as organization_id, r.patient_id::text as patient_id, r.encounter_id::text as encounter_id, r.test_name, r.priority, r.status, r.requested_by::text as requested_by, r.created_at, e.unit_id::text as unit_id, e.workspace_id::text as workspace_id from diagnostic_requests r join encounters e on e.id = r.encounter_id and e.organization_id = r.organization_id where r.organization_id = cvg_request_organization() and cvg_request_scope_allows(e.unit_id, e.workspace_id) and ($1::uuid is null or e.unit_id = $1::uuid) and ($2::uuid is null or e.workspace_id = $2::uuid) order by r.created_at, r.id",
+        [context.unitId, context.workspaceId]
+      );
+      return result.rows.map((row) => {
+        const organizationId = sqlId(row.organization_id, "diagnostic.organization_id");
+        const unitId = sqlId(row.unit_id, "diagnostic.unit_id");
+        const workspaceId = sqlId(row.workspace_id, "diagnostic.workspace_id");
+        if (organizationId !== context.organizationId || (context.unitId !== null && unitId !== context.unitId) || (context.workspaceId !== null && workspaceId !== context.workspaceId)) throw new PersistenceCorruptionError(`normalized diagnostic request ${row.id} is outside the requested scope`);
+        return {
+          id: sqlId(row.id, "diagnostic.id"),
+          organizationId,
+          patientId: sqlId(row.patient_id, "diagnostic.patient_id"),
+          encounterId: sqlId(row.encounter_id, "diagnostic.encounter_id"),
+          testName: sqlText(row.test_name, "diagnostic.test_name"),
+          priority: sqlEnum(row.priority, ["ROUTINE", "URGENT", "STAT"] as const, "diagnostic.priority"),
+          status: sqlEnum(row.status, ["REQUESTED", "SPECIMEN_COLLECTED", "RESULTED", "REVIEWED", "CANCELLED"] as const, "diagnostic.status"),
+          requestedBy: sqlId(row.requested_by, "diagnostic.requested_by"),
+          createdAt: sqlTimestamp(row.created_at, "diagnostic.created_at")
+        };
+      });
+    });
+  }
+
+  async listSpecimens(context: CvgContext): Promise<Specimen[]> {
+    return this.scopedRead(context, "specimens", async (client) => {
+      const result = await client.query<SpecimenReadRow>(
+        "select s.id::text as id, s.organization_id::text as organization_id, s.request_id::text as request_id, s.patient_id::text as patient_id, s.label, s.collected_at, s.status, e.unit_id::text as unit_id, e.workspace_id::text as workspace_id from specimens s join diagnostic_requests r on r.id = s.request_id and r.organization_id = s.organization_id join encounters e on e.id = r.encounter_id and e.organization_id = r.organization_id where s.organization_id = cvg_request_organization() and cvg_request_scope_allows(e.unit_id, e.workspace_id) and ($1::uuid is null or e.unit_id = $1::uuid) and ($2::uuid is null or e.workspace_id = $2::uuid) order by s.collected_at, s.id",
+        [context.unitId, context.workspaceId]
+      );
+      return result.rows.map((row) => {
+        const organizationId = sqlId(row.organization_id, "specimen.organization_id");
+        const unitId = sqlId(row.unit_id, "specimen.unit_id");
+        const workspaceId = sqlId(row.workspace_id, "specimen.workspace_id");
+        if (organizationId !== context.organizationId || (context.unitId !== null && unitId !== context.unitId) || (context.workspaceId !== null && workspaceId !== context.workspaceId)) throw new PersistenceCorruptionError(`normalized specimen ${row.id} is outside the requested scope`);
+        return {
+          id: sqlId(row.id, "specimen.id"),
+          organizationId,
+          requestId: sqlId(row.request_id, "specimen.request_id"),
+          patientId: sqlId(row.patient_id, "specimen.patient_id"),
+          label: sqlText(row.label, "specimen.label"),
+          collectedAt: sqlTimestamp(row.collected_at, "specimen.collected_at"),
+          status: sqlEnum(row.status, ["COLLECTED", "RECEIVED", "REJECTED"] as const, "specimen.status")
+        };
+      });
+    });
+  }
+
+  async listDiagnosticResults(context: CvgContext): Promise<DiagnosticResult[]> {
+    return this.scopedRead(context, "diagnostic results", async (client) => {
+      const result = await client.query<DiagnosticResultReadRow>(
+        "select dr.id::text as id, dr.organization_id::text as organization_id, dr.request_id::text as request_id, dr.specimen_id::text as specimen_id, dr.patient_id::text as patient_id, dr.value, dr.source, dr.source_version, dr.status, dr.created_at, e.unit_id::text as unit_id, e.workspace_id::text as workspace_id from diagnostic_results dr join diagnostic_requests r on r.id = dr.request_id and r.organization_id = dr.organization_id join encounters e on e.id = r.encounter_id and e.organization_id = r.organization_id where dr.organization_id = cvg_request_organization() and cvg_request_scope_allows(e.unit_id, e.workspace_id) and ($1::uuid is null or e.unit_id = $1::uuid) and ($2::uuid is null or e.workspace_id = $2::uuid) order by dr.created_at, dr.id",
+        [context.unitId, context.workspaceId]
+      );
+      return result.rows.map((row) => {
+        const organizationId = sqlId(row.organization_id, "diagnostic-result.organization_id");
+        const unitId = sqlId(row.unit_id, "diagnostic-result.unit_id");
+        const workspaceId = sqlId(row.workspace_id, "diagnostic-result.workspace_id");
+        if (organizationId !== context.organizationId || (context.unitId !== null && unitId !== context.unitId) || (context.workspaceId !== null && workspaceId !== context.workspaceId)) throw new PersistenceCorruptionError(`normalized diagnostic result ${row.id} is outside the requested scope`);
+        return {
+          id: sqlId(row.id, "diagnostic-result.id"),
+          organizationId,
+          requestId: sqlId(row.request_id, "diagnostic-result.request_id"),
+          specimenId: sqlId(row.specimen_id, "diagnostic-result.specimen_id"),
+          patientId: sqlId(row.patient_id, "diagnostic-result.patient_id"),
+          value: sqlText(row.value, "diagnostic-result.value"),
+          source: sqlText(row.source, "diagnostic-result.source"),
+          sourceVersion: sqlText(row.source_version, "diagnostic-result.source_version"),
+          status: sqlEnum(row.status, ["RECEIVED", "QUARANTINED", "VALID", "REJECTED"] as const, "diagnostic-result.status"),
+          createdAt: sqlTimestamp(row.created_at, "diagnostic-result.created_at")
         };
       });
     });

@@ -185,6 +185,9 @@ test("API exposes the core clinical, treatment, finance and knowledge boundaries
   const specimen = await vet.request(`/diagnostics/requests/${requestId}/specimens`, { method: "POST", headers: { "idempotency-key": "api-diagnostic-specimen-1" }, payload: { label: "LUNA-HEM-001" } }); assert.equal(specimen.statusCode, 201);
   const specimenId = (specimen.body.data as { specimen: { id: string } }).specimen.id;
   assert.equal((await vet.request("/diagnostics/results", { method: "POST", headers: { "idempotency-key": "api-diagnostic-result-1" }, payload: { requestId, specimenId, value: "sem alterações", source: "laboratório sintético", sourceVersion: "synthetic-1", externalOrderId: null } })).statusCode, 201);
+  assert.equal((await vet.request("/diagnostics/requests")).statusCode, 200);
+  assert.equal((await vet.request("/diagnostics/specimens")).statusCode, 200);
+  assert.equal((await vet.request("/diagnostics/results")).statusCode, 200);
   const beds = await vet.request("/hospitalization/beds"); assert.equal(beds.statusCode, 200);
   const bedId = (beds.body.data as { items: Array<{ id: string }> }).items[0]!.id;
   const episode = await vet.request("/hospitalization/episodes", { method: "POST", headers: { "idempotency-key": "api-hospital-episode-1" }, payload: { patientId, encounterId, bedId } }); assert.equal(episode.statusCode, 201);

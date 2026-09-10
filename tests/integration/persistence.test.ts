@@ -69,7 +69,7 @@ function commitInput(store: CvgStore) {
   };
 }
 
-function normalizedReadPool(options: { auditMetadata?: unknown; auditChainVersion?: number; clinicalStatus?: unknown; unitId?: string | null; workspaceId?: string | null } = {}): { pool: Pool; statements: string[]; scope: { organizationId: string | null } } {
+function normalizedReadPool(options: { auditMetadata?: unknown; auditChainVersion?: number; clinicalStatus?: unknown; diagnosticStatus?: unknown; unitId?: string | null; workspaceId?: string | null } = {}): { pool: Pool; statements: string[]; scope: { organizationId: string | null } } {
   const statements: string[] = [];
   const scope = { organizationId: null as string | null };
   const client = {
@@ -80,6 +80,9 @@ function normalizedReadPool(options: { auditMetadata?: unknown; auditChainVersio
       if (sql.startsWith("select p.id::text")) return { rows: [{ id: "00000000-0000-4000-0000-000000000111", guardian_id: "00000000-0000-4000-0000-000000000101", name: "Luna", species: "Canina", breed: "Golden retriever", sex: "FEMALE", reproductive_status: "NEUTERED", birth_date: "2020-05-19", identifiers: ["MICRO-9812"], data_class: "D3", status: "ACTIVE", merged_into_id: null, status_changed_at: null, created_at: "2026-01-01T00:00:00.000Z", guardian_display_name: "Marina Souza", guardian_phone: "+55 11 98888-1200" }] };
       if (sql.startsWith("select e.id::text")) return { rows: [{ id: "00000000-0000-4000-0000-000000000171", organization_id: scope.organizationId, unit_id: options.unitId ?? "00000000-0000-8000-0000-000000000011", workspace_id: options.workspaceId ?? "00000000-0000-8000-0000-000000000021", patient_id: "00000000-0000-4000-0000-000000000111", appointment_id: null, chief_complaint: "retorno clínico", urgency: "ROUTINE", status: "OPEN", opened_at: "2026-01-01T11:00:00.000Z", closed_at: null, patient_name: "Luna" }] };
       if (sql.startsWith("select d.id::text")) return { rows: [{ id: "00000000-0000-4000-0000-000000000181", organization_id: scope.organizationId, unit_id: options.unitId ?? "00000000-0000-8000-0000-000000000011", workspace_id: options.workspaceId ?? "00000000-0000-8000-0000-000000000021", encounter_id: "00000000-0000-4000-0000-000000000171", patient_id: "00000000-0000-4000-0000-000000000111", author_id: "00000000-0000-4000-0000-000000000002", document_type: "EVOLUTION", title: "Evolução sintética", content: "conteúdo protegido", data_class: "D3", status: options.clinicalStatus ?? "DRAFT", version: 1, signed_at: null, signed_by: null, created_at: "2026-01-01T12:00:00.000Z" }] };
+      if (sql.startsWith("select r.id::text")) return { rows: [{ id: "00000000-0000-4000-0000-000000000191", organization_id: scope.organizationId, patient_id: "00000000-0000-4000-0000-000000000111", encounter_id: "00000000-0000-4000-0000-000000000171", test_name: "Hemograma sintético", priority: "ROUTINE", status: options.diagnosticStatus ?? "REQUESTED", requested_by: "00000000-0000-4000-0000-000000000002", created_at: "2026-01-01T13:00:00.000Z", unit_id: options.unitId ?? "00000000-0000-8000-0000-000000000011", workspace_id: options.workspaceId ?? "00000000-0000-8000-0000-000000000021" }] };
+      if (sql.startsWith("select s.id::text")) return { rows: [{ id: "00000000-0000-4000-0000-000000000192", organization_id: scope.organizationId, request_id: "00000000-0000-4000-0000-000000000191", patient_id: "00000000-0000-4000-0000-000000000111", label: "LUNA-HEM-001", collected_at: "2026-01-01T14:00:00.000Z", status: "COLLECTED", unit_id: options.unitId ?? "00000000-0000-8000-0000-000000000011", workspace_id: options.workspaceId ?? "00000000-0000-8000-0000-000000000021" }] };
+      if (sql.startsWith("select dr.id::text")) return { rows: [{ id: "00000000-0000-4000-0000-000000000193", organization_id: scope.organizationId, request_id: "00000000-0000-4000-0000-000000000191", specimen_id: "00000000-0000-4000-0000-000000000192", patient_id: "00000000-0000-4000-0000-000000000111", value: "sem alterações", source: "laboratório sintético", source_version: "synthetic-1", status: "VALID", created_at: "2026-01-01T15:00:00.000Z", unit_id: options.unitId ?? "00000000-0000-8000-0000-000000000011", workspace_id: options.workspaceId ?? "00000000-0000-8000-0000-000000000021" }] };
       if (sql.includes("from audit_records a")) return { rows: [{ id: "00000000-0000-4000-0000-000000000161", organization_id: scope.organizationId, actor_id: "00000000-0000-4000-0000-000000000001", unit_id: "00000000-0000-4000-0000-000000000011", workspace_id: "00000000-0000-4000-0000-000000000021", action: "patients.read", resource_type: "AnimalPatient", resource_id: "00000000-0000-4000-0000-000000000111", result: "ALLOWED", reason: null, correlation_id: "audit-read", metadata: options.auditMetadata ?? { count: 1 }, chain_version: options.auditChainVersion ?? 2, previous_hash: null, record_hash: "audit-hash", created_at: "2026-01-01T00:00:00.000Z" }] };
       if (sql.startsWith("select a.id::text")) return { rows: [{ id: "00000000-0000-4000-0000-000000000151", organization_id: "00000000-0000-4000-0000-000000000010", unit_id: "00000000-0000-4000-0000-000000000011", workspace_id: "00000000-0000-4000-0000-000000000021", patient_id: "00000000-0000-4000-0000-000000000111", provider_id: "00000000-0000-4000-0000-000000000121", resource_id: null, service_id: "00000000-0000-4000-0000-000000000131", starts_at: "2026-01-01T10:00:00.000Z", ends_at: "2026-01-01T10:45:00.000Z", purpose: "Retorno", status: "CONFIRMED", version: 1, created_at: "2026-01-01T00:00:00.000Z", patient_name: "Luna", provider_name: "Dra. Ana Martins" }] };
       return { rows: [] };
@@ -161,6 +164,9 @@ test("normalized read repositories scope the transaction and preserve joined pro
   const appointments = await persistence.listAppointments(context);
   const encounters = await persistence.listEncounters(context);
   const documents = await persistence.listClinicalDocuments(context);
+  const diagnosticRequests = await persistence.listDiagnosticRequests(context);
+  const specimens = await persistence.listSpecimens(context);
+  const diagnosticResults = await persistence.listDiagnosticResults(context);
   const audit = await persistence.listAudit(context, 10);
 
   assert.equal(fake.scope.organizationId, context.organizationId);
@@ -169,14 +175,21 @@ test("normalized read repositories scope the transaction and preserve joined pro
   assert.equal(appointments[0]?.patient?.name, "Luna");
   assert.equal(encounters[0]?.patient.name, "Luna");
   assert.equal(documents[0]?.title, "Evolução sintética");
+  assert.equal(diagnosticRequests[0]?.testName, "Hemograma sintético");
+  assert.equal(specimens[0]?.label, "LUNA-HEM-001");
+  assert.equal(diagnosticResults[0]?.status, "VALID");
   assert.equal(audit[0]?.action, "patients.read");
   assert.deepEqual(audit[0]?.metadata, { count: 1 });
-  assert.ok(fake.statements.filter((statement) => statement === "BEGIN READ ONLY").length === 6);
-  assert.ok(fake.statements.filter((statement) => statement === "COMMIT").length === 6);
+  assert.ok(fake.statements.filter((statement) => statement === "BEGIN READ ONLY").length === 9);
+  assert.ok(fake.statements.filter((statement) => statement === "COMMIT").length === 9);
   assert.ok(fake.statements.some((statement) => statement.includes("p.organization_id = cvg_request_organization()")));
   assert.ok(fake.statements.some((statement) => statement.includes("a.workspace_id = $2::uuid")));
   assert.ok(fake.statements.some((statement) => statement.includes("cvg_request_scope_allows(e.unit_id, e.workspace_id)")));
   assert.ok(fake.statements.some((statement) => statement.includes("cvg_request_scope_allows(d.unit_id, d.workspace_id)")));
+  assert.ok(fake.statements.some((statement) => statement.includes("cvg_request_scope_allows(e.unit_id, e.workspace_id)")));
+  assert.ok(fake.statements.some((statement) => statement.includes("from diagnostic_requests r")));
+  assert.ok(fake.statements.some((statement) => statement.includes("from specimens s")));
+  assert.ok(fake.statements.some((statement) => statement.includes("from diagnostic_results dr")));
   assert.ok(fake.statements.some((statement) => statement.includes("from audit_records a")));
   assert.ok(fake.statements.some((statement) => statement.includes("cvg_request_scope_allows(a.unit_id, a.workspace_id)")));
 });
@@ -198,6 +211,16 @@ test("normalized clinical reads quarantine unsupported durable status", async ()
   const persistence = new PostgresPersistence({ connectionString: "postgres://synthetic.invalid", pool: fake.pool });
 
   await assert.rejects(() => persistence.listClinicalDocuments(context), (error: unknown) => error instanceof PersistenceCorruptionError && error.message.includes("clinical.status"));
+  assert.ok(fake.statements.includes("ROLLBACK"));
+});
+
+test("normalized diagnostic reads quarantine unsupported durable status", async () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const context = store.resolveContext(store.bootstrapCredentials.userId, { unitId: [...store.units.values()][0]?.id ?? null, workspaceId: [...store.workspaces.values()][0]?.id ?? null }, "persistence.read", "persistence-diagnostic-corruption");
+  const fake = normalizedReadPool({ diagnosticStatus: "UNTRUSTED", unitId: context.unitId, workspaceId: context.workspaceId });
+  const persistence = new PostgresPersistence({ connectionString: "postgres://synthetic.invalid", pool: fake.pool });
+
+  await assert.rejects(() => persistence.listDiagnosticRequests(context), (error: unknown) => error instanceof PersistenceCorruptionError && error.message.includes("diagnostic.status"));
   assert.ok(fake.statements.includes("ROLLBACK"));
 });
 
@@ -432,6 +455,15 @@ test("PostgreSQL runtime routes audit reads through the normalized repository", 
     const clinical = await runtime.app.inject({ method: "GET", url: "/api/v1/clinical/documents", headers: { cookie, "x-cvg-unit-id": context.unit.id, "x-cvg-workspace-id": context.workspace.id } });
     assert.equal(clinical.statusCode, 200, clinical.body);
     assert.ok(fake.statements.some((statement) => statement.includes("from clinical_documents d")));
+    const diagnosticRequests = await runtime.app.inject({ method: "GET", url: "/api/v1/diagnostics/requests", headers: { cookie, "x-cvg-unit-id": context.unit.id, "x-cvg-workspace-id": context.workspace.id } });
+    assert.equal(diagnosticRequests.statusCode, 200, diagnosticRequests.body);
+    assert.ok(fake.statements.some((statement) => statement.includes("from diagnostic_requests r")));
+    const specimens = await runtime.app.inject({ method: "GET", url: "/api/v1/diagnostics/specimens", headers: { cookie, "x-cvg-unit-id": context.unit.id, "x-cvg-workspace-id": context.workspace.id } });
+    assert.equal(specimens.statusCode, 200, specimens.body);
+    assert.ok(fake.statements.some((statement) => statement.includes("from specimens s")));
+    const diagnosticResults = await runtime.app.inject({ method: "GET", url: "/api/v1/diagnostics/results", headers: { cookie, "x-cvg-unit-id": context.unit.id, "x-cvg-workspace-id": context.workspace.id } });
+    assert.equal(diagnosticResults.statusCode, 200, diagnosticResults.body);
+    assert.ok(fake.statements.some((statement) => statement.includes("from diagnostic_results dr")));
   } finally {
     await runtime.app.close();
   }

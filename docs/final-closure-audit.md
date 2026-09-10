@@ -261,6 +261,12 @@ O último CI remoto observado antes deste patch é o run `34422825560` no SHA `0
 
 `VER-CVG-061` confirma localmente após o ajuste dos Dockerfiles: `npm run typecheck`, `npm run build`, `npm run verify:static`, `npm run verify:production` e `git diff --check` passaram; Compose principal e observabilidade foram validados estruturalmente sem iniciar serviços. PostgreSQL/restore, suíte, PDP, provider, auditorias e demais evidências permanecem conforme `VER-CVG-058`/`VER-CVG-059`. O novo SHA precisa ser publicado e observado; o veredito segue `FAIL_WITH_LIMITATIONS`.
 
+## Current checkpoint — 2026-09-09 22:38
+
+`VER-CVG-062` registra o run remoto `34425442854` no SHA `359c938de7dedef6a053fb5c72f30e104dc64257`: o job principal passou e os builds API/web também passaram; `Scan API image` falhou e `Scan web image` foi pulado. O detalhe público é apenas exit 1. A reprodução local com Trivy 0.74 na base Node encontrou quatro findings HIGH no npm global (`brace-expansion`, `ip-address` e `tar`).
+
+`VER-CVG-063` registra a correção local em `Dockerfile.api`: npm/npx são removidos somente do estágio runtime, sem afetar o builder/typecheck. Typecheck, build, static, Compose estrutural, observabilidade Compose estrutural e diff check passaram; a imagem, o scan e o startup continuam aguardando novo CI. O veredito segue `FAIL_WITH_LIMITATIONS`.
+
 ## 10. Próxima ação
 
 **Ação concluída localmente:** `CVG-FULL-STATE-OF-THE-ART:PROVIDER-CONTRACT-AND-UNIVERSAL-PDP`.

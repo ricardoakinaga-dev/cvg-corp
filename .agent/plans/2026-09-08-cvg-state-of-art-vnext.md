@@ -376,3 +376,7 @@ O focused test e o verificador passaram (`sendRequests=4`, `queryRequests=2`, `c
 ## Current checkpoint — 2026-09-09 22:24
 
 `VER-CVG-060` registrou o run remoto `34424409313` no SHA `2f1840af`: o job principal passou Browser E2E, migrations, PostgreSQL/RLS, restore, release/Compose, performance, SBOM, artifacts e whitespace; o job separado de imagens falhou no passo `Build API image`. A inspeção identificou `tsconfig.json` ausente no contexto de `Dockerfile.api`/`Dockerfile.web`. `VER-CVG-061` registrou a correção local, com `tsconfig.json` copiado explicitamente nos dois Dockerfiles e typecheck/build/static/produção estrutural/diff check verdes. O próximo pointer é publicar e observar o novo CI; o veredito permanece `FAIL_WITH_LIMITATIONS`.
+
+## Current checkpoint — 2026-09-09 22:38
+
+`VER-CVG-062` registrou o run remoto `34425442854` no SHA `359c938`: o job principal e os builds API/web passaram, mas `Scan API image` falhou e `Scan web image` foi pulado. A reprodução com Trivy 0.74 na base Node encontrou quatro findings HIGH no npm global. `VER-CVG-063` registra a correção local em `Dockerfile.api`: remover npm/npx somente do estágio runtime, mantendo npm no builder/typecheck. Typecheck, build, static, produção estrutural e diff check passaram; o próximo pointer é publicar e observar o scan.

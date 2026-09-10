@@ -47,6 +47,7 @@ import {
   specimenInputSchema,
   stockMovementInputSchema,
   success,
+  type AnimalPatient,
   type ApprovalInput,
   type ApiResponse,
   type CvgContext,
@@ -61,6 +62,7 @@ import {
   digest,
   hashPassword,
   idempotent,
+  idempotentAsync,
   now,
   publicUser,
   parseSnapshot,
@@ -509,9 +511,11 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     }
   });
 
-  const durableRequests = new WeakMap<FastifyRequest, { baseline: StoreSnapshot; revision: bigint }>();
+  type DurableRequestTransaction = { baseline: StoreSnapshot; revision: bigint; committed: boolean; failed: boolean };
+  const durableRequests = new WeakMap<FastifyRequest, DurableRequestTransaction>();
   const durableReleases = new WeakMap<FastifyRequest, () => void>();
   const durableOutboxes = new WeakMap<FastifyRequest, import("@cvg/persistence").DurableOutboxInput[]>();
+  let commitDurableRequest: ((request: FastifyRequest, reply: FastifyReply, normalizedPatientWrite?: AnimalPatient) => Promise<void>) | null = null;
   let persistenceQueue = Promise.resolve();
   const acquireDurableRequest = async (): Promise<() => void> => {
     let release!: () => void;
@@ -530,18 +534,18 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
         const latest = await persistence.loadLatest(store.bootstrapCredentials.organizationId);
         const revision = latest?.revision ?? await persistence.currentRevision(store.bootstrapCredentials.organizationId);
         if (latest) store.hydrate(latest.snapshot);
-        durableRequests.set(request, { baseline: store.snapshot(), revision });
+        durableRequests.set(request, { baseline: store.snapshot(), revision, committed: false, failed: false });
         durableReleases.set(request, release);
       } catch (error) {
         release();
         throw error;
       }
     });
-    app.addHook("onSend", async (request, reply, payload) => {
+    const commitRequest = async (request: FastifyRequest, reply: FastifyReply, normalizedPatientWrite?: AnimalPatient): Promise<void> => {
       const transaction = durableRequests.get(request);
-      if (!transaction) return payload;
+      if (!transaction || transaction.committed || transaction.failed) return;
       const snapshot = store.snapshot();
-      if (snapshotFingerprint(snapshot) === snapshotFingerprint(transaction.baseline)) return payload;
+      if (!normalizedPatientWrite && snapshotFingerprint(snapshot) === snapshotFingerprint(transaction.baseline)) return;
       const baselineAuditIds = new Set(transaction.baseline.auditRecords.map((record) => record.id));
       const baselineReceiptDigests = new Map(transaction.baseline.commandReceipts.map((receipt) => [receipt.id, digest(receipt)]));
       const auditRecords = snapshot.auditRecords.filter((record) => !baselineAuditIds.has(record.id));
@@ -563,9 +567,12 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
           payload: { method: request.method, path: request.url.split("?")[0], statusCode: reply.statusCode, auditIds: auditRecords.map((record) => record.id), receiptIds: commandReceipts.map((receipt) => receipt.id) },
           auditRecords,
           commandReceipts,
-          ...(outboxRecords ? { outboxRecords } : {})
+          ...(outboxRecords ? { outboxRecords } : {}),
+          ...(normalizedPatientWrite ? { normalizedPatientWrite } : {})
         });
+        transaction.committed = true;
       } catch (error) {
+        transaction.failed = true;
         telemetry.log({ timestamp: now(), level: error instanceof PersistenceConflictError ? "warn" : "error", event: "persistence.commit.failed", correlationId: correlationId(request), actorId: null, metadata: persistenceDiagnostic(error) });
         if (error instanceof PersistenceConflictError) {
           let latest;
@@ -590,6 +597,10 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
         store.hydrate(transaction.baseline);
         throw new DomainError("DEPENDENCY_UNAVAILABLE", "A operação não foi confirmada porque a persistência durável falhou; nenhum sucesso deve ser inferido.", 503);
       }
+    };
+    commitDurableRequest = commitRequest;
+    app.addHook("onSend", async (request, reply, payload) => {
+      await commitRequest(request, reply);
       return payload;
     });
     app.addHook("onResponse", async (request) => {
@@ -1097,8 +1108,12 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const input = parse(patientInputSchema, request.body);
     const { context } = requestContext(request, "patients.create", null, null, false, true, input.guardianId);
     const key = requireIdempotencyKey(request);
-    const result = idempotent(store, { organizationId: context.organizationId, actorId: context.actorId, sessionId: context.sessionId, operation: "patients.create", key, resourceId: input.guardianId, unitId: context.unitId, workspaceId: context.workspaceId, body: input }, () => patientApplication.create(context, input));
+    const result = await idempotentAsync(store, { organizationId: context.organizationId, actorId: context.actorId, sessionId: context.sessionId, operation: "patients.create", key, resourceId: input.guardianId, unitId: context.unitId, workspaceId: context.workspaceId, body: input }, () => patientApplication.create(context, input));
     audit(context, "patients.create", "AnimalPatient", result.value.id, "ALLOWED");
+    if (persistence && !result.replayed) {
+      reply.code(201);
+      await commitDurableRequest?.(request, reply, result.value);
+    }
     return response(reply, success({ patient: publicPatient(store, result.value.id, context.actorRoleSnapshot), receiptId: result.receipt.id }, context.correlationId), 201);
   });
 

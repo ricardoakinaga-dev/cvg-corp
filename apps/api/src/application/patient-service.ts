@@ -10,7 +10,7 @@ export type PatientProjection = PatientProjectionItem[];
 export interface PatientRepository {
   list(context: CvgContext, query?: string): Promise<PatientProjection>;
   get(context: CvgContext, patientId: OpaqueId): Promise<PatientProjectionItem | null>;
-  create(context: CvgContext, input: PatientInput): AnimalPatient;
+  create(context: CvgContext, input: PatientInput): Promise<AnimalPatient>;
 }
 
 export interface UnitOfWork {
@@ -35,7 +35,7 @@ export class StorePatientRepository implements PatientRepository {
     }
   }
 
-  create(context: CvgContext, input: PatientInput): AnimalPatient {
+  async create(context: CvgContext, input: PatientInput): Promise<AnimalPatient> {
     return this.store.createPatient(context, input);
   }
 }
@@ -52,7 +52,7 @@ export class PostgresPatientRepository implements PatientRepository {
     return patients.find((patient) => patient.id === patientId) ?? null;
   }
 
-  create(context: CvgContext, input: PatientInput): AnimalPatient {
+  async create(context: CvgContext, input: PatientInput): Promise<AnimalPatient> {
     return this.store.createPatient(context, input);
   }
 }
@@ -70,7 +70,7 @@ export class PatientApplicationService {
     return this.repository.get(context, patientId);
   }
 
-  create(context: CvgContext, input: PatientInput): AnimalPatient {
+  async create(context: CvgContext, input: PatientInput): Promise<AnimalPatient> {
     enforceApplicationPolicy(context, "patients.create", { resourceId: input.guardianId });
     return this.repository.create(context, input);
   }

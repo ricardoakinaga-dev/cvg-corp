@@ -82,6 +82,12 @@ export interface DurableCommitInput {
   recoveredInboxRecords?: DurableInboxRecord[];
   recoveredExternalEffects?: DurableExternalEffectRecord[];
   recoveredWorkerJobs?: DurableWorkerJobRecord[];
+  /**
+   * A command-owned normalized write. It is executed in the same transaction
+   * as the canonical snapshot and deliberately excluded from the generic
+   * projection pass below, so the command has one authoritative SQL write.
+   */
+  normalizedPatientWrite?: AnimalPatient;
   eventId?: string;
 }
 
@@ -1543,16 +1549,35 @@ async function projectAiTurnUsage(client: PoolClient, snapshot: StoreSnapshot): 
   }
 }
 
-async function projectDomain(client: PoolClient, snapshot: StoreSnapshot): Promise<void> {
+async function writeAuthoritativePatient(client: PoolClient, patient: AnimalPatient): Promise<void> {
+  if (!patient.unitId || !patient.workspaceId) throw new PersistenceCorruptionError(`patient ${patient.id} has no complete unit/workspace scope for authoritative write`);
+  await client.query("select set_config('cvg.unit_id', $1, true)", [patient.unitId]);
+  await client.query("select set_config('cvg.workspace_id', $1, true)", [patient.workspaceId]);
+  const result = await client.query<{ id: string }>(
+    "insert into patients(id, organization_id, unit_id, workspace_id, guardian_id, name, species, breed, sex, reproductive_status, birth_date, identifiers, data_class, status, merged_into_id, status_changed_at, created_at) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::jsonb, $13, $14, $15, $16, $17) on conflict (id) do update set organization_id = excluded.organization_id, unit_id = excluded.unit_id, workspace_id = excluded.workspace_id, guardian_id = excluded.guardian_id, name = excluded.name, species = excluded.species, breed = excluded.breed, sex = excluded.sex, reproductive_status = excluded.reproductive_status, birth_date = excluded.birth_date, identifiers = excluded.identifiers, data_class = excluded.data_class, status = excluded.status, merged_into_id = excluded.merged_into_id, status_changed_at = excluded.status_changed_at where patients.organization_id = excluded.organization_id and patients.unit_id is not distinct from excluded.unit_id and patients.workspace_id is not distinct from excluded.workspace_id and patients.guardian_id = excluded.guardian_id and patients.name = excluded.name and patients.species = excluded.species and patients.breed is not distinct from excluded.breed and patients.sex = excluded.sex and patients.reproductive_status = excluded.reproductive_status and patients.birth_date is not distinct from excluded.birth_date and patients.identifiers = excluded.identifiers and patients.data_class = excluded.data_class and patients.status = excluded.status and patients.merged_into_id is not distinct from excluded.merged_into_id and patients.status_changed_at is not distinct from excluded.status_changed_at and patients.created_at = excluded.created_at returning id::text",
+    [patient.id, patient.organizationId, patient.unitId, patient.workspaceId, patient.guardianId, patient.name, patient.species, patient.breed, patient.sex, patient.reproductiveStatus, patient.birthDate, JSON.stringify(patient.identifiers), patient.dataClass, patient.status, patient.mergedIntoId, patient.statusChangedAt, patient.createdAt]
+  );
+  if (!result.rows[0]) throw new PersistenceCorruptionError(`authoritative patient ${patient.id} conflicts with an existing normalized row`);
+}
+
+async function projectDomain(client: PoolClient, snapshot: StoreSnapshot, normalizedPatientWrite: AnimalPatient | null = null): Promise<void> {
   await writeScopedRows(client,
     "insert into guardians(id, organization_id, unit_id, workspace_id, display_name, phone, email, data_class, status) values ($1, $2, $3, $4, $5, $6, $7, $8, $9) on conflict (id) do update set organization_id = excluded.organization_id, unit_id = excluded.unit_id, workspace_id = excluded.workspace_id, display_name = excluded.display_name, phone = excluded.phone, email = excluded.email, data_class = excluded.data_class, status = excluded.status",
     snapshot.guardians,
     (guardian) => ({ unitId: guardian.unitId, workspaceId: guardian.workspaceId }),
     (guardian) => [guardian.id, guardian.organizationId, guardian.unitId, guardian.workspaceId, guardian.displayName, guardian.phone, guardian.email, guardian.dataClass, guardian.status]
   );
+  let patients = snapshot.patients;
+  if (normalizedPatientWrite) {
+    const snapshotPatient = snapshot.patients.find((patient) => patient.id === normalizedPatientWrite.id);
+    if (!snapshotPatient || digest(snapshotPatient) !== digest(normalizedPatientWrite)) throw new PersistenceCorruptionError(`authoritative patient ${normalizedPatientWrite.id} is not identical to the canonical snapshot`);
+    if (!snapshot.guardians.some((guardian) => guardian.id === normalizedPatientWrite.guardianId)) throw new PersistenceCorruptionError(`authoritative patient ${normalizedPatientWrite.id} has no guardian in the canonical snapshot`);
+    await writeAuthoritativePatient(client, normalizedPatientWrite);
+    patients = snapshot.patients.filter((patient) => patient.id !== normalizedPatientWrite.id);
+  }
   await writeScopedRows(client,
     "insert into patients(id, organization_id, unit_id, workspace_id, guardian_id, name, species, breed, sex, reproductive_status, birth_date, identifiers, data_class, status, merged_into_id, status_changed_at, created_at) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::jsonb, $13, $14, $15, $16, $17) on conflict (id) do update set organization_id = excluded.organization_id, unit_id = excluded.unit_id, workspace_id = excluded.workspace_id, guardian_id = excluded.guardian_id, name = excluded.name, species = excluded.species, breed = excluded.breed, sex = excluded.sex, reproductive_status = excluded.reproductive_status, birth_date = excluded.birth_date, identifiers = excluded.identifiers, data_class = excluded.data_class, status = excluded.status, merged_into_id = excluded.merged_into_id, status_changed_at = excluded.status_changed_at",
-    snapshot.patients,
+    patients,
     (patient) => ({ unitId: patient.unitId, workspaceId: patient.workspaceId }),
     (patient) => [patient.id, patient.organizationId, patient.unitId, patient.workspaceId, patient.guardianId, patient.name, patient.species, patient.breed, patient.sex, patient.reproductiveStatus, patient.birthDate, JSON.stringify(patient.identifiers), patient.dataClass, patient.status, patient.mergedIntoId, patient.statusChangedAt, patient.createdAt]
   );
@@ -2013,7 +2038,7 @@ export class PostgresPersistence {
       const snapshotJson = canonicalSnapshot(input.snapshot);
       const snapshotDigest = digest(snapshotJson);
       await projectIdentity(client, input.snapshot);
-      await projectDomain(client, input.snapshot);
+      await projectDomain(client, input.snapshot, input.normalizedPatientWrite ?? null);
       await projectOutbox(client, organizationId, input.outboxRecords ?? []);
       await projectRecoveredOutbox(client, organizationId, input.recoveredOutboxRecords ?? []);
       await projectRecoveredUsage(client, organizationId, input.recoveredUsageRecords ?? []);

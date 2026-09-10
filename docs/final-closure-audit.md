@@ -332,3 +332,27 @@ Evidência local exata: `npm test` 136 (`135 pass`, `1 skip`), `test:database` 2
 ## Observação remota — 2026-09-10
 
 O run GitHub Actions `34451105914` do SHA técnico `39024ca03af5a78ad1edabaf9e5be6654a98327d` terminou `success` nos jobs principal e de imagens: Browser E2E, migrations/PostgreSQL/RLS, restore, release/Compose, performance, SBOM, builds e scans API/web passaram. O run posterior `34451891880`, do commit documental `8d80b31`, terminou `failure` no passo `Browser E2E`; os passos anteriores passaram e os gates dependentes foram pulados, enquanto o job de imagens também foi pulado. Os logs detalhados não estavam acessíveis sem autenticação. Isso é uma falha de CI a investigar, não autorização para promoção: CI não é staging nem aceite humano; o veredito segue `FAIL_WITH_LIMITATIONS` / `AAA_NOT_PROVEN`.
+
+## Checkpoint atual — 2026-09-10 escrita normalizada autoritativa
+
+O recorte atual fecha a maior lacuna local de criação: `PatientApplicationService`
+e o port de criação são assíncronos; `POST /api/v1/patients` executa
+`idempotentAsync`; e o boundary PostgreSQL envia `normalizedPatientWrite` ao
+mesmo commit que grava snapshot, journal, auditoria, receipt e outbox. A linha
+autoritativa é escrita com escopo contextual e o id é removido da projeção
+genérica; qualquer divergência, escopo incompleto, conflito ou indisponibilidade
+restaura o baseline em memória e falha fechado.
+
+Evidência local: `npm test` 138 (`137 pass`, `1 skip`), `test:database` 27/27,
+`test:security` 26/26, `test:fault` 15/15, E2E 64/4 skips intencionais,
+typecheck, build, lint, static, PDP, produção estrutural e diff check passaram.
+Os testes HTTP/SQL usam pool sintético e não substituem PostgreSQL concorrente
+fora do CI. As críticas fresh desta fatia foram encerradas sem relatório e
+registradas como `NOT_COMPLETED`, sem aprovação.
+
+O recorte não fecha todas as mutações normalizadas e não torna `ops.restore`
+seguramente idempotente, pois o restore invalida sessões e limpa os receipts
+canônicos. Staging, provider/DeepSeek, autoridade de segredos, Collector/SLO
+operacional, carga/chaos/recovery production-like, WebKit/assistive-tech/zoom
+real e aceite humano continuam ausentes. O veredito global permanece
+`FAIL_WITH_LIMITATIONS` / `AAA_NOT_PROVEN`.

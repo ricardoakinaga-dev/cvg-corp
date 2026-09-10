@@ -92,3 +92,25 @@ O commit `c6048e4eb2b3714d4eb4ffc9603727b0cd2fe586` atualiza o drill `verify:pos
 Nos commits `fe02a54`, `7971d27`, `3b57fd5` e `39024ca`, o limite `CVG_WORKER_MAX_OUTSTANDING` foi alinhado no outbox e nas cinco lanes duráveis por `createWorkerDependencies`; `docker/worker.ts` passou a ser compilado e lintado, o teste unitário verifica ambos os campos e os verificadores exigem a construção compartilhada real. A crítica fresh final concluiu `REVIEW_ONLY_PASS` para esse recorte, sem aprovação AAA.
 
 No SHA técnico `39024ca03af5a78ad1edabaf9e5be6654a98327d`, passaram `npm test` 136 (`135 pass`, `1 skip`), `test:database` 25/25, worker 13/13, typecheck, lint (124 fontes), build, static (50 artefatos/126 fontes), PDP, `verify:production` estrutural e diff check. Os gates de promoção continuam fail-closed: `verify:triplo-aaa` `AAA_NOT_PROVEN`, `verify:staging` `STAGING_EVIDENCE_INCOMPLETE` e ACP real bloqueado. O run remoto `34451105914` terminou `success` no job principal e no job de imagens, incluindo Browser E2E, migrations/PostgreSQL/RLS, restore, release/Compose, performance, SBOM, builds e scans API/web. O commit posterior de documentação `8d80b31` disparou o run `34451891880`, que terminou `failure` no `Browser E2E`; os passos anteriores passaram, gates dependentes foram pulados e o job de imagens foi pulado, sem logs acessíveis sem autenticação. PostgreSQL concorrente fora do CI, handlers de negócio/container production-like, provider/secret/staging, collector/SLO operacional, carga/chaos/recovery production-like, browsers assistivos, crítica final de produção e aceite humano continuam ausentes.
+
+## Current checkpoint — 2026-09-10 authoritative patient write
+
+O fluxo de criação de paciente agora atravessa `idempotentAsync` e um port
+assíncrono de aplicação. Quando PostgreSQL está ativo, o boundary do request
+executa uma única transação durável: o paciente informado em
+`normalizedPatientWrite` é gravado com escopo contextual, enquanto o passe de
+projeção genérico omite esse id; snapshot, receipt, auditoria, journal e outbox
+continuam no mesmo commit. Divergência e falha de dependência restauram o
+baseline e não produzem sucesso HTTP.
+
+O teste local cobriu a escrita SQL e o boundary HTTP com pool sintético.
+`npm test` passou 138 (`137 pass`, `1 skip`), `test:database` 27/27,
+`test:security` 26/26, `test:fault` 15/15, E2E 64/4 skips intencionais,
+typecheck/build/lint/static/PDP/produção estrutural e diff check passaram.
+Isso fecha apenas esta mutação; outras escritas ainda usam a projeção agregada,
+`ops.restore` permanece sem replay seguro, e não há evidência de PostgreSQL
+concorrente fora do CI, staging, provider/DeepSeek/secret authority,
+Collector/SLO operacional, carga/chaos/recovery production-like,
+WebKit/assistive-tech/zoom real ou aceite humano. As críticas fresh desta onda
+foram encerradas como `NOT_COMPLETED`, sem aprovação. O veredito permanece
+`FAIL_WITH_LIMITATIONS` / `AAA_NOT_PROVEN`.

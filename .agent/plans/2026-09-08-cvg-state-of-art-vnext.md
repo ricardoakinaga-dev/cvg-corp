@@ -577,3 +577,18 @@ sentinel pós-readiness permaneceu `match=true`. A integração local está
 autorizada apenas para este conjunto de arquivos e seus registros de controle;
 após o commit será observado o CI público no SHA exato. Nenhuma aprovação AAA
 ou promoção externa é inferida.
+
+## Integration / exact CI — 2026-09-10 09:47
+
+A lane foi integrada no commit `6d38f0faf4ef03929f04ab51275d962e16bcda66` e
+enviada a `origin/main`. O run público `34477708509` (CVG CI #70) terminou
+`success` no SHA exato: o job principal `102872449600` e o job de build/scan
+de imagens `102874557949` também terminaram `success`, com os artefatos
+`cvg-browser-e2e-6d38f0faf4ef03929f04ab51275d962e16bcda66` e
+`cvg-verification-6d38f0faf4ef03929f04ab51275d962e16bcda66` publicados.
+
+O próximo gate permanece `EXTERNAL-EVIDENCE-AND-HUMAN-ACCEPTANCE`. CI verde
+não substitui staging, provider/DeepSeek/segredos, Collector/SLO,
+carga/chaos/recovery, matriz completa de browser/assistive tech/zoom ou
+aceite humano; o veredito global continua `FAIL_WITH_LIMITATIONS` /
+`AAA_NOT_PROVEN`.

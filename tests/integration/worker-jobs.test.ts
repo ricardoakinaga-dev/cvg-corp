@@ -114,6 +114,18 @@ function workerPool(initial: JobState[] = []): { pool: Pool; jobs: JobState[]; h
         const scoped = jobs.filter((row) => lane === null || row.lane === lane);
         return { rows: [{ depth: scoped.filter((row) => row.status === "PENDING" || row.status === "CLAIMED").length, oldest_age_ms: "10", poison_messages: scoped.filter((row) => row.status === "QUARANTINED").length }] };
       }
+      if (normalized.startsWith("with candidates as (select id from cvg_worker_jobs") && normalized.includes("delete from cvg_worker_jobs")) {
+        const limit = Number(params[1]);
+        const removable = jobs.filter((row) => row.organization_id === organizationId && row.status === "COMPLETED" && row.processed_at !== null && row.processed_at < String(params[0])).slice(0, limit);
+        for (const row of removable) jobs.splice(jobs.indexOf(row), 1);
+        return { rows: removable.map((row) => ({ id: row.id })) };
+      }
+      if (normalized.startsWith("with candidates as (select worker_id from cvg_worker_heartbeats") && normalized.includes("delete from cvg_worker_heartbeats")) {
+        const limit = Number(params[1]);
+        const removable = heartbeats.filter((row) => row.organization_id === organizationId && row.status === "STOPPED" && row.expires_at < String(params[0])).slice(0, limit);
+        for (const row of removable) heartbeats.splice(heartbeats.indexOf(row), 1);
+        return { rows: removable.map((row) => ({ worker_id: row.worker_id })) };
+      }
       if (normalized.startsWith("insert into cvg_worker_heartbeats")) {
         const organization = String(params[0]);
         const worker = String(params[1]);
@@ -181,6 +193,19 @@ test("worker heartbeat upsert rejects stale liveness and preserves tenant scope"
   assert.ok(fake.statements.includes("BEGIN READ ONLY"));
 });
 
+test("worker maintenance prunes only old completed jobs and stopped heartbeats", async () => {
+  const completed: JobState = { id: jobId, organization_id: organizationId, lane: "jobs", job_type: "storage.verify", idempotency_key: "completed-job", payload: { mode: "schema" }, status: "COMPLETED", attempts: 1, max_attempts: 3, available_at: "2026-01-01T00:00:00.000Z", claimed_by: null, lease_until: null, fence_token: 1n, last_error: null, created_at: "2026-01-01T00:00:00.000Z", processed_at: "2026-01-02T00:00:00.000Z", record_digest: digest("completed") };
+  const quarantined: JobState = { ...completed, id: secondJobId, idempotency_key: "quarantined-job", status: "QUARANTINED", processed_at: "2026-01-02T00:00:00.000Z", record_digest: digest("quarantined") };
+  const fake = workerPool([completed, quarantined]);
+  fake.heartbeats.push({ organization_id: organizationId, worker_id: "worker-stopped", status: "STOPPED", lane: null, cycle_id: null, started_at: "2026-01-01T00:00:00.000Z", last_seen_at: "2026-01-01T00:01:00.000Z", expires_at: "2026-01-01T00:02:00.000Z", detail: null, updated_at: "2026-01-01T00:01:00.000Z" });
+  fake.heartbeats.push({ organization_id: organizationId, worker_id: "worker-running", status: "RUNNING", lane: null, cycle_id: null, started_at: "2026-01-01T00:00:00.000Z", last_seen_at: "2026-01-01T00:01:00.000Z", expires_at: "2026-01-01T00:02:00.000Z", detail: null, updated_at: "2026-01-01T00:01:00.000Z" });
+  const persistence = new PostgresPersistence({ connectionString: "postgres://synthetic.invalid", pool: fake.pool });
+  const result = await persistence.maintainWorkerRecords(organizationId, "2026-02-01T00:00:00.000Z", 10);
+  assert.deepEqual(result, { completedJobsPruned: 1, stoppedHeartbeatsPruned: 1 });
+  assert.deepEqual(fake.jobs.map((row) => row.status), ["QUARANTINED"]);
+  assert.deepEqual(fake.heartbeats.map((row) => row.status), ["RUNNING"]);
+});
+
 test("malformed durable worker rows fail closed before application code can consume them", async () => {
   const fake = workerPool([{ id: jobId, organization_id: organizationId, lane: "BROKEN", job_type: "synthetic.rebuild", idempotency_key: "bad", payload: {}, status: "PENDING", attempts: 0, max_attempts: 2, available_at: "2026-09-10T00:00:00.000Z", claimed_by: null, lease_until: null, fence_token: 0n, last_error: null, created_at: "2026-09-10T00:00:00.000Z", processed_at: null, record_digest: digest("valid") }]);
   const persistence = new PostgresPersistence({ connectionString: "postgres://synthetic.invalid", pool: fake.pool });
@@ -191,7 +216,7 @@ test("malformed durable worker rows fail closed before application code can cons
 test("recovery encryption carries durable worker jobs and their fence token", () => {
   const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
   const snapshot = store.snapshot();
-  const workerJob: DurableWorkerJobRecord = { id: jobId, organizationId, lane: "jobs", jobType: "synthetic.rebuild", idempotencyKey: "recovery-worker-job-1", payload: { synthetic: true }, maxAttempts: 2, status: "CLAIMED", attempts: 1, availableAt: "2026-09-10T00:00:00.000Z", claimedBy: "worker-a", leaseUntil: "2026-09-10T00:05:00.000Z", fenceToken: 3n, lastError: null, createdAt: "2026-09-10T00:00:00.000Z", processedAt: null, recordDigest: digest("worker-job-admission") };
+  const workerJob: DurableWorkerJobRecord = { id: jobId, organizationId, lane: "jobs", jobType: "synthetic.rebuild", idempotencyKey: "recovery-worker-job-1", payload: { synthetic: true }, maxAttempts: 2, status: "CLAIMED", attempts: 1, availableAt: "2026-09-10T00:00:00.000Z", claimedBy: "worker-a", leaseUntil: "2026-09-10T00:05:00.000Z", fenceToken: 3n, lastError: null, createdAt: "2026-09-10T00:00:00.000Z", processedAt: null, recordDigest: digest({ organizationId, lane: "jobs", jobType: "synthetic.rebuild", idempotencyKey: "recovery-worker-job-1", payload: { synthetic: true }, maxAttempts: 2, availableAt: "2026-09-10T00:00:00.000Z" }) };
   const recoveryData = { revision: 1n, snapshot, snapshotDigest: digest(JSON.parse(serializeSnapshot(snapshot))), eventId: randomUUID(), outboxRecords: [], usageRecords: [], inboxRecords: [], externalEffects: [], workerJobs: [workerJob] };
   const bundle: DurableRecoveryBundle = { ...recoveryData, manifest: createRecoveryBundleManifest({ organizationId, ...recoveryData, migrationFingerprint: digest([{ version: "031_worker_jobs_and_heartbeats", checksum: "synthetic-checksum" }]) }) };
   const encrypted = encryptRecoveryBundle(bundle, new Uint8Array(32), "synthetic-worker-recovery-key");

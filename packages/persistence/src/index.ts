@@ -1,10 +1,25 @@
 import { createCipheriv, createDecipheriv, randomBytes, randomUUID } from "node:crypto";
+import { chmod, lstat, mkdir, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
+import { join, resolve, sep } from "node:path";
 import { Pool, type PoolClient, type PoolConfig } from "pg";
-import type { AiSession, AnimalPatient, Appointment, AuditRecord, Bed, Charge, ClinicalDocument, CommunicationMessage, CommandReceipt, CvgContext, DiagnosticRequest, DiagnosticResult, Encounter, Guardian, HospitalEpisode, KnowledgeDocument, LedgerEntry, Lot, MedicationOrder, OpaqueId, Payment, Product, QueueEntry, Specimen, StockLocation } from "@cvg/contracts";
-import { id } from "@cvg/contracts";
-import { auditRecordHash, digest, idempotencyLookup, newCommandReceipt, now, parseSnapshot, serializeSnapshot, type IdempotencyInput, type StoreSnapshot } from "@cvg/domain";
+import type { AiSession, AnimalPatient, Appointment, AuditRecord, Bed, Charge, ClinicalDocument, CommunicationMessage, CommandReceipt, CvgContext, DiagnosticRequest, DiagnosticResult, Encounter, Guardian, HospitalEpisode, KnowledgeDocument, LedgerEntry, Lot, MedicationOrder, OpaqueId, Payment, Product, QueueEntry, ScopeType, Specimen, StockLocation } from "@cvg/contracts";
+import { id, scopeTypes } from "@cvg/contracts";
+export { AUTHORITATIVE_DOMAIN_REGISTRY } from "@cvg/contracts";
+import { auditRecordHash, digest, idempotencyLookup, newCommandReceipt, now, parseSnapshot, serializeSnapshot, validateSnapshotSemantics, verifyAuditChain, type IdempotencyInput, type StoreSnapshot } from "@cvg/domain";
 
 const LOCK_KEY = "cvg-corp:canonical-state:v1";
+
+/**
+ * Serializes every transaction that appends to the organization audit chain.
+ * Row-locking the current tail is insufficient when two transactions observe
+ * an empty (or already committed) tail before either inserts its own record.
+ * The advisory lock is transaction-scoped and uses the same key as canonical
+ * commits so a worker append, break-glass activation, and commit cannot fork
+ * the tamper-evident chain.
+ */
+async function lockOrganizationAuditChain(client: PoolClient, organizationId: OpaqueId): Promise<void> {
+  await client.query("select pg_advisory_xact_lock(hashtextextended($1, 0))", [`${LOCK_KEY}:${organizationId}`]);
+}
 
 export class PersistenceUnavailableError extends Error {
   public override readonly cause: unknown;
@@ -61,6 +76,20 @@ export interface DurableSnapshot {
   snapshot: StoreSnapshot;
   snapshotDigest: string;
   eventId: string;
+}
+
+
+function authoritativeCorruption(message: string): never {
+  throw new PersistenceCorruptionError(`authoritative snapshot invariant failed: ${message}`);
+}
+
+/**
+ * Validate the complete aggregate before any normalized DML is issued.  The
+ * same pure validator is used by the in-memory domain boundary so recovery
+ * cannot accept a snapshot that the authoritative projector would reject.
+ */
+export function validateAuthoritativeSnapshot(snapshot: StoreSnapshot): void {
+  validateSnapshotSemantics(snapshot, authoritativeCorruption);
 }
 
 export interface DurableCommitInput {
@@ -213,6 +242,18 @@ export interface DurableWorkerJobRecord extends DurableWorkerJobInput {
   recordDigest: string;
 }
 
+export interface DurableWorkerMaintenanceResult {
+  completedJobsPruned: number;
+  stoppedHeartbeatsPruned: number;
+}
+
+export interface PostgresPoolCapacity {
+  total: number;
+  idle: number;
+  waiting: number;
+  max: number;
+}
+
 export type DurableWorkerHeartbeatStatus = "RUNNING" | "DEGRADED" | "STOPPING" | "STOPPED";
 export type DurableWorkerHeartbeatLane = "outbox" | DurableWorkerLane;
 
@@ -329,18 +370,40 @@ export interface DurableBreakGlassInput {
   approverId: OpaqueId;
   reason: string;
   target: string;
+  /** Optional only for compatibility with pre-scope callers; new callers must provide it. */
+  scope?: ScopeType;
   mfaMethod: DurableBreakGlassMfaMethod;
   issuedAt: string;
   expiresAt: string;
 }
 
 export interface DurableBreakGlassGrant extends DurableBreakGlassInput {
+  scope: ScopeType;
   status: DurableBreakGlassStatus;
   reviewedBy: OpaqueId | null;
   reviewedAt: string | null;
   reviewNote: string | null;
   revokedAt: string | null;
   createdAt: string;
+}
+
+export interface DurableBreakGlassAuditInput {
+  organizationId: OpaqueId;
+  actorId: OpaqueId | null;
+  unitId: OpaqueId | null;
+  workspaceId: OpaqueId | null;
+  action: string;
+  resourceType: string;
+  resourceId: OpaqueId | null;
+  result: AuditRecord["result"];
+  reason: string | null;
+  correlationId: string;
+  metadata: AuditRecord["metadata"];
+}
+
+export interface DurableBreakGlassActivationRecord {
+  grant: DurableBreakGlassGrant;
+  audit: AuditRecord;
 }
 
 export type DurableExternalEffectOutcomeStatus = "SUCCEEDED" | "FAILED_RETRYABLE" | "OUTCOME_UNKNOWN" | "FAILED_FINAL" | "QUARANTINED";
@@ -515,6 +578,159 @@ function recoveryTimestamp(value: unknown, field: string): string {
   return timestamp;
 }
 
+function recoveryRequired(record: Record<string, unknown>, field: string, path = field): unknown {
+  if (!Object.prototype.hasOwnProperty.call(record, field)) throw new PersistenceCorruptionError(`encrypted recovery bundle ${path} is missing`);
+  return record[field];
+}
+
+function recoveryNullableTimestamp(value: unknown, field: string): void {
+  if (value !== null) recoveryTimestamp(value, field);
+}
+
+function recoveryNullableString(value: unknown, field: string): void {
+  if (value !== null && (typeof value !== "string" || !value)) throw new PersistenceCorruptionError(`encrypted recovery bundle ${field} is invalid`);
+}
+
+function recoveryInteger(value: unknown, field: string, minimum: number): void {
+  if (typeof value !== "number" || !Number.isSafeInteger(value) || value < minimum) throw new PersistenceCorruptionError(`encrypted recovery bundle ${field} is invalid`);
+}
+
+function recoveryNullableStringValue(value: unknown, field: string): string | null {
+  if (value === null) return null;
+  return recoveryString(value, field);
+}
+
+type RecoveryLedgerKind = "outbox" | "usage" | "inbox" | "externalEffects" | "workerJobs";
+
+function recoveryLedgerRecordDigest(record: Record<string, unknown>, field: string, index: number, kind: RecoveryLedgerKind): string {
+  const path = `${field}[${index}]`;
+  switch (kind) {
+    case "outbox": {
+      return outboxDigest({
+        id: recoveryString(recoveryRequired(record, "id", `${path}.id`), `${path}.id`) as OpaqueId,
+        organizationId: recoveryString(recoveryRequired(record, "organizationId", `${path}.organizationId`), `${path}.organizationId`) as OpaqueId,
+        eventType: recoveryString(recoveryRequired(record, "eventType", `${path}.eventType`), `${path}.eventType`),
+        aggregateId: recoveryString(recoveryRequired(record, "aggregateId", `${path}.aggregateId`), `${path}.aggregateId`) as OpaqueId,
+        payload: recoveryRecord(recoveryRequired(record, "payload", `${path}.payload`), `${path}.payload`)
+      });
+    }
+    case "usage": {
+      const status = recoveryString(recoveryRequired(record, "status", `${path}.status`), `${path}.status`);
+      if (!["RECEIVED", "SETTLED", "RECONCILIATION_REQUIRED", "QUARANTINED"].includes(status)) throw new PersistenceCorruptionError(`encrypted recovery bundle ${path}.status is invalid`);
+      const reservedUnits = recoveryRequired(record, "reservedUnits", `${path}.reservedUnits`);
+      const consumedUnits = recoveryRequired(record, "consumedUnits", `${path}.consumedUnits`);
+      recoveryInteger(reservedUnits, `${path}.reservedUnits`, 0);
+      recoveryInteger(consumedUnits, `${path}.consumedUnits`, 0);
+      return durableUsageDigest({
+        id: recoveryString(recoveryRequired(record, "id", `${path}.id`), `${path}.id`) as OpaqueId,
+        organizationId: recoveryString(recoveryRequired(record, "organizationId", `${path}.organizationId`), `${path}.organizationId`) as OpaqueId,
+        reservationId: recoveryNullableStringValue(recoveryRequired(record, "reservationId", `${path}.reservationId`), `${path}.reservationId`) as OpaqueId | null,
+        providerRequestId: recoveryNullableStringValue(recoveryRequired(record, "providerRequestId", `${path}.providerRequestId`), `${path}.providerRequestId`),
+        idempotencyKey: recoveryString(recoveryRequired(record, "idempotencyKey", `${path}.idempotencyKey`), `${path}.idempotencyKey`),
+        usageKind: recoveryString(recoveryRequired(record, "usageKind", `${path}.usageKind`), `${path}.usageKind`),
+        reservedUnits: reservedUnits as number,
+        consumedUnits: consumedUnits as number,
+        status: status as DurableUsageInput["status"],
+        record: recoveryRecord(recoveryRequired(record, "record", `${path}.record`), `${path}.record`)
+      });
+    }
+    case "inbox": {
+      const signatureAlgorithm = recoveryString(recoveryRequired(record, "signatureAlgorithm", `${path}.signatureAlgorithm`), `${path}.signatureAlgorithm`);
+      if (signatureAlgorithm !== "HMAC-SHA256" && signatureAlgorithm !== "UNVERIFIED") throw new PersistenceCorruptionError(`encrypted recovery bundle ${path}.signatureAlgorithm is invalid`);
+      const schemaVersion = recoveryRequired(record, "schemaVersion", `${path}.schemaVersion`);
+      recoveryInteger(schemaVersion, `${path}.schemaVersion`, 1);
+      return inboxDigest({
+        id: recoveryString(recoveryRequired(record, "id", `${path}.id`), `${path}.id`) as OpaqueId,
+        organizationId: recoveryString(recoveryRequired(record, "organizationId", `${path}.organizationId`), `${path}.organizationId`) as OpaqueId,
+        consumer: recoveryString(recoveryRequired(record, "consumer", `${path}.consumer`), `${path}.consumer`),
+        provider: recoveryString(recoveryRequired(record, "provider", `${path}.provider`), `${path}.provider`),
+        externalEventId: recoveryString(recoveryRequired(record, "externalEventId", `${path}.externalEventId`), `${path}.externalEventId`),
+        eventType: recoveryString(recoveryRequired(record, "eventType", `${path}.eventType`), `${path}.eventType`),
+        schemaVersion: schemaVersion as number,
+        signatureAlgorithm: signatureAlgorithm as "HMAC-SHA256",
+        signatureKeyRef: recoveryString(recoveryRequired(record, "signatureKeyRef", `${path}.signatureKeyRef`), `${path}.signatureKeyRef`),
+        signature: recoveryString(recoveryRequired(record, "signature", `${path}.signature`), `${path}.signature`),
+        payload: recoveryRecord(recoveryRequired(record, "payload", `${path}.payload`), `${path}.payload`)
+      });
+    }
+    case "externalEffects": {
+      return externalEffectDigest({
+        id: recoveryString(recoveryRequired(record, "id", `${path}.id`), `${path}.id`) as OpaqueId,
+        organizationId: recoveryString(recoveryRequired(record, "organizationId", `${path}.organizationId`), `${path}.organizationId`) as OpaqueId,
+        outboxId: recoveryString(recoveryRequired(record, "outboxId", `${path}.outboxId`), `${path}.outboxId`) as OpaqueId,
+        integrationId: recoveryString(recoveryRequired(record, "integrationId", `${path}.integrationId`), `${path}.integrationId`),
+        idempotencyKey: recoveryString(recoveryRequired(record, "idempotencyKey", `${path}.idempotencyKey`), `${path}.idempotencyKey`),
+        request: recoveryRecord(recoveryRequired(record, "request", `${path}.request`), `${path}.request`)
+      });
+    }
+    case "workerJobs": {
+      const lane = recoveryString(recoveryRequired(record, "lane", `${path}.lane`), `${path}.lane`);
+      if (!(DURABLE_WORKER_LANES as readonly string[]).includes(lane)) throw new PersistenceCorruptionError(`encrypted recovery bundle ${path}.lane is invalid`);
+      const maxAttempts = recoveryRequired(record, "maxAttempts", `${path}.maxAttempts`);
+      recoveryInteger(maxAttempts, `${path}.maxAttempts`, 1);
+      if ((maxAttempts as number) > 20) throw new PersistenceCorruptionError(`encrypted recovery bundle ${path}.maxAttempts is invalid`);
+      return durableWorkerJobDigest({
+        id: recoveryString(recoveryRequired(record, "id", `${path}.id`), `${path}.id`) as OpaqueId,
+        organizationId: recoveryString(recoveryRequired(record, "organizationId", `${path}.organizationId`), `${path}.organizationId`) as OpaqueId,
+        lane: lane as DurableWorkerLane,
+        jobType: recoveryString(recoveryRequired(record, "jobType", `${path}.jobType`), `${path}.jobType`),
+        idempotencyKey: recoveryString(recoveryRequired(record, "idempotencyKey", `${path}.idempotencyKey`), `${path}.idempotencyKey`),
+        payload: recoveryRecord(recoveryRequired(record, "payload", `${path}.payload`), `${path}.payload`),
+        maxAttempts: maxAttempts as number,
+        availableAt: recoveryTimestamp(recoveryRequired(record, "availableAt", `${path}.availableAt`), `${path}.availableAt`)
+      });
+    }
+  }
+}
+
+/**
+ * Validate authentication state before parseSnapshot can fill missing fields
+ * with defaults. Recovery must preserve the exact security state that was
+ * exported; a malformed or partial auth record cannot become valid through
+ * normalization.
+ */
+function validateRecoveryAuthenticationShape(rawSnapshot: unknown): void {
+  const snapshot = recoveryRecord(rawSnapshot, "snapshot");
+  const users = recoveryRecords(recoveryRequired(snapshot, "users", "snapshot.users"), "snapshot.users");
+  for (const [index, user] of users.entries()) {
+    const userPath = `snapshot.users[${index}]`;
+    recoveryTimestamp(recoveryRequired(user, "createdAt", `${userPath}.createdAt`), `${userPath}.createdAt`);
+    const security = recoveryRecord(recoveryRequired(user, "security", `${userPath}.security`), `${userPath}.security`);
+    recoveryNullableTimestamp(recoveryRequired(security, "passwordChangedAt", `${userPath}.security.passwordChangedAt`), `${userPath}.security.passwordChangedAt`);
+    recoveryNullableTimestamp(recoveryRequired(security, "passwordExpiresAt", `${userPath}.security.passwordExpiresAt`), `${userPath}.security.passwordExpiresAt`);
+    recoveryInteger(recoveryRequired(security, "credentialVersion", `${userPath}.security.credentialVersion`), `${userPath}.security.credentialVersion`, 1);
+    recoveryInteger(recoveryRequired(security, "failedLoginAttempts", `${userPath}.security.failedLoginAttempts`), `${userPath}.security.failedLoginAttempts`, 0);
+    recoveryNullableTimestamp(recoveryRequired(security, "lockedUntil", `${userPath}.security.lockedUntil`), `${userPath}.security.lockedUntil`);
+    if (typeof recoveryRequired(security, "mfaRequired", `${userPath}.security.mfaRequired`) !== "boolean") throw new PersistenceCorruptionError(`encrypted recovery bundle ${userPath}.security.mfaRequired is invalid`);
+    recoveryNullableString(recoveryRequired(security, "mfaSecretRef", `${userPath}.security.mfaSecretRef`), `${userPath}.security.mfaSecretRef`);
+    const recoveryCodeDigests = recoveryRequired(security, "recoveryCodeDigests", `${userPath}.security.recoveryCodeDigests`);
+    if (!Array.isArray(recoveryCodeDigests) || recoveryCodeDigests.some((value) => typeof value !== "string" || !/^[a-f0-9]{64}$/.test(value))) throw new PersistenceCorruptionError(`encrypted recovery bundle ${userPath}.security.recoveryCodeDigests is invalid`);
+    recoveryNullableTimestamp(recoveryRequired(security, "recoveryCodesIssuedAt", `${userPath}.security.recoveryCodesIssuedAt`), `${userPath}.security.recoveryCodesIssuedAt`);
+  }
+
+  const sessions = recoveryRecords(recoveryRequired(snapshot, "sessions", "snapshot.sessions"), "snapshot.sessions");
+  for (const [index, session] of sessions.entries()) {
+    const sessionPath = `snapshot.sessions[${index}]`;
+    recoveryTimestamp(recoveryRequired(session, "expiresAt", `${sessionPath}.expiresAt`), `${sessionPath}.expiresAt`);
+    recoveryTimestamp(recoveryRequired(session, "lastSeenAt", `${sessionPath}.lastSeenAt`), `${sessionPath}.lastSeenAt`);
+    recoveryTimestamp(recoveryRequired(session, "createdAt", `${sessionPath}.createdAt`), `${sessionPath}.createdAt`);
+    recoveryNullableTimestamp(recoveryRequired(session, "revokedAt", `${sessionPath}.revokedAt`), `${sessionPath}.revokedAt`);
+    recoveryNullableTimestamp(recoveryRequired(session, "mfaVerifiedAt", `${sessionPath}.mfaVerifiedAt`), `${sessionPath}.mfaVerifiedAt`);
+    recoveryInteger(recoveryRequired(session, "credentialVersion", `${sessionPath}.credentialVersion`), `${sessionPath}.credentialVersion`, 1);
+  }
+
+  const challenges = recoveryRecords(recoveryRequired(snapshot, "authChallenges", "snapshot.authChallenges"), "snapshot.authChallenges");
+  for (const [index, challenge] of challenges.entries()) {
+    const challengePath = `snapshot.authChallenges[${index}]`;
+    recoveryTimestamp(recoveryRequired(challenge, "expiresAt", `${challengePath}.expiresAt`), `${challengePath}.expiresAt`);
+    recoveryTimestamp(recoveryRequired(challenge, "createdAt", `${challengePath}.createdAt`), `${challengePath}.createdAt`);
+    recoveryNullableTimestamp(recoveryRequired(challenge, "consumedAt", `${challengePath}.consumedAt`), `${challengePath}.consumedAt`);
+    recoveryInteger(recoveryRequired(challenge, "credentialVersion", `${challengePath}.credentialVersion`), `${challengePath}.credentialVersion`, 1);
+    recoveryInteger(recoveryRequired(challenge, "attempts", `${challengePath}.attempts`), `${challengePath}.attempts`, 0);
+    recoveryInteger(recoveryRequired(challenge, "maxAttempts", `${challengePath}.maxAttempts`), `${challengePath}.maxAttempts`, 1);
+  }
+}
+
 function recoveryExpirationTimestamp(value: string | null | undefined): string | null {
   if (value === undefined || value === null) return null;
   if (!Number.isFinite(Date.parse(value))) throw new PersistenceStateError("recovery envelope expiresAt must be a valid timestamp");
@@ -588,14 +804,31 @@ function parseRecoveryManifest(value: unknown): RecoveryBundleManifest {
   };
 }
 
-function recoveryLedgerRecords(value: unknown, field: string, organizationId: OpaqueId, digestField: "recordDigest" | "requestDigest"): unknown[] {
+function recoveryLedgerRecords(value: unknown, field: string, organizationId: OpaqueId, digestField: "recordDigest" | "requestDigest", kind: RecoveryLedgerKind): unknown[] {
   const records = recoveryRecords(value, field);
   return records.map((record, index) => {
     if (typeof record.id !== "string" || !record.id) throw new PersistenceCorruptionError(`encrypted recovery bundle ${field}[${index}].id is invalid`);
     if (record.organizationId !== organizationId) throw new PersistenceCorruptionError(`encrypted recovery bundle ${field}[${index}] has a different organization scope`);
-    recoveryDigestString(record[digestField], `${field}[${index}].${digestField}`);
+    const actualDigest = recoveryDigestString(record[digestField], `${field}[${index}].${digestField}`);
+    const expectedDigest = recoveryLedgerRecordDigest(record, field, index, kind);
+    if (actualDigest !== expectedDigest) throw new PersistenceCorruptionError(`encrypted recovery bundle ${field}[${index}].${digestField} does not match immutable record content`);
     return record;
   });
+}
+
+function validateRecoveryAuthenticationState(snapshot: StoreSnapshot): void {
+  for (const [index, session] of snapshot.sessions.entries()) {
+    recoveryTimestamp(session.expiresAt, `snapshot.sessions[${index}].expiresAt`);
+    recoveryTimestamp(session.lastSeenAt, `snapshot.sessions[${index}].lastSeenAt`);
+    recoveryTimestamp(session.createdAt, `snapshot.sessions[${index}].createdAt`);
+    if (session.revokedAt !== null) recoveryTimestamp(session.revokedAt, `snapshot.sessions[${index}].revokedAt`);
+    if (session.mfaVerifiedAt !== null) recoveryTimestamp(session.mfaVerifiedAt, `snapshot.sessions[${index}].mfaVerifiedAt`);
+  }
+  for (const [index, challenge] of snapshot.authChallenges.entries()) {
+    recoveryTimestamp(challenge.expiresAt, `snapshot.authChallenges[${index}].expiresAt`);
+    recoveryTimestamp(challenge.createdAt, `snapshot.authChallenges[${index}].createdAt`);
+    if (challenge.consumedAt !== null) recoveryTimestamp(challenge.consumedAt, `snapshot.authChallenges[${index}].consumedAt`);
+  }
 }
 
 export function validateRecoveryBundle(bundle: DurableRecoveryBundle, options: RecoveryBundleValidationOptions = {}): void {
@@ -606,20 +839,27 @@ export function validateRecoveryBundle(bundle: DurableRecoveryBundle, options: R
   const snapshotDigest = recoveryDigestString(bundle.snapshotDigest, "snapshotDigest");
   if (manifest.watermark.revision !== bundle.revision.toString() || manifest.watermark.eventId !== eventId || manifest.watermark.snapshotDigest !== snapshotDigest) throw new PersistenceCorruptionError("encrypted recovery bundle watermark does not match durable state");
 
+  validateRecoveryAuthenticationShape(bundle.snapshot);
   let snapshot: StoreSnapshot;
   try {
     snapshot = parseSnapshot(serializeSnapshot(bundle.snapshot));
   } catch (error) {
     throw new PersistenceCorruptionError(`encrypted recovery bundle snapshot failed validation: ${error instanceof Error ? error.message : String(error)}`);
   }
+  validateRecoveryAuthenticationState(snapshot);
+  try {
+    verifyAuditChain(snapshot.auditRecords);
+  } catch (error) {
+    throw new PersistenceCorruptionError(`encrypted recovery bundle audit chain failed validation: ${error instanceof Error ? error.message : String(error)}`);
+  }
   if (digest(canonicalSnapshot(snapshot)) !== snapshotDigest) throw new PersistenceCorruptionError("encrypted recovery bundle snapshot digest mismatch");
   if (!snapshot.organizations.some((organization) => organization.id === manifest.organizationId)) throw new PersistenceCorruptionError(`encrypted recovery bundle manifest has no matching organization ${manifest.organizationId}`);
 
-  const outboxRecords = recoveryLedgerRecords(raw.outboxRecords, "outboxRecords", manifest.organizationId, "recordDigest");
-  const usageRecords = recoveryLedgerRecords(raw.usageRecords, "usageRecords", manifest.organizationId, "recordDigest");
-  const inboxRecords = recoveryLedgerRecords(raw.inboxRecords, "inboxRecords", manifest.organizationId, "recordDigest");
-  const externalEffects = recoveryLedgerRecords(raw.externalEffects, "externalEffects", manifest.organizationId, "requestDigest");
-  const workerJobs = recoveryLedgerRecords(raw.workerJobs ?? [], "workerJobs", manifest.organizationId, "recordDigest");
+  const outboxRecords = recoveryLedgerRecords(raw.outboxRecords, "outboxRecords", manifest.organizationId, "recordDigest", "outbox");
+  const usageRecords = recoveryLedgerRecords(raw.usageRecords, "usageRecords", manifest.organizationId, "recordDigest", "usage");
+  const inboxRecords = recoveryLedgerRecords(raw.inboxRecords, "inboxRecords", manifest.organizationId, "recordDigest", "inbox");
+  const externalEffects = recoveryLedgerRecords(raw.externalEffects, "externalEffects", manifest.organizationId, "requestDigest", "externalEffects");
+  const workerJobs = recoveryLedgerRecords(raw.workerJobs ?? [], "workerJobs", manifest.organizationId, "recordDigest", "workerJobs");
   if (manifest.ledgerDigests.outbox !== recoveryLedgerDigest(outboxRecords) || manifest.ledgerDigests.usage !== recoveryLedgerDigest(usageRecords) || manifest.ledgerDigests.inbox !== recoveryLedgerDigest(inboxRecords) || manifest.ledgerDigests.externalEffects !== recoveryLedgerDigest(externalEffects) || (manifest.ledgerDigests.workerJobs !== undefined && manifest.ledgerDigests.workerJobs !== recoveryLedgerDigest(workerJobs))) throw new PersistenceCorruptionError("encrypted recovery bundle ledger digest mismatch");
 
   const expectedSnapshotSchemaVersion = options.expectedSnapshotSchemaVersion ?? RECOVERY_SNAPSHOT_SCHEMA_VERSION;
@@ -665,6 +905,7 @@ function parseEncryptedRecoveryBundle(value: unknown): EncryptedRecoveryBundle {
 
 function hydrateRecoveryBundle(raw: unknown): DurableRecoveryBundle {
   const bundle = recoveryRecord(raw, "payload");
+  validateRecoveryAuthenticationShape(bundle.snapshot);
   let snapshot: StoreSnapshot;
   try {
     snapshot = parseSnapshot(JSON.stringify(bundle.snapshot));
@@ -737,6 +978,341 @@ export function decryptRecoveryBundle(encrypted: unknown, key: Uint8Array): Dura
   } catch (error) {
     if (error instanceof PersistenceCorruptionError || error instanceof PersistenceStateError) throw error;
     throw new PersistenceCorruptionError("encrypted recovery bundle authentication failed");
+  }
+}
+
+/**
+ * An encrypted recovery bundle is a portable artifact, while an operational
+ * backup also needs a filesystem manifest and a bounded retention policy. The
+ * manifest never contains key material; it binds the envelope to its tenant,
+ * watermark, migration fingerprint and key reference.
+ */
+export interface OperationalBackupManifest {
+  format: "CVG-BACKUP-MANIFEST";
+  version: 1;
+  backupId: string;
+  createdAt: string;
+  organizationId: OpaqueId;
+  revision: string;
+  snapshotDigest: string;
+  migrationFingerprint: string;
+  keyRef: string;
+  payloadDigest: string;
+  envelopeDigest: string;
+  expiresAt: string | null;
+}
+
+export interface OperationalBackupArtifact {
+  manifest: OperationalBackupManifest;
+  envelope: EncryptedRecoveryBundle;
+}
+
+export interface OperationalBackupRetentionPolicy {
+  keepLast: number;
+  maxAgeMs?: number;
+  now?: string;
+}
+
+export interface OperationalBackupWriteOptions {
+  directory: string;
+  bundle: DurableRecoveryBundle;
+  key: Uint8Array;
+  keyRef: string;
+  backupId?: string;
+  createdAt?: string;
+  expiresAt?: string | null;
+  retention?: OperationalBackupRetentionPolicy;
+}
+
+export interface OperationalBackupRecord {
+  path: string;
+  manifest: OperationalBackupManifest;
+}
+
+export interface OperationalBackupDirectoryVerificationOptions {
+  directory: string;
+  resolveKey(keyRef: string): Promise<Uint8Array | null> | Uint8Array | null;
+  expectedMigrationFingerprint?: string;
+  retention?: OperationalBackupRetentionPolicy;
+}
+
+export interface OperationalBackupDirectoryVerification {
+  verified: readonly OperationalBackupRecord[];
+  removed: readonly string[];
+}
+
+export interface OperationalBackupJobOptions {
+  directory: string;
+  keyRef: string;
+  intervalMs: number;
+  createBundle: () => Promise<DurableRecoveryBundle>;
+  resolveKey: (keyRef: string) => Promise<Uint8Array | null> | Uint8Array | null;
+  expectedMigrationFingerprint?: string;
+  retention?: OperationalBackupRetentionPolicy;
+  onFailure?: (error: unknown) => void | Promise<void>;
+}
+
+export interface OperationalBackupJobRun {
+  observedAt: string;
+  backup: OperationalBackupRecord & { removed: readonly string[] };
+  verification: OperationalBackupDirectoryVerification;
+}
+
+export interface OperationalBackupJobStatus {
+  running: boolean;
+  activeRun: boolean;
+  lastRun: OperationalBackupJobRun | null;
+  lastFailure: string | null;
+}
+
+const OPERATIONAL_BACKUP_FORMAT = "CVG-BACKUP-MANIFEST" as const;
+const OPERATIONAL_BACKUP_VERSION = 1 as const;
+const operationalBackupFilePattern = /^cvg-backup-[A-Za-z0-9._:-]+\.json$/;
+
+function operationalBackupTimestamp(value: string | undefined): string {
+  const timestamp = value ?? now();
+  if (typeof timestamp !== "string" || !timestamp || !Number.isFinite(Date.parse(timestamp))) throw new PersistenceStateError("operational backup createdAt must be a valid timestamp");
+  return timestamp;
+}
+
+function operationalBackupId(value: string | undefined): string {
+  const backupId = value ?? randomUUID();
+  if (typeof backupId !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,119}$/.test(backupId)) throw new PersistenceStateError("operational backup id is invalid");
+  return backupId;
+}
+
+function operationalBackupExpiration(value: string | null | undefined): string | null {
+  if (value === undefined || value === null) return null;
+  if (!Number.isFinite(Date.parse(value))) throw new PersistenceStateError("operational backup expiresAt must be a valid timestamp");
+  return value;
+}
+
+function operationalBackupRetention(policy: OperationalBackupRetentionPolicy | undefined): Required<Pick<OperationalBackupRetentionPolicy, "keepLast">> & Pick<OperationalBackupRetentionPolicy, "maxAgeMs" | "now"> {
+  const keepLast = policy?.keepLast ?? 7;
+  if (!Number.isSafeInteger(keepLast) || keepLast < 1 || keepLast > 10_000) throw new PersistenceStateError("operational backup keepLast must be between 1 and 10000");
+  if (policy?.maxAgeMs !== undefined && (!Number.isSafeInteger(policy.maxAgeMs) || policy.maxAgeMs < 0)) throw new PersistenceStateError("operational backup maxAgeMs must be a non-negative safe integer");
+  const referenceNow = policy?.now;
+  if (referenceNow !== undefined && !Number.isFinite(Date.parse(referenceNow))) throw new PersistenceStateError("operational backup retention now must be a valid timestamp");
+  return { keepLast, ...(policy?.maxAgeMs === undefined ? {} : { maxAgeMs: policy.maxAgeMs }), ...(referenceNow === undefined ? {} : { now: referenceNow }) };
+}
+
+function operationalBackupManifest(value: unknown): OperationalBackupManifest {
+  const record = recoveryRecord(value, "operational backup manifest");
+  if (record.format !== OPERATIONAL_BACKUP_FORMAT || record.version !== OPERATIONAL_BACKUP_VERSION) throw new PersistenceCorruptionError("operational backup manifest format is unsupported");
+  const backupId = record.backupId;
+  if (typeof backupId !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,119}$/.test(backupId)) throw new PersistenceCorruptionError("operational backup manifest backupId is invalid");
+  const createdAt = recoveryTimestamp(record.createdAt, "operational backup manifest.createdAt");
+  const organizationId = recoveryString(record.organizationId, "operational backup manifest.organizationId") as OpaqueId;
+  const revision = recoveryString(record.revision, "operational backup manifest.revision");
+  if (!/^\d+$/.test(revision)) throw new PersistenceCorruptionError("operational backup manifest revision is invalid");
+  const snapshotDigest = recoveryDigestString(record.snapshotDigest, "operational backup manifest.snapshotDigest");
+  const migrationFingerprint = recoveryDigestString(record.migrationFingerprint, "operational backup manifest.migrationFingerprint");
+  const keyRef = recoveryString(record.keyRef, "operational backup manifest.keyRef");
+  const payloadDigest = recoveryDigestString(record.payloadDigest, "operational backup manifest.payloadDigest");
+  const envelopeDigest = recoveryDigestString(record.envelopeDigest, "operational backup manifest.envelopeDigest");
+  const expiresAt = record.expiresAt === null ? null : recoveryTimestamp(record.expiresAt, "operational backup manifest.expiresAt");
+  return { format: OPERATIONAL_BACKUP_FORMAT, version: OPERATIONAL_BACKUP_VERSION, backupId, createdAt, organizationId, revision, snapshotDigest, migrationFingerprint, keyRef, payloadDigest, envelopeDigest, expiresAt };
+}
+
+function operationalBackupArtifact(value: unknown): OperationalBackupArtifact {
+  const record = recoveryRecord(value, "operational backup artifact");
+  const manifest = operationalBackupManifest(record.manifest);
+  const envelope = parseEncryptedRecoveryBundle(record.envelope);
+  if (envelope.keyRef !== manifest.keyRef || envelope.payloadDigest !== manifest.payloadDigest || envelope.expiresAt !== manifest.expiresAt) throw new PersistenceCorruptionError("operational backup manifest does not bind the encrypted envelope");
+  if (digest(envelope) !== manifest.envelopeDigest) throw new PersistenceCorruptionError("operational backup envelope digest mismatch");
+  return { manifest, envelope };
+}
+
+async function operationalBackupPaths(directory: string): Promise<string[]> {
+  const root = resolve(directory);
+  let entries;
+  try {
+    entries = await readdir(root);
+  } catch (error) {
+    if (error && typeof error === "object" && "code" in error && error.code === "ENOENT") return [];
+    throw error;
+  }
+  const paths: string[] = [];
+  for (const name of entries.filter((candidate) => operationalBackupFilePattern.test(candidate))) {
+    const path = join(root, name);
+    const stats = await lstat(path);
+    if (!stats.isFile() || stats.isSymbolicLink()) throw new PersistenceCorruptionError(`operational backup path is not a regular file: ${name}`);
+    paths.push(path);
+  }
+  return paths;
+}
+
+async function readOperationalBackup(path: string): Promise<OperationalBackupArtifact> {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(await readFile(path, "utf8")) as unknown;
+  } catch {
+    throw new PersistenceCorruptionError(`operational backup cannot be parsed: ${path}`);
+  }
+  return operationalBackupArtifact(raw);
+}
+
+/**
+ * Rotate only artifacts whose manifest and envelope are structurally valid.
+ * A malformed managed file aborts the cycle before any deletion, preserving
+ * evidence for incident handling instead of silently discarding it.
+ */
+export async function rotateOperationalBackups(directory: string, policy?: OperationalBackupRetentionPolicy): Promise<readonly string[]> {
+  const retention = operationalBackupRetention(policy);
+  const paths = await operationalBackupPaths(directory);
+  const entries = await Promise.all(paths.map(async (path) => ({ path, artifact: await readOperationalBackup(path) })));
+  const referenceTime = Date.parse(retention.now ?? now());
+  const removable = new Set(entries
+    .sort((left, right) => Date.parse(right.artifact.manifest.createdAt) - Date.parse(left.artifact.manifest.createdAt) || left.path.localeCompare(right.path))
+    .slice(retention.keepLast)
+    .map((entry) => entry.path));
+  if (retention.maxAgeMs !== undefined) {
+    for (const entry of entries) if (referenceTime - Date.parse(entry.artifact.manifest.createdAt) > retention.maxAgeMs) removable.add(entry.path);
+  }
+  const removed: string[] = [];
+  for (const path of removable) {
+    await rm(path, { force: false });
+    removed.push(path);
+  }
+  return removed.sort();
+}
+
+/** Atomically writes one encrypted, manifest-bound backup and rotates old copies. */
+export async function writeOperationalBackup(options: OperationalBackupWriteOptions): Promise<OperationalBackupRecord & { removed: readonly string[] }> {
+  const root = resolve(options.directory);
+  const backupId = operationalBackupId(options.backupId);
+  const createdAt = operationalBackupTimestamp(options.createdAt);
+  const expiresAt = operationalBackupExpiration(options.expiresAt);
+  const envelope = encryptRecoveryBundle(options.bundle, options.key, options.keyRef, { expiresAt });
+  const manifest: OperationalBackupManifest = {
+    format: OPERATIONAL_BACKUP_FORMAT,
+    version: OPERATIONAL_BACKUP_VERSION,
+    backupId,
+    createdAt,
+    organizationId: options.bundle.manifest.organizationId,
+    revision: options.bundle.revision.toString(),
+    snapshotDigest: options.bundle.snapshotDigest,
+    migrationFingerprint: options.bundle.manifest.migrationFingerprint,
+    keyRef: envelope.keyRef,
+    payloadDigest: envelope.payloadDigest,
+    envelopeDigest: digest(envelope),
+    expiresAt: envelope.expiresAt
+  };
+  const artifact: OperationalBackupArtifact = { manifest, envelope };
+  const filename = `cvg-backup-${createdAt.replace(/[^0-9A-Za-z._:-]/g, "_")}-${backupId}.json`;
+  const path = join(root, filename);
+  if (path !== root && !path.startsWith(`${root}${sep}`)) throw new PersistenceStateError("operational backup path escaped its configured directory");
+  await mkdir(root, { recursive: true, mode: 0o700 });
+  // `mkdir` does not change the mode of an existing directory. Re-assert the
+  // private backup boundary on every write so a pre-created mount cannot
+  // silently weaken the protection promised by the runbook.
+  await chmod(root, 0o700);
+  const temporary = join(root, `.${filename}.${randomUUID()}.tmp`);
+  try {
+    await writeFile(temporary, `${JSON.stringify(artifact, null, 2)}\n`, { encoding: "utf8", mode: 0o600, flag: "wx" });
+    await rename(temporary, path);
+    await chmod(path, 0o600);
+  } catch (error) {
+    await rm(temporary, { force: true }).catch(() => undefined);
+    throw error;
+  }
+  const removed = await rotateOperationalBackups(root, options.retention);
+  return { path, manifest, removed };
+}
+
+/** Decrypts and validates one backup before it is eligible for restore. */
+export async function verifyOperationalBackupFile(path: string, key: Uint8Array, options: RecoveryBundleValidationOptions = {}): Promise<OperationalBackupRecord & { bundle: DurableRecoveryBundle }> {
+  const artifact = await readOperationalBackup(path);
+  const bundle = decryptRecoveryBundle(artifact.envelope, key);
+  if (bundle.manifest.organizationId !== artifact.manifest.organizationId || bundle.revision.toString() !== artifact.manifest.revision || bundle.snapshotDigest !== artifact.manifest.snapshotDigest || bundle.manifest.migrationFingerprint !== artifact.manifest.migrationFingerprint) throw new PersistenceCorruptionError("operational backup manifest does not bind the recovered bundle");
+  validateRecoveryBundle(bundle, { ...options, ...(options.expectedMigrationFingerprint === undefined ? { expectedMigrationFingerprint: artifact.manifest.migrationFingerprint } : {}) });
+  return { path, manifest: artifact.manifest, bundle };
+}
+
+/** Periodic verification job: every managed copy must decrypt before rotation. */
+export async function verifyOperationalBackupDirectory(options: OperationalBackupDirectoryVerificationOptions): Promise<OperationalBackupDirectoryVerification> {
+  const paths = await operationalBackupPaths(options.directory);
+  if (paths.length === 0) throw new PersistenceUnavailableError("no operational backup artifacts were found");
+  const verified: OperationalBackupRecord[] = [];
+  for (const path of paths) {
+    const artifact = await readOperationalBackup(path);
+    const key = await options.resolveKey(artifact.manifest.keyRef);
+    if (!key) throw new PersistenceUnavailableError(`operational backup key is unavailable for ${artifact.manifest.keyRef}`);
+    verified.push(await verifyOperationalBackupFile(path, key, options.expectedMigrationFingerprint ? { expectedMigrationFingerprint: options.expectedMigrationFingerprint } : {}));
+  }
+  const removed = await rotateOperationalBackups(options.directory, options.retention);
+  return { verified, removed };
+}
+
+/**
+ * Periodic operational backup job. A tick creates a fresh encrypted artifact,
+ * verifies every managed artifact before rotation, and retains failure state
+ * instead of silently continuing after a missing key or corrupted copy.
+ */
+export class OperationalBackupJob {
+  private readonly options: OperationalBackupJobOptions;
+  private timer: ReturnType<typeof setInterval> | null = null;
+  private active: Promise<OperationalBackupJobRun> | null = null;
+  private lastRun: OperationalBackupJobRun | null = null;
+  private lastFailure: string | null = null;
+
+  constructor(options: OperationalBackupJobOptions) {
+    if (!Number.isSafeInteger(options.intervalMs) || options.intervalMs <= 0) throw new PersistenceStateError("operational backup interval must be a positive safe integer");
+    recoveryKeyRef(options.keyRef);
+    this.options = options;
+  }
+
+  async runOnce(): Promise<OperationalBackupJobRun> {
+    if (this.active) return this.active;
+    this.active = this.execute().catch((error: unknown) => {
+      this.lastFailure = error instanceof Error ? error.message : String(error);
+      throw error;
+    }).finally(() => {
+      this.active = null;
+    });
+    return this.active;
+  }
+
+  start(options: { runImmediately?: boolean } = {}): void {
+    if (this.timer) return;
+    this.timer = setInterval(() => {
+      void this.runOnce().catch(async (error: unknown) => {
+        this.lastFailure = error instanceof Error ? error.message : String(error);
+        await this.options.onFailure?.(error);
+      });
+    }, this.options.intervalMs);
+    const handle = this.timer as unknown as { unref?: () => void };
+    handle.unref?.();
+    if (options.runImmediately !== false) {
+      void this.runOnce().catch(async (error: unknown) => {
+        this.lastFailure = error instanceof Error ? error.message : String(error);
+        await this.options.onFailure?.(error);
+      });
+    }
+  }
+
+  async stop(): Promise<void> {
+    if (this.timer) {
+      clearInterval(this.timer);
+      this.timer = null;
+    }
+    if (this.active) await this.active.catch(() => undefined);
+  }
+
+  status(): OperationalBackupJobStatus {
+    return { running: this.timer !== null, activeRun: this.active !== null, lastRun: this.lastRun, lastFailure: this.lastFailure };
+  }
+
+  private async execute(): Promise<OperationalBackupJobRun> {
+    const key = await this.options.resolveKey(this.options.keyRef);
+    if (!key) throw new PersistenceUnavailableError(`operational backup key is unavailable for ${this.options.keyRef}`);
+    const bundle = await this.options.createBundle();
+    const backup = await writeOperationalBackup({ directory: this.options.directory, bundle, key, keyRef: this.options.keyRef, ...(this.options.retention ? { retention: this.options.retention } : {}) });
+    const verification = await verifyOperationalBackupDirectory({ directory: this.options.directory, resolveKey: this.options.resolveKey, ...(this.options.expectedMigrationFingerprint ? { expectedMigrationFingerprint: this.options.expectedMigrationFingerprint } : {}), ...(this.options.retention ? { retention: this.options.retention } : {}) });
+    const result = { observedAt: now(), backup, verification };
+    this.lastRun = result;
+    this.lastFailure = null;
+    return result;
   }
 }
 
@@ -891,6 +1467,7 @@ interface BreakGlassRow {
   approver_id: string;
   reason: string;
   target: string;
+  scope?: ScopeType | null;
   mfa_method: DurableBreakGlassMfaMethod;
   issued_at: SqlTimestamp;
   expires_at: SqlTimestamp;
@@ -902,7 +1479,7 @@ interface BreakGlassRow {
   created_at: SqlTimestamp;
 }
 
-const BREAK_GLASS_COLUMNS = "id::text as id, organization_id::text as organization_id, actor_id::text as actor_id, approver_id::text as approver_id, reason, target, mfa_method, issued_at, expires_at, status, reviewed_by::text as reviewed_by, reviewed_at, review_note, revoked_at, created_at";
+const BREAK_GLASS_COLUMNS = "id::text as id, organization_id::text as organization_id, actor_id::text as actor_id, approver_id::text as approver_id, reason, target, scope, mfa_method, issued_at, expires_at, status, reviewed_by::text as reviewed_by, reviewed_at, review_note, revoked_at, created_at";
 const WORKER_JOB_COLUMNS = "id::text as id, organization_id::text as organization_id, lane, job_type, idempotency_key, payload, status, attempts, max_attempts, available_at, claimed_by, lease_until, fence_token::text as fence_token, last_error, created_at, processed_at, record_digest";
 const WORKER_JOB_UPDATE_COLUMNS = "job.id::text as id, job.organization_id::text as organization_id, job.lane, job.job_type, job.idempotency_key, job.payload, job.status, job.attempts, job.max_attempts, job.available_at, job.claimed_by, job.lease_until, job.fence_token::text as fence_token, job.last_error, job.created_at, job.processed_at, job.record_digest";
 const WORKER_HEARTBEAT_COLUMNS = "organization_id::text as organization_id, worker_id, status, lane, cycle_id::text as cycle_id, started_at, last_seen_at, expires_at, detail, updated_at";
@@ -1480,6 +2057,7 @@ function mapBreakGlassRow(row: BreakGlassRow): DurableBreakGlassGrant {
     approverId: sqlId(row.approver_id, "break_glass.approver_id"),
     reason: sqlText(row.reason, "break_glass.reason"),
     target: sqlText(row.target, "break_glass.target"),
+    scope: row.scope ?? "ORGANIZATION",
     mfaMethod: row.mfa_method,
     issuedAt: sqlTimestamp(row.issued_at, "break_glass.issued_at"),
     expiresAt: sqlTimestamp(row.expires_at, "break_glass.expires_at"),
@@ -1494,6 +2072,7 @@ function mapBreakGlassRow(row: BreakGlassRow): DurableBreakGlassGrant {
 
 function validateBreakGlassInput(input: DurableBreakGlassInput, atMs = Date.now()): void {
   if (input.mfaMethod !== "WEBAUTHN") throw new PersistenceStateError("durable break-glass grants require WebAuthn");
+  if (!scopeTypes.includes(input.scope ?? "ORGANIZATION")) throw new PersistenceStateError("durable break-glass scope is invalid");
   if (!input.reason.trim() || input.reason.trim().length < 10 || input.reason.length > 2_000) throw new PersistenceStateError("durable break-glass reason is invalid");
   if (!input.target.trim() || input.target.length > 512) throw new PersistenceStateError("durable break-glass target is invalid");
   if (input.actorId === input.approverId) throw new PersistenceStateError("durable break-glass approval must be independent");
@@ -1655,7 +2234,7 @@ async function projectAiTurnUsage(client: PoolClient, snapshot: StoreSnapshot): 
       reservedUnits: turn.usage.reservedUnits,
       consumedUnits: turn.usage.consumedUnits,
       status: turn.usage.status,
-      record: turn.usage.record
+      record: { ...turn.usage.record, settlement: turn.usage.settlement ?? null }
     };
     const result = await client.query<{ id: string }>(
       "insert into ai_usage_ledger(id, organization_id, reservation_id, provider_request_id, idempotency_key, usage_kind, reserved_units, consumed_units, status, record, record_digest, created_at) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, $11, $12) on conflict (organization_id, idempotency_key, usage_kind) do update set reserved_units = excluded.reserved_units, consumed_units = excluded.consumed_units, status = excluded.status, record = excluded.record, record_digest = excluded.record_digest, provider_request_id = excluded.provider_request_id, reservation_id = excluded.reservation_id where ai_usage_ledger.record_digest = excluded.record_digest returning id",
@@ -2233,14 +2812,18 @@ export type InboxSignatureVerifier = (input: DurableInboxInput) => boolean | Pro
  * domain repositories are introduced incrementally. Identity and authorization
  * projections are kept in sync before audit/receipt writes. Every committed
  * projection is paired with an append-only journal row in the same transaction;
- * the advisory lock plus expected revision protects writers across processes.
+ * the organization-scoped advisory lock plus expected revision protects
+ * writers across processes without serializing unrelated tenants.
  */
 export class PostgresPersistence {
   private readonly pool: Pool;
+  private readonly poolMax: number;
   private readonly ownsPool: boolean;
   private readonly inboxSignatureVerifier: InboxSignatureVerifier | null;
 
   constructor(options: PostgresPersistenceOptions) {
+    const injectedPoolMax = (options.pool as unknown as { options?: { max?: number } } | undefined)?.options?.max;
+    this.poolMax = options.max ?? injectedPoolMax ?? 10;
     const config: PoolConfig = {
       connectionString: options.connectionString,
       max: options.max ?? 10,
@@ -2274,11 +2857,11 @@ export class PostgresPersistence {
 
   async assertSchema(): Promise<void> {
     try {
-      const result = await this.pool.query<{ snapshots: boolean; journal: boolean; audit: boolean; receipts: boolean; communications: boolean; outbox: boolean; usage_ledger: boolean; inbox: boolean; external_effects: boolean; rate_limit_buckets: boolean; break_glass_grants: boolean; break_glass_lifecycle: boolean; runtime_role: boolean; runtime_scope_guards: boolean; auth_security: boolean; ai_turn_scope: boolean; ai_draft_scope: boolean; ai_turn_provenance_usage: boolean; audit_tamper_evident_chain: boolean; append_only_audit_guard: boolean; append_only_lock_privileges: boolean; worker_jobs: boolean; worker_heartbeats: boolean; worker_lane_schema: boolean }>("select to_regclass('public.cvg_state_snapshots') is not null as snapshots, to_regclass('public.cvg_event_journal') is not null as journal, to_regclass('public.cvg_audit_ledger') is not null as audit, to_regclass('public.cvg_command_receipt_ledger') is not null as receipts, to_regclass('public.communication_messages') is not null as communications, to_regclass('public.outbox_records') is not null as outbox, to_regclass('public.ai_usage_ledger') is not null as usage_ledger, to_regclass('public.integration_inbox_records') is not null as inbox, to_regclass('public.external_effects') is not null as external_effects, to_regclass('public.cvg_rate_limit_buckets') is not null as rate_limit_buckets, to_regclass('public.break_glass_grants') is not null as break_glass_grants, exists (select 1 from pg_roles where rolname = current_user and rolsuper = false and rolbypassrls = false and rolcreaterole = false and rolcreatedb = false) as runtime_role, exists (select 1 from schema_migrations where version = '019_runtime_scope_guards') as runtime_scope_guards, exists (select 1 from schema_migrations where version = '020_auth_security_boundary') and to_regclass('public.auth_challenges') is not null and exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'users' and column_name = 'mfa_secret_ref') and exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'sessions' and column_name = 'device_id_digest') as auth_security, exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'ai_turns' and column_name in ('organization_id', 'unit_id', 'workspace_id') group by table_schema, table_name having count(*) = 3) as ai_turn_scope, exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'ai_drafts' and column_name in ('organization_id', 'unit_id', 'workspace_id') group by table_schema, table_name having count(*) = 3) as ai_draft_scope, exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'ai_turns' and column_name in ('usage_record_id', 'provenance_json') group by table_schema, table_name having count(*) = 2) and exists (select 1 from schema_migrations where version = '029_ai_turn_provenance_usage_and_dml_scope') as ai_turn_provenance_usage, exists (select 1 from schema_migrations where version = '026_audit_tamper_evident_chain') as audit_tamper_evident_chain, exists (select 1 from schema_migrations where version = '027_append_only_audit_guard') as append_only_audit_guard, exists (select 1 from schema_migrations where version = '028_append_only_lock_privileges') as append_only_lock_privileges, exists (select 1 from schema_migrations where version = '030_break_glass_durable_lifecycle') as break_glass_lifecycle, to_regclass('public.cvg_worker_jobs') is not null as worker_jobs, to_regclass('public.cvg_worker_heartbeats') is not null as worker_heartbeats, exists (select 1 from schema_migrations where version = '031_worker_jobs_and_heartbeats') and exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'cvg_worker_jobs' and column_name in ('lane', 'job_type', 'idempotency_key', 'fence_token', 'record_digest') group by table_schema, table_name having count(*) = 5) and exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'cvg_worker_heartbeats' and column_name in ('worker_id', 'status', 'last_seen_at', 'expires_at') group by table_schema, table_name having count(*) = 4) as worker_lane_schema");
+      const result = await this.pool.query<{ snapshots: boolean; journal: boolean; audit: boolean; receipts: boolean; communications: boolean; outbox: boolean; usage_ledger: boolean; inbox: boolean; external_effects: boolean; rate_limit_buckets: boolean; break_glass_grants: boolean; break_glass_lifecycle: boolean; break_glass_scope_schema: boolean; runtime_role: boolean; runtime_migration_metadata: boolean; runtime_scope_guards: boolean; auth_security: boolean; ai_turn_scope: boolean; ai_draft_scope: boolean; ai_turn_provenance_usage: boolean; audit_tamper_evident_chain: boolean; append_only_audit_guard: boolean; append_only_lock_privileges: boolean; worker_jobs: boolean; worker_heartbeats: boolean; worker_lane_schema: boolean }>("select to_regclass('public.cvg_state_snapshots') is not null as snapshots, to_regclass('public.cvg_event_journal') is not null as journal, to_regclass('public.cvg_audit_ledger') is not null as audit, to_regclass('public.cvg_command_receipt_ledger') is not null as receipts, to_regclass('public.communication_messages') is not null as communications, to_regclass('public.outbox_records') is not null as outbox, to_regclass('public.ai_usage_ledger') is not null as usage_ledger, to_regclass('public.integration_inbox_records') is not null as inbox, to_regclass('public.external_effects') is not null as external_effects, to_regclass('public.cvg_rate_limit_buckets') is not null as rate_limit_buckets, to_regclass('public.break_glass_grants') is not null as break_glass_grants, exists (select 1 from schema_migrations where version = '035_break_glass_scope') and exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'break_glass_grants' and column_name = 'scope') and exists (select 1 from pg_constraint where conname = 'break_glass_grants_scope_check' and conrelid = 'break_glass_grants'::regclass) and exists (select 1 from pg_trigger where tgname = 'break_glass_grants_transition_guard' and tgrelid = 'break_glass_grants'::regclass) as break_glass_scope_schema, exists (select 1 from pg_roles where rolname = current_user and rolsuper = false and rolbypassrls = false and rolcreaterole = false and rolcreatedb = false) as runtime_role, exists (select 1 from schema_migrations where version = '036_runtime_migration_metadata_privileges') and has_table_privilege(current_user, 'public.schema_migrations', 'SELECT') and not has_table_privilege(current_user, 'public.schema_migrations', 'INSERT') and not has_table_privilege(current_user, 'public.schema_migrations', 'UPDATE') and not has_table_privilege(current_user, 'public.schema_migrations', 'DELETE') as runtime_migration_metadata, exists (select 1 from schema_migrations where version = '019_runtime_scope_guards') as runtime_scope_guards, exists (select 1 from schema_migrations where version = '020_auth_security_boundary') and to_regclass('public.auth_challenges') is not null and exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'users' and column_name = 'mfa_secret_ref') and exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'sessions' and column_name = 'device_id_digest') as auth_security, exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'ai_turns' and column_name in ('organization_id', 'unit_id', 'workspace_id') group by table_schema, table_name having count(*) = 3) as ai_turn_scope, exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'ai_drafts' and column_name in ('organization_id', 'unit_id', 'workspace_id') group by table_schema, table_name having count(*) = 3) as ai_draft_scope, exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'ai_turns' and column_name in ('usage_record_id', 'provenance_json') group by table_schema, table_name having count(*) = 2) and exists (select 1 from schema_migrations where version = '029_ai_turn_provenance_usage_and_dml_scope') as ai_turn_provenance_usage, exists (select 1 from schema_migrations where version = '026_audit_tamper_evident_chain') as audit_tamper_evident_chain, exists (select 1 from schema_migrations where version = '027_append_only_audit_guard') as append_only_audit_guard, exists (select 1 from schema_migrations where version = '028_append_only_lock_privileges') as append_only_lock_privileges, exists (select 1 from schema_migrations where version = '030_break_glass_durable_lifecycle') as break_glass_lifecycle, to_regclass('public.cvg_worker_jobs') is not null as worker_jobs, to_regclass('public.cvg_worker_heartbeats') is not null as worker_heartbeats, exists (select 1 from schema_migrations where version = '031_worker_jobs_and_heartbeats') and exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'cvg_worker_jobs' and column_name in ('lane', 'job_type', 'idempotency_key', 'fence_token', 'record_digest') group by table_schema, table_name having count(*) = 5) and exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'cvg_worker_heartbeats' and column_name in ('worker_id', 'status', 'last_seen_at', 'expires_at') group by table_schema, table_name having count(*) = 4) as worker_lane_schema");
       const snapshotKey = await this.pool.query<{ snapshot_scope_revision: boolean }>("select exists (select 1 from pg_constraint constraint_row join pg_class table_row on table_row.oid = constraint_row.conrelid join pg_namespace namespace_row on namespace_row.oid = table_row.relnamespace where namespace_row.nspname = 'public' and table_row.relname = 'cvg_state_snapshots' and constraint_row.contype = 'p' and pg_get_constraintdef(constraint_row.oid) = 'PRIMARY KEY (organization_id, revision)') as snapshot_scope_revision");
       const diagnosticChildScope = await this.pool.query<{ diagnostic_child_scope: boolean }>("select exists (select 1 from schema_migrations where version = '034_diagnostic_child_integrity_backstop') and exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'specimens' and column_name in ('unit_id', 'workspace_id') group by table_schema, table_name having count(*) = 2) and exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'diagnostic_results' and column_name in ('unit_id', 'workspace_id') group by table_schema, table_name having count(*) = 2) and exists (select 1 from pg_trigger where tgname = 'cvg_diagnostic_specimen_integrity_guard') and exists (select 1 from pg_trigger where tgname = 'cvg_diagnostic_result_integrity_guard') as diagnostic_child_scope");
       const row = result.rows[0];
-      if (!row?.snapshots || !row.journal || !row.audit || !row.receipts || !row.communications || !row.outbox || !row.usage_ledger || !row.inbox || !row.external_effects || !row.rate_limit_buckets || !row.break_glass_grants || !row.break_glass_lifecycle || !row.runtime_role || !row.runtime_scope_guards || !row.auth_security || !row.ai_turn_scope || !row.ai_draft_scope || !row.ai_turn_provenance_usage || !row.audit_tamper_evident_chain || !row.append_only_audit_guard || !row.append_only_lock_privileges || !row.worker_jobs || !row.worker_heartbeats || !row.worker_lane_schema || diagnosticChildScope.rows[0]?.diagnostic_child_scope !== true || snapshotKey.rows[0]?.snapshot_scope_revision !== true) throw new PersistenceUnavailableError("CVG persistence schema or runtime database role is not ready; run migrations with a non-superuser DATABASE_URL");
+      if (!row?.snapshots || !row.journal || !row.audit || !row.receipts || !row.communications || !row.outbox || !row.usage_ledger || !row.inbox || !row.external_effects || !row.rate_limit_buckets || !row.break_glass_grants || !row.break_glass_lifecycle || !row.break_glass_scope_schema || !row.runtime_role || !row.runtime_migration_metadata || !row.runtime_scope_guards || !row.auth_security || !row.ai_turn_scope || !row.ai_draft_scope || !row.ai_turn_provenance_usage || !row.audit_tamper_evident_chain || !row.append_only_audit_guard || !row.append_only_lock_privileges || !row.worker_jobs || !row.worker_heartbeats || !row.worker_lane_schema || diagnosticChildScope.rows[0]?.diagnostic_child_scope !== true || snapshotKey.rows[0]?.snapshot_scope_revision !== true) throw new PersistenceUnavailableError("CVG persistence schema or runtime database role is not ready; run migrations with a non-superuser DATABASE_URL");
     } catch (error) {
       if (error instanceof PersistenceUnavailableError) throw error;
       throw new PersistenceUnavailableError("CVG persistence schema could not be checked", error);
@@ -2376,6 +2959,30 @@ export class PostgresPersistence {
     }, false, { unitId: receipt.unitId, workspaceId: receipt.workspaceId });
   }
 
+  /**
+   * Appends one worker audit event directly to the tamper-evident ledger.
+   * Worker attempts do not own a full canonical snapshot, so this narrow
+   * transaction locks the organization audit tail and writes both normalized
+   * and ledger projections atomically.
+   */
+  async appendAuditRecord(input: Omit<AuditRecord, "id" | "createdAt" | "chainVersion" | "previousHash" | "recordHash">): Promise<AuditRecord> {
+    return this.organizationTransaction(input.organizationId, "worker audit append", async (client) => {
+      await lockOrganizationAuditChain(client, input.organizationId);
+      const tail = await client.query<{ record_hash: string | null }>("select record_hash from cvg_audit_ledger where organization_id = cvg_request_organization() order by sequence_id desc limit 1 for update");
+      const unsigned: AuditRecord = { ...input, id: id(randomUUID()), chainVersion: 2, previousHash: tail.rows[0]?.record_hash ?? null, recordHash: "", createdAt: now() };
+      const audit: AuditRecord = { ...unsigned, recordHash: auditRecordHash(unsigned) };
+      await client.query(
+        "insert into audit_records(id, organization_id, actor_id, unit_id, workspace_id, action, resource_type, resource_id, result, reason, correlation_id, metadata, chain_version, previous_hash, record_hash, created_at) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::jsonb, $13, $14, $15, $16)",
+        [audit.id, audit.organizationId, audit.actorId, audit.unitId, audit.workspaceId, audit.action, audit.resourceType, audit.resourceId, audit.result, audit.reason, audit.correlationId, JSON.stringify(audit.metadata), audit.chainVersion, audit.previousHash, audit.recordHash, audit.createdAt]
+      );
+      await client.query(
+        "insert into cvg_audit_ledger(audit_id, organization_id, record, record_digest, previous_hash, record_hash, chain_version) values ($1, $2, $3::jsonb, $4, $5, $6, $7)",
+        [audit.id, audit.organizationId, JSON.stringify(audit), digest(audit), audit.previousHash, audit.recordHash, audit.chainVersion]
+      );
+      return audit;
+    }, false);
+  }
+
   async exportRecoveryBundle(organizationId: OpaqueId): Promise<DurableRecoveryBundle | null> {
     return this.organizationTransaction(organizationId, "recovery bundle", async (client) => {
       const snapshotResult = await client.query<SnapshotRow>("select s.revision::text as revision, s.organization_id::text as organization_id, s.schema_version, s.snapshot, s.snapshot_digest, s.event_id::text as event_id, j.snapshot_digest as journal_snapshot_digest from cvg_state_snapshots s left join cvg_event_journal j on j.event_id = s.event_id and j.organization_id = s.organization_id where s.organization_id = cvg_request_organization() order by s.revision desc limit 1");
@@ -2418,11 +3025,11 @@ export class PostgresPersistence {
 
   async commit(input: DurableCommitInput): Promise<DurableSnapshot> {
     const client = await this.pool.connect().catch((error: unknown) => { throw new PersistenceUnavailableError("PostgreSQL writer connection could not be acquired", error); });
+    const organizationId = input.organizationId ?? input.snapshot.organizations[0]?.id;
     try {
-      await client.query("BEGIN");
-      await client.query("select pg_advisory_xact_lock(hashtextextended($1, 0))", [LOCK_KEY]);
-      const organizationId = input.organizationId ?? input.snapshot.organizations[0]?.id;
       if (!organizationId) throw new PersistenceCorruptionError("durable commit has no organization scope for RLS");
+      await client.query("BEGIN");
+      await lockOrganizationAuditChain(client, organizationId);
       if (!input.snapshot.organizations.some((organization) => organization.id === organizationId)) throw new PersistenceCorruptionError(`durable commit snapshot has no organization ${organizationId}`);
       await client.query("select set_config('cvg.organization_id', $1, true)", [organizationId]);
       const currentResult = await client.query<RevisionRow>("select revision::text as revision from cvg_state_snapshots where organization_id = cvg_request_organization() order by cvg_state_snapshots.revision desc limit 1 for update");
@@ -2432,6 +3039,7 @@ export class PostgresPersistence {
       const eventId = input.eventId ?? randomUUID();
       const snapshotJson = canonicalSnapshot(input.snapshot);
       const snapshotDigest = digest(snapshotJson);
+      validateAuthoritativeSnapshot(input.snapshot);
       await projectIdentity(client, input.snapshot);
       await projectDomain(client, input.snapshot, input.normalizedPatientWrite ?? null, input.normalizedAppointmentWrite ?? null, input.normalizedEncounterWrite ?? null, input.normalizedClinicalSignWrite ?? null, input.normalizedClinicalSignReplayId ?? null, input.normalizedGuardianWrite ?? null, input.normalizedGuardianReplayId ?? null, input.normalizedDiagnosticRequestWrite ?? null, input.normalizedDiagnosticRequestReplayId ?? null, input.normalizedSpecimenWrite ?? null, input.normalizedSpecimenReplayId ?? null, input.normalizedDiagnosticResultWrite ?? null, input.normalizedDiagnosticResultReplayId ?? null);
       await projectOutbox(client, organizationId, input.outboxRecords ?? []);
@@ -3110,14 +3718,48 @@ export class PostgresPersistence {
     validateBreakGlassInput(input);
     return this.organizationTransaction(input.organizationId, "break-glass activation record", async (client) => {
       const result = await client.query<BreakGlassRow>(
-        `insert into break_glass_grants(id, organization_id, actor_id, approver_id, reason, target, mfa_method, issued_at, expires_at, status)
-         values ($1, cvg_request_organization(), $2, $3, $4, $5, $6, $7, $8, 'ACTIVE')
+        `insert into break_glass_grants(id, organization_id, actor_id, approver_id, reason, target, scope, mfa_method, issued_at, expires_at, status)
+         values ($1, cvg_request_organization(), $2, $3, $4, $5, $6, $7, $8, $9, 'ACTIVE')
          on conflict (id) do nothing
          returning ${BREAK_GLASS_COLUMNS}`,
-        [input.grantId, input.actorId, input.approverId, input.reason.trim(), input.target.trim(), input.mfaMethod, input.issuedAt, input.expiresAt]
+        [input.grantId, input.actorId, input.approverId, input.reason.trim(), input.target.trim(), input.scope ?? "ORGANIZATION", input.mfaMethod, input.issuedAt, input.expiresAt]
       );
       if (!result.rows[0]) throw new PersistenceStateError(`break-glass grant ${input.grantId} already exists or could not be recorded`);
       return mapBreakGlassRow(result.rows[0]);
+    });
+  }
+
+  /**
+   * Atomically admits the emergency grant and its tamper-evident audit record.
+   * The application boundary must verify WebAuthn and scope before calling
+   * this adapter; this method only owns the durable transaction and RLS fence.
+   */
+  async createBreakGlassGrantWithAudit(input: DurableBreakGlassInput, auditInput: DurableBreakGlassAuditInput): Promise<DurableBreakGlassActivationRecord> {
+    validateBreakGlassInput(input);
+    if (auditInput.organizationId !== input.organizationId || auditInput.resourceId !== input.grantId) throw new PersistenceStateError("break-glass audit must be bound to the admitted grant and organization");
+    return this.organizationTransaction(input.organizationId, "break-glass activation and audit", async (client) => {
+      await lockOrganizationAuditChain(client, input.organizationId);
+      const result = await client.query<BreakGlassRow>(
+        `insert into break_glass_grants(id, organization_id, actor_id, approver_id, reason, target, scope, mfa_method, issued_at, expires_at, status)
+         values ($1, cvg_request_organization(), $2, $3, $4, $5, $6, $7, $8, $9, 'ACTIVE')
+         on conflict (id) do nothing
+         returning ${BREAK_GLASS_COLUMNS}`,
+        [input.grantId, input.actorId, input.approverId, input.reason.trim(), input.target.trim(), input.scope ?? "ORGANIZATION", input.mfaMethod, input.issuedAt, input.expiresAt]
+      );
+      if (!result.rows[0]) throw new PersistenceStateError(`break-glass grant ${input.grantId} already exists or could not be recorded`);
+      const grant = mapBreakGlassRow(result.rows[0]);
+      const tail = await client.query<{ record_hash: string | null }>("select record_hash from cvg_audit_ledger where organization_id = cvg_request_organization() order by sequence_id desc limit 1 for update");
+      const unsigned: AuditRecord = { ...auditInput, id: id(randomUUID()), chainVersion: 2, previousHash: tail.rows[0]?.record_hash ?? null, recordHash: "", createdAt: now() };
+      const audit: AuditRecord = { ...unsigned, recordHash: auditRecordHash(unsigned) };
+      await client.query(
+        "insert into audit_records(id, organization_id, actor_id, unit_id, workspace_id, action, resource_type, resource_id, result, reason, correlation_id, metadata, chain_version, previous_hash, record_hash, created_at) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::jsonb, $13, $14, $15, $16)",
+        [audit.id, audit.organizationId, audit.actorId, audit.unitId, audit.workspaceId, audit.action, audit.resourceType, audit.resourceId, audit.result, audit.reason, audit.correlationId, JSON.stringify(audit.metadata), audit.chainVersion, audit.previousHash, audit.recordHash, audit.createdAt]
+      );
+      await client.query(
+        "insert into cvg_audit_ledger(audit_id, organization_id, record, record_digest, previous_hash, record_hash, chain_version) values ($1, $2, $3::jsonb, $4, $5, $6, $7)",
+        [audit.id, audit.organizationId, JSON.stringify(audit), digest(audit), audit.previousHash, audit.recordHash, audit.chainVersion]
+      );
+      return { grant, audit };
     });
   }
 
@@ -3269,6 +3911,34 @@ export class PostgresPersistence {
       const row = result.rows[0];
       return { depth: row?.depth ?? 0, oldestAgeMs: row ? Number(row.oldest_age_ms) : 0, poisonMessages: row?.poison_messages ?? 0 };
     }, true);
+  }
+
+  poolCapacity(): PostgresPoolCapacity {
+    return {
+      total: this.pool.totalCount,
+      idle: this.pool.idleCount,
+      waiting: this.pool.waitingCount,
+      max: this.poolMax
+    };
+  }
+
+  async maintainWorkerRecords(organizationId: OpaqueId, completedBefore: string, limit = 500): Promise<DurableWorkerMaintenanceResult> {
+    if (Number.isNaN(Date.parse(completedBefore))) throw new PersistenceStateError("worker maintenance cutoff is invalid");
+    const boundedLimit = Math.min(5_000, Math.max(1, Math.trunc(limit)));
+    return this.organizationTransaction(organizationId, "worker record maintenance", async (client) => {
+      const jobs = await client.query<{ id: string }>(
+        "with candidates as (select id from cvg_worker_jobs where organization_id = cvg_request_organization() and status = 'COMPLETED' and processed_at < $1::timestamptz order by processed_at, id for update skip locked limit $2) delete from cvg_worker_jobs as job using candidates where job.id = candidates.id and job.organization_id = cvg_request_organization() returning job.id::text as id",
+        [completedBefore, boundedLimit]
+      );
+      const completedJobsPruned = jobs.rowCount ?? jobs.rows.length;
+      const remaining = Math.max(0, boundedLimit - completedJobsPruned);
+      const heartbeats = remaining === 0 ? { rowCount: 0 } : await client.query<{ worker_id: string }>(
+        "with candidates as (select worker_id from cvg_worker_heartbeats where organization_id = cvg_request_organization() and status = 'STOPPED' and expires_at < $1::timestamptz order by expires_at, worker_id for update skip locked limit $2) delete from cvg_worker_heartbeats as heartbeat using candidates where heartbeat.organization_id = cvg_request_organization() and heartbeat.worker_id = candidates.worker_id returning heartbeat.worker_id",
+        [completedBefore, remaining]
+      );
+      const stoppedHeartbeatsPruned = "rows" in heartbeats ? heartbeats.rowCount ?? heartbeats.rows.length : 0;
+      return { completedJobsPruned, stoppedHeartbeatsPruned };
+    });
   }
 
   async recordWorkerHeartbeat(input: DurableWorkerHeartbeatInput): Promise<DurableWorkerHeartbeatRecord> {

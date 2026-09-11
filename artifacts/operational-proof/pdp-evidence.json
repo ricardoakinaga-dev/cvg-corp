@@ -1,0 +1,28 @@
+{
+  "scope": "pdp-structural-repair",
+  "baseSha": "e43b3b0032aafb9d17563b1fce00fbae88ee0d51",
+  "worktree": "modified, no exact-SHA CI claimed",
+  "command": "npm test",
+  "exit": 0,
+  "result": {
+    "tests": 186,
+    "passed": 185,
+    "skipped": 1,
+    "failed": 0
+  },
+  "rawArtifact": "artifacts/operational-proof/pdp-regression-repaired.txt",
+  "rawSha256": "9bfa24bcb3686f40124874a8072badbd18d570d5e923cc7f85e12e9f10da611c",
+  "sourceSha256": {
+    "scripts/pdp-boundary.ts": "46566e15f0a9a0b026c3fc87e56624a3bfcb3c08a0ba3b803480fee776180475",
+    "scripts/pdp-route-inventory.ts": "80b118c0907c8d9cba1726ec7231cb391393bc1ca4c2fa27bd4ebec70d018345",
+    "scripts/verify-pdp-coverage.ts": "25d5065735040615e50a209c7d32ebc38ee789c61f8cac5aa4cfbd1af27ba88b",
+    "tests/unit/pdp-coverage.test.ts": "58c5e29b58bfa38e18312ff358a9eaeeb54a3261f1af344c3a38858137023b49",
+    "tests/unit/pdp-route-inventory.test.ts": "ab442245f89acd37466d748ccb93f23de14cf5f275b2469a01e0ef414fd5bf75"
+  },
+  "limitations": [
+    "structural guard only",
+    "no full universal PDP proof",
+    "no remote CI for changed artifact",
+    "no staging/provider/DeepSeek real execution"
+  ]
+}

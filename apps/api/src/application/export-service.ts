@@ -1,5 +1,5 @@
 import { enforceApplicationPolicy } from "@cvg/agent-policy";
-import type { CvgContext, GovernedExportInput, OpaqueId } from "@cvg/contracts";
+import { governedExportInputSchema, type CvgContext, type GovernedExportInput, type OpaqueId } from "@cvg/contracts";
 import { DomainError, digest, makeId, now, type CvgStore } from "@cvg/domain";
 import { encryptRecoveryBundle, type EncryptedRecoveryBundle, type PostgresPersistence } from "@cvg/persistence";
 import type { SecretProvider } from "@cvg/integrations";
@@ -43,6 +43,9 @@ export class ExportApplicationService {
   async create(context: CvgContext, input: GovernedExportInput, idempotencyKey: string): Promise<IdempotentCommandResult<GovernedExportResult>> {
     this.store.validateContext(context);
     enforceApplicationPolicy(context, "ops.export", { dataClass: "D4" });
+    const parsed = governedExportInputSchema.safeParse(input);
+    if (!parsed.success) throw new DomainError("INVALID_INPUT", "A exportação D4 não atende ao registry de finalidade, escopo ou TTL.", 400, { issues: parsed.error.issues.map((issue) => ({ path: issue.path, message: issue.message })) });
+    const governedInput = parsed.data;
     return this.commands.execute({
       organizationId: context.organizationId,
       actorId: context.actorId,
@@ -52,7 +55,7 @@ export class ExportApplicationService {
       resourceId: null,
       unitId: context.unitId,
       workspaceId: context.workspaceId,
-      body: input
+      body: governedInput
     }, async () => {
       if (!this.persistence) throw new DomainError("CAPABILITY_DISABLED", "A exportação governada exige persistência PostgreSQL durável.", 503);
       if (!this.secretProvider || this.secretProvider.status() !== "READY" || !this.keyRef || !this.secretProvider.has(this.keyRef) || !this.secretProvider.resolve) throw new DomainError("CREDENTIAL_UNAVAILABLE", "A referência da chave de exportação não está disponível; nenhum dado foi exportado.", 503);
@@ -66,15 +69,17 @@ export class ExportApplicationService {
       const bundle = await this.persistence.exportRecoveryBundle(context.organizationId);
       if (!bundle) throw new DomainError("DEPENDENCY_UNAVAILABLE", "Não existe um estado durável confirmado para exportar.", 503);
       const createdAt = now();
-      const expiresAt = new Date(Date.parse(createdAt) + input.ttlSeconds * 1_000).toISOString();
+      const expiresAt = new Date(Date.parse(createdAt) + governedInput.ttlSeconds * 1_000).toISOString();
       const envelope = encryptRecoveryBundle(bundle, recoveryKey(rawKey), this.keyRef, { expiresAt });
       return {
         exportId: makeId(),
-        purpose: input.purpose,
-        purposeDigest: digest(input.purpose),
+        purpose: governedInput.purpose,
+        purposeDigest: digest(governedInput.purpose),
         createdAt,
         expiresAt,
-        scope: { organizationId: context.organizationId, unitId: context.unitId, workspaceId: context.workspaceId },
+        // The persisted bundle is organization-scoped.  Do not echo the
+        // caller's narrower context as if the payload had been filtered.
+        scope: { organizationId: context.organizationId, unitId: null, workspaceId: null },
         manifest: { format: bundle.manifest.format, version: bundle.manifest.version, revision: bundle.revision.toString(), snapshotDigest: bundle.snapshotDigest, eventId: bundle.eventId, migrationFingerprint: bundle.manifest.migrationFingerprint },
         envelope
       };
@@ -83,5 +88,5 @@ export class ExportApplicationService {
 }
 
 export function governedExportDigest(result: GovernedExportResult): string {
-  return digest({ exportId: result.exportId, purposeDigest: result.purposeDigest, expiresAt: result.expiresAt, payloadDigest: result.envelope.payloadDigest, snapshotDigest: result.manifest.snapshotDigest });
+  return digest({ exportId: result.exportId, purpose: result.purpose, scope: result.scope, purposeDigest: result.purposeDigest, expiresAt: result.expiresAt, payloadDigest: result.envelope.payloadDigest, snapshotDigest: result.manifest.snapshotDigest });
 }

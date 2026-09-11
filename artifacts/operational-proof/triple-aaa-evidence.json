@@ -1,0 +1,676 @@
+{
+  "schemaVersion": 1,
+  "stateOfTheArtStatus": "STATE_OF_THE_ART_NOT_PROVEN",
+  "status": "AAA_NOT_PROVEN",
+  "sourceSha": "e43b3b0032aafb9d17563b1fce00fbae88ee0d51",
+  "ciSha": null,
+  "artifactSha": null,
+  "artifactDigest": null,
+  "artifactEvidencePath": null,
+  "worktree": "MODIFIED",
+  "mandatoryGates": {
+    "universalPdp": "VERIFIED",
+    "authoritativeWrites": "VERIFIED",
+    "deepseek": "BLOCKED_EXTERNAL",
+    "provider": "BLOCKED_EXTERNAL",
+    "secretAuthority": "NOT_RUN",
+    "postgresConcurrency": "BLOCKED_EXTERNAL",
+    "webauthnBreakGlass": "NOT_RUN",
+    "staging": "NOT_RUN",
+    "observability": "NOT_RUN",
+    "browserMatrix": "NOT_RUN",
+    "load": "NOT_RUN",
+    "chaos": "NOT_RUN",
+    "recovery": "NOT_RUN",
+    "restore": "BLOCKED_EXTERNAL",
+    "rtoRpo": "NOT_RUN",
+    "ciSameSha": "NOT_RUN",
+    "resourcePressure": "NOT_RUN",
+    "securityHeaders": "NOT_RUN",
+    "productionConfig": "NOT_RUN",
+    "containerSmoke": "NOT_RUN",
+    "stagingPromotion": "NOT_RUN",
+    "runbookExecution": "NOT_RUN",
+    "critics": "NOT_RUN",
+    "repairLoop": "NOT_RUN",
+    "humanApproval": "NOT_RUN"
+  },
+  "qualityBar": {
+    "architecture": null,
+    "security": null,
+    "reliability": null,
+    "criticalBlockers": "UNKNOWN",
+    "unresolvedHigh": "UNKNOWN",
+    "mandatoryDimensions": {
+      "architecture": null,
+      "domainIntegrity": null,
+      "security": null,
+      "authentication": null,
+      "authorization": null,
+      "pdp": null,
+      "toolGateway": null,
+      "database": null,
+      "reliability": null,
+      "workers": null,
+      "deepseek": null,
+      "aiGovernance": null,
+      "providerIntegration": null,
+      "frontend": null,
+      "accessibility": null,
+      "testing": null,
+      "observability": null,
+      "performance": null,
+      "recovery": null,
+      "devOps": null,
+      "supplyChain": null,
+      "productionReadiness": null
+    }
+  },
+  "limitations": [
+    "This artifact describes the current modified worktree and cannot promote it.",
+    "Every mandatory external gate remains fail-closed until evidence is produced and bound to one clean SHA.",
+    "The H-01 architecture rerun closes public-domain return aliases and direct governed-map bypasses. H-02 AST coverage now handles aliases, casts, destructuring, static and dynamic collection access; H-02-L remains MEDIUM/advisory because this is not full call-graph/data-flow analysis.",
+    "The final architecture critic is audit-only and issued no approval.",
+    "A quarantine marker, not an orphan DiagnosticResult row, records an unresolved external diagnostic result; authoritative validation, hydrate/restore and SQL projection share the same strict parent contract.",
+    "External gate receipts require Ed25519 authority signatures bound to exact evidence digests; the same-SHA external bundle and human approval are absent.",
+    "The final gauntlet admission contract requires all 15 prompt critic categories, each with a typed verdict and findings severity; this does not convert local audit output into independent approval.",
+    "External gate receipts require a separate gate-specific execution artifact, independent Ed25519 reviewer attestation for review gates, and separate F23/F24 red-team evidence; local fixtures do not satisfy those external requirements.",
+    "Smoke promotion evidence must prove shutdown, durable outbox/effect/reconciliation, idempotent replay and restart recovery. CI provenance must include byte-bound SBOM and completed CI results.",
+    "API compatibility is locally fail-closed with no approved legacy upcaster; v2 route activation remains blocked pending reviewed schema migration."
+  ],
+  "scorecard": {
+    "schemaVersion": 1,
+    "scale": "0-100",
+    "candidateThreshold": 95,
+    "requiredThresholds": {
+      "architecture": 97,
+      "domainIntegrity": 97,
+      "security": 97,
+      "authentication": 97,
+      "authorization": 97,
+      "pdp": 97,
+      "toolGateway": 97,
+      "database": 97,
+      "reliability": 97,
+      "workers": 96,
+      "deepseek": 95,
+      "aiGovernance": 97,
+      "providerIntegration": 95,
+      "frontend": 95,
+      "accessibility": 95,
+      "testing": 97,
+      "observability": 95,
+      "performance": 95,
+      "recovery": 97,
+      "devOps": 96,
+      "supplyChain": 95,
+      "productionReadiness": 95
+    },
+    "overallThreshold": 97,
+    "dimensions": {
+      "architecture": {
+        "score": null,
+        "evidence": [
+          "not-proven"
+        ],
+        "sha": null,
+        "test": [
+          "not-run"
+        ],
+        "artifact": [
+          "artifacts/operational-proof/local-verification-2026-09-10.json"
+        ],
+        "limitations": [
+          "external evidence unavailable"
+        ],
+        "residualRisk": [
+          "promotion blocked"
+        ]
+      },
+      "domainIntegrity": {
+        "score": null,
+        "evidence": [
+          "not-proven"
+        ],
+        "sha": null,
+        "test": [
+          "not-run"
+        ],
+        "artifact": [
+          "artifacts/operational-proof/local-verification-2026-09-10.json"
+        ],
+        "limitations": [
+          "external evidence unavailable"
+        ],
+        "residualRisk": [
+          "promotion blocked"
+        ]
+      },
+      "security": {
+        "score": null,
+        "evidence": [
+          "not-proven"
+        ],
+        "sha": null,
+        "test": [
+          "not-run"
+        ],
+        "artifact": [
+          "artifacts/operational-proof/local-verification-2026-09-10.json"
+        ],
+        "limitations": [
+          "external evidence unavailable"
+        ],
+        "residualRisk": [
+          "promotion blocked"
+        ]
+      },
+      "authentication": {
+        "score": null,
+        "evidence": [
+          "not-proven"
+        ],
+        "sha": null,
+        "test": [
+          "not-run"
+        ],
+        "artifact": [
+          "artifacts/operational-proof/local-verification-2026-09-10.json"
+        ],
+        "limitations": [
+          "external evidence unavailable"
+        ],
+        "residualRisk": [
+          "promotion blocked"
+        ]
+      },
+      "authorization": {
+        "score": null,
+        "evidence": [
+          "not-proven"
+        ],
+        "sha": null,
+        "test": [
+          "not-run"
+        ],
+        "artifact": [
+          "artifacts/operational-proof/local-verification-2026-09-10.json"
+        ],
+        "limitations": [
+          "external evidence unavailable"
+        ],
+        "residualRisk": [
+          "promotion blocked"
+        ]
+      },
+      "pdp": {
+        "score": null,
+        "evidence": [
+          "not-proven"
+        ],
+        "sha": null,
+        "test": [
+          "not-run"
+        ],
+        "artifact": [
+          "artifacts/operational-proof/local-verification-2026-09-10.json"
+        ],
+        "limitations": [
+          "external evidence unavailable"
+        ],
+        "residualRisk": [
+          "promotion blocked"
+        ]
+      },
+      "toolGateway": {
+        "score": null,
+        "evidence": [
+          "not-proven"
+        ],
+        "sha": null,
+        "test": [
+          "not-run"
+        ],
+        "artifact": [
+          "artifacts/operational-proof/local-verification-2026-09-10.json"
+        ],
+        "limitations": [
+          "external evidence unavailable"
+        ],
+        "residualRisk": [
+          "promotion blocked"
+        ]
+      },
+      "database": {
+        "score": null,
+        "evidence": [
+          "not-proven"
+        ],
+        "sha": null,
+        "test": [
+          "not-run"
+        ],
+        "artifact": [
+          "artifacts/operational-proof/local-verification-2026-09-10.json"
+        ],
+        "limitations": [
+          "external evidence unavailable"
+        ],
+        "residualRisk": [
+          "promotion blocked"
+        ]
+      },
+      "reliability": {
+        "score": null,
+        "evidence": [
+          "not-proven"
+        ],
+        "sha": null,
+        "test": [
+          "not-run"
+        ],
+        "artifact": [
+          "artifacts/operational-proof/local-verification-2026-09-10.json"
+        ],
+        "limitations": [
+          "external evidence unavailable"
+        ],
+        "residualRisk": [
+          "promotion blocked"
+        ]
+      },
+      "workers": {
+        "score": null,
+        "evidence": [
+          "not-proven"
+        ],
+        "sha": null,
+        "test": [
+          "not-run"
+        ],
+        "artifact": [
+          "artifacts/operational-proof/local-verification-2026-09-10.json"
+        ],
+        "limitations": [
+          "external evidence unavailable"
+        ],
+        "residualRisk": [
+          "promotion blocked"
+        ]
+      },
+      "deepseek": {
+        "score": null,
+        "evidence": [
+          "not-proven"
+        ],
+        "sha": null,
+        "test": [
+          "not-run"
+        ],
+        "artifact": [
+          "artifacts/operational-proof/local-verification-2026-09-10.json"
+        ],
+        "limitations": [
+          "external evidence unavailable"
+        ],
+        "residualRisk": [
+          "promotion blocked"
+        ]
+      },
+      "aiGovernance": {
+        "score": null,
+        "evidence": [
+          "not-proven"
+        ],
+        "sha": null,
+        "test": [
+          "not-run"
+        ],
+        "artifact": [
+          "artifacts/operational-proof/local-verification-2026-09-10.json"
+        ],
+        "limitations": [
+          "external evidence unavailable"
+        ],
+        "residualRisk": [
+          "promotion blocked"
+        ]
+      },
+      "providerIntegration": {
+        "score": null,
+        "evidence": [
+          "not-proven"
+        ],
+        "sha": null,
+        "test": [
+          "not-run"
+        ],
+        "artifact": [
+          "artifacts/operational-proof/local-verification-2026-09-10.json"
+        ],
+        "limitations": [
+          "external evidence unavailable"
+        ],
+        "residualRisk": [
+          "promotion blocked"
+        ]
+      },
+      "frontend": {
+        "score": null,
+        "evidence": [
+          "not-proven"
+        ],
+        "sha": null,
+        "test": [
+          "not-run"
+        ],
+        "artifact": [
+          "artifacts/operational-proof/local-verification-2026-09-10.json"
+        ],
+        "limitations": [
+          "external evidence unavailable"
+        ],
+        "residualRisk": [
+          "promotion blocked"
+        ]
+      },
+      "accessibility": {
+        "score": null,
+        "evidence": [
+          "not-proven"
+        ],
+        "sha": null,
+        "test": [
+          "not-run"
+        ],
+        "artifact": [
+          "artifacts/operational-proof/local-verification-2026-09-10.json"
+        ],
+        "limitations": [
+          "external evidence unavailable"
+        ],
+        "residualRisk": [
+          "promotion blocked"
+        ]
+      },
+      "testing": {
+        "score": null,
+        "evidence": [
+          "not-proven"
+        ],
+        "sha": null,
+        "test": [
+          "not-run"
+        ],
+        "artifact": [
+          "artifacts/operational-proof/local-verification-2026-09-10.json"
+        ],
+        "limitations": [
+          "external evidence unavailable"
+        ],
+        "residualRisk": [
+          "promotion blocked"
+        ]
+      },
+      "observability": {
+        "score": null,
+        "evidence": [
+          "not-proven"
+        ],
+        "sha": null,
+        "test": [
+          "not-run"
+        ],
+        "artifact": [
+          "artifacts/operational-proof/local-verification-2026-09-10.json"
+        ],
+        "limitations": [
+          "external evidence unavailable"
+        ],
+        "residualRisk": [
+          "promotion blocked"
+        ]
+      },
+      "performance": {
+        "score": null,
+        "evidence": [
+          "not-proven"
+        ],
+        "sha": null,
+        "test": [
+          "not-run"
+        ],
+        "artifact": [
+          "artifacts/operational-proof/local-verification-2026-09-10.json"
+        ],
+        "limitations": [
+          "external evidence unavailable"
+        ],
+        "residualRisk": [
+          "promotion blocked"
+        ]
+      },
+      "recovery": {
+        "score": null,
+        "evidence": [
+          "not-proven"
+        ],
+        "sha": null,
+        "test": [
+          "not-run"
+        ],
+        "artifact": [
+          "artifacts/operational-proof/local-verification-2026-09-10.json"
+        ],
+        "limitations": [
+          "external evidence unavailable"
+        ],
+        "residualRisk": [
+          "promotion blocked"
+        ]
+      },
+      "devOps": {
+        "score": null,
+        "evidence": [
+          "not-proven"
+        ],
+        "sha": null,
+        "test": [
+          "not-run"
+        ],
+        "artifact": [
+          "artifacts/operational-proof/local-verification-2026-09-10.json"
+        ],
+        "limitations": [
+          "external evidence unavailable"
+        ],
+        "residualRisk": [
+          "promotion blocked"
+        ]
+      },
+      "supplyChain": {
+        "score": null,
+        "evidence": [
+          "not-proven"
+        ],
+        "sha": null,
+        "test": [
+          "not-run"
+        ],
+        "artifact": [
+          "artifacts/operational-proof/local-verification-2026-09-10.json"
+        ],
+        "limitations": [
+          "external evidence unavailable"
+        ],
+        "residualRisk": [
+          "promotion blocked"
+        ]
+      },
+      "productionReadiness": {
+        "score": null,
+        "evidence": [
+          "not-proven"
+        ],
+        "sha": null,
+        "test": [
+          "not-run"
+        ],
+        "artifact": [
+          "artifacts/operational-proof/local-verification-2026-09-10.json"
+        ],
+        "limitations": [
+          "external evidence unavailable"
+        ],
+        "residualRisk": [
+          "promotion blocked"
+        ]
+      }
+    },
+    "overall": {
+      "score": null,
+      "evidence": [
+        "not-proven"
+      ],
+      "sha": null,
+      "test": [
+        "not-run"
+      ],
+      "artifact": [
+        "artifacts/operational-proof/local-verification-2026-09-10.json"
+      ],
+      "limitations": [
+        "external evidence unavailable"
+      ],
+      "residualRisk": [
+        "promotion blocked"
+      ]
+    }
+  },
+  "observedAt": "2026-09-11T17:30:54.372Z",
+  "qualityBarRef": ".gauntlet/bar-v4.json",
+  "promptSha256": "39dfbb610267b61854b972bf8513f6562b0ee374aa308f7a79b38d21f2cdeae3",
+  "localVerification": {
+    "record": "VER-CVG-268",
+    "tests": {
+      "total": 330,
+      "passed": 329,
+      "skipped": 1,
+      "failed": 0
+    },
+    "static": "PASS; 149 required artifacts/171 sources",
+    "lint": 169,
+    "resourcePressure": {
+      "controls": 6,
+      "status": "LOCAL_CONTRACT_VERIFIED"
+    },
+    "runbookExecution": {
+      "controls": 12,
+      "status": "LOCAL_CONTRACT_VERIFIED",
+      "fixtures": "PASS; 7/7 F35 scenario fixtures EXECUTED_LOCAL; live NOT_RUN",
+      "live": "NOT_RUN"
+    },
+    "productionConfig": "LOCAL_CONTRACT_VERIFIED",
+    "securityHeaders": "LOCAL_CONTRACT_VERIFIED",
+    "globalVerdict": "AAA_NOT_PROVEN",
+    "runtimeSupplyChain": "LOCAL_CONTRACT_VERIFIED; tsx is a production dependency and Dockerfile.api prunes dev dependencies",
+    "critics": "FAIL review-only fresh 15-category critic VER-CVG-268; no external or human approval",
+    "pdpUniversal": "PASS; 68 operations/72 rules/6 tools/26 route tests; all 41 CvgStore collections checked; AST guard covers nested destructuring and function argument/return aliases; dynamic collection access fails closed",
+    "memoryStoreBoundary": "PASS_LOCAL_GUARD; AST analysis covers direct, bracket, cast, destructuring (including nested), function-parameter and function-return aliases; dynamic collection access fails closed; external call-graph/data-flow authority remains unproven",
+    "domainReturnBoundary": "PASS_LOCAL_GUARD; only private helpers retain internal references; public users/sessions/challenges/assignments/patients/entities/lists are detached",
+    "criticsAddendum": {
+      "record": "VER-CVG-268",
+      "observedAt": "2026-09-11T17:30:54.372Z",
+      "priorRecord": "VER-CVG-262",
+      "critic": ".gauntlet/critique-final-gauntlet-20260911-VER268.md",
+      "status": "FAIL",
+      "evidenceAdmission": "LOCAL_SNAPSHOT_GUARD",
+      "scope": "current PostgreSQL migrations 001-036 proof, durable reconciliation runner, outbox per-attempt audit/metrics, hash-based audit-chain, recovery-boundary authentication-shape and temporal validation and final fresh gauntlet",
+      "sourceSha": "e43b3b0032aafb9d17563b1fce00fbae88ee0d51",
+      "promptSha256": "39dfbb610267b61854b972bf8513f6562b0ee374aa308f7a79b38d21f2cdeae3",
+      "result": "VER-CVG-268: PostgreSQL migrations 001-036, local worker/audit-chain and recovery-boundary raw authentication-shape, temporal and durable-ledger digest regression with fresh review limitations; external gates remain absent",
+      "globalVerdict": "AAA_NOT_PROVEN"
+    },
+    "quarantineContract": "PASS_LOCAL; orphan diagnostic results are recorded only in quarantined metadata and never projected into authoritative diagnostic_results",
+    "evidenceSnapshot": "PASS_LOCAL; 10 artifacts; current byte-bound run is in evidence-snapshot.json",
+    "externalReceipts": "PASS_LOCAL_BOUNDARY; external receipts are gate/artifact/byte bound, with separate execution evidence and independent reviewer key required for review gates; no external bundle supplied",
+    "observedAt": "2026-09-11T17:30:54.372Z",
+    "hydrateBoundary": "PASS_LOCAL; shared full snapshot semantics validator runs before parse/hydrate/restore and authoritative persistence; unknown fields, invalid statuses, duplicate IDs, broken relational chains, product drift and cross-organization actors reject before authority replacement",
+    "parserRecovery": "PASS_LOCAL; parseSnapshot and validateRecoveryBundle share the same semantic validator",
+    "e2e": "124 pass+29 skip; 0 failed; user-local-prefix full matrix; host-native WebKit attempt blocked by missing libgstcodecparsers-1.0.so.0",
+    "promotionInventory": "25 mandatory gates; exact F0-F38 phase coverage; F12 WebAuthn/break-glass has a dedicated receipt; F23/F24 red-team artifacts, independent review signatures, SBOM and CI-result provenance are mandatory",
+    "operationalBackup": {
+      "status": "VERIFIED_LOCAL/PARTIAL_EXTERNAL",
+      "composition": "apps/worker/src/main.ts + docker/worker.ts preflight one encrypted backup, then start/stop OperationalBackupJob without a duplicate immediate run",
+      "scope": "one explicit CVG_BACKUP_ORGANIZATION_ID equal to CVG_WORKER_ORGANIZATION_ID per worker; no silent tenant omission",
+      "controls": [
+        "AES-256-GCM manifest/digest/keyRef",
+        "atomic write 0700/0600",
+        "verify-before-rotation",
+        "missing-key/state/scope fail-closed"
+      ],
+      "configuration": [
+        "CVG_BACKUP_ENABLED",
+        "CVG_BACKUP_DIRECTORY",
+        "CVG_BACKUP_INTERVAL_MS",
+        "CVG_BACKUP_KEEP_LAST",
+        "CVG_RECOVERY_ENCRYPTION_KEY_REF"
+      ],
+      "external": "managed volume/Secret Authority/scheduler, restore, RPO-RTO and multi-tenant operation not executed"
+    },
+    "containerSmoke": "PASS_LOCAL_CONTRACT; full smoke requires graceful shutdown, durable outbox/reconciliation, idempotent replay and restart recovery",
+    "qualityBar": "IMMUTABLE_POLICY_VERIFIED; prompt SHA, thresholds, evidence rules and AAA policy are exact",
+    "focusedEvidenceTests": "55=55 pass+0 fail (bounded worker/integration/audit-chain review)",
+    "apiCompatibility": {
+      "status": "VERIFIED_LOCAL_FAIL_CLOSED",
+      "catalog": "v1",
+      "v2": "PREPARED_ONLY",
+      "upcasters": "FAIL_CLOSED_REGISTRY",
+      "registered": 0,
+      "legacySchemasAccepted": false,
+      "artifact": "docs/api-compatibility-proof.md"
+    }
+  },
+  "auditAddendum": {
+    "record": "VER-CVG-268",
+    "observedAt": "2026-09-11T17:30:54.372Z",
+    "priorRecord": "VER-CVG-262",
+    "critic": ".gauntlet/critique-final-gauntlet-20260911-VER268.md",
+    "status": "FAIL",
+    "evidenceAdmission": "LOCAL_SNAPSHOT_GUARD",
+    "scope": "current PostgreSQL migrations 001-036 proof, durable reconciliation runner, outbox per-attempt audit/metrics, hash-based audit-chain, recovery-boundary authentication-shape and temporal validation and final fresh gauntlet",
+    "sourceSha": "e43b3b0032aafb9d17563b1fce00fbae88ee0d51",
+    "promptSha256": "39dfbb610267b61854b972bf8513f6562b0ee374aa308f7a79b38d21f2cdeae3",
+    "result": "VER-CVG-268: PostgreSQL migrations 001-036, local worker/audit-chain and recovery-boundary raw authentication-shape, temporal and durable-ledger digest regression with fresh review limitations; external gates remain absent",
+    "globalVerdict": "AAA_NOT_PROVEN"
+  },
+  "operationalBackup": {
+    "status": "VERIFIED_LOCAL/PARTIAL_EXTERNAL",
+    "composition": "apps/worker/src/main.ts + docker/worker.ts preflight one encrypted backup, then start/stop OperationalBackupJob without a duplicate immediate run",
+    "scope": "one explicit CVG_BACKUP_ORGANIZATION_ID equal to CVG_WORKER_ORGANIZATION_ID per worker; no silent tenant omission",
+    "controls": [
+      "AES-256-GCM manifest/digest/keyRef",
+      "atomic write 0700/0600",
+      "verify-before-rotation",
+      "missing-key/state/scope fail-closed"
+    ],
+    "configuration": [
+      "CVG_BACKUP_ENABLED",
+      "CVG_BACKUP_DIRECTORY",
+      "CVG_BACKUP_INTERVAL_MS",
+      "CVG_BACKUP_KEEP_LAST",
+      "CVG_RECOVERY_ENCRYPTION_KEY_REF"
+    ],
+    "external": "managed volume/Secret Authority/scheduler, restore, RPO-RTO and multi-tenant operation not executed"
+  },
+  "apiCompatibility": {
+    "status": "VERIFIED_LOCAL_FAIL_CLOSED",
+    "catalog": "v1",
+    "v2": "PREPARED_ONLY",
+    "upcasters": "FAIL_CLOSED_REGISTRY",
+    "registered": 0,
+    "legacySchemasAccepted": false,
+    "artifact": "docs/api-compatibility-proof.md"
+  },
+  "globalVerdict": "AAA_NOT_PROVEN"
+}

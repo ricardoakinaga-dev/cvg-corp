@@ -18,6 +18,10 @@ services:
       - /run/postgresql
     security_opt:
       - no-new-privileges:true
+    ulimits:
+      nofile:
+        soft: 4096
+        hard: 8192
     networks:
       - backend
     deploy:
@@ -51,6 +55,10 @@ services:
       - no-new-privileges:true
     cap_drop:
       - ALL
+    ulimits:
+      nofile:
+        soft: 4096
+        hard: 8192
     healthcheck:
       disable: true
     networks:
@@ -108,6 +116,10 @@ services:
       - no-new-privileges:true
     cap_drop:
       - ALL
+    ulimits:
+      nofile:
+        soft: 4096
+        hard: 8192
     networks:
       - backend
       - observability
@@ -139,6 +151,10 @@ services:
       - no-new-privileges:true
     cap_drop:
       - ALL
+    ulimits:
+      nofile:
+        soft: 2048
+        hard: 4096
     networks:
       - backend
     deploy:
@@ -157,6 +173,7 @@ services:
     image: ${CVG_API_IMAGE:-cvg-corp/api:local}
     command: ["node", "--import", "tsx", "docker/worker.ts"]
     environment:
+      NODE_ENV: ${NODE_ENV:-development}
       DATABASE_URL: ${DATABASE_URL:?DATABASE_URL must be supplied with an URL-encoded password}
       CVG_WORKER_ORGANIZATION_ID: ${CVG_WORKER_ORGANIZATION_ID:?CVG_WORKER_ORGANIZATION_ID must be supplied through an external env file}
       CVG_WORKER_ID: ${CVG_WORKER_ID:-cvg-worker-local}
@@ -164,6 +181,12 @@ services:
       CVG_WORKER_MAX_OUTSTANDING: ${CVG_WORKER_MAX_OUTSTANDING:-1000}
       CVG_WORKER_SINK_MODE: ${CVG_WORKER_SINK_MODE:-quarantine}
       CVG_WORKER_HEARTBEAT_FILE: /tmp/cvg-worker/heartbeat
+      CVG_BACKUP_ENABLED: ${CVG_BACKUP_ENABLED:-false}
+      CVG_BACKUP_ORGANIZATION_ID: ${CVG_BACKUP_ORGANIZATION_ID:-}
+      CVG_BACKUP_DIRECTORY: ${CVG_BACKUP_DIRECTORY:-}
+      CVG_BACKUP_INTERVAL_MS: ${CVG_BACKUP_INTERVAL_MS:-3600000}
+      CVG_BACKUP_KEEP_LAST: ${CVG_BACKUP_KEEP_LAST:-7}
+      CVG_RECOVERY_ENCRYPTION_KEY_REF: ${CVG_RECOVERY_ENCRYPTION_KEY_REF:-}
       CVG_SECRET_PROVIDER: ${CVG_SECRET_PROVIDER:-none}
       CVG_SECRET_DIR: ${CVG_SECRET_DIR:-/run/secrets/cvg}
       CVG_MESSAGING_PROVIDER_ENDPOINT: ${CVG_MESSAGING_PROVIDER_ENDPOINT:-}
@@ -180,10 +203,16 @@ services:
     read_only: true
     tmpfs:
       - /tmp
+    volumes:
+      - cvg_corp_backups:/var/lib/cvg/backups
     security_opt:
       - no-new-privileges:true
     cap_drop:
       - ALL
+    ulimits:
+      nofile:
+        soft: 4096
+        hard: 8192
     networks:
       - backend
       - observability
@@ -222,6 +251,10 @@ services:
     cap_drop:
       - ALL
     user: "101"
+    ulimits:
+      nofile:
+        soft: 2048
+        hard: 4096
     networks:
       - backend
     deploy:
@@ -238,6 +271,7 @@ services:
 
 volumes:
   cvg_corp_pgdata:
+  cvg_corp_backups:
 
 networks:
   backend:

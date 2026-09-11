@@ -1,0 +1,44 @@
+{
+  "scope": "LOCAL_EXECUTION_ONLY",
+  "status": "VERIFIED",
+  "observedAt": "2026-09-11T12:19:52.588Z",
+  "qualityBar": ".gauntlet/bar-v4.json",
+  "promptSha256": "39dfbb610267b61854b972bf8513f6562b0ee374aa308f7a79b38d21f2cdeae3",
+  "baseSha": "e43b3b0032aafb9d17563b1fce00fbae88ee0d51",
+  "worktree": "modified",
+  "commands": [
+    "npm run verify:pdp",
+    "npm run verify:pdp-universal",
+    "npm run verify:authoritative-writes",
+    "npm run verify:postgres:concurrency",
+    "npm run verify:static",
+    "npm test"
+  ],
+  "regression": {
+    "tests": 319,
+    "passed": 318,
+    "skipped": 1,
+    "failed": 0
+  },
+  "pdp": {
+    "requestBoundOperations": 68,
+    "applicationRules": 72,
+    "toolPolicies": 6,
+    "runtimeRouteRegistrations": 114,
+    "runtimeRouteTests": {
+      "passed": 26,
+      "failed": 0
+    },
+    "workerPolicyRegistry": "WORKER_POLICY_REGISTRY",
+    "directRoutePersistenceBypasses": 0
+  },
+  "globalVerdict": "AAA_NOT_PROVEN",
+  "externalBlockers": [
+    "real DeepSeek endpoint/engine turn",
+    "real provider receipt/callback",
+    "staging and same-SHA CI evidence",
+    "staging PostgreSQL multi-instance concurrency and production role evidence",
+    "production-like load/chaos/recovery and human approval"
+  ],
+  "finalVerification": "VER-CVG-241"
+}

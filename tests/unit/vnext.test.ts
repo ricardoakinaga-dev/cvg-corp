@@ -6,8 +6,8 @@ import { GovernedHarness } from "@cvg/harness";
 import { StaticPolicyDecisionPoint, applicationPolicyFor, assertPolicyAllowed, authorizeApplicationRequest } from "@cvg/agent-policy";
 import { InMemoryToolExecutionLedger, ToolGateway, ToolGatewayError, toolRegistryDigest, type ToolDescriptor } from "@cvg/agent-tools";
 import { DeepSeekHarnessAdapter, MockHarnessAdapter } from "@cvg/harness-adapters";
-import { ConfigError, loadCvgConfig } from "@cvg/config";
-import { createRuntime, MemoryRateLimiter } from "@cvg/api";
+import { ConfigError, WorkerConfigError, loadCvgConfig, loadWorkerConfig } from "@cvg/config";
+import { assertProductionRuntimeOverrides, createRuntime, MemoryRateLimiter } from "@cvg/api";
 import { EnvironmentSecretProvider } from "@cvg/integrations";
 import { ApiError, createApiClient, isContextRevalidationError, isPermissionDeniedError, isStaleDataError } from "../../apps/web/src/api/client.ts";
 import { canRenderContextData, isWriteAllowed, RUNTIME_STATES, runtimeStateReducer, type RuntimeSnapshot } from "../../apps/web/src/state/runtime-state.ts";
@@ -158,6 +158,11 @@ test("Mock adapter exposes the provider-neutral runtime lifecycle", async () => 
   const result = await adapter.executeTurn(context, { sessionId: session.id, prompt: "organize a fila", purpose: "OPERATIONS", patientId: null, encounterId: null, requestedTool: null, approvalId: null, idempotencyKey: "mock-turn-1" });
   assert.equal(result.provenance.provider, "local-stub");
   assert.equal(result.provenance.manifestVersion, "0.1.1-rc.2");
+  assert.equal(result.turn.usage?.settlement?.model, result.turn.model);
+  assert.equal(result.turn.usage?.settlement?.inputTokens, result.turn.inputTokens);
+  assert.equal(result.turn.usage?.settlement?.outputTokens, result.turn.outputTokens);
+  assert.equal(result.turn.usage?.settlement?.estimatedCost.source, "LOCAL_SYNTHETIC");
+  assert.equal(result.turn.usage?.settlement?.discrepancy.status, "MATCHED");
   const replay = await adapter.replay(context, session.id);
   assert.equal(replay.turns.length, 1);
   await adapter.shutdown();
@@ -205,9 +210,64 @@ test("typed configuration rejects unknown CVG keys and insecure production", () 
   assert.equal(config.demoMode, false);
   assert.equal(config.apiPort, 4321);
   assert.equal(config.workerMaxOutstandingOutbox, 321);
+  assert.equal(loadCvgConfig({ NODE_ENV: "test", CVG_RELEASE_SHA: "0123456789abcdef0123456789abcdef01234567", CVG_RELEASE_ARTIFACT_DIGEST: "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef" }).releaseArtifactDigest, "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef");
   assert.throws(() => loadCvgConfig({ CVG_UNSAFE_MODE: "true" }), (error: unknown) => error instanceof ConfigError);
   assert.throws(() => loadCvgConfig({ NODE_ENV: "production", CVG_DEMO_MODE: "false", CVG_WEB_ORIGIN: "http://example.test" }), (error: unknown) => error instanceof ConfigError);
   assert.throws(() => loadCvgConfig({ NODE_ENV: "production", CVG_DEMO_MODE: "false", CVG_WEB_ORIGIN: "https://example.test", CVG_STORAGE: "memory", CVG_SECRET_PROVIDER: "none", CVG_DEEPSEEK_RUNTIME_ENABLED: "false" }), (error: unknown) => error instanceof ConfigError);
+  const production = {
+    NODE_ENV: "production", CVG_HOST: "0.0.0.0", CVG_DEMO_MODE: "false", CVG_WEB_ORIGIN: "https://example.test", CVG_RELEASE_SHA: "0123456789abcdef0123456789abcdef01234567", CVG_RELEASE_ARTIFACT_DIGEST: "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef", CVG_STORAGE: "postgres", DATABASE_URL: "postgresql://cvg_runtime:password@db.example.test/cvg", CVG_SECRET_PROVIDER: "file", CVG_AUTH_MFA_MODE: "required", CVG_DEEPSEEK_RUNTIME_ENABLED: "true", CVG_DEEPSEEK_BASE_URL: "https://harness.example.test", CVG_DEEPSEEK_EXPECTED_ENGINE_COMMIT: "abcdefabcdefabcdefabcdefabcdefabcdefabcd", CVG_DEEPSEEK_EXPECTED_MANIFEST_VERSION: "approved", CVG_DEEPSEEK_BEARER_TOKEN_REF: "harness.token", CVG_DEEPSEEK_CONTEXT_SIGNING_SECRET_REF: "harness.context", CVG_RATE_LIMIT_BACKEND: "distributed", CVG_TRUST_PROXY: "true", CVG_TRUSTED_PROXY_IPS: "loopback"
+  };
+  assert.doesNotThrow(() => loadCvgConfig(production));
+  assert.deepEqual(loadCvgConfig({ ...production, CVG_TRUSTED_PROXY_IPS: "10.0.0.0/8,loopback" }).trustedProxyIps, ["10.0.0.0/8", "loopback"]);
+  assert.throws(() => loadCvgConfig({ ...production, CVG_TRUSTED_PROXY_IPS: "" }), (error: unknown) => error instanceof ConfigError);
+  assert.throws(() => loadCvgConfig({ ...production, CVG_DEEPSEEK_EXPECTED_ENGINE_COMMIT: "0000000000000000000000000000000000000000" }), (error: unknown) => error instanceof ConfigError);
+  assert.throws(() => loadCvgConfig({ ...production, CVG_RELEASE_ARTIFACT_DIGEST: "sha256:not-a-digest" }), (error: unknown) => error instanceof ConfigError);
+});
+
+test("worker configuration has a role-specific production contract", () => {
+  const worker = loadWorkerConfig({
+    NODE_ENV: "production",
+    CVG_STORAGE: "postgres",
+    DATABASE_URL: "postgresql://cvg_runtime:password@db.example.test/cvg",
+    CVG_WORKER_ORGANIZATION_ID: "00000000-0000-4000-0000-000000000010",
+    CVG_BACKUP_ENABLED: "true",
+    CVG_BACKUP_ORGANIZATION_ID: "00000000-0000-4000-0000-000000000010",
+    CVG_BACKUP_DIRECTORY: "/var/lib/cvg/backups",
+    CVG_BACKUP_INTERVAL_MS: "3600000",
+    CVG_BACKUP_KEEP_LAST: "7",
+    CVG_RECOVERY_ENCRYPTION_KEY_REF: "recovery.key",
+    CVG_WORKER_SINK_MODE: "enabled",
+    CVG_SECRET_PROVIDER: "file",
+    CVG_MESSAGING_PROVIDER_ENDPOINT: "https://provider.example.test",
+    CVG_MESSAGING_PROVIDER_ALLOWED_HOSTS: "provider.example.test",
+    CVG_MESSAGING_CREDENTIAL_REF: "provider.credential"
+  });
+  assert.equal(worker.nodeEnv, "production");
+  assert.equal(worker.storageMode, "postgres");
+  assert.equal(worker.workerSinkMode, "enabled");
+  assert.throws(() => loadWorkerConfig({
+    NODE_ENV: "production",
+    CVG_STORAGE: "postgres",
+    DATABASE_URL: "postgresql://cvg_runtime:password@db.example.test/cvg",
+    CVG_WORKER_ORGANIZATION_ID: "00000000-0000-4000-0000-000000000010",
+    CVG_WORKER_SINK_MODE: "enabled",
+    CVG_SECRET_PROVIDER: "file",
+    CVG_MESSAGING_PROVIDER_ENDPOINT: "http://provider.example.test",
+    CVG_MESSAGING_PROVIDER_ALLOWED_HOSTS: "provider.example.test",
+    CVG_MESSAGING_CREDENTIAL_REF: "provider.credential"
+  }), (error: unknown) => error instanceof WorkerConfigError);
+  assert.throws(() => loadWorkerConfig({
+    NODE_ENV: "production",
+    CVG_STORAGE: "postgres",
+    DATABASE_URL: "postgresql://cvg_runtime:password@db.example.test/cvg",
+    CVG_WORKER_ORGANIZATION_ID: "00000000-0000-4000-0000-000000000010",
+    CVG_WORKER_SINK_MODE: "enabled",
+    CVG_SECRET_PROVIDER: "file",
+    CVG_MESSAGING_PROVIDER_ENDPOINT: "https://provider.example.test",
+    CVG_MESSAGING_PROVIDER_ALLOWED_HOSTS: "provider.example.test",
+    CVG_MESSAGING_CREDENTIAL_REF: "provider.credential",
+    CVG_UNSAFE_MODE: "true"
+  }), (error: unknown) => error instanceof WorkerConfigError);
 });
 
 test("typed configuration accepts the explicit ACP boundary without enabling it implicitly", () => {
@@ -238,11 +298,29 @@ test("local rate limiting is bounded and production requires a distributed seam"
   assert.throws(() => loadCvgConfig({ NODE_ENV: "production", CVG_DEMO_MODE: "false", CVG_WEB_ORIGIN: "https://example.test", CVG_STORAGE: "postgres", CVG_SECRET_PROVIDER: "file", CVG_AUTH_MFA_MODE: "required", CVG_DEEPSEEK_RUNTIME_ENABLED: "true", CVG_DEEPSEEK_BASE_URL: "https://harness.example.test", CVG_DEEPSEEK_EXPECTED_ENGINE_COMMIT: "0000000000000000000000000000000000000000", CVG_DEEPSEEK_EXPECTED_MANIFEST_VERSION: "approved", CVG_DEEPSEEK_BEARER_TOKEN_REF: "harness.token", CVG_RATE_LIMIT_BACKEND: "local" }), (error: unknown) => error instanceof ConfigError);
 });
 
+test("production runtime rejects injected synthetic dependencies while preserving explicit authority seams", () => {
+  assert.throws(
+    () => assertProductionRuntimeOverrides("production", { store: {} as CvgStore }),
+    (error: unknown) => error instanceof Error && /dependências injetadas/.test(error.message)
+  );
+  assert.throws(
+    () => assertProductionRuntimeOverrides("production", { agentRuntime: {} as never }),
+    (error: unknown) => error instanceof Error && /agentRuntime/.test(error.message)
+  );
+  assert.doesNotThrow(() => assertProductionRuntimeOverrides("production", { breakGlassWebAuthnAuthority: {} as never, breakGlassScopeAuthority: {} as never }));
+  assert.doesNotThrow(() => assertProductionRuntimeOverrides("test", { store: {} as CvgStore, agentRuntime: {} as never }));
+});
+
 test("default runtime registers the complete tool catalog", async () => {
-  const runtime = await createRuntime({ store: new CvgStore({ bootstrapPassword: "synthetic-password-123" }), config: { nodeEnv: "test", host: "127.0.0.1", port: 4310, webOrigin: "http://127.0.0.1:5173", storageMode: "memory", demoMode: true } });
+  const releaseSha = "0123456789abcdef0123456789abcdef01234567";
+  const releaseArtifactDigest = "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+  const runtime = await createRuntime({ store: new CvgStore({ bootstrapPassword: "synthetic-password-123" }), config: { nodeEnv: "test", host: "127.0.0.1", port: 4310, webOrigin: "http://127.0.0.1:5173", releaseSha, releaseArtifactDigest, storageMode: "memory", demoMode: true } });
   const health = await runtime.agentRuntime.health();
   assert.equal(health.status, "READY");
   assert.equal(health.capabilities.toolNames.length, 6);
+  const ready = await runtime.app.inject({ method: "GET", url: "/api/v1/ready" });
+  assert.equal(ready.headers["x-cvg-release-sha"], releaseSha);
+  assert.equal(ready.headers["x-cvg-release-artifact-digest"], releaseArtifactDigest);
   await runtime.app.close();
 });
 

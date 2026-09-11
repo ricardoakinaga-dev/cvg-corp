@@ -13,8 +13,16 @@ type StockItem = {
   location: { name: string } | null;
 };
 
+export function stockProgressValue(item: StockItem): number {
+  return Math.min(100, Math.max(0, item.quantity / Math.max(1, (item.product?.reorderPoint ?? 1) * 2) * 100));
+}
+
+function progressPercent(item: StockItem): number {
+  return Math.max(6, stockProgressValue(item));
+}
+
 function progressClass(item: StockItem): string {
-  const percent = Math.min(100, Math.max(6, item.quantity / Math.max(1, (item.product?.reorderPoint ?? 1) * 2) * 100));
+  const percent = progressPercent(item);
   const bucket = Math.min(100, Math.max(5, Math.round(percent / 5) * 5));
   return `stock-progress-${bucket}`;
 }
@@ -63,7 +71,7 @@ export function Stock({ client, context, notify }: { client: ApiClient; context:
                 <h3>{item.product?.name ?? "Produto"}</h3>
                 <span className="table-sub">Lote {item.lotNumber} · vence {new Date(item.expiresOn).toLocaleDateString("pt-BR")}</span>
                 <div className="stock-quantity"><strong>{item.quantity}</strong><span>{item.product?.unit ?? "unidades"}</span></div>
-                <div className="stock-progress" aria-label={`Saldo relativo de ${item.product?.name ?? "produto"}`}><span className={progressClass(item)} /></div>
+                <div className="stock-progress" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(stockProgressValue(item))} aria-label={`Saldo relativo de ${item.product?.name ?? "produto"}`}><span className={progressClass(item)} /></div>
                 <small>{item.location?.name ?? "Local não informado"}</small>
               </article>;
             })}</div> : <StatePanel kind="empty" title="Sem lotes neste contexto" body="Cadastre o primeiro produto para acompanhar validade e saldo." />}

@@ -1,0 +1,9 @@
+# Prova de security red team
+
+Status local: `SECURITY_RED_TEAM_LOCAL_CONTRACT_VERIFIED`; status de promoção: `AAA_NOT_PROVEN`.
+
+`npm run verify:security-red-team` verifica os 24 critérios explícitos das Fases 23–24: acesso cross-organization/unit/workspace, IDOR, escalada de role, fixation de sessão, CSRF, bypass de MFA, abuso de break-glass, prompt e tool injection, bypass de aprovação, poisoning de RAG, extração de segredo, falsificação de callback, RLS, suposições de superuser, escalada da role runtime, joins cross-tenant, FK poisoning, `search_path` inseguro, SQL injection e confusão entre privilégio de migration/runtime. O relatório executável está em [`artifacts/operational-proof/security-red-team-local.json`](../artifacts/operational-proof/security-red-team-local.json). Critérios ligados a testes usam `--test-name-pattern` por caso; controles de migration/role sem fixture runtime aparecem explicitamente como `VERIFIED_STATIC_CONTRACT`. Isso prova o recorte local e mantém staging adversarial e revisão independente externos.
+
+Na revalidação `VER-CVG-193`, o verificador também executou os fixtures `tests/unit/auth.test.ts`, `tests/unit/vnext.test.ts`, `tests/unit/integrations.test.ts`, `tests/integration/persistence.test.ts` e `tests/integration/faults.test.ts`; a execução terminou `PASS`. Isso aumenta a evidência local reproduzível, mas não muda a classificação externa.
+
+Esta é uma prova local de contrato e não uma campanha independente de produção. Continuam sem execução autorizada: escalada da role runtime contra staging, extração real de segredos, falsificação contra provider externo, exfiltração com egress real, replay em staging, revisão independente de achados e decisão humana sobre risco residual HIGH/CRITICAL. Nenhum risco residual é aceito por silêncio; o scorecard permanece `FAIL_WITH_LIMITATIONS` e o verificador Triplo AAA mantém o bloqueio fail-closed.

@@ -18,6 +18,19 @@ const browserProjects: Project[] = browserDevices.flatMap(([browser, browserDevi
   use: { ...browserDevice, viewport: { width: settings.width, height: settings.height }, isMobile: settings.isMobile }
 })));
 
+const stressProjects: Project[] = browserDevices.map(([browser, browserDevice]) => ({
+  name: browser + "-stress",
+  testMatch: /accessibility.*\.spec\.ts/,
+  use: {
+    ...(browser === "webkit" ? devices["iPhone 13"] : browserDevice),
+    viewport: { width: 320, height: 812 },
+    deviceScaleFactor: 2,
+    hasTouch: browser !== "firefox",
+    isMobile: true,
+    reducedMotion: "reduce"
+  }
+}));
+
 export default defineConfig({
   testDir: "tests/e2e",
   timeout: 30_000,
@@ -32,16 +45,5 @@ export default defineConfig({
     { command: "CVG_HOST=127.0.0.1 CVG_API_PORT=4310 CVG_STORAGE=memory CVG_DEMO_MODE=true CVG_RATE_LIMIT_REQUESTS_PER_WINDOW=10000 npm run dev:api", url: "http://127.0.0.1:4310/api/v1/health", reuseExistingServer: false, timeout: 30_000 },
     { command: "npm run dev:web", url: "http://127.0.0.1:5173", reuseExistingServer: false, timeout: 30_000 }
   ],
-  projects: [...browserProjects, {
-    name: "chromium-stress",
-    testMatch: /accessibility.*\.spec\.ts/,
-    use: {
-      ...devices["Desktop Chrome"],
-      viewport: { width: 320, height: 812 },
-      deviceScaleFactor: 2,
-      hasTouch: true,
-      isMobile: true,
-      reducedMotion: "reduce"
-    }
-  }]
+  projects: [...browserProjects, ...stressProjects]
 });

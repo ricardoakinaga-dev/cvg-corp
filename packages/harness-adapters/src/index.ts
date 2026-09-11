@@ -1,10 +1,9 @@
-import { createHmac } from "node:crypto";
 import { z } from "zod";
-import { id } from "@cvg/contracts";
+import { randomUUID } from "node:crypto";
+import { aiTurnWireSchema, id } from "@cvg/contracts";
 import type { AiApproval, AiDraft, AiSession, AiTurn, AiTurnInput, CvgContext, OpaqueId } from "@cvg/contracts";
 import { DSH_MANIFEST_VERSION, GovernedHarness, TOOL_REGISTRY, type HarnessTurnResult } from "@cvg/harness";
-import type { AgentDraftPromotion, AgentReplayResult, AgentRuntime, AgentRuntimeCapabilities, AgentRuntimeHealth, AgentTurnResult } from "@cvg/agent-runtime";
-import { AgentRuntimeUnavailableError } from "@cvg/agent-runtime";
+import { replayDigest, type AgentDraftPromotion, type AgentReplayResult, type AgentRuntime, type AgentRuntimeCapabilities, type AgentRuntimeHealth, type AgentTurnResult, AgentRuntimeUnavailableError, bridgeRequestSignature } from "@cvg/agent-runtime";
 
 function nowIso(): string { return new Date().toISOString(); }
 
@@ -80,18 +79,7 @@ const sessionWireSchema = z.object({
   status: z.enum(["ACTIVE", "CLOSED", "QUARANTINED"]),
   createdAt: z.string().min(1)
 }).strict();
-const turnWireSchema = z.object({
-  id: opaqueIdSchema,
-  sessionId: opaqueIdSchema,
-  prompt: z.string(),
-  response: z.string().nullable(),
-  status: z.enum(["RECEIVED", "DENIED", "COMPLETED", "QUARANTINED", "OUTCOME_UNKNOWN"]),
-  model: z.string().min(1),
-  inputTokens: z.number().int().nonnegative(),
-  outputTokens: z.number().int().nonnegative(),
-  references: z.array(z.object({ title: z.string(), source: z.string() }).strict()),
-  createdAt: z.string().min(1)
-}).strict();
+const turnWireSchema = aiTurnWireSchema;
 const draftWireSchema = z.object({
   id: opaqueIdSchema,
   sessionId: opaqueIdSchema,
@@ -147,7 +135,7 @@ const capabilityWireSchema = z.object({
   toolNames: z.array(z.string().min(1)),
   supports: z.object({ cancellation: z.boolean(), approvals: z.boolean(), replay: z.boolean(), provenance: z.boolean() }).strict()
 }).strict();
-const replayWireSchema = z.object({ session: sessionWireSchema, turns: z.array(turnWireSchema), digest: z.string().min(1), provenance: capabilityWireSchema }).strict();
+const replayWireSchema = z.object({ session: sessionWireSchema, turns: z.array(turnWireSchema), digest: z.string().regex(/^[a-f0-9]{64}$/), provenance: capabilityWireSchema }).strict();
 const promotionWireSchema = z.object({ draft: draftWireSchema, documentId: opaqueIdSchema }).strict();
 
 function unwrap(payload: unknown): unknown {
@@ -165,10 +153,6 @@ function rejectBoundary(detail: string): never {
   throw new AgentRuntimeUnavailableError(`O DeepSeek Harness violou a fronteira de autoridade CVG: ${detail}`);
 }
 
-function contextSignaturePayload(context: CvgContext): string {
-  return JSON.stringify({ context, correlationId: context.correlationId });
-}
-
 function assertSessionBinding(session: AiSession, context: CvgContext, expected: Pick<AiTurnInput, "purpose" | "patientId" | "encounterId">, expectedSessionId: OpaqueId | null = null): void {
   if (expectedSessionId && session.id !== expectedSessionId) rejectBoundary("a sessão retornada não corresponde à sessão solicitada");
   if (session.organizationId !== context.organizationId || session.actorId !== context.actorId || session.unitId !== context.unitId || session.workspaceId !== context.workspaceId || session.purpose !== expected.purpose || session.patientId !== expected.patientId || session.encounterId !== expected.encounterId) rejectBoundary("a sessão retornada escapou do ator, escopo ou propósito autenticado");
@@ -177,18 +161,20 @@ function assertSessionBinding(session: AiSession, context: CvgContext, expected:
 
 function assertTurnResultBinding(result: AgentTurnResult, context: CvgContext, input: AiTurnInput, expectedEngineCommit: string, expectedManifestVersion: string): void {
   assertSessionBinding(result.session, context, input, input.sessionId);
+  if (result.session.engineCommit !== expectedEngineCommit || result.provenance.profileDigest !== result.session.profileDigest) rejectBoundary("a sessão e provenance não correspondem ao engine/profile aprovado");
   if (result.turn.sessionId !== result.session.id || result.turn.prompt !== input.prompt) rejectBoundary("o turno retornado não corresponde à sessão ou ao prompt enviado");
   if (result.provenance.provider !== "deepseek" || result.provenance.engineCommit !== expectedEngineCommit || result.provenance.manifestVersion !== expectedManifestVersion || result.provenance.policyRevision !== context.policyRevision || result.provenance.correlationId !== context.correlationId) rejectBoundary("provenance, policy revision ou correlation ID não correspondem ao contexto CVG");
   if (result.approval) {
     const approval = result.approval;
-    if (approval.organizationId !== context.organizationId || approval.actorId !== context.actorId || approval.sessionId !== result.session.id || approval.unitId !== context.unitId || approval.workspaceId !== context.workspaceId || approval.patientId !== input.patientId || approval.encounterId !== input.encounterId || approval.purpose !== input.purpose || approval.resourceId !== (input.resourceId ?? input.encounterId ?? input.patientId) || approval.policyRevision !== context.policyRevision || (input.requestedTool !== null && approval.toolName !== input.requestedTool)) rejectBoundary("a aprovação retornada não está vinculada ao turno exato");
+    if (approval.turnId !== result.turn.id || approval.organizationId !== context.organizationId || approval.actorId !== context.actorId || approval.sessionId !== result.session.id || approval.unitId !== context.unitId || approval.workspaceId !== context.workspaceId || approval.patientId !== input.patientId || approval.encounterId !== input.encounterId || approval.purpose !== input.purpose || approval.resourceId !== (input.resourceId ?? input.encounterId ?? input.patientId) || approval.policyRevision !== context.policyRevision || (input.requestedTool !== null && approval.toolName !== input.requestedTool)) rejectBoundary("a aprovação retornada não está vinculada ao turno exato");
   }
-  if (result.draft && (result.draft.sessionId !== result.session.id || result.draft.encounterId !== input.encounterId)) rejectBoundary("o rascunho retornado escapou da sessão ou atendimento");
+  if (result.draft && (result.draft.sourceTurnId !== result.turn.id || result.draft.sessionId !== result.session.id || result.draft.encounterId !== input.encounterId)) rejectBoundary("o rascunho retornado escapou da sessão ou atendimento");
 }
 
 function assertReplayBinding(result: AgentReplayResult, context: CvgContext, sessionId: OpaqueId, expectedEngineCommit: string, expectedManifestVersion: string): void {
   if (result.session.id !== sessionId || result.session.organizationId !== context.organizationId || result.session.actorId !== context.actorId || result.session.unitId !== context.unitId || result.session.workspaceId !== context.workspaceId || result.provenance.engineCommit !== expectedEngineCommit || result.provenance.manifestVersion !== expectedManifestVersion || result.provenance.provider !== "deepseek") rejectBoundary("o replay retornado não está vinculado ao contexto ou ao profile aprovado");
   if (result.turns.some((turn) => turn.sessionId !== sessionId)) rejectBoundary("o replay contém turno de outra sessão");
+  if (result.digest !== replayDigest(result.session, result.turns)) rejectBoundary("o digest do replay não corresponde ao ledger canônico recebido");
 }
 
 /**
@@ -238,6 +224,7 @@ export class DeepSeekHarnessAdapter implements AgentRuntime {
     await this.requireReady();
     const session = parseWire(sessionWireSchema, unwrap(await this.request("POST", "/v1/sessions", { context, input })), "session") as AiSession;
     assertSessionBinding(session, context, input);
+    if (session.engineCommit !== this.config.expectedEngineCommit) rejectBoundary("a sessão retornada pertence a outro engine commit");
     return session;
   }
 
@@ -251,13 +238,15 @@ export class DeepSeekHarnessAdapter implements AgentRuntime {
   async approve(context: CvgContext, approvalId: OpaqueId, decision: "allowed-once" | "rejected", reason: string | null): Promise<AiApproval> {
     await this.requireReady();
     const approval = parseWire(approvalWireSchema, unwrap(await this.request("POST", `/v1/approvals/${approvalId}`, { context, decision, reason })), "approval") as AiApproval;
-    if (approval.id !== approvalId || approval.organizationId !== context.organizationId || approval.decidedBy !== context.actorId || approval.decision !== decision || approval.reason !== reason) rejectBoundary("a decisão de aprovação não corresponde ao ator ou aos argumentos enviados");
+    if (approval.id !== approvalId || approval.organizationId !== context.organizationId || approval.actorId !== context.actorId || approval.decidedBy !== context.actorId || approval.unitId !== context.unitId || approval.workspaceId !== context.workspaceId || approval.patientId !== context.patientId || approval.encounterId !== context.encounterId || approval.purpose !== context.purpose || approval.policyRevision !== context.policyRevision || approval.decision !== decision || approval.reason !== reason) rejectBoundary("a decisão de aprovação não corresponde ao ator, escopo ou argumentos enviados");
     return approval;
   }
 
   async promoteDraft(context: CvgContext, draftId: OpaqueId): Promise<AgentDraftPromotion> {
     await this.requireReady();
-    return parseWire(promotionWireSchema, unwrap(await this.request("POST", `/v1/drafts/${draftId}/promote`, { context, draftId })), "draft promotion") as AgentDraftPromotion;
+    const promotion = parseWire(promotionWireSchema, unwrap(await this.request("POST", `/v1/drafts/${draftId}/promote`, { context, draftId })), "draft promotion") as AgentDraftPromotion;
+    if (promotion.draft.id !== draftId || promotion.draft.status !== "PROMOTED" || promotion.draft.encounterId !== context.encounterId) rejectBoundary("a promoção retornada não corresponde ao atendimento ou ao estado solicitado");
+    return promotion;
   }
 
   async replay(context: CvgContext, sessionId: OpaqueId): Promise<AgentReplayResult> {
@@ -289,13 +278,18 @@ export class DeepSeekHarnessAdapter implements AgentRuntime {
       if (body !== undefined && method !== "GET") headers["content-type"] = "application/json";
       if (token) headers.authorization = `Bearer ${token}`;
       const context = body && typeof body === "object" && !Array.isArray(body) && "context" in body ? (body as { context?: unknown }).context : undefined;
+      if (context && typeof context === "object" && "correlationId" in context && typeof context.correlationId === "string") headers["x-cvg-correlation-id"] = context.correlationId;
       if (context !== undefined && this.config.resolveContextSigningSecret) {
         if (!context || typeof context !== "object" || Array.isArray(context) || typeof (context as { correlationId?: unknown }).correlationId !== "string") throw new AgentRuntimeUnavailableError("DeepSeek Harness recebeu contexto inválido; nenhum request foi enviado.");
         const signingSecret = await this.config.resolveContextSigningSecret();
         if (!signingSecret?.trim()) throw new AgentRuntimeUnavailableError("DeepSeek Harness sem segredo de assinatura de contexto resolvido; nenhum request foi enviado.");
-        headers["x-cvg-context-signature"] = `sha256=${createHmac("sha256", signingSecret).update(contextSignaturePayload(context as CvgContext), "utf8").digest("hex")}`;
+        const issuedAt = String(Date.now());
+        const nonce = randomUUID();
+        headers["x-cvg-context-issued-at"] = issuedAt;
+        headers["x-cvg-request-nonce"] = nonce;
+        headers["x-cvg-context-signature"] = `sha256=${bridgeRequestSignature(signingSecret.trim(), method, path, issuedAt, body, nonce)}`;
       }
-      const response = await this.fetchImpl(`${this.config.baseUrl.replace(/\/$/, "")}${path}`, { method, headers, ...(body === undefined || method === "GET" ? {} : { body: JSON.stringify(body) }), signal: controller.signal });
+      const response = await this.fetchImpl(`${this.config.baseUrl.replace(/\/$/, "")}${path}`, { method, headers, redirect: "error", ...(body === undefined || method === "GET" ? {} : { body: JSON.stringify(body) }), signal: controller.signal });
       const payload = await response.json();
       if (!response.ok) throw new AgentRuntimeUnavailableError(`DeepSeek Harness respondeu HTTP ${response.status}.`);
       return payload;

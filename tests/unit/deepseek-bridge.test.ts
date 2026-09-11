@@ -1,11 +1,14 @@
-import { createHmac } from "node:crypto";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { once } from "node:events";
-import type { AiTurnInput, CvgContext, OpaqueId } from "@cvg/contracts";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import type { AiTurn, AiTurnInput, CvgContext, OpaqueId } from "@cvg/contracts";
 import { id } from "@cvg/contracts";
 import {
   DeepSeekBridge,
+  bridgeRequestSignature,
   DeepSeekBridgeError,
   type DeepSeekNativeHarnessPort,
   type DeepSeekNativeBaseRequest,
@@ -16,7 +19,9 @@ import {
   type DeepSeekNativeReplayRequest
 } from "@cvg/deepseek-bridge";
 import { DeepSeekHarnessAdapter } from "@cvg/harness-adapters";
+import { replayDigest } from "@cvg/agent-runtime";
 import { createDeepSeekBridgeServer } from "../../apps/deepseek-bridge/src/server.ts";
+import { runDeepSeekProtocolSmoke } from "../../scripts/verify-deepseek-real.ts";
 
 const engineCommit = "approved-commit";
 const manifestVersion = "approved-manifest";
@@ -79,7 +84,7 @@ function successfulPort(overrides: Partial<DeepSeekNativeHarnessPort> = {}): Dee
       const session = sessionFor(request);
       return {
         session,
-        turn: { id: id("turn-1"), sessionId: session.id, prompt: request.input.prompt, response: "fila organizada", status: "COMPLETED", model: "deepseek-test", inputTokens: 3, outputTokens: 2, references: [], createdAt: "2026-09-09T20:00:01.000Z" },
+        turn: { id: id("turn-1"), sessionId: session.id, prompt: request.input.prompt, response: "fila organizada", status: "COMPLETED", model: "deepseek-test", inputTokens: 3, outputTokens: 2, references: [], usage: { id: id("usage-1"), reservationId: null, providerRequestId: "provider-request-1", idempotencyKey: "turn-1", usageKind: "TOKENS", reservedUnits: 5, consumedUnits: 5, status: "SETTLED", record: { kind: "AI_TURN_USAGE" } }, createdAt: "2026-09-09T20:00:01.000Z" },
         draft: null,
         approval: null,
         provenance: { provider: "deepseek", engineCommit, manifestVersion, profileDigest: "profile-1", policyRevision: request.context.policyRevision, references: [], correlationId: request.correlationId }
@@ -93,7 +98,7 @@ function successfulPort(overrides: Partial<DeepSeekNativeHarnessPort> = {}): Dee
     },
     async replay(request: DeepSeekNativeReplayRequest) {
       const session = sessionFor({ context: request.context, input: turnInput(aiSessionId), correlationId: request.correlationId, signal: request.signal });
-      return { session, turns: [], digest: "b".repeat(64), provenance: { adapterId: "deepseek-harness-bridge", provider: "deepseek", engineCommit, manifestVersion, toolNames, supports: { cancellation: true, approvals: true, replay: true, provenance: true } } };
+      return { session, turns: [], digest: replayDigest(session, []), provenance: { adapterId: "deepseek-harness-bridge", provider: "deepseek", engineCommit, manifestVersion, toolNames, supports: { cancellation: true, approvals: true, replay: true, provenance: true } } };
     },
     async shutdown(_request: DeepSeekNativeBaseRequest) { return undefined; }
   };
@@ -125,6 +130,11 @@ test("DeepSeek bridge accepts known-good manifest and preserves correlation/prov
   assert.equal(observedCorrelation, "corr-known-good");
   assert.equal(result.provenance.provider, "deepseek");
   assert.equal(result.provenance.correlationId, "corr-known-good");
+});
+
+test("DeepSeek bridge rejects an approval envelope that disagrees with the turn input", async () => {
+  const runtime = bridge(successfulPort());
+  await assert.rejects(() => runtime.executeTurn(context(), { ...turnInput(), approvalId: id("00000000-0000-4000-8000-000000000301") }, id("00000000-0000-4000-8000-000000000302")), (error: unknown) => error instanceof DeepSeekBridgeError && error.code === "CONTRACT_MISMATCH");
 });
 
 test("DeepSeek bridge rejects manifest, commit and tool mismatches before any turn", async () => {
@@ -202,6 +212,26 @@ test("HTTP bridge exposes structured unavailable health and errors without a nat
   await new Promise<void>((resolveClose, rejectClose) => created.server.close((closeError) => closeError ? rejectClose(closeError) : resolveClose()));
 });
 
+test("HTTP bridge rejects a degraded file SecretProvider even when the named secret exists", () => {
+  const secretDir = mkdtempSync(join(tmpdir(), "cvg-bridge-secret-"));
+  writeFileSync(join(secretDir, "bridge.token"), "synthetic-bridge-token\n", { mode: 0o600 });
+  const keys = ["CVG_SECRET_PROVIDER", "CVG_SECRET_DIR", "CVG_DEEPSEEK_BEARER_TOKEN_REF"] as const;
+  const previous = new Map(keys.map((key) => [key, process.env[key]]));
+  process.env.CVG_SECRET_PROVIDER = "file";
+  process.env.CVG_SECRET_DIR = secretDir;
+  process.env.CVG_DEEPSEEK_BEARER_TOKEN_REF = "bridge.token";
+  try {
+    assert.throws(() => createDeepSeekBridgeServer({ bridge: bridge(successfulPort()), requireBearerToken: true }), /SecretProvider/);
+  } finally {
+    for (const key of keys) {
+      const value = previous.get(key);
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+    rmSync(secretDir, { recursive: true, force: true });
+  }
+});
+
 test("HTTP bridge requires a bearer token when configured and never accepts caller identity alone", async () => {
   const created = createDeepSeekBridgeServer({ requireBearerToken: true, resolveBearerToken: async () => "synthetic-bridge-token" });
   created.server.listen(0, "127.0.0.1");
@@ -233,15 +263,25 @@ test("HTTP bridge binds the caller-supplied context to an HMAC and the adapter s
   const unsignedBody = await unsigned.json() as { error: { code: string } };
   assert.equal(unsigned.status, 401);
   assert.equal(unsignedBody.error.code, "UNAUTHENTICATED");
-  const signedOriginal = createHmac("sha256", contextSecret).update(JSON.stringify({ context: runtimeContext, correlationId: runtimeContext.correlationId }), "utf8").digest("hex");
+  const issuedAt = String(Date.now());
+  const originalPayload = { context: runtimeContext, input: { purpose: "OPERATIONS", patientId: null, encounterId: null } };
+  const signedOriginal = bridgeRequestSignature(contextSecret, "POST", "/v1/sessions", issuedAt, originalPayload);
   const tamperedContext = { ...runtimeContext, actorId: id("actor-tampered") };
-  const tampered = await fetch(`${baseUrl}/v1/sessions`, { method: "POST", headers: { "content-type": "application/json", "x-cvg-correlation-id": runtimeContext.correlationId, "x-cvg-context-signature": `sha256=${signedOriginal}` }, body: JSON.stringify({ context: tamperedContext, input: { purpose: "OPERATIONS", patientId: null, encounterId: null } }) });
+  const tampered = await fetch(`${baseUrl}/v1/sessions`, { method: "POST", headers: { "content-type": "application/json", "x-cvg-correlation-id": runtimeContext.correlationId, "x-cvg-context-issued-at": issuedAt, "x-cvg-context-signature": `sha256=${signedOriginal}` }, body: JSON.stringify({ ...originalPayload, context: tamperedContext }) });
   assert.equal(tampered.status, 401);
 
   const adapter = new DeepSeekHarnessAdapter({ baseUrl, expectedEngineCommit: engineCommit, expectedManifestVersion: manifestVersion, expectedToolNames: toolNames, requestTimeoutMs: 1_000, allowInsecureHttp: true, resolveContextSigningSecret: async () => contextSecret });
   const session = await adapter.createSession(runtimeContext, { purpose: "OPERATIONS", patientId: null, encounterId: null });
   const replay = await adapter.replay(runtimeContext, session.id);
   assert.equal(replay.session.id, session.id);
+  const nonce = "replay-protection-nonce-1";
+  const nonceIssuedAt = String(Date.now());
+  const signedBody = { context: runtimeContext, input: { purpose: "OPERATIONS", patientId: null, encounterId: null } };
+  const signedHeaders = { "content-type": "application/json", "x-cvg-correlation-id": runtimeContext.correlationId, "x-cvg-context-issued-at": nonceIssuedAt, "x-cvg-request-nonce": nonce, "x-cvg-context-signature": `sha256=${bridgeRequestSignature(contextSecret, "POST", "/v1/sessions", nonceIssuedAt, signedBody, nonce)}` };
+  const firstNonceUse = await fetch(`${baseUrl}/v1/sessions`, { method: "POST", headers: signedHeaders, body: JSON.stringify(signedBody) });
+  assert.equal(firstNonceUse.status, 200);
+  const replayedNonce = await fetch(`${baseUrl}/v1/sessions`, { method: "POST", headers: signedHeaders, body: JSON.stringify(signedBody) });
+  assert.equal(replayedNonce.status, 401);
   await adapter.shutdown();
   created.server.closeAllConnections();
   await new Promise<void>((resolveClose, rejectClose) => created.server.close((closeError) => closeError ? rejectClose(closeError) : resolveClose()));
@@ -264,4 +304,126 @@ test("HTTP bridge and provider-neutral adapter complete a known-good synthetic p
   await adapter.shutdown();
   created.server.closeAllConnections();
   await new Promise<void>((resolveClose, rejectClose) => created.server.close((closeError) => closeError ? rejectClose(closeError) : resolveClose()));
+});
+
+test("HTTP bridge rejects expired, future and request-rebound signatures before native execution", async (t) => {
+  const secret = "synthetic-request-key";
+  let executions = 0;
+  const created = createDeepSeekBridgeServer({ bridge: bridge(successfulPort({ async executeTurn(request) { executions += 1; return successfulPort().executeTurn(request); } })), requireContextSignature: true, resolveContextSigningSecret: async () => secret });
+  created.server.listen(0, "127.0.0.1");
+  await once(created.server, "listening");
+  t.after(async () => { created.server.closeAllConnections(); await new Promise<void>((resolve) => created.server.close(() => resolve())); });
+  const address = created.server.address();
+  assert.ok(address && typeof address === "object");
+  const path = `/v1/sessions/${aiSessionId}/turns`;
+  const payload = { context: context(), input: turnInput() };
+  for (const scenario of [
+    { name: "expired", issuedAt: String(Date.now() - 61_000) },
+    { name: "future", issuedAt: String(Date.now() + 60_000) },
+    { name: "method", signedMethod: "GET" },
+    { name: "path", signedPath: "/v1/sessions/another/turns" },
+    { name: "arguments", signedPayload: { ...payload, input: { ...payload.input, prompt: "other prompt" } } }
+  ]) {
+    const issuedAt = scenario.issuedAt ?? String(Date.now());
+    const signature = bridgeRequestSignature(secret, scenario.signedMethod ?? "POST", scenario.signedPath ?? path, issuedAt, scenario.signedPayload ?? payload);
+    const response: Response = await fetch(`http://127.0.0.1:${address.port}${path}`, { method: "POST", headers: { "content-type": "application/json", "x-cvg-context-issued-at": issuedAt, "x-cvg-context-signature": `sha256=${signature}` }, body: JSON.stringify(payload) });
+    assert.equal(response.status, 401, scenario.name);
+  }
+  const otherPath = "/v1/sessions/another/turns";
+  const issuedAt = String(Date.now());
+  const nonce = "other-path-nonce-1234";
+  const response = await fetch(`http://127.0.0.1:${address.port}${otherPath}`, { method: "POST", headers: { "content-type": "application/json", "x-cvg-context-issued-at": issuedAt, "x-cvg-request-nonce": nonce, "x-cvg-context-signature": `sha256=${bridgeRequestSignature(secret, "POST", otherPath, issuedAt, payload, nonce)}` }, body: JSON.stringify(payload) });
+  assert.equal(response.status, 502, "authenticated path/body session mismatch");
+  assert.equal(executions, 0);
+});
+
+test("HTTP disconnect after request body delivery cancels the native turn", async (t) => {
+  let entered!: () => void;
+  let cancelled!: () => void;
+  const started = new Promise<void>((resolve) => { entered = resolve; });
+  const aborted = new Promise<void>((resolve) => { cancelled = resolve; });
+  const created = createDeepSeekBridgeServer({ bridge: bridge(successfulPort({ async executeTurn(request) {
+    entered();
+    return new Promise((_resolve, reject) => request.signal.addEventListener("abort", () => { cancelled(); reject(new Error("cancelled")); }, { once: true }));
+  } }), 2_000) });
+  created.server.listen(0, "127.0.0.1");
+  await once(created.server, "listening");
+  t.after(async () => { created.server.closeAllConnections(); await new Promise<void>((resolve) => created.server.close(() => resolve())); });
+  const address = created.server.address();
+  assert.ok(address && typeof address === "object");
+  const controller = new AbortController();
+  const pending = fetch(`http://127.0.0.1:${address.port}/v1/sessions/${aiSessionId}/turns`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ context: context(), input: turnInput() }), signal: controller.signal });
+  const rejected = assert.rejects(pending);
+  await started;
+  controller.abort();
+  await rejected;
+  let deadline: ReturnType<typeof setTimeout> | undefined;
+  try { await Promise.race([aborted, new Promise<never>((_resolve, reject) => { deadline = setTimeout(() => reject(new Error("native cancellation not propagated")), 500); })]); }
+  finally { clearTimeout(deadline); }
+});
+
+test("real-proof smoke accepts the actual structured wire shape and rejects missing or altered replay", async (t) => {
+  let observedAuthSession: OpaqueId | null | undefined;
+  let replayMode: "valid" | "missing" | "altered" = "valid";
+  const port = successfulPort({
+    async executeTurn(request) { observedAuthSession = request.context.sessionId; return successfulPort().executeTurn(request); },
+    async replay(request) {
+      const base = await successfulPort().replay(request) as Record<string, unknown>;
+      const result = await successfulPort().executeTurn({ ...request, input: turnInput(), approvalId: null }) as { turn: Record<string, unknown> };
+      const turns = replayMode === "missing" ? [] : [{ ...result.turn, ...(replayMode === "altered" ? { response: "tampered" } : {}) }] as AiTurn[];
+      return { ...base, turns, digest: replayDigest(base.session as { engineCommit: string; profileDigest: string }, turns) };
+    }
+  });
+  const created = createDeepSeekBridgeServer({ bridge: bridge(port) });
+  created.server.listen(0, "127.0.0.1");
+  await once(created.server, "listening");
+  t.after(async () => { created.server.closeAllConnections(); await new Promise<void>((resolve) => created.server.close(() => resolve())); });
+  const address = created.server.address();
+  assert.ok(address && typeof address === "object");
+  const adapter = new DeepSeekHarnessAdapter({ baseUrl: `http://127.0.0.1:${address.port}`, expectedEngineCommit: engineCommit, expectedManifestVersion: manifestVersion, expectedToolNames: toolNames, requestTimeoutMs: 1_000, allowInsecureHttp: true });
+  const run = () => runDeepSeekProtocolSmoke(adapter, context(), { purpose: "OPERATIONS", patientId: null, encounterId: null }, turnInput());
+  const evidence = await run();
+  assert.equal(evidence.status, "VERIFIED_PROTOCOL_ONLY");
+  assert.equal(observedAuthSession, context().sessionId);
+  replayMode = "missing";
+  await assert.rejects(run, /exact completed turn/);
+  replayMode = "altered";
+  await assert.rejects(run, /exact completed turn/);
+});
+
+test("bridge independently rejects each identity drift and rechecks identity after native restart", async () => {
+  for (const mismatch of [{ engineCommit: "wrong-commit" }, { manifestVersion: "wrong-manifest" }, { tools: ["wrong-tool"] }]) {
+    let restarted = false;
+    let executions = 0;
+    const port = successfulPort({
+      async health(request) { return { ...await successfulPort().health(request) as Record<string, unknown>, ...(restarted ? mismatch : {}) }; },
+      async executeTurn(request) { executions += 1; return successfulPort().executeTurn(request); }
+    });
+    const runtime = bridge(port);
+    assert.equal((await runtime.health()).status, "READY");
+    restarted = true;
+    await assert.rejects(() => runtime.executeTurn(context(), turnInput()), (error: unknown) => error instanceof DeepSeekBridgeError && error.code === "CONTRACT_MISMATCH");
+    assert.equal(executions, 0);
+  }
+});
+
+test("adapter rejects a stale session engine and draft bound to another turn", async (t) => {
+  let staleEngine = true;
+  const created = createDeepSeekBridgeServer({ bridge: bridge(successfulPort({
+    async createSession(request) { return { ...sessionFor(request), engineCommit: "stale-engine" }; },
+    async executeTurn(request) {
+      const result = await successfulPort().executeTurn(request) as Record<string, unknown>;
+      return { ...result, session: { ...sessionFor(request), ...(staleEngine ? { engineCommit: "stale-engine" } : {}) }, draft: staleEngine ? null : { id: id("draft-1"), sessionId: aiSessionId, encounterId: null, draftType: "SUMMARY", content: "draft", sourceTurnId: id("another-turn"), status: "DRAFT", createdAt: "2026-09-09T20:00:00.000Z" } };
+    }
+  })) });
+  created.server.listen(0, "127.0.0.1");
+  await once(created.server, "listening");
+  t.after(async () => { created.server.closeAllConnections(); await new Promise<void>((resolve) => created.server.close(() => resolve())); });
+  const address = created.server.address();
+  assert.ok(address && typeof address === "object");
+  const adapter = new DeepSeekHarnessAdapter({ baseUrl: `http://127.0.0.1:${address.port}`, expectedEngineCommit: engineCommit, expectedManifestVersion: manifestVersion, expectedToolNames: toolNames, requestTimeoutMs: 1_000, allowInsecureHttp: true });
+  await assert.rejects(() => adapter.createSession(context(), { purpose: "OPERATIONS", patientId: null, encounterId: null }), /engine commit|HTTP 502/);
+  await assert.rejects(() => adapter.executeTurn(context(), turnInput()), /engine\/profile|HTTP 502/);
+  staleEngine = false;
+  await assert.rejects(() => adapter.executeTurn(context(), turnInput()), /rascunho|HTTP 502/);
 });

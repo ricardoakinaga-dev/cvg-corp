@@ -1,0 +1,807 @@
+{
+  "environment": "LOCAL_SYNTHETIC",
+  "schemaVersion": 1,
+  "status": "VERIFIED",
+  "scope": "REGISTRATION_ONLY",
+  "digest": "2093833007b0ccdcb760eecedf435573134a03cab6fe06a829c9cdd1e5e34241",
+  "routes": [
+    {
+      "method": "DELETE",
+      "path": "/api/v1/role-assignments/:id",
+      "operation": "role.revoke",
+      "auth": "SESSION+CSRF+ROLE",
+      "kind": "API"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/ai/health",
+      "operation": "ai.health",
+      "auth": "SESSION+ROLE",
+      "kind": "API"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/ai/sessions",
+      "operation": "ai.sessions.read",
+      "auth": "SESSION+ROLE",
+      "kind": "API"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/ai/sessions/:id/replay",
+      "operation": "ai.replay",
+      "auth": "SESSION+ROLE",
+      "kind": "API"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/appointments",
+      "operation": "appointments.read",
+      "auth": "SESSION",
+      "kind": "API"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/audit",
+      "operation": "audit.read",
+      "auth": "SESSION+ROLE",
+      "kind": "API"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/auth/sessions",
+      "operation": "identity.sessions.read",
+      "auth": "SESSION",
+      "kind": "API"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/capabilities",
+      "operation": "capabilities.read",
+      "auth": "SESSION",
+      "kind": "API"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/clinical/documents",
+      "operation": "clinical.read",
+      "auth": "SESSION",
+      "kind": "API"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/communications",
+      "operation": "communication.read",
+      "auth": "SESSION",
+      "kind": "API"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/context",
+      "operation": "context.select",
+      "auth": "SESSION",
+      "kind": "API"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/contexts",
+      "operation": "contexts.read",
+      "auth": "SESSION",
+      "kind": "API"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/diagnostics/requests",
+      "operation": "diagnostics.read",
+      "auth": "SESSION",
+      "kind": "API"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/diagnostics/results",
+      "operation": "diagnostics.results.read",
+      "auth": "SESSION",
+      "kind": "API"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/diagnostics/specimens",
+      "operation": "diagnostics.specimens.read",
+      "auth": "SESSION",
+      "kind": "API"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/encounters",
+      "operation": "encounters.read",
+      "auth": "SESSION",
+      "kind": "API"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/finance/charges",
+      "operation": "finance.read",
+      "auth": "SESSION",
+      "kind": "API"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/finance/ledger",
+      "operation": "finance.ledger.read",
+      "auth": "SESSION",
+      "kind": "API"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/finance/payments",
+      "operation": "finance.payments.read",
+      "auth": "SESSION",
+      "kind": "API"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/guardians",
+      "operation": "guardians.read",
+      "auth": "SESSION",
+      "kind": "API"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/health",
+      "operation": "health.read",
+      "auth": "PUBLIC",
+      "kind": "API"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/hospitalization/beds",
+      "operation": "hospitalization.beds.read",
+      "auth": "SESSION",
+      "kind": "API"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/hospitalization/episodes",
+      "operation": "hospitalization.read",
+      "auth": "SESSION",
+      "kind": "API"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/knowledge",
+      "operation": "knowledge.read",
+      "auth": "SESSION",
+      "kind": "API"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/me",
+      "operation": "identity.read",
+      "auth": "SESSION",
+      "kind": "API"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/medications/orders",
+      "operation": "medication.read",
+      "auth": "SESSION",
+      "kind": "API"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/metrics",
+      "operation": "metrics.read",
+      "auth": "SESSION+ROLE",
+      "kind": "API"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/operations/summary",
+      "operation": "operations.summary",
+      "auth": "SESSION",
+      "kind": "API"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/ops/snapshot",
+      "operation": "ops.snapshot",
+      "auth": "SESSION+ROLE",
+      "kind": "API"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/patients",
+      "operation": "patients.read",
+      "auth": "SESSION",
+      "kind": "API"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/patients/:id",
+      "operation": "patients.read",
+      "auth": "SESSION",
+      "kind": "API"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/queue",
+      "operation": "queue.read",
+      "auth": "SESSION",
+      "kind": "API"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/ready",
+      "operation": "readiness.read",
+      "auth": "PUBLIC",
+      "kind": "API"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/stock",
+      "operation": "stock.read",
+      "auth": "SESSION",
+      "kind": "API"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/users",
+      "operation": "users.read",
+      "auth": "SESSION+ROLE",
+      "kind": "API"
+    },
+    {
+      "method": "GET",
+      "path": "/internal/metrics",
+      "operation": "metrics.scrape",
+      "auth": "INTERNAL_NETWORK",
+      "kind": "INFRASTRUCTURE"
+    },
+    {
+      "method": "HEAD",
+      "path": "/api/v1/ai/health",
+      "operation": "ai.health",
+      "auth": "SESSION+ROLE",
+      "kind": "DERIVED_HEAD"
+    },
+    {
+      "method": "HEAD",
+      "path": "/api/v1/ai/sessions",
+      "operation": "ai.sessions.read",
+      "auth": "SESSION+ROLE",
+      "kind": "DERIVED_HEAD"
+    },
+    {
+      "method": "HEAD",
+      "path": "/api/v1/ai/sessions/:id/replay",
+      "operation": "ai.replay",
+      "auth": "SESSION+ROLE",
+      "kind": "DERIVED_HEAD"
+    },
+    {
+      "method": "HEAD",
+      "path": "/api/v1/appointments",
+      "operation": "appointments.read",
+      "auth": "SESSION",
+      "kind": "DERIVED_HEAD"
+    },
+    {
+      "method": "HEAD",
+      "path": "/api/v1/audit",
+      "operation": "audit.read",
+      "auth": "SESSION+ROLE",
+      "kind": "DERIVED_HEAD"
+    },
+    {
+      "method": "HEAD",
+      "path": "/api/v1/auth/sessions",
+      "operation": "identity.sessions.read",
+      "auth": "SESSION",
+      "kind": "DERIVED_HEAD"
+    },
+    {
+      "method": "HEAD",
+      "path": "/api/v1/capabilities",
+      "operation": "capabilities.read",
+      "auth": "SESSION",
+      "kind": "DERIVED_HEAD"
+    },
+    {
+      "method": "HEAD",
+      "path": "/api/v1/clinical/documents",
+      "operation": "clinical.read",
+      "auth": "SESSION",
+      "kind": "DERIVED_HEAD"
+    },
+    {
+      "method": "HEAD",
+      "path": "/api/v1/communications",
+      "operation": "communication.read",
+      "auth": "SESSION",
+      "kind": "DERIVED_HEAD"
+    },
+    {
+      "method": "HEAD",
+      "path": "/api/v1/context",
+      "operation": "context.select",
+      "auth": "SESSION",
+      "kind": "DERIVED_HEAD"
+    },
+    {
+      "method": "HEAD",
+      "path": "/api/v1/contexts",
+      "operation": "contexts.read",
+      "auth": "SESSION",
+      "kind": "DERIVED_HEAD"
+    },
+    {
+      "method": "HEAD",
+      "path": "/api/v1/diagnostics/requests",
+      "operation": "diagnostics.read",
+      "auth": "SESSION",
+      "kind": "DERIVED_HEAD"
+    },
+    {
+      "method": "HEAD",
+      "path": "/api/v1/diagnostics/results",
+      "operation": "diagnostics.results.read",
+      "auth": "SESSION",
+      "kind": "DERIVED_HEAD"
+    },
+    {
+      "method": "HEAD",
+      "path": "/api/v1/diagnostics/specimens",
+      "operation": "diagnostics.specimens.read",
+      "auth": "SESSION",
+      "kind": "DERIVED_HEAD"
+    },
+    {
+      "method": "HEAD",
+      "path": "/api/v1/encounters",
+      "operation": "encounters.read",
+      "auth": "SESSION",
+      "kind": "DERIVED_HEAD"
+    },
+    {
+      "method": "HEAD",
+      "path": "/api/v1/finance/charges",
+      "operation": "finance.read",
+      "auth": "SESSION",
+      "kind": "DERIVED_HEAD"
+    },
+    {
+      "method": "HEAD",
+      "path": "/api/v1/finance/ledger",
+      "operation": "finance.ledger.read",
+      "auth": "SESSION",
+      "kind": "DERIVED_HEAD"
+    },
+    {
+      "method": "HEAD",
+      "path": "/api/v1/finance/payments",
+      "operation": "finance.payments.read",
+      "auth": "SESSION",
+      "kind": "DERIVED_HEAD"
+    },
+    {
+      "method": "HEAD",
+      "path": "/api/v1/guardians",
+      "operation": "guardians.read",
+      "auth": "SESSION",
+      "kind": "DERIVED_HEAD"
+    },
+    {
+      "method": "HEAD",
+      "path": "/api/v1/health",
+      "operation": "health.read",
+      "auth": "PUBLIC",
+      "kind": "DERIVED_HEAD"
+    },
+    {
+      "method": "HEAD",
+      "path": "/api/v1/hospitalization/beds",
+      "operation": "hospitalization.beds.read",
+      "auth": "SESSION",
+      "kind": "DERIVED_HEAD"
+    },
+    {
+      "method": "HEAD",
+      "path": "/api/v1/hospitalization/episodes",
+      "operation": "hospitalization.read",
+      "auth": "SESSION",
+      "kind": "DERIVED_HEAD"
+    },
+    {
+      "method": "HEAD",
+      "path": "/api/v1/knowledge",
+      "operation": "knowledge.read",
+      "auth": "SESSION",
+      "kind": "DERIVED_HEAD"
+    },
+    {
+      "method": "HEAD",
+      "path": "/api/v1/me",
+      "operation": "identity.read",
+      "auth": "SESSION",
+      "kind": "DERIVED_HEAD"
+    },
+    {
+      "method": "HEAD",
+      "path": "/api/v1/medications/orders",
+      "operation": "medication.read",
+      "auth": "SESSION",
+      "kind": "DERIVED_HEAD"
+    },
+    {
+      "method": "HEAD",
+      "path": "/api/v1/metrics",
+      "operation": "metrics.read",
+      "auth": "SESSION+ROLE",
+      "kind": "DERIVED_HEAD"
+    },
+    {
+      "method": "HEAD",
+      "path": "/api/v1/operations/summary",
+      "operation": "operations.summary",
+      "auth": "SESSION",
+      "kind": "DERIVED_HEAD"
+    },
+    {
+      "method": "HEAD",
+      "path": "/api/v1/ops/snapshot",
+      "operation": "ops.snapshot",
+      "auth": "SESSION+ROLE",
+      "kind": "DERIVED_HEAD"
+    },
+    {
+      "method": "HEAD",
+      "path": "/api/v1/patients",
+      "operation": "patients.read",
+      "auth": "SESSION",
+      "kind": "DERIVED_HEAD"
+    },
+    {
+      "method": "HEAD",
+      "path": "/api/v1/patients/:id",
+      "operation": "patients.read",
+      "auth": "SESSION",
+      "kind": "DERIVED_HEAD"
+    },
+    {
+      "method": "HEAD",
+      "path": "/api/v1/queue",
+      "operation": "queue.read",
+      "auth": "SESSION",
+      "kind": "DERIVED_HEAD"
+    },
+    {
+      "method": "HEAD",
+      "path": "/api/v1/ready",
+      "operation": "readiness.read",
+      "auth": "PUBLIC",
+      "kind": "DERIVED_HEAD"
+    },
+    {
+      "method": "HEAD",
+      "path": "/api/v1/stock",
+      "operation": "stock.read",
+      "auth": "SESSION",
+      "kind": "DERIVED_HEAD"
+    },
+    {
+      "method": "HEAD",
+      "path": "/api/v1/users",
+      "operation": "users.read",
+      "auth": "SESSION+ROLE",
+      "kind": "DERIVED_HEAD"
+    },
+    {
+      "method": "HEAD",
+      "path": "/internal/metrics",
+      "operation": "metrics.scrape",
+      "auth": "INTERNAL_NETWORK",
+      "kind": "DERIVED_HEAD"
+    },
+    {
+      "method": "OPTIONS",
+      "path": "*",
+      "operation": "cors.preflight",
+      "auth": "CORS_PREFLIGHT",
+      "kind": "INFRASTRUCTURE"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/ai/approvals/:id",
+      "operation": "ai.approval",
+      "auth": "SESSION+CSRF",
+      "kind": "API"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/ai/approvals/:id/retry",
+      "operation": "ai.approval.retry",
+      "auth": "SESSION+CSRF",
+      "kind": "API"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/ai/drafts/:id/promote",
+      "operation": "ai.draft.promote",
+      "auth": "SESSION+CSRF",
+      "kind": "API"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/ai/turns",
+      "operation": "ai.turn",
+      "auth": "SESSION+CSRF",
+      "kind": "API"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/appointments",
+      "operation": "appointments.create",
+      "auth": "SESSION+CSRF",
+      "kind": "API"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/appointments/:id/check-in",
+      "operation": "queue.check-in",
+      "auth": "SESSION+CSRF",
+      "kind": "API"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/demo",
+      "operation": "auth.demo",
+      "auth": "PUBLIC",
+      "kind": "API"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/login",
+      "operation": "auth.login",
+      "auth": "PUBLIC",
+      "kind": "API"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/logout",
+      "operation": "auth.logout",
+      "auth": "SESSION+CSRF",
+      "kind": "API"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/mfa/enroll",
+      "operation": "identity.mfa.enroll",
+      "auth": "SESSION+CSRF",
+      "kind": "API"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/mfa/revoke",
+      "operation": "identity.mfa.revoke",
+      "auth": "SESSION+CSRF",
+      "kind": "API"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/mfa/verify",
+      "operation": "auth.mfa.verify",
+      "auth": "PUBLIC",
+      "kind": "API"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/password/rotate",
+      "operation": "identity.password.rotate",
+      "auth": "SESSION+CSRF",
+      "kind": "API"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/recovery/complete",
+      "operation": "auth.recovery.complete",
+      "auth": "PUBLIC",
+      "kind": "API"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/recovery/start",
+      "operation": "auth.recovery.start",
+      "auth": "PUBLIC",
+      "kind": "API"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/sessions/:id/revoke",
+      "operation": "identity.sessions.revoke",
+      "auth": "SESSION+CSRF",
+      "kind": "API"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/clinical/documents",
+      "operation": "clinical.write",
+      "auth": "SESSION+CSRF",
+      "kind": "API"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/clinical/documents/:id/addenda",
+      "operation": "clinical.addendum",
+      "auth": "SESSION+CSRF",
+      "kind": "API"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/clinical/documents/:id/sign",
+      "operation": "clinical.sign",
+      "auth": "SESSION+CSRF",
+      "kind": "API"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/communications",
+      "operation": "communication.stage",
+      "auth": "SESSION+CSRF",
+      "kind": "API"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/communications/:id/approve",
+      "operation": "communication.approve",
+      "auth": "SESSION+CSRF",
+      "kind": "API"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/diagnostics/requests",
+      "operation": "diagnostics.create",
+      "auth": "SESSION+CSRF",
+      "kind": "API"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/diagnostics/requests/:id/specimens",
+      "operation": "diagnostics.specimen",
+      "auth": "SESSION+CSRF",
+      "kind": "API"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/diagnostics/results",
+      "operation": "diagnostics.result",
+      "auth": "SESSION+CSRF",
+      "kind": "API"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/encounters",
+      "operation": "encounters.create",
+      "auth": "SESSION+CSRF",
+      "kind": "API"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/finance/charges",
+      "operation": "finance.charge",
+      "auth": "SESSION+CSRF",
+      "kind": "API"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/finance/payments",
+      "operation": "finance.payment",
+      "auth": "SESSION+CSRF",
+      "kind": "API"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/finance/refunds",
+      "operation": "finance.refund",
+      "auth": "SESSION+CSRF",
+      "kind": "API"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/guardians",
+      "operation": "guardians.create",
+      "auth": "SESSION+CSRF",
+      "kind": "API"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/hospitalization/episodes",
+      "operation": "hospitalization.create",
+      "auth": "SESSION+CSRF",
+      "kind": "API"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/integrations/:provider/events",
+      "operation": "integration.inbox",
+      "auth": "PUBLIC",
+      "kind": "API"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/knowledge",
+      "operation": "knowledge.write",
+      "auth": "SESSION+CSRF",
+      "kind": "API"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/medications/orders",
+      "operation": "medication.prescribe",
+      "auth": "SESSION+CSRF",
+      "kind": "API"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/medications/orders/:id/administer",
+      "operation": "medication.administer",
+      "auth": "SESSION+CSRF",
+      "kind": "API"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/medications/orders/:id/dispense",
+      "operation": "medication.dispense",
+      "auth": "SESSION+CSRF",
+      "kind": "API"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/ops/export",
+      "operation": "ops.export",
+      "auth": "SESSION+CSRF+ROLE",
+      "kind": "API"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/ops/restore",
+      "operation": "ops.restore",
+      "auth": "SESSION+CSRF+ROLE",
+      "kind": "API"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/patients",
+      "operation": "patients.create",
+      "auth": "SESSION+CSRF",
+      "kind": "API"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/patients/:id/disable",
+      "operation": "patients.disable",
+      "auth": "SESSION+CSRF",
+      "kind": "API"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/patients/merge",
+      "operation": "patients.merge",
+      "auth": "SESSION+CSRF",
+      "kind": "API"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/role-assignments",
+      "operation": "role.grant",
+      "auth": "SESSION+CSRF+ROLE",
+      "kind": "API"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/stock/movements",
+      "operation": "stock.write",
+      "auth": "SESSION+CSRF",
+      "kind": "API"
+    }
+  ]
+}

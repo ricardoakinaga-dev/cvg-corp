@@ -20,7 +20,7 @@ Esta página é o estado corrente da implementação e complementa os registros 
 | Critério | Estado | Evidência corrente | Limite declarado |
 |---|---|---|---|
 | IMPL-01 | EVIDENCED | `npm run typecheck`, `npm run build`, health/readiness e E2E local | somente loopback/fixture sintética |
-| IMPL-02 | PARTIAL | schemas compartilhados, envelopes v1/schema 1, IDs e known-bad API | não há catálogo/upcasters nem validação runtime de todas as respostas e versões mistas |
+| IMPL-02 | PARTIAL | schemas compartilhados, envelopes v1/schema 1, catálogo v1, compatibilidade v2 preparada e registro de upcasters fail-closed com testes de versões mistas | não há migração v1→v2 aprovada nem validação runtime uniforme de todas as respostas |
 | IMPL-03 | PARTIAL | login, cookie, CSRF, escopo exato, minimização por papel, rate limit, approval independente para alto impacto, RLS organizacional com FORCE e RLS clínico estrutural no catálogo de domínio, incluindo snapshot/journal | falta PDP ABAC de negócio, revalidação contextual completa, MFA, recuperação e sessão persistente de produção |
 | IMPL-04 | PARTIAL | `PostgresPersistence` testa BEGIN/ROLLBACK, lock advisory, CAS, journal/snapshot escopados, projeções, leituras normalizadas e cadeia clínica; runtime recupera o agregado JSONB e o gate exercita crash após marcador de dispatch | PostgreSQL real foi verificado no banco sintético local, mas concorrência de negócio, PDP contextual completo e crash recovery geral ainda não foram provados |
 | IMPL-05 | PARTIAL | audit/receipt são vinculados no runtime e gravados em tabelas normalizadas + ledgers append-only; outbox transacional tem claim/lease/fencing e worker bounded; inbox local é atômico com o outbox, exige assinatura HMAC verificável, efeitos exigem recibo e resultado desconhecido fica reconciliável | não há provider externo real, consulta externa real, settlement completo ou garantia de entrega além do recibo sintético |
@@ -94,7 +94,7 @@ O parecer independente fresco desta rodada não foi produzido: o worker read-onl
 - `npm run db:migrate` no banco sintético aplicou `001_initial`, `002_normalized_projection_support` e `003_organization_rls`; catálogo PostgreSQL confirmou `relrowsecurity=true` e `relforcerowsecurity=true` em organizações, pacientes e os ledgers.
 - `npm run verify:postgres`: PASS — PostgreSQL 16.15, restart/read, idempotência, CAS concorrente e RLS organizacional (`rls: PASS`) passaram; contagem observada no último passe: 61 snapshots, 61 eventos de journal, 57 auditorias/ledgers e 3 receipts/ledgers. O banco é sintético e separado.
 
-Mesmo com essa fatia, IMPL-02/03/04/05/06/08/09/10/11/12 seguem `PARTIAL` por ausência de catálogo/upcasters completo, PDP e leitura normalizada completos, efeitos externos com claim/lease/fencing, provider/usage ledger, backup/restore e crash drills, cache offline autorizado, browsers adicionais e SLO. A barra integral permanece `FAIL`.
+Mesmo com essa fatia, IMPL-02/03/04/05/06/08/09/10/11/12 seguem `PARTIAL` por ausência de migração de contrato v1→v2 aprovada, validação uniforme de respostas, PDP e leitura normalizada completos, efeitos externos com claim/lease/fencing, provider/usage ledger, backup/restore e crash drills, cache offline autorizado, browsers adicionais e SLO. A barra integral permanece `FAIL`.
 
 ## Continuação verificável após o fechamento da rodada 3 — 2026-09-08
 

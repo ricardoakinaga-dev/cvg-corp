@@ -1,0 +1,555 @@
+{
+  "schemaVersion": 1,
+  "status": "LOCAL_VERIFICATION_PASS_WITH_LIMITATIONS",
+  "sourceSha": "e43b3b0032aafb9d17563b1fce00fbae88ee0d51",
+  "qualityBar": ".gauntlet/bar-v4.json",
+  "promptSha256": "39dfbb610267b61854b972bf8513f6562b0ee374aa308f7a79b38d21f2cdeae3",
+  "observedAt": "2026-09-11T17:30:54.372Z",
+  "worktree": "MODIFIED",
+  "local": {
+    "unitIntegration": {
+      "total": 330,
+      "passed": 329,
+      "skipped": 1,
+      "failed": 0
+    },
+    "database": {
+      "tests": 61,
+      "passed": 61,
+      "failed": 0
+    },
+    "security": {
+      "tests": 28,
+      "passed": 28,
+      "failed": 0
+    },
+    "browser": {
+      "tests": 153,
+      "passed": 124,
+      "skipped": 29,
+      "failed": 0,
+      "projects": [
+        "chromium",
+        "firefox",
+        "webkit",
+        "stress"
+      ],
+      "status": "PASS_WITH_LIMITATIONS",
+      "remaining": [
+        "screen-reader",
+        "assistive-tech",
+        "real-200-percent-zoom",
+        "independent-visual-baseline",
+        "touch-device-behavior-outside-Chromium"
+      ],
+      "observedAt": "2026-09-11T12:48:44.171Z"
+    },
+    "browserMatrixFull": {
+      "tests": 153,
+      "passed": 124,
+      "skipped": 29,
+      "failed": 0,
+      "browsers": [
+        "chromium",
+        "firefox",
+        "webkit"
+      ],
+      "stress": true,
+      "status": "PASS_WITH_LIMITATIONS",
+      "remaining": [
+        "screen-reader",
+        "assistive-tech",
+        "real-200-percent-zoom",
+        "independent-visual-baseline",
+        "touch-device-behavior-outside-Chromium"
+      ],
+      "observedAt": "2026-09-11T12:48:44.171Z"
+    },
+    "workerRuntime": {
+      "policies": 6,
+      "focusedTests": 35,
+      "resources": [
+        "database",
+        "provider",
+        "ai"
+      ],
+      "queueing": "REJECT"
+    },
+    "pdp": {
+      "operations": 68,
+      "rules": 72,
+      "toolPolicies": 6,
+      "routeAdmissionTests": 26
+    },
+    "authoritativeWrites": {
+      "domains": 32,
+      "tamper": "REJECTED"
+    },
+    "auditChain": {
+      "records": 2,
+      "tamper": "REJECTED"
+    },
+    "static": {
+      "requiredArtifacts": 149,
+      "sourceFiles": 171
+    },
+    "lint": 169,
+    "npmAudit": {
+      "highOrCritical": 0
+    },
+    "productionStructural": "PASS",
+    "deepseekAcpGovernanceFixture": {
+      "status": "PASS_WITH_LIMITATIONS",
+      "authorizationBeforePrompt": true,
+      "durableResultContract": true,
+      "provenanceBinding": true,
+      "wireRoundTrip": "ACP->bridge-http->adapter",
+      "wirePreservesTurnProvenanceAndUsage": true,
+      "crashRebindsDurableSession": true,
+      "missingUsage": "OUTCOME_UNKNOWN_RECONCILIATION_REQUIRED",
+      "cumulativeUsageRegression": "OUTCOME_UNKNOWN_RECONCILIATION_REQUIRED",
+      "boundedOutputAndSessionQueue": true,
+      "productionLedger": "NOT_PROVEN",
+      "typedUsageSettlement": true
+    },
+    "postgresRealLocal": {
+      "status": "PASS_WITH_LIMITATIONS",
+      "serverVersion": "16.15",
+      "migrationFilesApplied": 36,
+      "runtimeRole": "cvg_runtime",
+      "concurrency": "CLAIMED+IN_FLIGHT+REPLAY+IDEMPOTENCY_CONFLICT+duplicateEffects=0",
+      "verifyPostgres": "PASS",
+      "rls": "59/59 tables; 116 organization foreign keys",
+      "restore": "PASS; AES-256-GCM; tamper/partial/stale/migration mismatch rejected; QUARANTINED target",
+      "productionLikeMultiInstance": "NOT_PROVEN",
+      "lastRevalidated": {
+        "database": "cvg_verify_20260912 (ephemeral local)",
+        "migrations": 36,
+        "runtimeRole": "cvg_runtime NOSUPERUSER NOBYPASSRLS NOINHERIT NOCREATEDB NOCREATEROLE",
+        "verifyPostgres": "PASS; 59/59 RLS tables; 116 organization FKs; schema_migrations SELECT-only for runtime role",
+        "concurrency": "POSTGRES_CONCURRENCY_VERIFIED processes=2 claims=CLAIMED,IN_FLIGHT replay=REPLAY conflict=IDEMPOTENCY_CONFLICT duplicateEffects=0",
+        "restore": "PASS; AES-256-GCM; target QUARANTINED; login/readiness blocked; source unchanged",
+        "externalStatus": "LOCAL_ONLY; does not prove staging multi-instance, managed backup, RTO/RPO or promotion"
+      }
+    },
+    "usageSettlement": {
+      "typedContract": "AiUsageSettlement",
+      "binds": [
+        "model",
+        "inputTokens",
+        "outputTokens",
+        "providerResponseDigest",
+        "estimatedCost",
+        "actualCost",
+        "discrepancy"
+      ],
+      "missingPricing": "UNAVAILABLE + NOT_EVALUATED",
+      "localSynthetic": "LOCAL_SYNTHETIC + zero cost + pricingRevision local-no-charge-v1",
+      "persistenceProjection": "record.settlement preserved in ai_usage_ledger projection",
+      "providerPricingAndFinancialSettlement": "BLOCKED_EXTERNAL",
+      "responseDigestRule": "providerRequestId is never treated as providerResponseDigest; absent adapter evidence remains null"
+    },
+    "productionConfigFailClosed": "PASS; verify-production --production rejects missing authority before runtime",
+    "fault": {
+      "tests": 27,
+      "passed": 27,
+      "failed": 0
+    },
+    "securityRedTeamLocal": {
+      "status": "SECURITY_RED_TEAM_LOCAL_CONTRACT_VERIFIED",
+      "criteria": 24,
+      "missing": 0,
+      "fixtureExecution": "PASS; auth/vnext/integrations/persistence/fault fixtures executed"
+    },
+    "resourcePressureLocal": {
+      "status": "RESOURCE_PRESSURE_LOCAL_CONTRACT_VERIFIED",
+      "controls": 6,
+      "missing": 0,
+      "fixtureExecution": "PASS; worker and worker-jobs fixtures executed"
+    },
+    "runbookExecutionLocal": {
+      "status": "RUNBOOK_LOCAL_CONTRACT_VERIFIED",
+      "controls": 12,
+      "missing": 0,
+      "fixtureExecution": "PASS; 7/7 F35 scenario fixtures EXECUTED_LOCAL plus restore/fault/auth/DeepSeek contract fixtures",
+      "live": "NOT_RUN"
+    },
+    "finalVerification": {
+      "record": "VER-CVG-268",
+      "observedAt": "2026-09-11T17:30:54.372Z",
+      "triploExit": 2,
+      "deepseekRealExit": 2,
+      "providerRealExit": 2,
+      "verdict": "AAA_NOT_PROVEN",
+      "productionStructural": "PASS",
+      "promptShaMatched": true,
+      "qualityBar": "IMMUTABLE_POLICY_VERIFIED; prompt SHA, thresholds, evidence rules and AAA policy are bound",
+      "tests": "330=329 pass+1 skip+0 fail",
+      "static": "PASS; 149 required artifacts/171 sources",
+      "controlPlaneParse": "PASS",
+      "gitDiffCheck": "PASS",
+      "resourcePressure": "PASS_LOCAL_CONTRACT; 6 controls including CPU/memory/nofile structural contracts",
+      "runbookExecution": "PASS_LOCAL_CONTRACT; 12 controls, 7 scenarios, 7/7 EXECUTED_LOCAL fixtures; live NOT_RUN",
+      "securityHeaders": "PASS_LOCAL_CONTRACT; HSTS only on TLS profile, HTTP redirect forbids HSTS",
+      "productionConfig": "PASS_LOCAL_CONTRACT; release/worker/secret-provider/runtime-role checks",
+      "workerAuditBoundary": "PASS; typed worker handlers only; durable appendAuditRecord required; completion blocked on audit failure",
+      "containerSmoke": "PASS_LOCAL_CONTRACT; authenticated scenario requires durable outbox/reconciliation, graceful shutdown and replay-idempotent restart evidence",
+      "externalEvidenceRoot": "PASS_LOCAL_BOUNDARY; gate receipts require separate execution artifact and byte binding",
+      "humanApprovalCrypto": "PASS_LOCAL_BOUNDARY; external authority receipt absent",
+      "runtimeSupplyChain": "PASS_LOCAL_CONTRACT; tsx is a production dependency and Dockerfile.api prunes dev dependencies before runtime",
+      "criticsFresh": "FAIL review-only fresh 15-category critic VER-CVG-268; no external or human approval",
+      "pdpUniversal": "PASS; 68 operations/72 rules/6 tools/26 route tests; all 41 CvgStore collections checked; AST guard covers nested destructuring and function argument/return aliases; dynamic collection access fails closed",
+      "memoryStoreBoundary": "PASS_LOCAL_GUARD; AST analysis covers direct, bracket, cast, destructuring (including nested), function-parameter and function-return aliases; dynamic collection access fails closed; external call-graph/data-flow authority remains unproven",
+      "domainReturnBoundary": "PASS_LOCAL_GUARD; public records/lists are cloned and only private helpers retain backing references",
+      "criticsAddendum": {
+        "record": "VER-CVG-268",
+        "observedAt": "2026-09-11T17:30:54.372Z",
+        "priorRecord": "VER-CVG-262",
+        "critic": ".gauntlet/critique-final-gauntlet-20260911-VER268.md",
+        "status": "FAIL",
+        "evidenceAdmission": "LOCAL_SNAPSHOT_GUARD",
+        "scope": "current PostgreSQL migrations 001-036 proof, durable reconciliation runner, outbox per-attempt audit/metrics, hash-based audit-chain, recovery-boundary authentication-shape and temporal validation and final fresh gauntlet",
+        "sourceSha": "e43b3b0032aafb9d17563b1fce00fbae88ee0d51",
+        "promptSha256": "39dfbb610267b61854b972bf8513f6562b0ee374aa308f7a79b38d21f2cdeae3",
+        "result": "VER-CVG-268: PostgreSQL migrations 001-036, local worker/audit-chain and recovery-boundary raw authentication-shape, temporal and durable-ledger digest regression with fresh review limitations; external gates remain absent",
+        "globalVerdict": "AAA_NOT_PROVEN"
+      },
+      "lint": 169,
+      "verifyProductionRerun": "PASS; sequential npm run verify:production completed, including local browser matrix and structural Compose/TLS/observability checks",
+      "externalGateSummary": "BLOCKED/NOT_RUN; real DeepSeek/provider/secret authority, staging, PostgreSQL external concurrency, operational observability/load/chaos/recovery/RTO-RPO, same-SHA promotion, independent approving critics and human approval absent",
+      "evidenceSnapshot": "PASS_LOCAL; 10 artifacts; current byte-bound run is in evidence-snapshot.json",
+      "e2e": "124 pass+29 skip; 0 failed; Chromium/Firefox/WebKit wide/tablet/mobile plus Chromium/Firefox/WebKit stress; host-native WebKit revalidation blocked by missing libgstcodecparsers-1.0.so.0",
+      "browserMatrix": "PASS_LOCAL_WITH_ENV_LIMITATION; 153 cases, 124 pass, 29 skips, 0 failures in user-local-prefix run; host-native attempt 83 pass/19 skip/51 blocked WebKit launches",
+      "promotionInventory": "25 mandatory gates exact; F0-F38 exact; F12 WebAuthn/break-glass has a dedicated receipt; F23/F24 red-team references and independent review signatures are required for critics",
+      "operationalBackup": {
+        "status": "VERIFIED_LOCAL/PARTIAL_EXTERNAL",
+        "composition": "apps/worker/src/main.ts + docker/worker.ts start/stop OperationalBackupJob after durable health/bootstrap",
+        "scope": "one explicit CVG_BACKUP_ORGANIZATION_ID equal to CVG_WORKER_ORGANIZATION_ID per worker; no silent tenant omission",
+        "controls": [
+          "AES-256-GCM manifest/digest/keyRef",
+          "atomic write 0700/0600",
+          "verify-before-rotation",
+          "missing-key/state/scope fail-closed"
+        ],
+        "configuration": [
+          "CVG_BACKUP_ENABLED",
+          "CVG_BACKUP_DIRECTORY",
+          "CVG_BACKUP_INTERVAL_MS",
+          "CVG_BACKUP_KEEP_LAST",
+          "CVG_RECOVERY_ENCRYPTION_KEY_REF"
+        ],
+        "external": "managed volume/Secret Authority/scheduler, restore, RPO-RTO and multi-tenant operation not executed"
+      },
+      "focusedEvidenceTests": "55=55 pass+0 fail (bounded worker/integration/audit-chain review)",
+      "apiCompatibility": "PASS_LOCAL_FAIL_CLOSED; v1 catalog and v2 prepared boundary use an explicit upcaster registry; no legacy schema is accepted without an approved migration",
+      "reconciliation": "durable reconciliation handler precedes synthetic dependencies in production audit mode; outbox attempts audit and metrics precede acknowledgement; audit-chain reconstructs transport-independent chains; PostgreSQL current local evidence covers migrations 001-036; final external gates remain blocked",
+      "auditAddendum": {
+        "record": "VER-CVG-268",
+        "observedAt": "2026-09-11T17:30:54.372Z",
+        "priorRecord": "VER-CVG-262",
+        "critic": ".gauntlet/critique-final-gauntlet-20260911-VER268.md",
+        "status": "FAIL",
+        "evidenceAdmission": "LOCAL_SNAPSHOT_GUARD",
+        "scope": "current PostgreSQL migrations 001-036 proof, durable reconciliation runner, outbox per-attempt audit/metrics, hash-based audit-chain, recovery-boundary authentication-shape and temporal validation and final fresh gauntlet",
+        "sourceSha": "e43b3b0032aafb9d17563b1fce00fbae88ee0d51",
+        "promptSha256": "39dfbb610267b61854b972bf8513f6562b0ee374aa308f7a79b38d21f2cdeae3",
+        "result": "VER-CVG-268: PostgreSQL migrations 001-036, local worker/audit-chain and recovery-boundary raw authentication-shape, temporal and durable-ledger digest regression with fresh review limitations; external gates remain absent",
+        "globalVerdict": "AAA_NOT_PROVEN"
+      }
+    },
+    "deepseekRealProofContract": {
+      "status": "LOCAL_CONTRACT_VERIFIED",
+      "stages": 31,
+      "externalExecution": "BLOCKED_EXTERNAL",
+      "requiresSameSha": true,
+      "requiresIndependentReview": true,
+      "evidenceBinding": "stage evidenceRef files hashed from immutable bundle directory; symlink/traversal rejected"
+    },
+    "operationalBackup": {
+      "status": "PASS_WITH_LIMITATIONS",
+      "manifest": "CVG-BACKUP-MANIFEST v1",
+      "encryption": "AES-256-GCM envelope validated",
+      "atomicWrite": "temp wx + rename; directory 0700; artifact 0600",
+      "retention": "keepLast rotation validated in local fixture and CLI smoke",
+      "tamper": "REJECTED",
+      "wrongKey": "REJECTED",
+      "directoryVerification": "PASS_WITH_VALID_ARTIFACTS",
+      "cliSmoke": "PASS; backups=1 removed=0",
+      "managedBackup": "BLOCKED_EXTERNAL",
+      "rtoRpo": "NOT_PROVEN",
+      "periodicJob": "OperationalBackupJob; serialized ticks and clean stop verified",
+      "periodicJobTest": "PASS; 50/50 focused persistence tests"
+    },
+    "providerRealProofContract": {
+      "status": "LOCAL_CONTRACT_VERIFIED",
+      "stages": 12,
+      "evidenceBinding": "stage evidenceRef files hashed from immutable bundle directory; symlink/traversal rejected",
+      "externalExecution": "BLOCKED_EXTERNAL",
+      "timestampFreshness": "currentTimestamp required; stage timestamps no older than 7 days and no more than 5 minutes in the future"
+    },
+    "workerAuditBoundary": {
+      "typedHandlersOnly": true,
+      "legacyHandlerFallback": "REMOVED",
+      "durableAuditRequiredInProductionFactory": true,
+      "completionBlockedOnAuditFailure": true,
+      "appendOnlyPersistenceMethod": "appendAuditRecord",
+      "focusedTests": "production worker refuses to acknowledge a job when the durable audit append fails"
+    },
+    "containerSmokeContract": {
+      "publicProbe": "health/readiness/headers only and exits BLOCKED_EXTERNAL",
+      "authenticatedProbe": "login/MFA/cookie flags/patient lookup/controlled write/worker heartbeat/outbox/DeepSeek/provider/restart",
+      "requiresExplicitScenario": true,
+      "requiresObservedSessionCookie": true
+    },
+    "webAuthnCrypto": "PASS; clientDataJSON challenge/origin, rpIdHash, flags, signature, credential key and monotonic signCount verified",
+    "humanApprovalCrypto": "PASS; Ed25519 receipt signature and canonical-payload digest verification implemented; external authority receipt absent",
+    "externalEvidenceRoot": "PASS_LOCAL_BOUNDARY; promotion evidence root must be outside source checkout and regular-file bytes are bound; no external bundle supplied",
+    "observabilityHeartbeat": "PASS_LOCAL_CONTRACT; heartbeat age/count metrics and no-heartbeat alert verified; dispatch NOT_RUN",
+    "releaseProvenanceByteBinding": "PASS_LOCAL; SBOM regular-file bytes are re-read and compared to declared digest",
+    "domainReturnBoundary": {
+      "status": "PASS_LOCAL_GUARD",
+      "publicReturns": "defensive clones for users, sessions, challenges, assignments, patients and all domain entities/lists",
+      "privateHelpers": "getUserRecord and findPatientRecord are the only internal reference-returning helpers",
+      "mutationSeams": "markUserLogin and recordChallengeFailure return governed copies; application uses returned state",
+      "critic": "H-01 CLOSED/REPAIRED"
+    },
+    "memoryStoreBoundary": "PASS_LOCAL_GUARD; AST analysis covers direct, bracket, cast, destructuring (including nested), function-parameter and function-return aliases; dynamic collection access fails closed; external call-graph/data-flow authority remains unproven",
+    "criticsFresh": "FAIL review-only fresh 15-category critic VER-CVG-268; no external or human approval",
+    "auditAddendum": {
+      "record": "VER-CVG-268",
+      "observedAt": "2026-09-11T17:30:54.372Z",
+      "priorRecord": "VER-CVG-262",
+      "critic": ".gauntlet/critique-final-gauntlet-20260911-VER268.md",
+      "status": "FAIL",
+      "evidenceAdmission": "LOCAL_SNAPSHOT_GUARD",
+      "scope": "current PostgreSQL migrations 001-036 proof, durable reconciliation runner, outbox per-attempt audit/metrics, hash-based audit-chain, recovery-boundary authentication-shape and temporal validation and final fresh gauntlet",
+      "sourceSha": "e43b3b0032aafb9d17563b1fce00fbae88ee0d51",
+      "promptSha256": "39dfbb610267b61854b972bf8513f6562b0ee374aa308f7a79b38d21f2cdeae3",
+      "result": "VER-CVG-268: PostgreSQL migrations 001-036, local worker/audit-chain and recovery-boundary raw authentication-shape, temporal and durable-ledger digest regression with fresh review limitations; external gates remain absent",
+      "globalVerdict": "AAA_NOT_PROVEN"
+    },
+    "resourcePressure": {
+      "status": "RESOURCE_PRESSURE_LOCAL_CONTRACT_VERIFIED",
+      "controls": 6,
+      "missing": 0,
+      "fixtureExecution": "PASS; worker and worker-jobs fixtures executed"
+    },
+    "globalVerdict": "AAA_NOT_PROVEN",
+    "record": "VER-CVG-268",
+    "observedAt": "2026-09-11T17:30:54.372Z",
+    "tests": {
+      "total": 330,
+      "passed": 329,
+      "skipped": 1,
+      "failed": 0
+    },
+    "e2e": {
+      "tests": 153,
+      "passed": 124,
+      "skipped": 29,
+      "failed": 0,
+      "projects": [
+        "chromium",
+        "firefox",
+        "webkit",
+        "stress"
+      ],
+      "webkit": "VERIFIED_USER_PREFIX",
+      "manualRemaining": [
+        "screen-reader",
+        "assistive-keyboard",
+        "real-zoom-200",
+        "independent-visual-baseline",
+        "touch-device-behavior-outside-Chromium"
+      ]
+    },
+    "apiCompatibility": {
+      "status": "VERIFIED_LOCAL_FAIL_CLOSED",
+      "catalog": "v1",
+      "v2": "PREPARED_ONLY",
+      "upcasters": "FAIL_CLOSED_REGISTRY",
+      "registered": 0,
+      "legacySchemasAccepted": false,
+      "test": "tests/unit/contracts.test.ts"
+    }
+  },
+  "external": {
+    "deepseek": "BLOCKED_EXTERNAL",
+    "provider": "BLOCKED_EXTERNAL",
+    "postgresConcurrency": "BLOCKED_EXTERNAL",
+    "staging": "NOT_RUN",
+    "observability": "NOT_RUN",
+    "restore": "BLOCKED_EXTERNAL",
+    "rtoRpo": "NOT_RUN",
+    "humanApproval": "NOT_RUN",
+    "load": "NOT_RUN",
+    "chaos": "NOT_RUN",
+    "recovery": "NOT_RUN",
+    "ciSameSha": "NOT_RUN",
+    "critics": "NOT_RUN",
+    "browserMatrix": "NOT_RUN",
+    "secretAuthority": "NOT_RUN",
+    "resourcePressure": "NOT_RUN",
+    "securityHeaders": "NOT_RUN",
+    "productionConfig": "NOT_RUN",
+    "stagingPromotion": "NOT_RUN",
+    "runbookExecution": "NOT_RUN",
+    "repairLoop": "NOT_RUN"
+  },
+  "globalVerdict": "AAA_NOT_PROVEN",
+  "limitations": [
+    "The current worktree is modified and has no release manifest bound to a clean SHA.",
+    "Real DeepSeek/provider/secret authority, production-like DeepSeekAcpGovernance ledger, authorized PostgreSQL multi-process staging, collector/SLO, load/chaos/recovery/RTO-RPO and human approval evidence are absent.",
+    "The current local browser run covers Chromium/Firefox/WebKit plus stress with 153 cases (124 pass, 29 conditional skips); screen-reader, assistive technology, real 200% zoom, independent visual baseline and touch behavior outside Chromium remain unexecuted.",
+    "D4 export negative-flow proof now covers purpose/scope, replay, expiry, tamper, wrong key and cross-organization context locally; external key authority and production export remain unproven.",
+    "Typed usage settlement is validated and persisted locally; provider pricing, signed financial response and staging reconciliation remain external.",
+    "Security red-team criteria now run focused test selectors where fixtures exist and mark migration/role controls as static; resource-pressure criteria run focused worker selectors where fixtures exist. These checks do not prove external execution or human acceptance.",
+    "Container smoke, promotion invariant, same-SHA CI artifact, staging promotion, critics/repair loop and human approval remain blocked or not run.",
+    "Unsupported vault/cloud secret kinds now return an explicit UNAVAILABLE adapter marker; real provider adapters remain external.",
+    "This local photograph does not prove external provider, staging or human acceptance.",
+    "The DeepSeek real verifier now requires a complete 31-stage same-SHA external bundle and independent reviewer; no such external bundle is present locally.",
+    "Operational backup and periodic verification are locally implemented and tested; managed object storage, external key authority, scheduling and observed RTO/RPO remain unproven.",
+    "No critic report is an approval; the final architecture rerun remains PASS_WITH_LIMITATIONS locally and AAA_NOT_PROVEN globally.",
+    "The H-01 architecture rerun closes public-domain return aliases and direct governed-map bypasses; the remaining local HIGH is the textual/partial structural guard.",
+    "H-02-L foi reduzido a MEDIUM/advisory: a guarda AST cobre aliases, casts, destructuring, acesso estático e acesso dinâmico fail-closed, mas não substitui análise completa de call graph/data flow.",
+    "Resultados diagnósticos órfãos são registrados na trilha de quarentena e não entram no snapshot autoritativo; hydrate/restore rejeitam reentrada órfã antes de substituir a autoridade.",
+    "Recibos externos e aprovação humana exigem assinaturas Ed25519 de autoridades configuradas; nenhum bundle externo same-SHA foi fornecido.",
+    "The final gauntlet receipt contract requires all 15 prompt critic categories, each with a PASS/PASS_WITH_LIMITATIONS/FAIL verdict and typed CRITICAL/HIGH/MEDIUM/LOW findings; this is a local admission contract, not independent approval.",
+    "External gate receipts now require a separate gate execution artifact with matching gate/source/artifact/execution ID and digest; critics require no FAIL/CRITICAL/HIGH findings, signed independent review, and separate F23/F24 red-team artifacts.",
+    "verify:production requires explicit --structural for synthetic Compose checks or --production for real environment validation; CI provenance includes SBOM and completed CI result bytes.",
+    "API v2 remains prepared only; no legacy schema or v1-to-v2 migration is approved, so the empty upcaster registry rejects mixed-version payloads fail-closed."
+  ],
+  "productionStructural": "PASS; verify:production exit 0 with Compose base, observability and TLS overlay structural checks; no services started",
+  "productionConfigFailClosed": "PASS; verify-production --production rejects missing authority before runtime",
+  "promotionInventory": "25 mandatory gates exact; F0-F38 exact; F12 WebAuthn/break-glass has a dedicated receipt; F23/F24 red-team references and independent review signatures are required for critics",
+  "resourcePressureLocal": {
+    "status": "RESOURCE_PRESSURE_LOCAL_CONTRACT_VERIFIED",
+    "controls": 6,
+    "missing": 0,
+    "details": "six CPU/memory service contracts, six nofile service limits and focused worker bulkhead/admission/pool/backpressure controls",
+    "externalExecution": "BLOCKED_EXTERNAL",
+    "tests": "319=318 pass+1 skip+0 fail",
+    "static": "PASS; 147 required artifacts/170 sources"
+  },
+  "runbookExecutionLocal": {
+    "status": "RUNBOOK_LOCAL_CONTRACT_VERIFIED",
+    "controls": 12,
+    "missing": 0,
+    "phase35Scenarios": [
+      "provider-outage",
+      "worker-backlog",
+      "database-incident",
+      "deepseek-harness-outage",
+      "restore",
+      "credential-rotation",
+      "break-glass"
+    ],
+    "dryRun": "PASS synthetic transitions; live execution NOT_RUN",
+    "externalExecution": "BLOCKED_EXTERNAL",
+    "fixtureExecution": "PASS; 7/7 F35 scenario fixtures EXECUTED_LOCAL plus restore/fault/auth/DeepSeek contract fixtures",
+    "observedAt": "2026-09-11T03:49:37.000Z",
+    "live": "NOT_RUN"
+  },
+  "finalVerification": {
+    "record": "VER-CVG-268",
+    "observedAt": "2026-09-11T17:30:54.372Z",
+    "triploExit": 2,
+    "deepseekRealExit": 2,
+    "providerRealExit": 2,
+    "verdict": "AAA_NOT_PROVEN",
+    "productionStructural": "PASS",
+    "promptShaMatched": true,
+    "qualityBar": "IMMUTABLE_POLICY_VERIFIED; prompt SHA, thresholds, evidence rules and AAA policy are bound",
+    "tests": "330=329 pass+1 skip+0 fail",
+    "static": "PASS; 149 required artifacts/171 sources",
+    "controlPlaneParse": "PASS",
+    "gitDiffCheck": "PASS",
+    "resourcePressure": "PASS_LOCAL_CONTRACT; 6 controls including CPU/memory/nofile structural contracts",
+    "runbookExecution": "PASS_LOCAL_CONTRACT; 12 controls, 7 scenarios, 7/7 EXECUTED_LOCAL fixtures; live NOT_RUN",
+    "securityHeaders": "PASS_LOCAL_CONTRACT; HSTS only on TLS profile, HTTP redirect forbids HSTS",
+    "productionConfig": "PASS_LOCAL_CONTRACT; release/worker/secret-provider/runtime-role checks",
+    "workerAuditBoundary": "PASS; typed worker handlers only; durable appendAuditRecord required; completion blocked on audit failure",
+    "containerSmoke": "PASS_LOCAL_CONTRACT; authenticated scenario requires durable outbox/reconciliation, graceful shutdown and replay-idempotent restart evidence",
+    "externalEvidenceRoot": "PASS_LOCAL_BOUNDARY; gate receipts require separate execution artifact and byte binding",
+    "humanApprovalCrypto": "PASS_LOCAL_BOUNDARY; external authority receipt absent",
+    "runtimeSupplyChain": "PASS_LOCAL_CONTRACT; tsx is a production dependency and Dockerfile.api prunes dev dependencies before runtime",
+    "criticsFresh": "FAIL review-only fresh 15-category critic VER-CVG-268; no external or human approval",
+    "pdpUniversal": "PASS; 68 operations/72 rules/6 tools/26 route tests; all 41 CvgStore collections checked; AST guard covers nested destructuring and function argument/return aliases; dynamic collection access fails closed",
+    "memoryStoreBoundary": "PASS_LOCAL_GUARD; AST analysis covers direct, bracket, cast, destructuring (including nested), function-parameter and function-return aliases; dynamic collection access fails closed; external call-graph/data-flow authority remains unproven",
+    "domainReturnBoundary": "PASS_LOCAL_GUARD; public records/lists are cloned and only private helpers retain backing references",
+    "criticsAddendum": {
+      "record": "VER-CVG-268",
+      "observedAt": "2026-09-11T17:30:54.372Z",
+      "priorRecord": "VER-CVG-262",
+      "critic": ".gauntlet/critique-final-gauntlet-20260911-VER268.md",
+      "status": "FAIL",
+      "evidenceAdmission": "LOCAL_SNAPSHOT_GUARD",
+      "scope": "current PostgreSQL migrations 001-036 proof, durable reconciliation runner, outbox per-attempt audit/metrics, hash-based audit-chain, recovery-boundary authentication-shape and temporal validation and final fresh gauntlet",
+      "sourceSha": "e43b3b0032aafb9d17563b1fce00fbae88ee0d51",
+      "promptSha256": "39dfbb610267b61854b972bf8513f6562b0ee374aa308f7a79b38d21f2cdeae3",
+      "result": "VER-CVG-268: PostgreSQL migrations 001-036, local worker/audit-chain and recovery-boundary raw authentication-shape, temporal and durable-ledger digest regression with fresh review limitations; external gates remain absent",
+      "globalVerdict": "AAA_NOT_PROVEN"
+    },
+    "lint": 169,
+    "verifyProductionRerun": "PASS; sequential npm run verify:production completed, including local browser matrix and structural Compose/TLS/observability checks",
+    "externalGateSummary": "BLOCKED/NOT_RUN; real DeepSeek/provider/secret authority, staging, PostgreSQL external concurrency, operational observability/load/chaos/recovery/RTO-RPO, same-SHA promotion, independent approving critics and human approval absent",
+    "evidenceSnapshot": "PASS_LOCAL; 10 artifacts; current byte-bound run is in evidence-snapshot.json",
+    "e2e": "124 pass+29 skip; 0 failed; Chromium/Firefox/WebKit wide/tablet/mobile plus Chromium/Firefox/WebKit stress; host-native WebKit revalidation blocked by missing libgstcodecparsers-1.0.so.0",
+    "browserMatrix": "PASS_LOCAL_WITH_ENV_LIMITATION; 153 cases, 124 pass, 29 skips, 0 failures in user-local-prefix run; host-native attempt 83 pass/19 skip/51 blocked WebKit launches",
+    "promotionInventory": "25 mandatory gates exact; F0-F38 exact; F12 WebAuthn/break-glass has a dedicated receipt; F23/F24 red-team references and independent review signatures are required for critics",
+    "operationalBackup": {
+      "status": "VERIFIED_LOCAL/PARTIAL_EXTERNAL",
+      "composition": "apps/worker/src/main.ts + docker/worker.ts start/stop OperationalBackupJob after durable health/bootstrap",
+      "scope": "one explicit CVG_BACKUP_ORGANIZATION_ID equal to CVG_WORKER_ORGANIZATION_ID per worker; no silent tenant omission",
+      "controls": [
+        "AES-256-GCM manifest/digest/keyRef",
+        "atomic write 0700/0600",
+        "verify-before-rotation",
+        "missing-key/state/scope fail-closed"
+      ],
+      "configuration": [
+        "CVG_BACKUP_ENABLED",
+        "CVG_BACKUP_DIRECTORY",
+        "CVG_BACKUP_INTERVAL_MS",
+        "CVG_BACKUP_KEEP_LAST",
+        "CVG_RECOVERY_ENCRYPTION_KEY_REF"
+      ],
+      "external": "managed volume/Secret Authority/scheduler, restore, RPO-RTO and multi-tenant operation not executed"
+    },
+    "focusedEvidenceTests": "55=55 pass+0 fail (bounded worker/integration/audit-chain review)",
+    "apiCompatibility": "PASS_LOCAL_FAIL_CLOSED; v1 catalog and v2 prepared boundary use an explicit upcaster registry; no legacy schema is accepted without an approved migration",
+    "reconciliation": "durable reconciliation handler precedes synthetic dependencies in production audit mode; outbox attempts audit and metrics precede acknowledgement; audit-chain reconstructs transport-independent chains; PostgreSQL current local evidence covers migrations 001-036; final external gates remain blocked"
+  },
+  "auditAddendum": {
+    "record": "VER-CVG-268",
+    "observedAt": "2026-09-11T17:30:54.372Z",
+    "priorRecord": "VER-CVG-262",
+    "critic": ".gauntlet/critique-final-gauntlet-20260911-VER268.md",
+    "status": "FAIL",
+    "evidenceAdmission": "LOCAL_SNAPSHOT_GUARD",
+    "scope": "current PostgreSQL migrations 001-036 proof, durable reconciliation runner, outbox per-attempt audit/metrics, hash-based audit-chain, recovery-boundary authentication-shape and temporal validation and final fresh gauntlet",
+    "sourceSha": "e43b3b0032aafb9d17563b1fce00fbae88ee0d51",
+    "promptSha256": "39dfbb610267b61854b972bf8513f6562b0ee374aa308f7a79b38d21f2cdeae3",
+    "result": "VER-CVG-268: PostgreSQL migrations 001-036, local worker/audit-chain and recovery-boundary raw authentication-shape, temporal and durable-ledger digest regression with fresh review limitations; external gates remain absent",
+    "globalVerdict": "AAA_NOT_PROVEN"
+  },
+  "operationalBackup": {
+    "status": "VERIFIED_LOCAL/PARTIAL_EXTERNAL",
+    "composition": "apps/worker/src/main.ts + docker/worker.ts start/stop OperationalBackupJob after durable health/bootstrap",
+    "scope": "one explicit CVG_BACKUP_ORGANIZATION_ID equal to CVG_WORKER_ORGANIZATION_ID per worker; no silent tenant omission",
+    "controls": [
+      "AES-256-GCM manifest/digest/keyRef",
+      "atomic write 0700/0600",
+      "verify-before-rotation",
+      "missing-key/state/scope fail-closed"
+    ],
+    "configuration": [
+      "CVG_BACKUP_ENABLED",
+      "CVG_BACKUP_DIRECTORY",
+      "CVG_BACKUP_INTERVAL_MS",
+      "CVG_BACKUP_KEEP_LAST",
+      "CVG_RECOVERY_ENCRYPTION_KEY_REF"
+    ],
+    "external": "managed volume/Secret Authority/scheduler, restore, RPO-RTO and multi-tenant operation not executed"
+  }
+}

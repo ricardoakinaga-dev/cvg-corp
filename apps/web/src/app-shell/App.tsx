@@ -33,6 +33,7 @@ export function App() {
   const [view, setView] = useState<View>(viewFromLocation);
   const [patientSearchQuery, setPatientSearchQuery] = useState(queryFromLocation);
   const [composerBuffer, setComposerBuffer] = useState("");
+  const [focusShellMain, setFocusShellMain] = useState(false);
 
   const changeView = useCallback((nextView: View) => {
     setView(nextView);
@@ -59,6 +60,7 @@ export function App() {
 
   const handleLogin = (user: Parameters<typeof session.signIn>[0], contexts: Parameters<typeof session.signIn>[1]) => {
     setComposerBuffer("");
+    setFocusShellMain(true);
     setView("overview");
     setPatientSearchQuery("");
     window.history.replaceState({}, "", "/");
@@ -72,6 +74,7 @@ export function App() {
 
   const handleReset = () => {
     setComposerBuffer("");
+    setFocusShellMain(false);
     setView("overview");
     setPatientSearchQuery("");
     window.history.replaceState({}, "", "/");
@@ -92,5 +95,5 @@ export function App() {
   if (!session.user) return <Login client={client} onLogin={handleLogin} />;
   if (runtime.state === RUNTIME_STATES.CONTEXT_INVALID || !session.context) return <SessionBlockedState runtimeState={runtime.state} contexts={session.contexts} context={session.context} onContextChange={handleContextChange} onReset={handleReset} />;
 
-  return <Shell client={client} user={session.user} contexts={session.contexts} context={session.context} onContextChange={handleContextChange} view={view} onViewChange={changeView} globalSearchQuery={patientSearchQuery} onGlobalSearchQueryChange={setPatientSearchQuery} patientSearchQuery={patientSearchQuery} onLogout={() => void session.signOut()} toast={toast} notify={notify} runtimeState={runtime.state} composerBuffer={composerBuffer} onComposerBufferChange={setComposerBuffer} onRetry={() => runtime.transition({ type: "NETWORK_ONLINE" })} />;
+  return <Shell client={client} user={session.user} contexts={session.contexts} context={session.context} onContextChange={handleContextChange} view={view} onViewChange={changeView} globalSearchQuery={patientSearchQuery} onGlobalSearchQueryChange={setPatientSearchQuery} patientSearchQuery={patientSearchQuery} onLogout={() => void session.signOut()} toast={toast} notify={notify} runtimeState={runtime.state} composerBuffer={composerBuffer} onComposerBufferChange={setComposerBuffer} onRetry={() => runtime.transition({ type: "NETWORK_ONLINE" })} autoFocusMain={focusShellMain} />;
 }

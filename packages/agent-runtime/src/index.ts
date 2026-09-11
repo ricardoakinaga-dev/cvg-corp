@@ -1,5 +1,8 @@
 import type { AiApproval, AiDraft, AiSession, AiTurn, AiTurnInput, AiTurnProvenance, CvgContext, OpaqueId } from "@cvg/contracts";
 
+export { bridgeRequestSignature, BRIDGE_REQUEST_MAX_AGE_MS, BRIDGE_REQUEST_CLOCK_SKEW_MS } from "./bridge-request.ts";
+export { canonicalJson, replayDigest } from "./replay-digest.ts";
+
 export type AgentRuntimeStatus = "READY" | "DEGRADED" | "UNAVAILABLE" | "DISABLED";
 
 export interface AgentRuntimeCapabilities {

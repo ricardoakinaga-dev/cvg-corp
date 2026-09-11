@@ -1,7 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createHmac } from "node:crypto";
-import { BreakGlassError, BreakGlassRegistry, digestRecoveryCode, evaluateBreakGlass, generateRecoveryCodes, isPasswordCompliant, passwordPolicyIssues, validateWebAuthnAssertion, verifyTotpCode, type WebAuthnChallenge, type WebAuthnAssertionEnvelope } from "@cvg/auth";
+import { createHash, createHmac, createSign, generateKeyPairSync } from "node:crypto";
+import { BreakGlassError, BreakGlassRegistry, digestRecoveryCode, evaluateBreakGlass, generateRecoveryCodes, isPasswordCompliant, passwordPolicyIssues, validateWebAuthnAssertion, verifyTotpCode, verifyWebAuthnAssertionCryptographically, type WebAuthnChallenge, type WebAuthnAssertionEnvelope, type WebAuthnCredential } from "@cvg/auth";
+
+function base64url(value: Buffer | string): string {
+  return Buffer.from(value).toString("base64url");
+}
 
 function totpCode(secret: string, atMs: number): string {
   let buffer = 0;
@@ -52,6 +56,24 @@ test("WebAuthn and break-glass boundaries fail closed before provider cryptograp
   assert.throws(() => validateWebAuthnAssertion({ ...challenge, status: "CONSUMED" }, assertion, Date.parse("2026-01-01T00:00:00.000Z")));
   assert.equal(evaluateBreakGlass({ actorId: "actor-1", approverId: "actor-2", reason: "incidente", target: "patient-1", mfaMethod: "WEBAUTHN", issuedAt: "2026-01-01T00:00:00.000Z", expiresAt: "2026-01-01T00:10:00.000Z" }, Date.parse("2026-01-01T00:01:00.000Z")).status, "ALLOW");
   assert.equal(evaluateBreakGlass({ actorId: "actor-1", approverId: "actor-1", reason: "incidente", target: "patient-1", mfaMethod: "TOTP", issuedAt: "2026-01-01T00:00:00.000Z", expiresAt: "2026-01-01T00:10:00.000Z" }, Date.parse("2026-01-01T00:01:00.000Z")).status, "DENY");
+});
+
+test("WebAuthn cryptographic verification binds origin, relying party and monotonic counter", () => {
+  const now = Date.parse("2026-01-01T00:01:00.000Z");
+  const challenge: WebAuthnChallenge = { challengeId: "challenge-crypto", userId: "user-1", challenge: base64url("challenge-value"), rpId: "cvg.local", origin: "https://cvg.local/", expiresAt: "2099-01-01T00:00:00.000Z", attempts: 0, maxAttempts: 3, status: "PENDING" };
+  const { privateKey, publicKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
+  const clientDataJson = JSON.stringify({ type: "webauthn.get", challenge: challenge.challenge, origin: challenge.origin });
+  const authenticatorData = Buffer.concat([createHash("sha256").update(challenge.rpId).digest(), Buffer.from([0x05]), Buffer.from([0, 0, 0, 1])]);
+  const signedBytes = Buffer.concat([authenticatorData, createHash("sha256").update(clientDataJson).digest()]);
+  const signer = createSign("sha256");
+  signer.update(signedBytes);
+  signer.end();
+  const assertion: WebAuthnAssertionEnvelope = { challengeId: challenge.challengeId, credentialId: "credential-crypto", clientDataJson: base64url(clientDataJson), authenticatorData: base64url(authenticatorData), signature: base64url(signer.sign(privateKey)), userHandle: null, userVerified: true };
+  const credential: WebAuthnCredential = { credentialId: assertion.credentialId, userId: challenge.userId, publicKeySpki: base64url(publicKey.export({ format: "der", type: "spki" })), algorithm: "sha256", signCount: 0 };
+  assert.deepEqual(verifyWebAuthnAssertionCryptographically(challenge, assertion, credential, now), { userId: "user-1", credentialId: "credential-crypto", signCount: 1 });
+  assert.throws(() => verifyWebAuthnAssertionCryptographically(challenge, { ...assertion, signature: base64url("invalid-signature") }, credential, now));
+  assert.throws(() => verifyWebAuthnAssertionCryptographically(challenge, assertion, { ...credential, signCount: 1 }, now));
+  assert.throws(() => verifyWebAuthnAssertionCryptographically({ ...challenge, rpId: "other.local" }, assertion, credential, now));
 });
 
 test("break-glass lifecycle requires explicit activation, expires automatically and records independent review", () => {

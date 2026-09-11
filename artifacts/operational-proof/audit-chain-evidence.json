@@ -1,0 +1,15 @@
+{
+  "scope": "LOCAL_EXECUTION_ONLY",
+  "status": "VERIFIED",
+  "command": "npm run verify:audit-chain",
+  "records": 2,
+  "organizations": 1,
+  "tamperCheck": "REJECTED",
+  "fixtureDigest": "efed9dc4866829e4e532dab4e44b785c8a1f82b2e08c8c511abd68f968bec6e1",
+  "globalVerdict": "AAA_NOT_PROVEN",
+  "observedAt": "2026-09-11T12:19:52.588Z",
+  "sourceSha": "e43b3b0032aafb9d17563b1fce00fbae88ee0d51",
+  "promptSha256": "39dfbb610267b61854b972bf8513f6562b0ee374aa308f7a79b38d21f2cdeae3",
+  "record": "VER-CVG-241",
+  "advisoryLock": "IMPLEMENTED_LOCAL; appendAuditRecord, break-glass activation and canonical commit share the transaction advisory lock; concurrent PostgreSQL proof remains external"
+}

@@ -81,9 +81,9 @@ Outbox/inbox/effect ledger têm lease/fencing, retry bounded, backoff, quarantin
 
 ## Concrete Steps
 
-<!-- engineering-framework: active_action_id=CVG-FULL-STATE-OF-THE-ART:REMOTE-CI-OBSERVATION-NORMALIZED-GUARDIAN-WRITE -->
+<!-- engineering-framework: active_action_id=CVG-FULL-STATE-OF-THE-ART:EXTERNAL-EVIDENCE-AND-HUMAN-ACCEPTANCE -->
 
-1. `CVG-FULL-STATE-OF-THE-ART:REMOTE-CI-OBSERVATION-NORMALIZED-GUARDIAN-WRITE` — ação corrente: observar CI no commit Guardian integrado `d73dbd0`, confirmar os gates no SHA exato e manter `PASS_WITH_LIMITATIONS`; a crítica fresh foi `NOT_COMPLETED` e o global continua `FAIL_WITH_LIMITATIONS` / `AAA_NOT_PROVEN`.
+1. `CVG-FULL-STATE-OF-THE-ART:RUNTIME-ROUTE-INVENTORY` — concluída localmente: inventário Fastify runtime selado, admissão de método/path/plugin/HEAD/OPTIONS e fixtures negativas.
 2. `CVG-FULL-STATE-OF-THE-ART:AUTHORITATIVE-NORMALIZED-APPOINTMENT-WRITE` — concluída localmente: create assíncrono, `idempotentAsync`, escrita SQL contextual autoritativa, omissão da projeção genérica e testes SQL/HTTP/regressão; sem alegar PostgreSQL externo/staging.
 3. `CVG-FULL-STATE-OF-THE-ART:REMOTE-CI-OBSERVATION-APPOINTMENT-WRITE` — concluída: SHA `9c304f39621736ad8bb5f4b39447c4ac9d94fd25` publicado; run `34462488394`, job principal `102823305023` e job de imagens `102825161621` terminaram `success`.
 4. `CVG-FULL-STATE-OF-THE-ART:EXTERNAL-EVIDENCE-AND-HUMAN-ACCEPTANCE` — obter evidência autorizada de staging/provider/DeepSeek/observabilidade/carga/recuperação, executar crítica independente fresca e registrar aceite humano; até lá manter `FAIL_WITH_LIMITATIONS`/`AAA_NOT_PROVEN`.
@@ -797,3 +797,168 @@ specimen/result. O veredito global continua
 `FAIL_WITH_LIMITATIONS` / `AAA_NOT_PROVEN`: staging, provider/DeepSeek,
 segredos, Collector/SLO, carga/chaos/recovery, PostgreSQL concorrente fora do
 runner, matriz assistiva completa e aceite humano continuam sem evidência.
+
+
+## Retomada do prompt operacional final — 2026-09-10
+
+O prompt normativo adicional foi copiado byte a byte em `docs/prompt-final-operational-proof-2026-09-10.txt`; suas 39 fases, metas por dimensão e overall >=97 são preservadas, sem reduzir a barra ao código atual ou às metas históricas deste plano. Reauditoria criada antes das alterações em `docs/final-operational-proof-audit.md`. HEAD e43b3b0 já inclui filhos diagnósticos e migrations 033/034, enquanto o estado apontava para 539d34e; código/Git prevalecem, CI histórico não foi transferido.
+
+Implementado reparo do inventário HTTP e guard application com críticas fresh, fixtures negativas e repair loop. Evidência VER-CVG-153: npm test 186 (185 pass, 1 skip), typecheck/lint/PDP/static/build/diff passaram. Críticas iniciais FAIL geraram reparos; a crítica fresh final de aceite delimitado passou com 19/19 e 24 fixtures adicionais. Não há aprovação universal ou AAA; `docs/pdp-universal-proof.md` enumera as lacunas. Alterações ainda locais, sem CI remoto do artifact modificado.
+
+Essa etapa de inventário/runtime foi concluída no recorte local. A próxima ação é completar writes authoritative universais; demais fases continuam pendentes conforme auditoria, com dependências externas separadas do trabalho local possível.
+
+## Fechamento local do PDP universal e próximo gate — 2026-09-10 18:20
+
+O catálogo de runtime Fastify foi instalado e selado após readiness. A fase 1
+local agora passa `verify:pdp-universal`: 68 operações de request, 70 regras de
+aplicação, 6 policies de tools, 114 registros runtime e 26 testes adversariais
+de aliases, plugins, métodos, `HEAD`, `OPTIONS`, mutação tardia e violações
+capturadas. Inbox assinado, métricas e claim da assinatura clínica foram
+movidos para services de aplicação; jobs duráveis exigem
+`WORKER_POLICY_REGISTRY`/`enforceWorkerPolicy` antes do handler.
+
+`npm run verify:audit-chain` passou e rejeitou adulteração do fixture. Foram
+adicionados `verify:deepseek-real` e `verify:provider-real`; ambos retornam
+`BLOCKED_EXTERNAL` sem endpoints/credenciais autorizados. A bateria atual
+passou 213 testes (212/1 skip), typecheck, lint, build, static, PDP universal
+e audit chain. `verify:triplo-aaa` retornou `AAA_NOT_PROVEN` exit 2, como
+exigido pela barra, porque staging, provider/DeepSeek/secret authority,
+PostgreSQL multi-processo, observabilidade/SLO, carga/chaos/recovery, full
+browser/assistive-tech e aprovação humana continuam ausentes.
+
+Próxima ação: `AUTHORITATIVE-WRITES-UNIVERSAL`, cobrindo os domínios ainda
+sem projeção normalizada e seus invariantes parent/tenant/unit/workspace,
+mantendo a separação entre prova local e infraestrutura externa.
+
+## Writes authoritative universais e próximo gate — 2026-09-10 16:57
+
+`validateAuthoritativeSnapshot` passou a executar dentro da transação de
+commit, antes de qualquer DML, com `AUTHORITATIVE_DOMAIN_REGISTRY` cobrindo 32
+coleções normalizadas. O gate `npm run verify:authoritative-writes` confirma
+SQL normalizado para cada coleção, roda o agregado sintético e rejeita uma
+mutação de escopo. Os testes negativos cobrem drift de request/specimen/result,
+patient/encounter e workspace/unit; resultados externos sem pai continuam
+explicitamente `QUARANTINED`.
+
+`npm run verify:postgres:concurrency` foi adicionado ao CI e abre duas
+instâncias de `PostgresPersistence` contra a mesma URL, exigindo um claim e um
+replay sem efeito duplicado. No workspace atual ele retornou
+`POSTGRES_CONCURRENCY_BLOCKED_EXTERNAL` porque não há `DATABASE_URL` autorizado.
+O gate seguinte é executar essa prova em PostgreSQL autorizado e revisar a
+composição de handlers production-like dos lanes do worker sem inventar efeitos
+externos.
+
+## Prova PostgreSQL local e preflight — 2026-09-10 20:20
+
+O banco efêmero PostgreSQL 16.15 foi migrado com os 34 arquivos e executado
+com `cvg_runtime` sem superusuário nem `BYPASSRLS`. `verify:postgres:concurrency`
+passou por dois processos OS (`CLAIMED`, `IN_FLIGHT`, `REPLAY`, conflito
+divergente e zero efeitos duplicados); `verify:postgres` passou CAS, RLS em
+59/59 tabelas e as integrações duráveis; `verify:postgres:restore` passou
+AES-256-GCM, rejeições de tamper/partial/stale/migration mismatch e restore
+quarentenado. O banco foi removido após a prova. O verificador agora exige um
+snapshot canônico antes de criar os processos e retorna bloqueio explícito em
+banco vazio.
+
+Essa prova reduz o gap local e está em
+`artifacts/operational-proof/postgres-real-local-2026-09-10.json`, mas não é
+staging multi-instância, backup gerenciado, RTO/RPO medido ou autoridade de
+promoção. O próximo gate continua a evidência externa de DeepSeek/provider,
+staging, observabilidade, carga/chaos/recovery e aceite humano; o veredito
+permanece `FAIL_WITH_LIMITATIONS` / `AAA_NOT_PROVEN`.
+
+## Reparos locais de prova e matriz browser — 2026-09-10 21:08
+
+A prova local foi endurecida após auditoria fresh. `verify-provider-real` agora
+recusa qualquer envio sem um bundle same-SHA, checkout limpo e digest da cadeia
+Appointment → PDP → aprovação → outbox → worker → provider → receipt → callback
+→ inbox → effect ledger → reconciliação → auditoria. A exportação D4 aceita
+somente finalidades do registry e declara `ORGANIZATION` explicitamente; o
+payload não apresenta unidade/workspace como se tivesse sido filtrado. A
+telemetria possui contexto tipado para request/correlation/session/tool/job/
+outbox/provider e os entrypoints carregam esses campos com redaction.
+
+`npm test` passou 234 testes (233 pass, 1 skip), typecheck, lint (151 fontes) e
+static (80 artefatos/153 fontes) passaram. A matriz Playwright foi reexecutada
+com Chromium, Firefox, WebKit e stress: 102 casos, 96 pass, 6 skips
+condicionais e zero falhas. O stress passou por foco visível, teclado, live
+status e um suplemento automatizado de CSS zoom 200%; leitor de tela, revisão
+assistiva independente e zoom real continuam pendentes. O gate global segue
+`AAA_NOT_PROVEN` porque provider/DeepSeek/secret authority, staging,
+observabilidade/SLO, carga/chaos/recovery, promoção same-SHA e aceite humano
+continuam sem evidência autorizada.
+
+O gate final após esse reparo (`VER-CVG-165`) passou todos os checks locais e
+retornou exit 2 `AAA_NOT_PROVEN`. `scripts/verify-triplo-aaa.ts` agora exige
+manifesto candidato, SHA de fonte/CI/artifact igual ao HEAD limpo, bundle de
+evidência dentro de `artifacts/operational-proof`, digest do bundle e digest de
+cada artefato dos gates obrigatórios; o manifesto corrente declara
+`AAA_NOT_PROVEN` e permanece bloqueado. Nenhuma prova local foi promovida para
+staging ou produção.
+
+Após a validação de runtime do registry no `ExportApplicationService`,
+`VER-CVG-166` reexecutou `npm test` (234: 233 pass, 1 skip), typecheck, lint e
+`verify:triplo-aaa`. O gate retornou exit 2 `AAA_NOT_PROVEN`; o manifesto
+continua explicitamente incompleto e nenhuma autoridade externa foi inferida.
+
+O último gate (`VER-CVG-167`) tornou `secretAuthority` e `browserMatrix`
+obrigatórios no inventário de promoção, além dos gates de DeepSeek, provider,
+PostgreSQL concorrente, staging, observabilidade, carga, chaos, recovery,
+same-SHA CI e critics. O artifact atual marca as provas externas como
+`NOT_RUN`/`BLOCKED`; a execução local continua verde e o resultado global
+permanece `AAA_NOT_PROVEN`/exit 2.
+
+
+## Fechamento da regressão final — 2026-09-10 19:35
+
+VER-CVG-175 reexecutou npm test (239: 238 pass, 1 skip) e verify:triplo-aaa. Os checks locais passaram; o gate encerrou com exit 2 AAA_NOT_PROVEN porque o manifesto ainda declara ausência de evidência externa same-SHA e mantém secretAuthority, browserMatrix, staging, observabilidade, carga, chaos, recovery e critics bloqueados ou não executados.
+
+
+## Endurecimento do inventário Triplo AAA — 2026-09-10 19:45
+
+`VER-CVG-169` adicionou ao validador os gates `universalPdp`, `authoritativeWrites`, `restore` e `rtoRpo`, bem como os scores mínimos de arquitetura/segurança/confiabilidade e os estados de bloqueadores críticos/altos. A fixture válida e a regressão integral passaram; o manifesto corrente permanece `AAA_NOT_PROVEN` com evidência externa ausente.
+
+
+## Representação integral dos gates finais — 2026-09-10 19:55
+
+`VER-CVG-170` passou a exigir `STATE_OF_THE_ART_CANDIDATE` e `humanApproval` no caminho de promoção, mantendo ambos não provados no artifact atual. A fixture e a regressão integral passaram; o gate final continua `AAA_NOT_PROVEN`.
+
+
+## Validação das 20 dimensões obrigatórias — 2026-09-10 20:05
+
+`VER-CVG-171` adicionou as 20 chaves de dimensão ao validador de promoção, exigindo pontuação >=95 em cada uma para `TRIPLE_AAA_CANDIDATE`. Fixture, typecheck, lint e regressão integral passaram; o artifact corrente continua `STATE_OF_THE_ART_NOT_PROVEN`/`AAA_NOT_PROVEN`.
+
+
+## Integridade do bundle externo — 2026-09-10 20:15
+
+`VER-CVG-172` vinculou state-of-the-art e a barra histórica então vigente de 20 dimensões ao bundle externo. Fixture, typecheck, lint e regressão integral passaram; sem bundle same-SHA o gate permanece `AAA_NOT_PROVEN`. O manifesto corrente foi ampliado depois para 22 dimensões canônicas, conforme `docs/triple-aaa-final-scorecard.md`.
+
+
+## Admissão do relay outbox — 2026-09-10 20:30
+
+`VER-CVG-173` registrou `outbox.dispatch` no `WORKER_POLICY_REGISTRY` e bloqueia claim sem escopo/idempotência válidos. A regressão passou 237 testes (236 pass, 1 skip); promoção externa segue bloqueada.
+
+
+## PDP universal e outbox — 2026-09-10 20:45
+
+`VER-CVG-174` tornou o inventário universal explícito para seis policies de worker, incluindo o relay outbox antes do claim. A verificação PDP, a regressão e o gate final passaram localmente; promoção externa permanece `AAA_NOT_PROVEN`.
+
+
+## Contrato de carga fail-closed — 2026-09-10 21:05
+
+`VER-CVG-175` adicionou o cenário k6 de 50/100 usuários e burst com hooks para AI/provider/worker. O contrato e os testes passaram; execução production-like continua `NOT_RUN` sem staging, Secret Authority, threshold observado e k6.
+
+
+## VER-CVG-179 — post-documentation Triplo AAA gate
+
+Após o settlement tipado de usage e a reconciliação dos artefatos, `verify:static` passou com 82 artefatos obrigatórios e 154 fontes; o parse dos controles JSON/JSONL e `git diff --check` passaram. `verify:triplo-aaa` revalidou os checks locais, terminou exit 2 `AAA_NOT_PROVEN` e manteve a promoção bloqueada porque DeepSeek/provider/secret authority/staging/observabilidade/carga/chaos/recovery/RTO-RPO/assistive/same-SHA/human approval continuam externos ou não executados.
+
+
+## VER-CVG-182 — inventário F31-F37
+
+O manifesto de promoção foi alinhado às 23 gates exigidas pelo verificador, sem omitir resource pressure, security headers, production config, staging promotion, runbook execution ou repair loop. O teste permanente de `verify-production --production` falha fechado sem autoridade; os gates production-like continuam externos e o veredito segue `AAA_NOT_PROVEN`.
+
+
+## VER-CVG-183 — revalidação final
+
+A regressão final confirmou 243 testes (242 pass, 1 skip), database 54/54, segurança 26/26, E2E 69 (65 pass, 4 skip), static 82/154 e verify:production. verify:triplo-aaa terminou exit 2 AAA_NOT_PROVEN; o inventário de 23 gates permanece fail-closed e as provas externas/humanas seguem pendentes.

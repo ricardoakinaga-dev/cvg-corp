@@ -1,6 +1,7 @@
 # State of the Art / Triplo AAA scorecard
 
-**Barra:** `.gauntlet/bar-v3.json` — congelada, 2026-09-08.
+**Barra ativa:** `.gauntlet/bar-v4.json` — congelada, 2026-09-11, com o prompt operacional de 2026-09-10 e SHA `39dfbb610267b61854b972bf8513f6562b0ee374aa308f7a79b38d21f2cdeae3`.
+**Barra histórica:** `.gauntlet/bar-v3.json` permanece imutável para rastreabilidade.
 **Resultado:** `FAIL_WITH_LIMITATIONS`; não elegível para `AAA`.
 
 **Fotografia de evidência local — 2026-09-09:** lint, typecheck, build e static PASS; 82/82 testes unitários/integração; recovery manifest, PDP target-bound, Tool Gateway com sessão/alvo/escopo e ledger durável, scheduler de seis lanes, provider HTTP fail-closed, reconciliação `OUTCOME_UNKNOWN`, catálogo de oito SLOs e alertas tipados, gates de staging/AAA e CSP sem `unsafe-inline` foram implementados. Static: 35 artefatos obrigatórios e 108 fontes; E2E Chromium: 22 testes executados PASS nos viewports 375/768/1440 e dois skips intencionais; contraste 7/7; tokens sem high/critical e 72 sinais medium heurísticos; `npm audit --omit=dev` sem vulnerabilidades; SBOM CycloneDX; licenças para 193 dependências; benchmark local explicitamente sintético. `verify:production` validou o Compose estrutural com limites de CPU/memória e valores sintéticos, sem iniciar serviços. `verify:triplo-aaa` retornou `AAA_NOT_PROVEN`/exit 2 e `verify:staging` retornou `STAGING_EVIDENCE_INCOMPLETE`/exit 2, preservando o fail-closed.

@@ -25,6 +25,7 @@ export interface IntegrationContract {
 }
 
 export type SecretProviderStatus = "READY" | "UNAVAILABLE" | "NOT_CONFIGURED" | "DEGRADED";
+export type SecretProviderKind = "none" | "env" | "file" | "docker" | "vault" | "aws" | "gcp" | "azure" | "kubernetes";
 
 /**
  * A provider exposes only the ability to resolve an approved reference. The
@@ -77,6 +78,29 @@ export class StaticSecretProvider implements SecretProvider {
   }
 }
 
+/**
+ * Explicit fail-closed marker for provider kinds whose adapter is not present
+ * in this checkout. Keeping the configured kind visible prevents a missing
+ * Vault/cloud adapter from looking like an ordinary empty local registry.
+ */
+export class UnsupportedSecretProvider implements SecretProvider {
+  readonly reason = "SECRET_PROVIDER_ADAPTER_UNAVAILABLE" as const;
+
+  constructor(readonly kind: Exclude<SecretProviderKind, "none" | "env" | "file" | "docker">) {}
+
+  status(): SecretProviderStatus {
+    return "UNAVAILABLE";
+  }
+
+  has(_reference: string): boolean {
+    return false;
+  }
+
+  async resolve(_reference: string): Promise<string | null> {
+    return null;
+  }
+}
+
 /** Reads only explicitly named CVG_SECRET_* environment variables. */
 export class EnvironmentSecretProvider implements SecretProvider {
   constructor(private readonly environment: NodeJS.ProcessEnv = process.env, private readonly prefix = "CVG_SECRET_") {}
@@ -114,7 +138,12 @@ export class FileSecretProvider implements SecretProvider {
 
   has(reference: string): boolean {
     const file = this.file(reference);
-    return file !== null && existsSync(file);
+    if (file === null || !existsSync(file)) return false;
+    try {
+      return readFileSync(file, "utf8").trim().length > 0;
+    } catch {
+      return false;
+    }
   }
 
   async resolve(reference: string): Promise<string | null> {
@@ -154,12 +183,12 @@ export class DockerSecretProvider implements SecretProvider {
   }
 }
 
-export function configuredSecretProvider(kind: "none" | "env" | "file" | "docker" | "vault" | "aws" | "gcp" | "azure" | "kubernetes", environment: NodeJS.ProcessEnv = process.env, fileRoot = environment.CVG_SECRET_DIR ?? "/run/secrets/cvg"): SecretProvider | null {
+export function configuredSecretProvider(kind: SecretProviderKind, environment: NodeJS.ProcessEnv = process.env, fileRoot = environment.CVG_SECRET_DIR ?? "/run/secrets/cvg"): SecretProvider | null {
   if (kind === "none") return null;
   if (kind === "env") return new EnvironmentSecretProvider(environment);
   if (kind === "file") return new FileSecretProvider(fileRoot);
   if (kind === "docker") return new DockerSecretProvider(fileRoot);
-  return new StaticSecretProvider([]);
+  return new UnsupportedSecretProvider(kind);
 }
 
 /** Provider-neutral message input. A caller may use `recipient`/`body` or the
@@ -226,6 +255,9 @@ export type MessagingSecretResolver = (reference: string) => Promise<string | nu
 export interface MessagingHttpResponse {
   readonly status: number;
   readonly ok: boolean;
+  readonly headers?: { get?(name: string): string | null } | Readonly<Record<string, string | undefined>>;
+  /** Native fetch responses expose text(); injected transports may provide only json(). */
+  text?(): Promise<string>;
   json(): Promise<unknown>;
 }
 
@@ -620,34 +652,83 @@ export interface HttpMessagingProviderOptions extends MessagingProviderControlOp
   sendPath?: string;
   queryPath?: string | ((request: MessagingQueryRequest) => string);
   allowInsecureEndpoint?: boolean;
+  /** Maximum provider response body accepted by the adapter. */
+  maxResponseBodyBytes?: number;
 }
 
 interface HttpAttemptResult {
   response: MessagingHttpResponse | null;
+  payload?: unknown;
   failure: "TIMEOUT" | "TRANSPORT" | "INVALID_RESPONSE" | "CANCELLED" | null;
 }
 
-async function httpAttempt(fetcher: MessagingFetch, url: string, init: RequestInit, timeoutMs: number, callerSignal: AbortSignal | null): Promise<HttpAttemptResult> {
+const DEFAULT_PROVIDER_RESPONSE_BODY_BYTES = 256 * 1024;
+
+function boundedResponseBodyBytes(value: number | undefined): number {
+  const selected = value ?? DEFAULT_PROVIDER_RESPONSE_BODY_BYTES;
+  if (!Number.isSafeInteger(selected) || selected < 1 || selected > 4 * 1024 * 1024) throw new DomainError("INVALID_INPUT", "O limite de resposta do provider deve estar entre 1 byte e 4 MiB.", 400);
+  return selected;
+}
+
+function responseContentLength(response: MessagingHttpResponse): number | null {
+  const headers = response.headers;
+  const hasGetter = headers && typeof headers === "object" && "get" in headers && typeof (headers as { get?: unknown }).get === "function";
+  const raw = hasGetter
+    ? (headers as { get: (name: string) => string | null }).get("content-length")
+    : headers
+      ? (headers as Readonly<Record<string, string | undefined>>)["content-length"]
+      : undefined;
+  if (raw === null || raw === undefined || raw === "") return null;
+  const parsed = Number(raw);
+  return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : null;
+}
+
+async function responseJson(response: MessagingHttpResponse, maxBodyBytes: number): Promise<unknown> {
+  const declaredLength = responseContentLength(response);
+  if (declaredLength !== null && declaredLength > maxBodyBytes) throw new Error("provider response body exceeds the configured limit");
+  if (typeof response.text === "function") {
+    const raw = await response.text();
+    if (Buffer.byteLength(raw, "utf8") > maxBodyBytes) throw new Error("provider response body exceeds the configured limit");
+    return JSON.parse(raw) as unknown;
+  }
+  const payload = await response.json();
+  let encoded: string;
+  try { encoded = JSON.stringify(payload); } catch { throw new Error("provider response is not serializable"); }
+  if (Buffer.byteLength(encoded, "utf8") > maxBodyBytes) throw new Error("provider response body exceeds the configured limit");
+  return payload;
+}
+
+async function httpAttempt(fetcher: MessagingFetch, url: string, init: RequestInit, timeoutMs: number, callerSignal: AbortSignal | null, maxResponseBodyBytes: number): Promise<HttpAttemptResult> {
   if (callerSignal?.aborted) return { response: null, failure: "CANCELLED" };
   const controller = new AbortController();
   let timedOut = false;
+  let invalidResponse = false;
   let timer: ReturnType<typeof setTimeout> | undefined;
   const onAbort = (): void => controller.abort();
   callerSignal?.addEventListener("abort", onAbort, { once: true });
   try {
-    const request = fetcher(url, { ...init, signal: controller.signal });
-    const timeout = new Promise<MessagingHttpResponse>((_resolve, reject) => {
+    const operation = fetcher(url, { ...init, signal: controller.signal }).then(async (response) => {
+      if (!response || typeof response.status !== "number" || (typeof response.text !== "function" && typeof response.json !== "function")) throw new Error("provider response transport is invalid");
+      let payload: unknown;
+      try {
+        payload = await responseJson(response, maxResponseBodyBytes);
+      } catch (error) {
+        invalidResponse = true;
+        throw error;
+      }
+      return { response, payload };
+    });
+    const timeout = new Promise<{ response: MessagingHttpResponse; payload: unknown }>((_resolve, reject) => {
       timer = setTimeout(() => {
         timedOut = true;
         controller.abort();
         reject(new Error("timeout"));
       }, timeoutMs);
     });
-    const response = await Promise.race([request, timeout]);
-    if (!response || typeof response.status !== "number" || typeof response.json !== "function") return { response: null, failure: "INVALID_RESPONSE" };
-    return { response, failure: null };
+    const result = await Promise.race([operation, timeout]);
+    return { response: result.response, payload: result.payload, failure: null };
   } catch {
-    return { response: null, failure: callerSignal?.aborted ? "CANCELLED" : timedOut ? "TIMEOUT" : "TRANSPORT" };
+    return { response: null, failure: callerSignal?.aborted ? "CANCELLED" : timedOut ? "TIMEOUT" : invalidResponse ? "INVALID_RESPONSE" : "TRANSPORT" };
   } finally {
     if (timer) clearTimeout(timer);
     callerSignal?.removeEventListener("abort", onAbort);
@@ -687,17 +768,19 @@ function httpFailureResult(failure: "TIMEOUT" | "TRANSPORT" | "INVALID_RESPONSE"
 export class HttpMessagingProvider implements MessagingProvider {
   private readonly controls: MessagingControls;
   private readonly defaultTimeoutMs: number;
+  private readonly maxResponseBodyBytes: number;
 
   constructor(private readonly options: HttpMessagingProviderOptions = {}) {
     this.controls = createMessagingControls(options);
     this.defaultTimeoutMs = boundedTimeout(options.defaultTimeoutMs, 5_000);
+    this.maxResponseBodyBytes = boundedResponseBodyBytes(options.maxResponseBodyBytes);
   }
 
   async send(request: MessagingSendRequest): Promise<MessagingSendResult> {
     const normalized = normalizedSendRequest(request, this.defaultTimeoutMs);
     const requestId = normalized.requestId ?? deterministicRequestId("msg", normalized.idempotencyKey);
     const endpoint = providerEndpoint(this.options);
-    const secret = await this.resolveSecret();
+    const secret = await this.resolveSecret(normalized.timeoutMs, normalized.signal);
     admitMessagingRequest(this.controls, requestId);
     if (normalized.signal?.aborted) throw new MessagingProviderError("CANCELLED", "message send was cancelled before dispatch");
     let body: string;
@@ -706,7 +789,7 @@ export class HttpMessagingProvider implements MessagingProvider {
     } catch {
       throw new DomainError("INVALID_INPUT", "O payload da mensagem não pode ser serializado.", 400);
     }
-    const attempt = await httpAttempt(this.fetcher(), joinProviderEndpoint(endpoint, this.options.sendPath ?? "/messages"), { method: "POST", redirect: "error", headers: { accept: "application/json", "content-type": "application/json", "x-request-id": requestId, "idempotency-key": normalized.idempotencyKey, authorization: `Bearer ${secret}` }, body }, normalized.timeoutMs || this.defaultTimeoutMs, normalized.signal);
+    const attempt = await httpAttempt(this.fetcher(), joinProviderEndpoint(endpoint, this.options.sendPath ?? "/messages"), { method: "POST", redirect: "error", headers: { accept: "application/json", "content-type": "application/json", "x-request-id": requestId, "idempotency-key": normalized.idempotencyKey, authorization: `Bearer ${secret}` }, body }, normalized.timeoutMs || this.defaultTimeoutMs, normalized.signal, this.maxResponseBodyBytes);
     if (attempt.failure) {
       this.controls.circuitBreaker?.recordFailure();
       return httpFailureResult(attempt.failure, requestId, null);
@@ -720,13 +803,7 @@ export class HttpMessagingProvider implements MessagingProvider {
       this.controls.circuitBreaker?.recordFailure();
       return { status: "OUTCOME_UNKNOWN", requestId, providerRequestId: null, reason: `provider returned HTTP ${response?.status ?? "unknown"}; query is required` };
     }
-    let payload: unknown;
-    try {
-      payload = await response.json();
-    } catch {
-      this.controls.circuitBreaker?.recordFailure();
-      return httpFailureResult("INVALID_RESPONSE", requestId, null);
-    }
+    const payload = attempt.payload;
     const responseRecord = isRecord(payload) ? payload : null;
     const echoedRequestId = responseRecord?.requestId;
     const providerRequestId = typeof responseRecord?.providerRequestId === "string" ? responseRecord.providerRequestId : null;
@@ -751,13 +828,13 @@ export class HttpMessagingProvider implements MessagingProvider {
     const normalized = normalizedQueryRequest(request, this.defaultTimeoutMs);
     const requestId = normalized.requestId ?? deterministicRequestId("query", normalized.idempotencyKey ?? normalized.providerRequestId ?? "unknown");
     const endpoint = providerEndpoint(this.options);
-    const secret = await this.resolveSecret();
+    const secret = await this.resolveSecret(normalized.timeoutMs, normalized.signal);
     admitMessagingRequest(this.controls, requestId);
     if (normalized.signal?.aborted) throw new MessagingProviderError("CANCELLED", "message query was cancelled before dispatch");
     const identity = normalized.providerRequestId ?? normalized.requestId ?? normalized.idempotencyKey ?? requestId;
     const configuredPath = typeof this.options.queryPath === "function" ? this.options.queryPath(request) : this.options.queryPath ?? `/messages/${encodeURIComponent(identity)}`;
     const path = configuredPath.replace(":providerRequestId", encodeURIComponent(identity));
-    const attempt = await httpAttempt(this.fetcher(), joinProviderEndpoint(endpoint, path), { method: "GET", redirect: "error", headers: { accept: "application/json", "x-request-id": requestId, authorization: `Bearer ${secret}` } }, normalized.timeoutMs || this.defaultTimeoutMs, normalized.signal);
+    const attempt = await httpAttempt(this.fetcher(), joinProviderEndpoint(endpoint, path), { method: "GET", redirect: "error", headers: { accept: "application/json", "x-request-id": requestId, authorization: `Bearer ${secret}` } }, normalized.timeoutMs || this.defaultTimeoutMs, normalized.signal, this.maxResponseBodyBytes);
     if (attempt.failure) {
       this.controls.circuitBreaker?.recordFailure();
       return { status: "OUTCOME_UNKNOWN", requestId, providerRequestId: normalized.providerRequestId, receipt: null, error: httpFailureResult(attempt.failure, requestId, normalized.providerRequestId).reason };
@@ -771,13 +848,7 @@ export class HttpMessagingProvider implements MessagingProvider {
       this.controls.circuitBreaker?.recordFailure();
       return { status: "OUTCOME_UNKNOWN", requestId, providerRequestId: normalized.providerRequestId, receipt: null, error: "provider returned a non-success response; query must be retried by reconciliation policy" };
     }
-    let payload: unknown;
-    try {
-      payload = await response.json();
-    } catch {
-      this.controls.circuitBreaker?.recordFailure();
-      return { status: "OUTCOME_UNKNOWN", requestId, providerRequestId: normalized.providerRequestId, receipt: null, error: "provider response failed validation; query must be retried by reconciliation policy" };
-    }
+    const payload = attempt.payload;
     const responseRecord = isRecord(payload) ? payload : null;
     const echoedRequestId = responseRecord?.requestId;
     const responseProviderRequestId = typeof responseRecord?.providerRequestId === "string" ? responseRecord.providerRequestId : normalized.providerRequestId;
@@ -818,15 +889,22 @@ export class HttpMessagingProvider implements MessagingProvider {
     return globalThis.fetch.bind(globalThis) as MessagingFetch;
   }
 
-  private async resolveSecret(): Promise<string> {
+  private async resolveSecret(timeoutMs: number, callerSignal: AbortSignal | null): Promise<string> {
+    if (callerSignal?.aborted) throw new MessagingProviderError("CANCELLED", "message provider credential resolution was cancelled");
     const reference = typeof this.options.credentialRef === "string" ? this.options.credentialRef.trim() : "";
     const resolver = this.options.secretResolver ?? this.options.resolveSecret;
     if (!reference || !/^[A-Za-z0-9._:-]{1,160}$/.test(reference) || !resolver) throw new MessagingProviderError("CREDENTIAL", "message provider credential is not configured");
     let secret: string | null;
+    let timer: ReturnType<typeof setTimeout> | undefined;
     try {
-      secret = await resolver(reference);
+      secret = await Promise.race([
+        resolver(reference),
+        new Promise<null>((_resolve, reject) => { timer = setTimeout(() => reject(new Error("credential resolution timeout")), timeoutMs); })
+      ]);
     } catch {
-      throw new MessagingProviderError("CREDENTIAL", "message provider credential resolver failed");
+      throw new MessagingProviderError("CREDENTIAL", "message provider credential resolver failed or timed out");
+    } finally {
+      if (timer) clearTimeout(timer);
     }
     if (!secret || !secret.trim()) throw new MessagingProviderError("CREDENTIAL", "message provider credential is unavailable");
     return secret;
@@ -841,6 +919,9 @@ export interface IntegrationAttempt {
   reason: string;
   createdAt: string;
 }
+
+export { PROVIDER_REAL_PROOF_STAGES, isProviderProofEvidenceRef, providerRealProofAttestationPayload, providerRealProofChainDigest, validateProviderRealProofEvidence } from "./provider-proof.ts";
+export type { ProviderRealProofAttestation, ProviderRealProofEvidence, ProviderRealProofStage, ProviderRealProofStageEvidence } from "./provider-proof.ts";
 
 export interface OutboxDeliveryReceipt {
   status: "DELIVERED";
@@ -922,6 +1003,36 @@ export interface OutboxWorkerResult {
   outcomeUnknown: number;
 }
 
+export interface OutboxAttemptEvent {
+  readonly cycleId: OpaqueId;
+  readonly organizationId: OpaqueId;
+  readonly workerId: string;
+  readonly outboxId: OpaqueId;
+  readonly lane: "outbox";
+  readonly jobType: "outbox.dispatch";
+  readonly idempotencyKey: string;
+  readonly outcome: "STARTED" | "SUCCEEDED" | "RETRY_SCHEDULED" | "QUARANTINED";
+  readonly attempt: number;
+  readonly durationMs: number;
+  readonly reason: string | null;
+  readonly providerRequestId: string | null;
+}
+
+export interface OutboxMetricEvent {
+  readonly name: "worker.handler.attempt" | "worker.handler.succeeded" | "worker.handler.retry" | "worker.handler.quarantined";
+  readonly cycleId: OpaqueId;
+  readonly outboxId: OpaqueId;
+  readonly jobType: "outbox.dispatch";
+  readonly providerRequestId: string | null;
+  readonly durationMs: number;
+}
+
+export interface OutboxWorkerHooks {
+  readonly cycleId: OpaqueId;
+  readonly audit?: (event: OutboxAttemptEvent) => void | Promise<void>;
+  readonly metrics?: (event: OutboxMetricEvent) => void;
+}
+
 export interface ExternalEffectLedger {
   prepareExternalEffect(input: DurableExternalEffectInput, claim: { workerId: string; fenceToken: bigint; leaseSeconds?: number }): Promise<DurableExternalEffectRecord>;
   markExternalEffectDispatched(organizationId: OpaqueId, effectId: OpaqueId, workerId: string, fenceToken: bigint): Promise<DurableExternalEffectRecord>;
@@ -983,13 +1094,28 @@ export function createMessagingExternalEffectQueryAdapter(provider: Pick<Messagi
 export class OutboxWorker {
   constructor(private readonly persistence: Pick<PostgresPersistence, "claimOutbox" | "completeOutbox" | "failOutbox">, private readonly effects: ExternalEffectLedger | null = null) {}
 
-  async runOnce(organizationId: OpaqueId, workerId: string, sink: OutboxSink, options: { limit?: number; leaseSeconds?: number; maxAttempts?: number } = {}): Promise<OutboxWorkerResult> {
+  async runOnce(organizationId: OpaqueId, workerId: string, sink: OutboxSink, options: { limit?: number; leaseSeconds?: number; maxAttempts?: number; hooks?: OutboxWorkerHooks } = {}): Promise<OutboxWorkerResult> {
     const maxAttempts = Math.min(20, Math.max(1, Math.trunc(options.maxAttempts ?? 5)));
     const records = await this.persistence.claimOutbox(organizationId, workerId, options.limit ?? 10, options.leaseSeconds ?? 30);
     const result: OutboxWorkerResult = { claimed: records.length, delivered: 0, retried: 0, quarantined: 0, outcomeUnknown: 0 };
     for (const record of records) {
+      const attemptStarted = Date.now();
+      const hooks = options.hooks;
+      const cycleId = hooks?.cycleId ?? record.id;
+      const recordAudit = async (outcome: OutboxAttemptEvent["outcome"], reason: string | null, providerRequestId: string | null = null): Promise<void> => {
+        if (!hooks?.audit) return;
+        await hooks.audit({ cycleId, organizationId: record.organizationId, workerId, outboxId: record.id, lane: "outbox", jobType: "outbox.dispatch", idempotencyKey: record.id, outcome, attempt: record.attempts, durationMs: Date.now() - attemptStarted, reason, providerRequestId });
+      };
+      const recordMetric = (name: OutboxMetricEvent["name"], providerRequestId: string | null = null): void => {
+        hooks?.metrics?.({ name, cycleId, outboxId: record.id, jobType: "outbox.dispatch", providerRequestId, durationMs: Date.now() - attemptStarted });
+      };
+      await recordAudit("STARTED", null);
+      recordMetric("worker.handler.attempt");
       if (sink.requiresDurableEffectLedger && !this.effects) {
-        await this.persistence.failOutbox(organizationId, record.id, workerId, record.fenceToken, "external sink requires a durable effect ledger; dispatch was not attempted", true, 1);
+        const reason = "external sink requires a durable effect ledger; dispatch was not attempted";
+        await recordAudit("QUARANTINED", reason);
+        recordMetric("worker.handler.quarantined");
+        await this.persistence.failOutbox(organizationId, record.id, workerId, record.fenceToken, reason, true, 1);
         result.quarantined += 1;
         continue;
       }
@@ -998,6 +1124,8 @@ export class OutboxWorker {
       if (this.effects) {
         effect = await this.effects.prepareExternalEffect(effectInput, { workerId, fenceToken: record.fenceToken, leaseSeconds: options.leaseSeconds ?? 30 });
         if (effect.status === "SUCCEEDED") {
+          await recordAudit("SUCCEEDED", null, effect.providerRequestId);
+          recordMetric("worker.handler.succeeded", effect.providerRequestId);
           await this.persistence.completeOutbox(organizationId, record.id, workerId, record.fenceToken);
           result.delivered += 1;
           continue;
@@ -1005,7 +1133,10 @@ export class OutboxWorker {
         if (effect.status !== "ADMISSION_PENDING") {
           const quarantine = effect.status !== "FAILED_RETRYABLE";
           if (effect.status === "OUTCOME_UNKNOWN" || effect.status === "RECONCILIATION_REQUIRED" || effect.status === "DISPATCHED") result.outcomeUnknown += 1;
-          await this.persistence.failOutbox(organizationId, record.id, workerId, record.fenceToken, `external effect is ${effect.status}; dispatch is blocked until reconciliation`, quarantine, 1);
+          const reason = `external effect is ${effect.status}; dispatch is blocked until reconciliation`;
+          await recordAudit(quarantine ? "QUARANTINED" : "RETRY_SCHEDULED", reason, effect.providerRequestId);
+          recordMetric(quarantine ? "worker.handler.quarantined" : "worker.handler.retry", effect.providerRequestId);
+          await this.persistence.failOutbox(organizationId, record.id, workerId, record.fenceToken, reason, quarantine, 1);
           if (quarantine) result.quarantined += 1;
           else result.retried += 1;
           continue;
@@ -1058,11 +1189,15 @@ export class OutboxWorker {
         await this.effects.recordExternalEffectOutcome(organizationId, effect.id, workerId, record.fenceToken, outcome);
       }
       if (decision === "DELIVERED") {
+        await recordAudit("SUCCEEDED", null, providerRequestId);
+        recordMetric("worker.handler.succeeded", providerRequestId);
         await this.persistence.completeOutbox(organizationId, record.id, workerId, record.fenceToken);
         result.delivered += 1;
         continue;
       }
       const quarantine = decision === "QUARANTINE" || decision === "OUTCOME_UNKNOWN" || record.attempts >= maxAttempts;
+      await recordAudit(quarantine ? "QUARANTINED" : "RETRY_SCHEDULED", reason, providerRequestId);
+      recordMetric(quarantine ? "worker.handler.quarantined" : "worker.handler.retry", providerRequestId);
       await this.persistence.failOutbox(organizationId, record.id, workerId, record.fenceToken, reason, quarantine, Math.min(300, 2 ** Math.min(record.attempts, 8)));
       if (quarantine) result.quarantined += 1;
       else result.retried += 1;

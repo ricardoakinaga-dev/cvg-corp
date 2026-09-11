@@ -1,0 +1,107 @@
+{
+  "schemaVersion": 1,
+  "status": "PASS_WITH_LIMITATIONS",
+  "observedAt": "2026-09-11T12:48:44.171Z",
+  "sourceSha": "e43b3b0032aafb9d17563b1fce00fbae88ee0d51",
+  "worktree": "MODIFIED",
+  "command": "npm run test:e2e:full with user-local WebKit dependency prefix (no repository/system package changes)",
+  "projects": [
+    "chromium-wide-1440",
+    "chromium-tablet-768",
+    "chromium-mobile-375",
+    "firefox-wide-1440",
+    "firefox-tablet-768",
+    "firefox-mobile-375",
+    "webkit-wide-1440",
+    "webkit-tablet-768",
+    "webkit-mobile-375",
+    "chromium-stress",
+    "firefox-stress",
+    "webkit-stress"
+  ],
+  "results": {
+    "tests": 153,
+    "passed": 124,
+    "skipped": 29,
+    "failed": 0,
+    "conditionalSkips": "global search and skip-link focus scenarios are intentionally skipped outside wide viewports; mobile context-switch focus runs only on mobile viewports; touch capability is skipped when Firefox/WebKit expose no maxTouchPoints in this environment"
+  },
+  "webkitRuntime": {
+    "status": "VERIFIED_USER_PREFIX",
+    "command": "npx playwright test --project=webkit-wide-1440 --project=webkit-tablet-768 --project=webkit-mobile-375 --project=webkit-stress with extracted user-local libraries",
+    "tests": 51,
+    "passed": 41,
+    "skipped": 10,
+    "failed": 0,
+    "dependencyPrefix": "user-local extracted Ubuntu libraries; host-native invocation remains blocked by missing libgstcodecparsers-1.0.so.0",
+    "note": "WebKit wide/tablet/mobile and stress passed with the user-local prefix; the host-native invocation remains blocked by missing libgstcodecparsers-1.0.so.0."
+  },
+  "remaining": [
+    "screen-reader and assistive-technology audit",
+    "manual keyboard/focus/live-region review",
+    "real 200 percent zoom",
+    "independent visual baseline review",
+    "touch-device behavior in Firefox/WebKit is not exposed by the available engines",
+    "host-native WebKit dependency installation / revalidation"
+  ],
+  "promotion": {
+    "browserMatrix": "LOCAL_PASS_WITH_ENV_LIMITATION",
+    "stagingOrProduction": "NOT_PROVEN",
+    "globalVerdict": "AAA_NOT_PROVEN"
+  },
+  "historicalWebkitMatrix": {
+    "observedAt": "2026-09-10T21:05:00-03:00",
+    "command": "PLAYWRIGHT_BROWSERS_PATH=<temporary-prefix> npx playwright test",
+    "tests": 102,
+    "passed": 96,
+    "skipped": 6,
+    "failed": 0,
+    "projects": [
+      "chromium-wide-1440",
+      "chromium-tablet-768",
+      "chromium-mobile-375",
+      "firefox-wide-1440",
+      "firefox-tablet-768",
+      "firefox-mobile-375",
+      "webkit-wide-1440",
+      "webkit-tablet-768",
+      "webkit-mobile-375",
+      "chromium-stress"
+    ],
+    "status": "PASS_WITH_LIMITATIONS",
+    "note": "Historical local run before the current user-prefix revalidation; retained for provenance and not used as current evidence."
+  },
+  "latestRun": {
+    "observedAt": "2026-09-11T12:48:44.171Z",
+    "tests": 153,
+    "passed": 124,
+    "skipped": 29,
+    "failed": 0,
+    "expected": 124,
+    "projects": [
+      "chromium-wide-1440",
+      "chromium-tablet-768",
+      "chromium-mobile-375",
+      "firefox-wide-1440",
+      "firefox-tablet-768",
+      "firefox-mobile-375",
+      "webkit-wide-1440",
+      "webkit-tablet-768",
+      "webkit-mobile-375",
+      "chromium-stress",
+      "firefox-stress",
+      "webkit-stress"
+    ],
+    "source": "full Playwright matrix including browser-specific stress projects"
+  },
+  "latestHostNativeAttempt": {
+    "observedAt": "2026-09-11T15:27:51.686Z",
+    "command": "npm run test:e2e:full",
+    "tests": 153,
+    "passed": 83,
+    "skipped": 19,
+    "failed": 51,
+    "status": "BLOCKED_LOCAL_ENV",
+    "reason": "host-native WebKit could not launch because libgstcodecparsers-1.0.so.0 is unavailable; the user-local-prefix run remains the last successful full browser artifact"
+  }
+}

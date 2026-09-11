@@ -6,7 +6,7 @@ Escopo: composição local/prod-like do CVG. Este procedimento não autoriza pro
 2. Valide somente artefatos e configuração:
 
    ```bash
-   node --import tsx scripts/verify-production.ts
+   node --import tsx scripts/verify-production.ts --structural
    docker compose --env-file "$CVG_ENV_FILE" config --quiet
    ```
 

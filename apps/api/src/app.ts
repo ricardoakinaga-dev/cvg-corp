@@ -56,6 +56,7 @@ import {
   type ApiResponse,
   type CvgContext,
   type ClinicalDocument,
+  type CommandReceipt,
   type DataClass,
   type DiagnosticRequest,
   type DiagnosticResult,
@@ -71,7 +72,6 @@ import {
   DomainError,
   digest,
   hashPassword,
-  idempotentAsync,
   now,
   publicUser,
   parseSnapshot,
@@ -88,6 +88,7 @@ import { configuredSecretProvider, IntegrationGateway, inboxEventToOutbox, integ
 import { createOpenTelemetryRuntime, OpsTelemetry, renderPrometheusMetrics, type OpenTelemetryRuntime } from "@cvg/ops";
 import { PersistenceConflictError, PersistenceCorruptionError, PersistenceSignatureError, PersistenceStateError, PersistenceUnavailableError, PostgresPersistence, type DurableExternalEffectRecord, type InboxSignatureVerifier } from "@cvg/persistence";
 import { registerHealthRoutes } from "./routes/health.ts";
+import { installRuntimeRouteCatalog, type RuntimeRouteInventory } from "./route-catalog.ts";
 import { AgentApplicationService } from "./application/agent-service.ts";
 import { AppointmentApplicationService, PostgresAppointmentRepository, StoreAppointmentRepository } from "./application/appointment-service.ts";
 import { ClinicalSignApplicationService, PostgresClinicalSignRepository, StoreClinicalSignRepository } from "./application/clinical-command-service.ts";
@@ -99,6 +100,10 @@ import { createReadApplicationService } from "./application/read-services.ts";
 import { DomainCommandService } from "./application/domain-command-service.ts";
 import { ExportApplicationService, governedExportDigest } from "./application/export-service.ts";
 import { DurableIdempotencyService, commandInput } from "./application/idempotency-service.ts";
+import { IntegrationInboxApplicationService } from "./application/integration-service.ts";
+import { OperationalMetricsApplicationService } from "./application/operational-metrics-service.ts";
+import { KeyedAsyncCoordinator } from "./application/keyed-coordinator.ts";
+import { BreakGlassApplicationService, type BreakGlassScopeAuthority, type BreakGlassWebAuthnAuthority } from "./application/break-glass-service.ts";
 
 const SESSION_COOKIE = "cvg_session";
 const CSRF_COOKIE = "cvg_csrf";
@@ -113,8 +118,11 @@ export interface ServerConfig {
   nodeEnv: "development" | "test" | "production";
   host: string;
   trustProxy: boolean;
+  trustedProxyIps: string[];
   port: number;
   webOrigin: string;
+  releaseSha: string | null;
+  releaseArtifactDigest: string | null;
   storageMode: "memory" | "postgres";
   demoMode: boolean;
   sessionTtlMinutes: number;
@@ -235,16 +243,50 @@ export interface ServerOptions {
   providerQueryAdapter?: ExternalEffectQueryAdapter;
   secretProvider?: SecretProvider;
   mfaSecretResolver?: MfaSecretResolver;
+  /** No default is permitted: production must inject the approved WebAuthn authority. */
+  breakGlassWebAuthnAuthority?: BreakGlassWebAuthnAuthority;
+  /** No default is permitted: scope ownership must come from an approved authority. */
+  breakGlassScopeAuthority?: BreakGlassScopeAuthority;
   rateLimiter?: RateLimiter;
+}
+
+const PRODUCTION_INJECTION_KEYS = [
+  "store",
+  "harness",
+  "agentRuntime",
+  "telemetry",
+  "persistence",
+  "inboxSignatureVerifier",
+  "outboxSink",
+  "providerQueryAdapter",
+  "secretProvider",
+  "mfaSecretResolver",
+  "rateLimiter"
+] as const;
+
+/**
+ * Production must construct its dependencies from the approved configuration
+ * and provider factories. Test seams remain available in non-production
+ * environments, while WebAuthn and scope authorities stay explicit external
+ * boundaries instead of becoming implicit defaults.
+ */
+export function assertProductionRuntimeOverrides(nodeEnv: ServerConfig["nodeEnv"], options: ServerOptions): void {
+  if (nodeEnv !== "production") return;
+  const injected = PRODUCTION_INJECTION_KEYS.filter((key) => options[key] !== undefined);
+  if (injected.length > 0) {
+    throw new DomainError("CAPABILITY_DISABLED", `Produção não aceita dependências injetadas fora das factories aprovadas: ${injected.join(", ")}.`, 503);
+  }
 }
 
 export interface CvgServerRuntime {
   app: FastifyInstance;
+  routeInventory: RuntimeRouteInventory;
   store: CvgStore;
   agentRuntime: AgentRuntime;
   telemetry: OpsTelemetry;
   integrations: IntegrationGateway;
   persistence: PostgresPersistence | null;
+  breakGlass: BreakGlassApplicationService;
   config: ServerConfig;
   runOutboxOnce: (organizationId: OpaqueId, workerId: string, sink?: OutboxSink, options?: { limit?: number; leaseSeconds?: number; maxAttempts?: number }) => Promise<OutboxWorkerResult>;
   reconcileExternalEffect: (organizationId: OpaqueId, effectId: OpaqueId, adapter?: ExternalEffectQueryAdapter, options?: { timeoutMs?: number }) => Promise<DurableExternalEffectRecord>;
@@ -262,8 +304,11 @@ function getConfig(overrides: Partial<ServerConfig> = {}): ServerConfig {
     nodeEnv: overrides.nodeEnv ?? typed.nodeEnv,
     host: overrides.host ?? typed.host,
     trustProxy: overrides.trustProxy ?? typed.trustProxy,
+    trustedProxyIps: overrides.trustedProxyIps ?? typed.trustedProxyIps,
     apiPort: (overrides.port ?? typed.apiPort) || DEFAULT_PORT,
     webOrigin: overrides.webOrigin ?? typed.webOrigin,
+    releaseSha: overrides.releaseSha ?? typed.releaseSha,
+    releaseArtifactDigest: overrides.releaseArtifactDigest ?? typed.releaseArtifactDigest,
     storageMode: overrides.storageMode ?? typed.storageMode,
     demoMode: overrides.demoMode ?? typed.demoMode,
     sessionTtlMinutes: overrides.sessionTtlMinutes ?? typed.sessionTtlMinutes,
@@ -290,7 +335,7 @@ function getConfig(overrides: Partial<ServerConfig> = {}): ServerConfig {
     rateLimitRequestsPerWindow: overrides.rateLimitRequestsPerWindow ?? typed.rateLimitRequestsPerWindow,
     rateLimitWindowSeconds: overrides.rateLimitWindowSeconds ?? typed.rateLimitWindowSeconds
   });
-  return { nodeEnv: validated.nodeEnv, host: validated.host, trustProxy: validated.trustProxy, port: validated.apiPort, webOrigin: validated.webOrigin, storageMode: validated.storageMode, demoMode: validated.demoMode, sessionTtlMinutes: validated.sessionTtlMinutes, authMfaMode: validated.authMfaMode, passwordMinLength: validated.passwordMinLength, passwordMaxAgeDays: validated.passwordMaxAgeDays, authMaxFailedAttempts: validated.authMaxFailedAttempts, authLockoutMinutes: validated.authLockoutMinutes, authChallengeTtlSeconds: validated.authChallengeTtlSeconds, authMaxChallengeAttempts: validated.authMaxChallengeAttempts, databaseUrl: validated.databaseUrl, bootstrapPassword: validated.bootstrapPassword, deepseekBaseUrl: validated.deepseekBaseUrl, deepseekRuntimeEnabled: validated.deepseekRuntimeEnabled, deepseekExpectedEngineCommit: validated.deepseekExpectedEngineCommit, deepseekExpectedManifestVersion: validated.deepseekExpectedManifestVersion, deepseekBearerTokenRef: validated.deepseekBearerTokenRef, deepseekContextSigningSecretRef: validated.deepseekContextSigningSecretRef, recoveryEncryptionKeyRef: validated.recoveryEncryptionKeyRef, secretDir: validated.secretDir, workerOrganizationId: validated.workerOrganizationId, secretProvider: validated.secretProvider, rateLimitBackend: validated.rateLimitBackend, rateLimitRequestsPerWindow: validated.rateLimitRequestsPerWindow, rateLimitWindowSeconds: validated.rateLimitWindowSeconds };
+  return { nodeEnv: validated.nodeEnv, host: validated.host, trustProxy: validated.trustProxy, trustedProxyIps: [...validated.trustedProxyIps], port: validated.apiPort, webOrigin: validated.webOrigin, releaseSha: validated.releaseSha, releaseArtifactDigest: validated.releaseArtifactDigest, storageMode: validated.storageMode, demoMode: validated.demoMode, sessionTtlMinutes: validated.sessionTtlMinutes, authMfaMode: validated.authMfaMode, passwordMinLength: validated.passwordMinLength, passwordMaxAgeDays: validated.passwordMaxAgeDays, authMaxFailedAttempts: validated.authMaxFailedAttempts, authLockoutMinutes: validated.authLockoutMinutes, authChallengeTtlSeconds: validated.authChallengeTtlSeconds, authMaxChallengeAttempts: validated.authMaxChallengeAttempts, databaseUrl: validated.databaseUrl, bootstrapPassword: validated.bootstrapPassword, deepseekBaseUrl: validated.deepseekBaseUrl, deepseekRuntimeEnabled: validated.deepseekRuntimeEnabled, deepseekExpectedEngineCommit: validated.deepseekExpectedEngineCommit, deepseekExpectedManifestVersion: validated.deepseekExpectedManifestVersion, deepseekBearerTokenRef: validated.deepseekBearerTokenRef, deepseekContextSigningSecretRef: validated.deepseekContextSigningSecretRef, recoveryEncryptionKeyRef: validated.recoveryEncryptionKeyRef, secretDir: validated.secretDir, workerOrganizationId: validated.workerOrganizationId, secretProvider: validated.secretProvider, rateLimitBackend: validated.rateLimitBackend, rateLimitRequestsPerWindow: validated.rateLimitRequestsPerWindow, rateLimitWindowSeconds: validated.rateLimitWindowSeconds };
 }
 
 function tokenDigest(value: string): string {
@@ -403,6 +448,7 @@ const commandOperationByAuditAction: Record<string, string> = {
 
 export async function createRuntime(options: ServerOptions = {}): Promise<CvgServerRuntime> {
   const config = getConfig(options.config);
+  assertProductionRuntimeOverrides(config.nodeEnv, options);
   const ownsRateLimiter = !options.rateLimiter && config.nodeEnv === "production" && config.rateLimitBackend === "distributed";
   const rateLimiter = options.rateLimiter ?? (ownsRateLimiter ? new PostgresRateLimiter(config.databaseUrl) : new MemoryRateLimiter());
   if (config.nodeEnv === "production" && (config.rateLimitBackend !== "distributed" || !rateLimiter.distributed)) {
@@ -447,7 +493,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     if (error instanceof PersistenceCorruptionError) throw new DomainError("QUARANTINED", "O estado persistido falhou na validação e foi mantido bloqueado.", 503);
     throw new DomainError("CAPABILITY_DISABLED", `A persistência PostgreSQL não está pronta: ${error instanceof Error ? error.message : String(error)}`, 503);
   }
-  store.storageMode = config.storageMode;
+  store.setStorageMode(config.storageMode);
   let otelRuntime: OpenTelemetryRuntime | null = null;
   const closeBeforeRuntimeFailure = async (message: string): Promise<never> => {
     await persistence?.close();
@@ -507,6 +553,9 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
   const commandExecutor = new DurableIdempotencyService(store, persistence, ({ receiptId, error }) => {
     telemetry.log({ timestamp: now(), level: "error", event: "idempotency.receipt.settlement.failed", correlationId: randomUUID(), actorId: null, metadata: { receiptId, error: error instanceof Error ? error.name : "unknown" } });
   });
+  const integrationInboxApplication = new IntegrationInboxApplicationService(persistence ?? {
+    async processInboxEvent() { throw new PersistenceUnavailableError("inbox persistence is not configured"); }
+  });
   const agentApplication = new AgentApplicationService(store, agentRuntime, commandExecutor);
   const patientApplication = new PatientApplicationService(persistence ? new PostgresPatientRepository(persistence, store) : new StorePatientRepository(store));
   const guardianApplication = new GuardianApplicationService(persistence ? new PostgresGuardianRepository(store) : new StoreGuardianRepository(store));
@@ -514,15 +563,22 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
   const diagnosticRequestApplication = new DiagnosticRequestApplicationService(persistence ? new PostgresDiagnosticRequestRepository(store) : new StoreDiagnosticRequestRepository(store));
   const diagnosticSpecimenApplication = new DiagnosticSpecimenApplicationService(persistence ? new PostgresDiagnosticSpecimenRepository(store) : new StoreDiagnosticSpecimenRepository(store));
   const diagnosticResultApplication = new DiagnosticResultApplicationService(persistence ? new PostgresDiagnosticResultRepository(store) : new StoreDiagnosticResultRepository(store));
-  const clinicalSignApplication = new ClinicalSignApplicationService(persistence ? new PostgresClinicalSignRepository(store) : new StoreClinicalSignRepository(store));
+  const clinicalSignApplication = new ClinicalSignApplicationService(persistence ? new PostgresClinicalSignRepository(store) : new StoreClinicalSignRepository(store), commandExecutor);
+  const operationalMetricsApplication = new OperationalMetricsApplicationService(persistence);
   const encounterApplication = new EncounterApplicationService(persistence ? new PostgresEncounterRepository(store) : new StoreEncounterRepository(store));
   const readApplication = createReadApplicationService(store, persistence);
   const domainCommands = new DomainCommandService(store);
   const exportApplication = new ExportApplicationService(store, persistence, secretProvider, config.recoveryEncryptionKeyRef, commandExecutor);
-  const app = Fastify({ logger: false, bodyLimit: 256 * 1024, requestIdHeader: "x-request-id", trustProxy: config.trustProxy });
+  const breakGlass = new BreakGlassApplicationService(persistence, options.breakGlassWebAuthnAuthority ?? null, options.breakGlassScopeAuthority ?? null);
+  const trustedProxy = config.trustProxy && config.trustedProxyIps.length ? config.trustedProxyIps : config.trustProxy;
+  const app = Fastify({ logger: false, bodyLimit: 256 * 1024, requestIdHeader: "x-request-id", trustProxy: trustedProxy });
   app.addHook("onClose", async () => { await agentRuntime.shutdown(); });
   app.addHook("onClose", async () => { await otelRuntime?.shutdown(); });
   if (ownsRateLimiter) app.addHook("onClose", async () => { await rateLimiter.close?.(); });
+  if (persistence) app.addHook("onClose", async () => { await persistence.close(); });
+
+  try {
+  const routeCatalog = installRuntimeRouteCatalog(app);
 
   const rawRequestBodies = new WeakMap<object, string>();
   app.removeContentTypeParser("application/json");
@@ -536,39 +592,73 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     }
   });
 
-  type DurableRequestTransaction = { baseline: StoreSnapshot; revision: bigint; committed: boolean; failed: boolean };
+  type DurableRequestTransaction = {
+    baseline: StoreSnapshot;
+    revision: bigint;
+    scopeKey: string;
+    committed: boolean;
+    failed: boolean;
+    coordinationRelease: (() => void) | null;
+  };
   const durableRequests = new WeakMap<FastifyRequest, DurableRequestTransaction>();
   const durableReleases = new WeakMap<FastifyRequest, () => void>();
   const durableOutboxes = new WeakMap<FastifyRequest, import("@cvg/persistence").DurableOutboxInput[]>();
-  let commitDurableRequest: ((request: FastifyRequest, reply: FastifyReply, normalizedPatientWrite?: AnimalPatient, normalizedAppointmentWrite?: Appointment, normalizedEncounterWrite?: Encounter, normalizedClinicalSignWrite?: ClinicalDocument, normalizedClinicalSignReplayId?: OpaqueId, normalizedGuardianWrite?: Guardian, normalizedGuardianReplayId?: OpaqueId, normalizedDiagnosticRequestWrite?: DiagnosticRequest, normalizedDiagnosticRequestReplayId?: OpaqueId, normalizedSpecimenWrite?: Specimen, normalizedSpecimenReplayId?: OpaqueId, normalizedDiagnosticResultWrite?: DiagnosticResult, normalizedDiagnosticResultReplayId?: OpaqueId) => Promise<void>) | null = null;
-  let persistenceQueue = Promise.resolve();
-  const acquireDurableRequest = async (): Promise<() => void> => {
-    let release!: () => void;
-    const predecessor = persistenceQueue;
-    persistenceQueue = new Promise<void>((resolve) => { release = resolve; });
-    await predecessor;
-    return release;
-  };
+  const durableCoordinator = new KeyedAsyncCoordinator();
+  let commitDurableRequest: ((request: FastifyRequest, reply: FastifyReply, normalizedPatientWrite?: AnimalPatient, normalizedAppointmentWrite?: Appointment, normalizedEncounterWrite?: Encounter, normalizedClinicalSignWrite?: ClinicalDocument, normalizedClinicalSignReplayId?: OpaqueId, normalizedGuardianWrite?: Guardian, normalizedGuardianReplayId?: OpaqueId, normalizedDiagnosticRequestWrite?: DiagnosticRequest, normalizedDiagnosticRequestReplayId?: OpaqueId, normalizedSpecimenWrite?: Specimen, normalizedSpecimenReplayId?: OpaqueId, normalizedDiagnosticResultWrite?: DiagnosticResult, normalizedDiagnosticResultReplayId?: OpaqueId, receiptId?: OpaqueId) => Promise<void>) | null = null;
   const snapshotFingerprint = (snapshot: StoreSnapshot): string => digest(JSON.parse(serializeSnapshot(snapshot)) as unknown);
 
+  const durableRequestPath = (request: FastifyRequest): string => request.url.split("?")[0] ?? request.url;
+  const remoteBoundaryPath = (path: string): boolean => path === "/api/v1/ai/health"
+    || path === "/api/v1/ai/turns"
+    || /^\/api\/v1\/ai\/approvals\/[^/]+\/retry$/.test(path)
+    || path === "/api/v1/operations/summary"
+    || path === "/api/v1/metrics";
+  const durableRequestScopeKey = (): string => `organization:${store.bootstrapCredentials.organizationId}`;
+
   if (persistence) {
-    app.addHook("onRequest", async (request) => {
-      if (!request.url.startsWith("/api/v1/") || request.url === "/api/v1/health" || request.url === "/api/v1/ready" || (request.method === "POST" && request.url.startsWith("/api/v1/integrations/"))) return;
-      const release = await acquireDurableRequest();
+    app.addHook("preHandler", async (request) => {
+      const path = durableRequestPath(request);
+      if (!path.startsWith("/api/v1/") || path === "/api/v1/health" || path === "/api/v1/ready" || (request.method === "POST" && path.startsWith("/api/v1/integrations/"))) return;
+      const rawSession = request.cookies[SESSION_COOKIE];
+      const session = rawSession ? store.findSession(tokenDigest(rawSession)) : null;
+      const scopeKey = session ? `organization:${session.organizationId}` : durableRequestScopeKey();
+      // Authentication and distributed rate limiting run in onRequest before
+      // this hook.  A valid session is a cheap admission hint; anonymous or
+      // invalid sessions never wait behind a domain lock and are rejected by
+      // the route's full authentication boundary. Keep the local coordinator
+      // organization-scoped and skip routes whose handler crosses an external
+      // runtime boundary; those routes acquire the short commit section only
+      // after the remote call.
+      const coordinateRequest = Boolean(session) && !remoteBoundaryPath(path);
+      const release = coordinateRequest ? await durableCoordinator.acquire(scopeKey) : null;
       try {
         const latest = await persistence.loadLatest(store.bootstrapCredentials.organizationId);
         const revision = latest?.revision ?? await persistence.currentRevision(store.bootstrapCredentials.organizationId);
         if (latest) store.hydrate(latest.snapshot);
-        durableRequests.set(request, { baseline: store.snapshot(), revision, committed: false, failed: false });
-        durableReleases.set(request, release);
+        durableRequests.set(request, { baseline: store.snapshot(), revision, scopeKey, committed: false, failed: false, coordinationRelease: release });
+        if (release) durableReleases.set(request, release);
       } catch (error) {
-        release();
+        release?.();
         throw error;
       }
     });
-    const commitRequest = async (request: FastifyRequest, reply: FastifyReply, normalizedPatientWrite?: AnimalPatient, normalizedAppointmentWrite?: Appointment, normalizedEncounterWrite?: Encounter, normalizedClinicalSignWrite?: ClinicalDocument, normalizedClinicalSignReplayId?: OpaqueId, normalizedGuardianWrite?: Guardian, normalizedGuardianReplayId?: OpaqueId, normalizedDiagnosticRequestWrite?: DiagnosticRequest, normalizedDiagnosticRequestReplayId?: OpaqueId, normalizedSpecimenWrite?: Specimen, normalizedSpecimenReplayId?: OpaqueId, normalizedDiagnosticResultWrite?: DiagnosticResult, normalizedDiagnosticResultReplayId?: OpaqueId): Promise<void> => {
+    const commitRequest = async (request: FastifyRequest, reply: FastifyReply, normalizedPatientWrite?: AnimalPatient, normalizedAppointmentWrite?: Appointment, normalizedEncounterWrite?: Encounter, normalizedClinicalSignWrite?: ClinicalDocument, normalizedClinicalSignReplayId?: OpaqueId, normalizedGuardianWrite?: Guardian, normalizedGuardianReplayId?: OpaqueId, normalizedDiagnosticRequestWrite?: DiagnosticRequest, normalizedDiagnosticRequestReplayId?: OpaqueId, normalizedSpecimenWrite?: Specimen, normalizedSpecimenReplayId?: OpaqueId, normalizedDiagnosticResultWrite?: DiagnosticResult, normalizedDiagnosticResultReplayId?: OpaqueId, receiptId?: OpaqueId): Promise<void> => {
       const transaction = durableRequests.get(request);
       if (!transaction || transaction.committed || transaction.failed) return;
+      if (!transaction.coordinationRelease) {
+        // External routes intentionally do not hold a local lock while their
+        // provider/AI call is in flight.  Re-enter only for the short durable
+        // snapshot/commit section after the handler has returned.
+        const release = await durableCoordinator.acquire(transaction.scopeKey);
+        transaction.coordinationRelease = release;
+        try {
+          await commitRequest(request, reply, normalizedPatientWrite, normalizedAppointmentWrite, normalizedEncounterWrite, normalizedClinicalSignWrite, normalizedClinicalSignReplayId, normalizedGuardianWrite, normalizedGuardianReplayId, normalizedDiagnosticRequestWrite, normalizedDiagnosticRequestReplayId, normalizedSpecimenWrite, normalizedSpecimenReplayId, normalizedDiagnosticResultWrite, normalizedDiagnosticResultReplayId, receiptId);
+        } finally {
+          transaction.coordinationRelease = null;
+          release();
+        }
+        return;
+      }
       const snapshot = store.snapshot();
       if (!normalizedPatientWrite && !normalizedAppointmentWrite && !normalizedEncounterWrite && !normalizedClinicalSignWrite && !normalizedClinicalSignReplayId && !normalizedGuardianWrite && !normalizedGuardianReplayId && !normalizedDiagnosticRequestWrite && !normalizedDiagnosticRequestReplayId && !normalizedSpecimenWrite && !normalizedSpecimenReplayId && !normalizedDiagnosticResultWrite && !normalizedDiagnosticResultReplayId && snapshotFingerprint(snapshot) === snapshotFingerprint(transaction.baseline)) return;
       const baselineAuditIds = new Set(transaction.baseline.auditRecords.map((record) => record.id));
@@ -611,6 +701,18 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
       } catch (error) {
         transaction.failed = true;
         telemetry.log({ timestamp: now(), level: error instanceof PersistenceConflictError ? "warn" : "error", event: "persistence.commit.failed", correlationId: correlationId(request), actorId: null, metadata: persistenceDiagnostic(error) });
+        const unknownReceipts: CommandReceipt[] = [];
+        try {
+          for (const receipt of commandReceipts) {
+            if (receiptId && receipt.id !== receiptId) continue;
+            if (receipt.status !== "SUCCEEDED" && receipt.status !== "IN_FLIGHT") continue;
+            unknownReceipts.push(await commandExecutor.markOutcomeUnknown(receipt));
+          }
+        } catch (settlementError) {
+          telemetry.log({ timestamp: now(), level: "error", event: "idempotency.receipt.unknown-settlement.failed", correlationId: correlationId(request), actorId: null, metadata: { error: settlementError instanceof Error ? settlementError.name : "unknown" } });
+          store.hydrate(transaction.baseline);
+          throw new DomainError("DEPENDENCY_UNAVAILABLE", "A operação não foi confirmada e seu resultado não pôde ser registrado para reconciliação.", 503);
+        }
         if (error instanceof PersistenceConflictError) {
           let latest;
           try {
@@ -624,20 +726,33 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
             latest = null;
           }
           if (latest) store.hydrate(latest.snapshot);
+          for (const receipt of unknownReceipts) store.setCommandReceipt(receipt);
           throw new DomainError("CONFLICT", "O estado persistido mudou durante a operação; a tentativa foi rejeitada e o contexto deve ser recarregado.", 409);
         }
         if (error instanceof PersistenceCorruptionError) {
           store.hydrate(transaction.baseline);
+          for (const receipt of unknownReceipts) store.setCommandReceipt(receipt);
           store.quarantine("PERSISTENCE_CORRUPTION", "a tentativa de commit encontrou um registro durável divergente");
           throw new DomainError("QUARANTINED", "A persistência durável falhou na validação; o runtime foi colocado em quarentena.", 503);
         }
         store.hydrate(transaction.baseline);
+        for (const receipt of unknownReceipts) store.setCommandReceipt(receipt);
         throw new DomainError("DEPENDENCY_UNAVAILABLE", "A operação não foi confirmada porque a persistência durável falhou; nenhum sucesso deve ser inferido.", 503);
       }
     };
     commitDurableRequest = commitRequest;
     app.addHook("onSend", async (request, reply, payload) => {
-      await commitRequest(request, reply);
+      let receiptId: OpaqueId | undefined;
+      if (typeof payload === "string" || Buffer.isBuffer(payload)) {
+        try {
+          const parsed = JSON.parse(Buffer.isBuffer(payload) ? payload.toString("utf8") : payload) as { data?: { receiptId?: unknown } };
+          if (typeof parsed.data?.receiptId === "string") receiptId = parsed.data.receiptId as OpaqueId;
+        } catch {
+          // The regular Fastify error path will validate the payload; absence
+          // of a receipt id simply keeps the conservative changed-receipt set.
+        }
+      }
+      await commitRequest(request, reply, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, receiptId);
       return payload;
     });
     app.addHook("onResponse", async (request) => {
@@ -646,7 +761,6 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
       durableRequests.delete(request);
       durableOutboxes.delete(request);
     });
-    app.addHook("onClose", async () => { await persistence.close(); });
   }
 
   await app.register(cookie);
@@ -670,6 +784,8 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     reply.header("content-security-policy", "default-src 'self'; base-uri 'none'; frame-ancestors 'none'; object-src 'none'; form-action 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'");
     reply.header("cross-origin-opener-policy", "same-origin");
     reply.header("cross-origin-resource-policy", "same-origin");
+    if (config.releaseSha) reply.header("x-cvg-release-sha", config.releaseSha);
+    if (config.releaseArtifactDigest) reply.header("x-cvg-release-artifact-digest", config.releaseArtifactDigest);
     if (config.nodeEnv === "production") reply.header("strict-transport-security", "max-age=31536000; includeSubDomains");
     if (request.url.startsWith("/api/v1/")) reply.header("cache-control", "no-store");
   });
@@ -689,7 +805,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
   const startedAt = new WeakMap<object, { startedAt: number; span: ReturnType<OpsTelemetry["startSpan"]> }>();
   app.addHook("onRequest", async (request) => {
     const started = telemetry.requestStarted();
-    startedAt.set(request, { startedAt: started, span: telemetry.startSpan(`${request.method} ${request.url.split("?")[0]}`, { requestId: String(request.id), correlationId: correlationId(request), method: request.method }) });
+    startedAt.set(request, { startedAt: started, span: telemetry.startCorrelatedSpan(`${request.method} ${request.url.split("?")[0]}`, { requestId: String(request.id), correlationId: correlationId(request), sessionId: null, toolInvocationId: null, jobId: null, outboxId: null, providerRequestId: null }, { method: request.method }) });
   });
   app.addHook("onResponse", async (request, reply) => {
     const started = startedAt.get(request);
@@ -737,13 +853,13 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     if (workspaceHeader) workspaceId = safeId(workspaceHeader);
     if (!unitId || !workspaceId) {
       if (!allowImplicitContext) throw new DomainError("INVALID_INPUT", "Unidade e workspace são obrigatórios para esta operação.", 400);
-      const first = store.contextOptions(session.userId)[0];
+      const first = readApplication.listContextOptionsForAuthentication(session.userId)[0];
       if (first) {
         unitId ??= first.unit.id;
         workspaceId ??= first.workspace.id;
       }
     }
-    const context = store.resolveContext(session.userId, { unitId, workspaceId }, purpose, correlationId(request), patientId, encounterId, session.id);
+    const context = readApplication.resolveContext(session.userId, { unitId, workspaceId }, purpose, correlationId(request), patientId, encounterId, session.id);
     enforceApplicationPolicy(request, context, purpose, policyResourceId ?? encounterId ?? patientId);
     if (patientId && validatePatient) store.findPatient(context, patientId);
     if (encounterId) {
@@ -785,15 +901,21 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const rawToken = generateOpaqueToken();
     const csrfToken = randomBytes(24).toString("base64url");
     const session = store.createSession(user.id, tokenDigest(rawToken), csrfToken, config.sessionTtlMinutes, { ...sessionMetadata(request), mfaVerifiedAt });
-    user.lastLoginAt = now();
+    store.markUserLogin(user.id);
     store.clearLoginFailures(user);
-    setSessionCookies(reply, rawToken, csrfToken, config.nodeEnv === "production" || !isLoopbackHost(config.host));
+    // The bind address is a process concern, not the transport seen by the
+    // browser.  In the development Compose profile the API binds 0.0.0.0
+    // behind an HTTP proxy; deriving Secure from that address would make the
+    // browser discard the session cookie. Production remains Secure even if a
+    // misconfigured edge forwards an HTTP request, while non-production TLS
+    // deployments still receive Secure cookies from request.protocol.
+    setSessionCookies(reply, rawToken, csrfToken, config.nodeEnv === "production" || request.protocol === "https");
     telemetry.sessionOpened();
     return session;
   };
   const authPayload = (user: ReturnType<CvgStore["getUser"]>, session: ReturnType<CvgStore["createSession"]>) => ({
     user: publicUser(user),
-    contexts: store.contextOptions(user.id).map((option) => ({ organization: option.organization, unit: option.unit, workspace: option.workspace, roles: option.roles })),
+    contexts: readApplication.listContextOptionsForAuthentication(user.id).map((option) => ({ organization: option.organization, unit: option.unit, workspace: option.workspace, roles: option.roles })),
     csrfToken: session.csrfToken
   });
   const publicSession = (session: ReturnType<CvgStore["createSession"]>) => ({
@@ -812,7 +934,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const operation = commandOperationByAuditAction[action];
     if (!linkCommandReceipt || result !== "ALLOWED" || !operation) return record;
     const receipt = [...store.commandReceipts.values()].reverse().find((candidate) => candidate.organizationId === context.organizationId && candidate.actorId === context.actorId && candidate.operation === operation && candidate.status === "SUCCEEDED" && candidate.auditRecordId === null);
-    if (receipt) receipt.auditRecordId = record.id;
+    if (receipt) store.linkCommandReceiptAudit(receipt.idempotencyLookup, record.id);
     return record;
   };
 
@@ -827,7 +949,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     if (!signature || !signatureKeyRef) throw new PersistenceSignatureError("inbox event signature headers are required");
     const input = { id: id(randomUUID()), ...body, signatureAlgorithm: "HMAC-SHA256" as const, signatureKeyRef, signature, rawBody: rawRequestBodies.get(request) ?? "" };
     try {
-      const receipt = await persistence.processInboxEvent(input, [inboxEventToOutbox(input)]);
+      const receipt = await integrationInboxApplication.receive(input, [inboxEventToOutbox(input)]);
       telemetry.log({ timestamp: now(), level: receipt.status === "QUARANTINED" ? "warn" : "info", event: "integration.inbox.accepted", correlationId: correlationId(request), actorId: null, metadata: { provider: body.provider, status: receipt.status, duplicate: receipt.duplicate } });
       return response(reply, success({ accepted: receipt.status === "PROCESSED", duplicate: receipt.duplicate, status: receipt.status, inboxId: receipt.id, recordDigest: receipt.recordDigest }, correlationId(request)), 202);
     } catch (error) {
@@ -872,14 +994,14 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const corr = correlationId(request);
     const challenge = store.findAuthChallenge("MFA", tokenDigest(input.challengeId));
     if (!challenge) throw new DomainError("MFA_INVALID", "O desafio de autenticação é inválido, expirou ou já foi consumido.", 401);
-    const user = store.getUser(challenge.userId);
+    const user = readApplication.getUserForAuthentication(challenge.userId);
     const secretRef = user.security.mfaSecretRef;
     if (!mfaSecretResolver || !secretRef) throw new DomainError("CAPABILITY_DISABLED", "O resolver de MFA não está disponível; nenhum login foi liberado.", 503);
     const secret = await mfaSecretResolver.resolve(secretRef);
     if (!secret || !verifyTotpCode(secret, input.code)) {
-      store.recordChallengeFailure(challenge);
-      store.recordAudit({ organizationId: user.organizationId, actorId: user.id, unitId: null, workspaceId: null, action: "auth.mfa.verify", resourceType: "AuthChallenge", resourceId: challenge.id, result: "DENIED", reason: challenge.status === "LOCKED" ? "MFA_CHALLENGE_LOCKED" : "MFA_INVALID", correlationId: corr, metadata: { attempts: challenge.attempts } });
-      throw new DomainError(challenge.status === "LOCKED" ? "ACCOUNT_LOCKED" : "MFA_INVALID", challenge.status === "LOCKED" ? "O desafio atingiu o limite de tentativas." : "O código MFA é inválido.", challenge.status === "LOCKED" ? 429 : 401);
+      const failedChallenge = store.recordChallengeFailure(challenge);
+      store.recordAudit({ organizationId: user.organizationId, actorId: user.id, unitId: null, workspaceId: null, action: "auth.mfa.verify", resourceType: "AuthChallenge", resourceId: failedChallenge.id, result: "DENIED", reason: failedChallenge.status === "LOCKED" ? "MFA_CHALLENGE_LOCKED" : "MFA_INVALID", correlationId: corr, metadata: { attempts: failedChallenge.attempts } });
+      throw new DomainError(failedChallenge.status === "LOCKED" ? "ACCOUNT_LOCKED" : "MFA_INVALID", failedChallenge.status === "LOCKED" ? "O desafio atingiu o limite de tentativas." : "O código MFA é inválido.", failedChallenge.status === "LOCKED" ? 429 : 401);
     }
     store.consumeAuthChallenge(challenge);
     const session = createAuthenticatedSession(request, reply, user, now());
@@ -891,7 +1013,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const { session, context } = requestContext(request, "identity.mfa.enroll", null, null, true);
     requireCsrf(request, session);
     const input = parse(mfaEnrollmentInputSchema, request.body);
-    const user = store.getUser(session.userId);
+    const user = readApplication.getCurrentUser(context);
     if (!verifyPassword(input.currentPassword, user.passwordDigest)) {
       audit(context, "identity.mfa.enroll", "User", user.id, "DENIED", "AUTHENTICATION_FAILED");
       throw new DomainError("AUTHENTICATION_FAILED", "A senha atual é inválida.", 401);
@@ -907,7 +1029,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const result = await commandExecutor.execute(commandInput(context, "identity.mfa.enroll", key, user.id, { secretRef: input.secretRef, codeDigest: tokenDigest(input.code) }), () => {
       store.configureMfaFactor(user.id, input.secretRef);
       const sessionsRevoked = store.revokeAllSessions(user.id, session.id);
-      session.mfaVerifiedAt = now();
+      store.markSessionMfaVerified(session.id);
       return { enrolled: true, method: "TOTP" as const, sessionsRevoked };
     });
     audit(context, "identity.mfa.enroll", "User", user.id, "ALLOWED", null, { method: "TOTP", replay: result.replayed, sessionsRevoked: result.value.sessionsRevoked });
@@ -918,7 +1040,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const { session, context } = requestContext(request, "identity.mfa.revoke", null, null, true);
     requireCsrf(request, session);
     const input = parse(mfaFactorRevokeInputSchema, request.body);
-    const user = store.getUser(session.userId);
+    const user = readApplication.getCurrentUser(context);
     if (config.authMfaMode === "required") throw new DomainError("CAPABILITY_DISABLED", "O MFA obrigatório não pode ser revogado nesta configuração.", 409);
     if (!verifyPassword(input.currentPassword, user.passwordDigest)) {
       audit(context, "identity.mfa.revoke", "User", user.id, "DENIED", "AUTHENTICATION_FAILED");
@@ -959,13 +1081,13 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const corr = correlationId(request);
     const challenge = store.findAuthChallenge("RECOVERY", tokenDigest(input.challengeId));
     if (!challenge) throw new DomainError("RECOVERY_INVALID", "A recuperação é inválida, expirou ou já foi consumida.", 401);
-    const user = store.getUser(challenge.userId);
+    const user = readApplication.getUserForAuthentication(challenge.userId);
     const accountIssues = passwordPolicyIssues(input.newPassword, passwordPolicy, { identifier: user.login });
     if (accountIssues.length) throw new DomainError("INVALID_INPUT", "A nova senha não atende à política de segurança.", 400, { issues: accountIssues });
     if (!store.consumeRecoveryCode(user.id, input.recoveryCode)) {
-      store.recordChallengeFailure(challenge);
-      store.recordAudit({ organizationId: user.organizationId, actorId: user.id, unitId: null, workspaceId: null, action: "auth.recovery.complete", resourceType: "AuthChallenge", resourceId: challenge.id, result: "DENIED", reason: challenge.status === "LOCKED" ? "RECOVERY_CHALLENGE_LOCKED" : "RECOVERY_INVALID", correlationId: corr, metadata: { attempts: challenge.attempts } });
-      throw new DomainError(challenge.status === "LOCKED" ? "ACCOUNT_LOCKED" : "RECOVERY_INVALID", "O código de recuperação é inválido.", challenge.status === "LOCKED" ? 429 : 401);
+      const failedChallenge = store.recordChallengeFailure(challenge);
+      store.recordAudit({ organizationId: user.organizationId, actorId: user.id, unitId: null, workspaceId: null, action: "auth.recovery.complete", resourceType: "AuthChallenge", resourceId: failedChallenge.id, result: "DENIED", reason: failedChallenge.status === "LOCKED" ? "RECOVERY_CHALLENGE_LOCKED" : "RECOVERY_INVALID", correlationId: corr, metadata: { attempts: failedChallenge.attempts } });
+      throw new DomainError(failedChallenge.status === "LOCKED" ? "ACCOUNT_LOCKED" : "RECOVERY_INVALID", "O código de recuperação é inválido.", failedChallenge.status === "LOCKED" ? 429 : 401);
     }
     store.consumeAuthChallenge(challenge);
     store.rotatePassword(user.id, hashPassword(input.newPassword), passwordExpiry());
@@ -978,7 +1100,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const { session, context } = requestContext(request, "identity.password.rotate", null, null, true);
     requireCsrf(request, session);
     const input = parse(passwordRotationInputSchema, request.body);
-    const user = store.getUser(session.userId);
+    const user = readApplication.getCurrentUser(context);
     if (!verifyPassword(input.currentPassword, user.passwordDigest)) throw new DomainError("AUTHENTICATION_FAILED", "A senha atual é inválida.", 401);
     if (verifyPassword(input.newPassword, user.passwordDigest)) throw new DomainError("INVALID_INPUT", "A nova senha deve ser diferente da senha atual.", 400);
     const issues = passwordPolicyIssues(input.newPassword, passwordPolicy, { identifier: user.login });
@@ -1004,7 +1126,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const target = store.sessions.get(sessionId);
     if (!target || target.userId !== session.userId) throw new DomainError("NOT_FOUND", "Sessão não encontrada.", 404);
     const result = await commandExecutor.execute(commandInput(context, "identity.sessions.revoke", key, target.id, { sessionId: target.id }), () => {
-      store.revokeSession(target);
+      store.revokeSessionById(target.id);
       return { revoked: true, sessionId: target.id, current: target.id === session.id };
     });
     audit(context, "identity.sessions.revoke", "Session", target.id, "ALLOWED", null, { current: result.value.current, replay: result.replayed });
@@ -1018,7 +1140,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
 
   app.post("/api/v1/auth/demo", async (request, reply) => {
     if (!config.demoMode || config.storageMode !== "memory") throw new DomainError("CAPABILITY_DISABLED", "A demonstração sintética não está habilitada neste ambiente.", 403);
-    const user = store.getUser(store.bootstrapCredentials.userId);
+    const user = readApplication.getUserForAuthentication(store.bootstrapCredentials.userId);
     const corr = randomUUID();
     const session = createAuthenticatedSession(request, reply, user);
     store.recordAudit({ organizationId: user.organizationId, actorId: user.id, unitId: null, workspaceId: null, action: "auth.demo_session", resourceType: "Session", resourceId: session.id, result: "ALLOWED", reason: "local synthetic demo only", correlationId: corr, metadata: { demo: true } });
@@ -1038,7 +1160,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
 
   app.get("/api/v1/me", async (request, reply) => {
     const { session, context } = requestContext(request, "identity.read", null, null, true);
-    const user = store.getUser(session.userId);
+    const user = readApplication.getCurrentUser(context);
     audit(context, "identity.read", "User", user.id, "ALLOWED");
     return response(reply, success({ user: publicUser(user), roles: context.actorRoleSnapshot, context: publicContext(context, store), csrfToken: session.csrfToken }, context.correlationId));
   });
@@ -1046,14 +1168,14 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
   app.get("/api/v1/contexts", async (request, reply) => {
     const { session, context } = requestContext(request, "contexts.read", null, null, true);
     audit(context, "contexts.read", "Context", null, "ALLOWED");
-    return response(reply, success(store.contextOptions(session.userId), context.correlationId));
+    return response(reply, success(readApplication.listContextOptions(context), context.correlationId));
   });
 
   app.get("/api/v1/context", async (request, reply) => {
     const query = request.query as Record<string, unknown>;
     const selector = parse(contextSelectorSchema, { unitId: query.unitId ?? null, workspaceId: query.workspaceId ?? null });
     const session = requireSession(request);
-    const context = store.resolveContext(session.userId, selector, "context.select", correlationId(request), null, null, session.id);
+    const context = readApplication.resolveContext(session.userId, selector, "context.select", correlationId(request), null, null, session.id);
     enforceApplicationPolicy(request, context, "context.select", context.workspaceId);
     audit(context, "context.select", "Context", context.workspaceId, "ALLOWED");
     return response(reply, success(publicContext(context, store), context.correlationId));
@@ -1062,7 +1184,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
   app.get("/api/v1/users", async (request, reply) => {
     const { context } = requestContext(request, "users.read");
     const query = request.query as Record<string, unknown>;
-    const users = store.listUsers(context, typeof query.q === "string" ? query.q : "");
+    const users = readApplication.listUsers(context, typeof query.q === "string" ? query.q : "");
     audit(context, "users.read", "User", null, "ALLOWED", null, { count: users.length });
     return response(reply, success({ items: users, nextCursor: users.at(-1)?.id ?? null, revision: store.organizations.get(context.organizationId)?.authorizationRevision.toString() ?? "0" }, context.correlationId));
   });
@@ -1269,32 +1391,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const input = parse(clinicalSignInputSchema, request.body ?? {});
     const { context } = requestContext(request, "clinical.sign", null, null, false, false, documentId);
     const key = requireIdempotencyKey(request);
-    const commandInput = { organizationId: context.organizationId, actorId: context.actorId, sessionId: context.sessionId, operation: "clinical.sign", key, resourceId: documentId, unitId: context.unitId, workspaceId: context.workspaceId, body: { documentId, ...input } };
-    const durableClaim = persistence ? await persistence.claimCommandReceipt(commandInput) : null;
-    if (durableClaim?.status === "CONFLICT") throw new DomainError("IDEMPOTENCY_CONFLICT", "A chave já foi usada com outro corpo.", 409);
-    if (durableClaim?.status === "IN_FLIGHT" || durableClaim?.status === "OUTCOME_UNKNOWN") throw new DomainError("OUTCOME_UNKNOWN", "A execução anterior permanece em reconciliação.", 409, { receiptId: durableClaim.receipt.id });
-    if (durableClaim?.status === "FAILED") throw new DomainError("CONFLICT", "A execução anterior falhou; use uma nova intenção.", 409);
-    let result: Awaited<ReturnType<typeof idempotentAsync<ClinicalDocument>>>;
-    try {
-      if (durableClaim?.status === "REPLAY") {
-        const replayedDocument = durableClaim.receipt.result;
-        if (!replayedDocument || typeof replayedDocument !== "object" || Array.isArray(replayedDocument) || (replayedDocument as { id?: unknown }).id !== documentId || (replayedDocument as { status?: unknown }).status !== "SIGNED") throw new PersistenceCorruptionError(`command receipt ${durableClaim.receipt.id} has an invalid clinical signing result`);
-        store.commandReceipts.set(durableClaim.receipt.idempotencyLookup, durableClaim.receipt);
-        result = { receipt: durableClaim.receipt, value: replayedDocument as ClinicalDocument, replayed: true };
-      } else {
-        result = await idempotentAsync(store, commandInput, () => clinicalSignApplication.sign(context, documentId, input.expectedVersion), durableClaim?.status === "CLAIMED" ? { reservedReceipt: durableClaim.receipt } : undefined);
-      }
-    } catch (error) {
-      if (durableClaim?.status === "CLAIMED" && persistence) {
-        try {
-          await persistence.settleCommandReceipt(durableClaim.receipt);
-        } catch (settlementError) {
-          telemetry.log({ timestamp: now(), level: "error", event: "idempotency.receipt.settlement.failed", correlationId: context.correlationId, actorId: context.actorId, metadata: { receiptId: durableClaim.receipt.id, error: settlementError instanceof Error ? settlementError.message : String(settlementError) } });
-          throw new DomainError("DEPENDENCY_UNAVAILABLE", "A falha da operação não pôde ser registrada duravelmente; nenhum sucesso deve ser inferido.", 503);
-        }
-      }
-      throw error;
-    }
+    const result = await clinicalSignApplication.signIdempotent(context, documentId, input.expectedVersion, key, { documentId, ...input });
     audit(context, "clinical.sign", "ClinicalDocument", result.value.id, "ALLOWED", result.replayed ? "idempotency replay" : null, { replayed: result.replayed }, !result.replayed);
     if (persistence) {
       if (result.replayed) await commitDurableRequest?.(request, reply, undefined, undefined, undefined, undefined, result.value.id);
@@ -1596,7 +1693,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const result = await agentApplication.executeTurn(context, input);
     const turnResult = result.value;
     audit(context, "ai.turn", "AiTurn", turnResult.turn.id, turnResult.turn.status === "DENIED" ? "DENIED" : "ALLOWED", turnResult.turn.status === "QUARANTINED" ? "untrusted content quarantined" : null, { inputTokens: turnResult.turn.inputTokens, outputTokens: turnResult.turn.outputTokens, provider: turnResult.provenance.provider, replay: result.replayed });
-    return response(reply, success(turnResult, context.correlationId), turnResult.approval ? 202 : 201);
+    return response(reply, success({ ...turnResult, receiptId: result.receipt.id }, context.correlationId), turnResult.approval ? 202 : 201);
   });
 
   app.post("/api/v1/ai/approvals/:id", async (request, reply) => {
@@ -1619,7 +1716,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const result = await agentApplication.retryTurn(context, input, approvalId);
     const turnResult = result.value;
     audit(context, "ai.approval.retry", "AiTurn", turnResult.turn.id, "ALLOWED", "dispatch revalidado após approval", { provider: turnResult.provenance.provider, replay: result.replayed });
-    return response(reply, success(turnResult, context.correlationId), turnResult.approval ? 202 : 201);
+    return response(reply, success({ ...turnResult, receiptId: result.receipt.id }, context.correlationId), turnResult.approval ? 202 : 201);
   });
 
   app.post("/api/v1/ai/drafts/:id/promote", async (request, reply) => {
@@ -1675,24 +1772,13 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const { context } = requestContext(request, "metrics.read");
     store.requireRole(context, ["admin", "operador"], "metrics:read");
     const receipts = [...store.commandReceipts.values()];
-    let queueSignals = { outboxDepth: 0, oldestAgeMs: 0, poisonMessages: 0, reconciliationLag: 0 };
-    let outboxDependency: "READY" | "UNAVAILABLE" | "NOT_CONFIGURED" = "NOT_CONFIGURED";
+    const operational = await operationalMetricsApplication.read(context);
     let agentRuntimeStatus: "READY" | "DEGRADED" | "UNAVAILABLE" | "DISABLED" = "UNAVAILABLE";
     try { agentRuntimeStatus = (await agentRuntime.health()).status; } catch { agentRuntimeStatus = "UNAVAILABLE"; }
-    if (persistence) {
-      try {
-        const stats = await persistence.outboxStats(context.organizationId);
-        const effectStats = await persistence.externalEffectStats(context.organizationId);
-        queueSignals = { ...queueSignals, outboxDepth: stats.depth, oldestAgeMs: stats.oldestAgeMs, poisonMessages: stats.poisonMessages, reconciliationLag: effectStats.reconciliationRequired };
-        outboxDependency = "READY";
-      } catch {
-        outboxDependency = "UNAVAILABLE";
-      }
-    }
     audit(context, "metrics.read", "Metrics", null, "ALLOWED");
     return response(reply, success(telemetry.metrics(store.storageMode, {
-      dependencies: { database: persistence ? "READY" : "NOT_CONFIGURED", auditLedger: persistence ? "READY" : "DEGRADED", secretProvider: secretProviderStatus, outbox: outboxDependency },
-      queues: queueSignals,
+      dependencies: { database: persistence ? "READY" : "NOT_CONFIGURED", auditLedger: persistence ? "READY" : "DEGRADED", secretProvider: secretProviderStatus, outbox: operational.outboxDependency },
+      queues: operational.queueSignals,
       agentRuntime: agentRuntimeStatus,
       domain: { auditRecords: store.auditRecords.size, commandReceipts: receipts.length, unlinkedReceipts: receipts.filter((receipt) => receipt.status === "SUCCEEDED" && receipt.auditRecordId === null).length, outcomeUnknown: receipts.filter((receipt) => receipt.status === "OUTCOME_UNKNOWN").length, quarantined: store.quarantined.length }
     }), context.correlationId));
@@ -1707,17 +1793,16 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
    */
   app.get("/internal/metrics", async (_request, reply) => {
     const receipts = [...store.commandReceipts.values()];
-    let queueSignals = { outboxDepth: 0, oldestAgeMs: 0, poisonMessages: 0, reconciliationLag: 0 };
+    let queueSignals = { outboxDepth: 0, oldestAgeMs: 0, poisonMessages: 0, reconciliationLag: 0, workerHeartbeatAgeMs: 0, workerHeartbeatCount: 0 };
     let database: "READY" | "UNAVAILABLE" | "NOT_CONFIGURED" = persistence ? "READY" : "NOT_CONFIGURED";
     let outboxDependency: "READY" | "UNAVAILABLE" | "NOT_CONFIGURED" = "NOT_CONFIGURED";
     try {
       const agentHealth = await agentRuntime.health();
       if (persistence) {
         await persistence.check();
-        const stats = await persistence.outboxStats(store.bootstrapCredentials.organizationId);
-        const effectStats = await persistence.externalEffectStats(store.bootstrapCredentials.organizationId);
-        queueSignals = { outboxDepth: stats.depth, oldestAgeMs: stats.oldestAgeMs, poisonMessages: stats.poisonMessages, reconciliationLag: effectStats.reconciliationRequired };
-        outboxDependency = "READY";
+        const operational = await operationalMetricsApplication.readInternal(store.bootstrapCredentials.organizationId);
+        queueSignals = operational.queueSignals;
+        outboxDependency = operational.outboxDependency;
       }
       const metrics = telemetry.metrics(store.storageMode, {
         agentRuntime: agentHealth.status,
@@ -1839,7 +1924,13 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     return reconcileUnknownExternalEffect(persistence, organizationId, effectId, selectedAdapter, queryOptions);
   };
 
-  return { app, store, agentRuntime, telemetry, integrations, persistence, config, runOutboxOnce, reconcileExternalEffect };
+  await app.ready();
+  const routeInventory = routeCatalog.snapshot();
+  return { app, routeInventory, store, agentRuntime, telemetry, integrations, persistence, breakGlass, config, runOutboxOnce, reconcileExternalEffect };
+  } catch (error) {
+    await app.close();
+    throw error;
+  }
 }
 
 export async function startServer(options: ServerOptions = {}): Promise<CvgServerRuntime> {

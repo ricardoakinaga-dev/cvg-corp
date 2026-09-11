@@ -10,7 +10,7 @@ groups:
         annotations:
           summary: CVG API is unavailable
       - alert: CvgWorkerHeartbeatStale
-        expr: cvg_worker_heartbeat_age_seconds > 60
+        expr: cvg_worker_heartbeat_count == 0 or cvg_worker_heartbeat_age_seconds > 60
         for: 2m
         labels:
           severity: critical

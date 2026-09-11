@@ -184,6 +184,8 @@ try {
 const second = await createRuntime({ config: runtimeConfig, persistence: newDurablePersistence(), providerQueryAdapter: syntheticProviderQueryAdapter });
 let counts: Record<string, number> | undefined;
 let catalogProtection = { domainTables: 0, protectedTables: 0, organizationForeignKeys: 0 };
+const runtimeRole = (process.env.CVG_RUNTIME_DB_USER ?? "cvg_runtime").trim();
+let migrationPrivileges: { can_select: boolean; can_insert: boolean; can_update: boolean; can_delete: boolean } | undefined;
 try {
   const auth = await login(second);
   const restartedReplay = await second.app.inject({ method: "POST", url: "/api/v1/guardians", headers: { ...firstResult.auth.headers, "idempotency-key": guardianIdempotencyKey }, payload: guardianPayload });
@@ -427,6 +429,11 @@ try {
 
   const client = new pg.Client({ connectionString: databaseUrl });
   await client.connect();
+  migrationPrivileges = (await client.query<{ can_select: boolean; can_insert: boolean; can_update: boolean; can_delete: boolean }>(
+    "select has_table_privilege($1, 'public.schema_migrations', 'SELECT') as can_select, has_table_privilege($1, 'public.schema_migrations', 'INSERT') as can_insert, has_table_privilege($1, 'public.schema_migrations', 'UPDATE') as can_update, has_table_privilege($1, 'public.schema_migrations', 'DELETE') as can_delete",
+    [runtimeRole]
+  )).rows[0];
+  if (!migrationPrivileges || !migrationPrivileges.can_select || migrationPrivileges.can_insert || migrationPrivileges.can_update || migrationPrivileges.can_delete) throw new Error(`runtime role may mutate schema migration metadata: ${JSON.stringify({ runtimeRole, migrationPrivileges })}`);
   const latestOrganization = second.store.bootstrapCredentials.organizationId;
   await client.query("select set_config('cvg.organization_id', $1, false)", [latestOrganization]);
   await client.query("select set_config('cvg.unit_id', $1, false)", [auth.unitId]);
@@ -611,4 +618,4 @@ try {
   await contenderB.close();
 }
 
-console.log(JSON.stringify({ postgres: "PASS", restartRead: "PASS", normalizedReads: "PASS", diagnosticRequest: "PASS", diagnosticSpecimen: "PASS", diagnosticResult: "PASS", diagnosticChildIntegrity: "PASS", idempotency: "PASS", outbox: "PASS", externalEffects: "PASS", inbox: "PASS", usageLedger: "PASS", breakGlass: "PASS", cas: "PASS", rls: "PASS", rlsDomainTables: catalogProtection.domainTables, rlsProtectedTables: catalogProtection.protectedTables, organizationForeignKeys: catalogProtection.organizationForeignKeys, receiptId: firstResult.receiptId, counts }, null, 2));
+console.log(JSON.stringify({ postgres: "PASS", restartRead: "PASS", normalizedReads: "PASS", diagnosticRequest: "PASS", diagnosticSpecimen: "PASS", diagnosticResult: "PASS", diagnosticChildIntegrity: "PASS", idempotency: "PASS", outbox: "PASS", externalEffects: "PASS", inbox: "PASS", usageLedger: "PASS", breakGlass: "PASS", cas: "PASS", rls: "PASS", rlsDomainTables: catalogProtection.domainTables, rlsProtectedTables: catalogProtection.protectedTables, organizationForeignKeys: catalogProtection.organizationForeignKeys, runtimeRole, migrationPrivileges, receiptId: firstResult.receiptId, counts }, null, 2));

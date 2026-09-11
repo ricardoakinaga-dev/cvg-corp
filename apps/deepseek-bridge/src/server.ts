@@ -1,9 +1,12 @@
-import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
+import { randomUUID, timingSafeEqual } from "node:crypto";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { fileURLToPath } from "node:url";
 import { resolve } from "node:path";
 import {
   DeepSeekBridge,
+  bridgeRequestSignature,
+  BRIDGE_REQUEST_MAX_AGE_MS,
+  BRIDGE_REQUEST_CLOCK_SKEW_MS,
   DeepSeekBridgeError,
   DEEPSEEK_BRIDGE_SCHEMA_VERSION,
   healthToWire,
@@ -15,6 +18,7 @@ import {
   toErrorEnvelope,
   createAcpNativeHarnessPortFromEnvironment,
   type DeepSeekBridgeConfig,
+  type DeepSeekAcpGovernance,
   type DeepSeekNativeHarnessPort
 } from "@cvg/deepseek-bridge";
 import type { CvgContext, OpaqueId } from "@cvg/contracts";
@@ -29,6 +33,8 @@ export interface DeepSeekBridgeServerOptions {
   bridge?: DeepSeekBridge;
   telemetry?: OpsTelemetry;
   nativePort?: DeepSeekNativeHarnessPort;
+  /** Explicit CVG authority required before ACP reports approvals/replay. */
+  governance?: DeepSeekAcpGovernance;
   host?: string;
   port?: number;
   maxBodyBytes?: number;
@@ -36,6 +42,8 @@ export interface DeepSeekBridgeServerOptions {
   resolveBearerToken?: () => Promise<string | null>;
   requireContextSignature?: boolean;
   resolveContextSigningSecret?: () => Promise<string | null>;
+  /** Require a fresh one-shot nonce whenever context signatures are enabled. */
+  requireRequestNonce?: boolean;
 }
 
 export interface DeepSeekBridgeServer {
@@ -67,7 +75,7 @@ function secretResolverFromEnvironment(environment: NodeJS.ProcessEnv, reference
   const supported: readonly SecretProviderKind[] = ["env", "file", "docker", "vault", "aws", "gcp", "azure", "kubernetes"];
   if (!(supported as readonly string[]).includes(kind)) return undefined;
   const provider = configuredSecretProvider(kind as SecretProviderKind, environment, environment.CVG_SECRET_DIR);
-  if (!provider?.resolve) return undefined;
+  if (!provider || provider.status() !== "READY" || !provider.resolve) return undefined;
   return async () => {
     try {
       return await provider.resolve?.(normalizedReference) ?? null;
@@ -105,17 +113,19 @@ function requestHeader(request: IncomingMessage, name: string): string | undefin
   return typeof value === "string" && value.length > 0 ? value : undefined;
 }
 
+const requestNoncePattern = /^[A-Za-z0-9._~-]{16,128}$/;
+
 function correlationFromRequest(request: IncomingMessage): string {
   const value = requestHeader(request, "x-cvg-correlation-id");
   return value && correlationPattern.test(value) ? value : randomUUID();
 }
 
-function contextHeader(request: IncomingMessage): unknown {
+function contextEnvelopeHeader(request: IncomingMessage): unknown {
   const encoded = requestHeader(request, "x-cvg-context");
   if (!encoded || encoded.length > 8_192 || !/^[A-Za-z0-9_-]+$/.test(encoded)) return undefined;
   try {
     const decoded: unknown = JSON.parse(Buffer.from(encoded, "base64url").toString("utf8"));
-    return isRecord(decoded) && "context" in decoded ? decoded.context : decoded;
+    return decoded;
   } catch {
     return undefined;
   }
@@ -148,7 +158,8 @@ function jsonBody(request: IncomingMessage, maxBodyBytes: number): Promise<unkno
 }
 
 function bodyContext(body: unknown, request: IncomingMessage): { context: CvgContext; correlationId: string } {
-  const raw = isRecord(body) && body.context !== undefined ? body.context : contextHeader(request);
+  const header = contextEnvelopeHeader(request);
+  const raw = isRecord(body) && body.context !== undefined ? body.context : isRecord(header) ? header.context : undefined;
   const context = parseBridgeContext(raw);
   const headerCorrelation = requestHeader(request, "x-cvg-correlation-id");
   const correlationId = headerCorrelation && correlationPattern.test(headerCorrelation) ? headerCorrelation : context.correlationId;
@@ -156,25 +167,39 @@ function bodyContext(body: unknown, request: IncomingMessage): { context: CvgCon
   return { context, correlationId };
 }
 
-function contextSignaturePayload(context: CvgContext): string {
-  return JSON.stringify({ context, correlationId: context.correlationId });
-}
-
 async function verifyContextSignature(
-  context: CvgContext,
+  payload: unknown,
   request: IncomingMessage,
   required: boolean,
-  resolveSecret: (() => Promise<string | null>) | undefined
+  resolveSecret: (() => Promise<string | null>) | undefined,
+  requireNonce: boolean,
+  nonceCache: Map<string, number>
 ): Promise<void> {
   if (!required) return;
+  const issuedAt = requestHeader(request, "x-cvg-context-issued-at");
+  const timestamp = issuedAt && /^\d{13}$/.test(issuedAt) ? Number(issuedAt) : Number.NaN;
+  const age = Date.now() - timestamp;
+  if (!Number.isFinite(age) || age > BRIDGE_REQUEST_MAX_AGE_MS || age < -BRIDGE_REQUEST_CLOCK_SKEW_MS) throw new DeepSeekBridgeError("UNAUTHENTICATED", "Assinatura do contexto CVG expirada ou sem prazo válido.");
+  const nonce = requestHeader(request, "x-cvg-request-nonce");
+  if (requireNonce && (!nonce || !requestNoncePattern.test(nonce))) throw new DeepSeekBridgeError("UNAUTHENTICATED", "Nonce do request ausente ou inválido.");
   const signature = requestHeader(request, "x-cvg-context-signature")?.match(/^sha256=([a-f0-9]{64})$/i)?.[1];
   let secret: string | null = null;
   try { secret = await resolveSecret?.() ?? null; } catch { secret = null; }
-  const expected = secret?.trim() ? createHmac("sha256", secret.trim()).update(contextSignaturePayload(context), "utf8").digest("hex") : null;
+  const expected = secret?.trim() ? bridgeRequestSignature(secret.trim(), request.method ?? "", request.url ?? "", issuedAt!, payload, nonce) : null;
   const receivedBytes = signature ? Buffer.from(signature, "hex") : null;
   const expectedBytes = expected ? Buffer.from(expected, "hex") : null;
   const matches = Boolean(receivedBytes && expectedBytes && receivedBytes.length === expectedBytes.length && timingSafeEqual(receivedBytes, expectedBytes));
   if (!matches) throw new DeepSeekBridgeError("UNAUTHENTICATED", "Assinatura do contexto CVG ausente ou inválida.");
+  if (nonce) {
+    const now = Date.now();
+    for (const [cachedNonce, expiresAt] of nonceCache) if (expiresAt <= now) nonceCache.delete(cachedNonce);
+    if (nonceCache.has(nonce)) throw new DeepSeekBridgeError("UNAUTHENTICATED", "Nonce do request já foi utilizado.");
+    nonceCache.set(nonce, timestamp + BRIDGE_REQUEST_MAX_AGE_MS + BRIDGE_REQUEST_CLOCK_SKEW_MS);
+    if (nonceCache.size > 10_000) {
+      const oldest = nonceCache.keys().next().value;
+      if (typeof oldest === "string") nonceCache.delete(oldest);
+    }
+  }
 }
 
 function pathId(pathname: string, pattern: RegExp, label: string): OpaqueId {
@@ -221,7 +246,9 @@ async function dispatch(
   requireBearerToken: boolean,
   resolveBearerToken: (() => Promise<string | null>) | undefined,
   requireContextSignature: boolean,
-  resolveContextSigningSecret: (() => Promise<string | null>) | undefined
+  resolveContextSigningSecret: (() => Promise<string | null>) | undefined,
+  requireRequestNonce: boolean,
+  nonceCache: Map<string, number>
 ): Promise<void> {
   const url = new URL(request.url ?? "/", "http://deepseek-bridge.local");
   const correlationId = correlationFromRequest(request);
@@ -245,7 +272,7 @@ async function dispatch(
   const bodyRecord = body === undefined ? {} : requireRecord(body, "request");
   const requestContext = async (): Promise<{ context: CvgContext; correlationId: string }> => {
     const parsed = bodyContext(body, request);
-    await verifyContextSignature(parsed.context, request, requireContextSignature, resolveContextSigningSecret);
+    await verifyContextSignature(body ?? contextEnvelopeHeader(request), request, requireContextSignature, resolveContextSigningSecret, requireRequestNonce, nonceCache);
     return parsed;
   };
 
@@ -260,6 +287,8 @@ async function dispatch(
   if (request.method === "POST" && turnPattern.test(url.pathname)) {
     const { context, correlationId: requestCorrelationId } = await requestContext();
     const input = parseBridgeTurnInput(bodyRecord.input);
+    const pathSessionId = turnPattern.exec(url.pathname)?.[1];
+    if (decodeURIComponent(pathSessionId ?? "") !== (input.sessionId ?? "new")) throw new DeepSeekBridgeError("CONTRACT_MISMATCH", "Sessão da URL diverge da sessão do turno.");
     const approvalId = bodyRecord.approvalId === undefined || bodyRecord.approvalId === null ? null : parseBridgeOpaqueId(bodyRecord.approvalId, "approvalId");
     writeJson(response, 200, requestCorrelationId, await bridge.executeTurn(context, input, approvalId, signal));
     return;
@@ -300,7 +329,7 @@ async function dispatch(
 }
 
 export function createDeepSeekBridgeServer(options: DeepSeekBridgeServerOptions = {}): DeepSeekBridgeServer {
-  const nativePort = options.nativePort ?? (options.bridge ? undefined : createAcpNativeHarnessPortFromEnvironment(process.env));
+  const nativePort = options.nativePort ?? (options.bridge ? undefined : createAcpNativeHarnessPortFromEnvironment(process.env, options.governance));
   const bridge = options.bridge ?? new DeepSeekBridge(bridgeConfigFromEnvironment(process.env, nativePort));
   const maxBodyBytes = options.maxBodyBytes ?? defaultMaxBodyBytes;
   const requireBearerToken = options.requireBearerToken ?? process.env.NODE_ENV === "production";
@@ -309,6 +338,8 @@ export function createDeepSeekBridgeServer(options: DeepSeekBridgeServerOptions 
   const requireContextSignature = options.requireContextSignature ?? process.env.NODE_ENV === "production";
   const resolveContextSigningSecret = options.resolveContextSigningSecret ?? contextSigningSecretResolverFromEnvironment(process.env);
   if (requireContextSignature && !resolveContextSigningSecret) throw new Error("O bridge DeepSeek exige um resolver de assinatura de contexto respaldado por SecretProvider.");
+  const requireRequestNonce = options.requireRequestNonce ?? requireContextSignature;
+  const nonceCache = new Map<string, number>();
   const otelRuntime = options.telemetry ? null : createOpenTelemetryRuntime({ serviceName: "cvg-deepseek-bridge", requireTls: process.env.NODE_ENV === "production" });
   const telemetry = options.telemetry ?? new OpsTelemetry({
     ...(otelRuntime?.exporter ? { exporter: otelRuntime.exporter } : {}),
@@ -317,10 +348,11 @@ export function createDeepSeekBridgeServer(options: DeepSeekBridgeServerOptions 
   const server = createServer((request, response) => {
     const controller = new AbortController();
     request.once("aborted", () => controller.abort());
+    response.once("close", () => { if (!response.writableEnded) controller.abort(); });
     const requestCorrelationId = correlationFromRequest(request);
     const url = new URL(request.url ?? "/", "http://deepseek-bridge.local");
-    const span = telemetry.startSpan("cvg.deepseek_bridge.request", { method: request.method ?? "UNKNOWN", route: url.pathname, correlationId: requestCorrelationId });
-    void dispatch(request, response, bridge, maxBodyBytes, controller.signal, requireBearerToken, resolveBearerToken, requireContextSignature, resolveContextSigningSecret).then(() => {
+    const span = telemetry.startCorrelatedSpan("cvg.deepseek_bridge.request", { requestId: typeof request.headers["x-request-id"] === "string" ? request.headers["x-request-id"] : null, correlationId: requestCorrelationId, sessionId: null, toolInvocationId: null, jobId: null, outboxId: null, providerRequestId: null }, { method: request.method ?? "UNKNOWN", route: url.pathname });
+    void dispatch(request, response, bridge, maxBodyBytes, controller.signal, requireBearerToken, resolveBearerToken, requireContextSignature, resolveContextSigningSecret, requireRequestNonce, nonceCache).then(() => {
       telemetry.finishSpan(span, response.statusCode || 200);
     }).catch((error: unknown) => {
       const status = statusForError(error);

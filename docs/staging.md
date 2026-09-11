@@ -13,4 +13,10 @@ Status: `BLOCKED/NOT_RUN`. Não há URL de staging autorizada nesta revisão. `n
 - Chromium, Firefox e WebKit em mobile/tablet/desktop, axe/WCAG, carga, chaos e restore;
 - evidência redigida, URL/commit/manifest/time window e aprovação humana.
 
+## Ligação commit → artifact → staging
+
+Antes de qualquer smoke, gerar e verificar [proveniência de release](release-provenance.md) no mesmo SHA do CI. O deployment recebe exatamente `CVG_RELEASE_SHA` e `CVG_RELEASE_ARTIFACT_DIGEST` do manifesto e a API os devolve em `X-CVG-Release-SHA` e `X-CVG-Release-Artifact-Digest`. O probe HTTPS `npm run verify:container-smoke -- --url ... --release-sha ... --artifact-digest ...` rejeita divergência e headers de borda fracos; o cenário completo só passa com credenciais de smoke, escrita controlada, heartbeat do worker, URLs HTTPS de provider/DeepSeek e restart observável. A promoção só pode apontar o candidate de produção para o digest já observado em staging; `verify:promotion-invariant` rejeita rebuild ou SHA divergente.
+
+Esses controles não substituem a execução autorizada do smoke completo, do provider/DeepSeek, dos writes, do worker, da recuperação ou da decisão humana autenticada. Sem esses dados, staging e promoção permanecem `BLOCKED_EXTERNAL`.
+
 O ambiente local pode verificar estrutura, contratos, fixtures e a composição TLS renderizada; não substitui o gate de staging. Até a configuração e autoridade serem fornecidas, TLS real, provider, secret authority, browsers adicionais, carga e recovery permanecem `NOT_RUN`.

@@ -1,0 +1,540 @@
+{
+  "schemaVersion": 2,
+  "status": "RUNBOOK_LOCAL_CONTRACT_VERIFIED",
+  "observedAt": "2026-09-11T17:27:39.271Z",
+  "prompt": {
+    "reference": "docs/prompt-final-operational-proof-2026-09-10.txt",
+    "sha256": "39dfbb610267b61854b972bf8513f6562b0ee374aa308f7a79b38d21f2cdeae3",
+    "expectedSha256": "39dfbb610267b61854b972bf8513f6562b0ee374aa308f7a79b38d21f2cdeae3",
+    "status": "VERIFIED_LOCAL_CONTRACT",
+    "phases": {
+      "runbookExecution": {
+        "id": "FASE 35",
+        "executionStatus": "EXECUTED_LOCAL_CONTRACT",
+        "requiredScenarios": [
+          "restore",
+          "database-incident",
+          "provider-outage",
+          "deepseek-harness-outage",
+          "credential-rotation",
+          "worker-backlog",
+          "break-glass"
+        ],
+        "fixtures": [
+          {
+            "scenario": "restore",
+            "status": "PASS",
+            "executionStatus": "EXECUTED_LOCAL",
+            "observedStates": [
+              "SOURCE_PROTECTED",
+              "QUARANTINED"
+            ],
+            "assertions": [
+              "initial state matches the runbook contract",
+              "failure state is reached before recovery",
+              "blocked effect is explicitly declared",
+              "recovery requires an explicit next authority/state"
+            ]
+          },
+          {
+            "scenario": "database-incident",
+            "status": "PASS",
+            "executionStatus": "EXECUTED_LOCAL",
+            "observedStates": [
+              "ONLINE",
+              "DATABASE_DEGRADED"
+            ],
+            "assertions": [
+              "initial state matches the runbook contract",
+              "failure state is reached before recovery",
+              "blocked effect is explicitly declared",
+              "recovery requires an explicit next authority/state"
+            ]
+          },
+          {
+            "scenario": "provider-outage",
+            "status": "PASS",
+            "executionStatus": "EXECUTED_LOCAL",
+            "observedStates": [
+              "INTEGRATION_READY",
+              "OUTCOME_UNKNOWN",
+              "QUARANTINED"
+            ],
+            "assertions": [
+              "initial state matches the runbook contract",
+              "failure state is reached before recovery",
+              "blocked effect is explicitly declared",
+              "recovery requires an explicit next authority/state"
+            ]
+          },
+          {
+            "scenario": "deepseek-harness-outage",
+            "status": "PASS",
+            "executionStatus": "EXECUTED_LOCAL",
+            "observedStates": [
+              "HARNESS_READY",
+              "UNAVAILABLE"
+            ],
+            "assertions": [
+              "initial state matches the runbook contract",
+              "failure state is reached before recovery",
+              "blocked effect is explicitly declared",
+              "recovery requires an explicit next authority/state"
+            ]
+          },
+          {
+            "scenario": "credential-rotation",
+            "status": "PASS",
+            "executionStatus": "EXECUTED_LOCAL",
+            "observedStates": [
+              "CREDENTIAL_ACTIVE",
+              "CREDENTIAL_ROTATION_BLOCKED"
+            ],
+            "assertions": [
+              "initial state matches the runbook contract",
+              "failure state is reached before recovery",
+              "blocked effect is explicitly declared",
+              "recovery requires an explicit next authority/state"
+            ]
+          },
+          {
+            "scenario": "worker-backlog",
+            "status": "PASS",
+            "executionStatus": "EXECUTED_LOCAL",
+            "observedStates": [
+              "PENDING",
+              "CLAIMED",
+              "QUARANTINED"
+            ],
+            "assertions": [
+              "initial state matches the runbook contract",
+              "failure state is reached before recovery",
+              "blocked effect is explicitly declared",
+              "recovery requires an explicit next authority/state"
+            ]
+          },
+          {
+            "scenario": "break-glass",
+            "status": "PASS",
+            "executionStatus": "EXECUTED_LOCAL",
+            "observedStates": [
+              "DISABLED",
+              "BLOCKED"
+            ],
+            "assertions": [
+              "initial state matches the runbook contract",
+              "failure state is reached before recovery",
+              "blocked effect is explicitly declared",
+              "recovery requires an explicit next authority/state"
+            ]
+          }
+        ]
+      },
+      "localRunbookContract": {
+        "mappedRunbooks": [
+          "docs/runbooks/deployment.md",
+          "docs/runbooks/rollback.md",
+          "docs/runbooks/backup.md",
+          "docs/runbooks/security-incident.md",
+          "docs/runbooks/quarantine.md"
+        ]
+      },
+      "humanApprovalGate": {
+        "id": "FASE 38",
+        "executionStatus": "NOT_RUN",
+        "noHumanApprovalSimulated": true
+      }
+    }
+  },
+  "controls": [
+    {
+      "id": "deployment",
+      "file": "docs/runbooks/deployment.md",
+      "required": [
+        "artifact",
+        "migration",
+        "readiness",
+        "aprovação"
+      ],
+      "promptPhase": "LOCAL RUNBOOK CONTRACT",
+      "dryRun": {
+        "initialState": "CANDIDATE",
+        "failureState": "PROMOTION_BLOCKED",
+        "transition": "CANDIDATE → PROMOTION_BLOCKED",
+        "blockedEffect": "release sem artifact/migration/readiness/aprovação",
+        "recoveryState": "APPROVAL_REQUIRED"
+      },
+      "status": "VERIFIED_LOCAL_CONTRACT",
+      "executionStatus": "NOT_RUN",
+      "dryRunStatus": "PASS",
+      "evidence": "SYNTHETIC_CONTRACT",
+      "limitation": "local transition fixture and runbook contract only; outage, restore, rotation, break-glass, backlog and rollback drills require authorized staging and independent incident review"
+    },
+    {
+      "id": "rollback",
+      "file": "docs/runbooks/rollback.md",
+      "required": [
+        "rollback",
+        "digest",
+        "aprovação"
+      ],
+      "promptPhase": "LOCAL RUNBOOK CONTRACT",
+      "dryRun": {
+        "initialState": "RELEASED",
+        "failureState": "ROLLBACK_PENDING",
+        "transition": "RELEASED → ROLLBACK_PENDING",
+        "blockedEffect": "downgrade automático ou reenvio de efeito desconhecido",
+        "recoveryState": "HEALTH_REVALIDATION_REQUIRED"
+      },
+      "status": "VERIFIED_LOCAL_CONTRACT",
+      "executionStatus": "NOT_RUN",
+      "dryRunStatus": "PASS",
+      "evidence": "SYNTHETIC_CONTRACT",
+      "limitation": "local transition fixture and runbook contract only; outage, restore, rotation, break-glass, backlog and rollback drills require authorized staging and independent incident review"
+    },
+    {
+      "id": "backup",
+      "file": "docs/runbooks/backup.md",
+      "required": [
+        "manifest",
+        "retenção",
+        "watermark",
+        "bloqueado"
+      ],
+      "promptPhase": "LOCAL RUNBOOK CONTRACT",
+      "dryRun": {
+        "initialState": "BACKUP_REQUESTED",
+        "failureState": "BACKUP_BLOCKED",
+        "transition": "BACKUP_REQUESTED → BACKUP_BLOCKED",
+        "blockedEffect": "marcar cópia sem watermark/chave/integridade como recuperável",
+        "recoveryState": "INCIDENT_REVIEW_REQUIRED"
+      },
+      "status": "VERIFIED_LOCAL_CONTRACT",
+      "executionStatus": "NOT_RUN",
+      "dryRunStatus": "PASS",
+      "evidence": "SYNTHETIC_CONTRACT",
+      "limitation": "local transition fixture and runbook contract only; outage, restore, rotation, break-glass, backlog and rollback drills require authorized staging and independent incident review"
+    },
+    {
+      "id": "restore",
+      "file": "docs/runbooks/restore.md",
+      "required": [
+        "isolado",
+        "RTO/RPO",
+        "reconciliação"
+      ],
+      "promptPhase": "FASE 35 — RUNBOOK EXECUTION",
+      "promptScenario": "restore",
+      "dryRun": {
+        "initialState": "SOURCE_PROTECTED",
+        "failureState": "QUARANTINED",
+        "transition": "SOURCE_PROTECTED → QUARANTINED",
+        "blockedEffect": "login/readiness, replay cego ou liberação sobre origem",
+        "recoveryState": "INDEPENDENT_REVIEW_REQUIRED"
+      },
+      "status": "VERIFIED_LOCAL_CONTRACT",
+      "executionStatus": "EXECUTED_LOCAL",
+      "dryRunStatus": "PASS",
+      "evidence": "SYNTHETIC_CONTRACT",
+      "limitation": "local transition fixture and runbook contract only; outage, restore, rotation, break-glass, backlog and rollback drills require authorized staging and independent incident review"
+    },
+    {
+      "id": "database-incident",
+      "file": "docs/runbooks/database-incident.md",
+      "required": [
+        "restore",
+        "RLS",
+        "reconciliar"
+      ],
+      "promptPhase": "FASE 35 — RUNBOOK EXECUTION",
+      "promptScenario": "database-incident",
+      "dryRun": {
+        "initialState": "ONLINE",
+        "failureState": "DATABASE_DEGRADED",
+        "transition": "ONLINE → DATABASE_DEGRADED",
+        "blockedEffect": "novas escritas críticas ou remoção do banco/volume",
+        "recoveryState": "ISOLATED_RESTORE_REQUIRED"
+      },
+      "status": "VERIFIED_LOCAL_CONTRACT",
+      "executionStatus": "EXECUTED_LOCAL",
+      "dryRunStatus": "PASS",
+      "evidence": "SYNTHETIC_CONTRACT",
+      "limitation": "local transition fixture and runbook contract only; outage, restore, rotation, break-glass, backlog and rollback drills require authorized staging and independent incident review"
+    },
+    {
+      "id": "provider-outage",
+      "file": "docs/runbooks/provider-outage.md",
+      "required": [
+        "outcome_unknown",
+        "quarentena",
+        "receipt"
+      ],
+      "promptPhase": "FASE 35 — RUNBOOK EXECUTION",
+      "promptScenario": "provider-outage",
+      "dryRun": {
+        "initialState": "INTEGRATION_READY",
+        "failureState": "OUTCOME_UNKNOWN",
+        "transition": "INTEGRATION_READY → OUTCOME_UNKNOWN → QUARANTINED",
+        "blockedEffect": "retry cego ou confirmação sem receipt",
+        "recoveryState": "RECONCILIATION_REQUIRED"
+      },
+      "status": "VERIFIED_LOCAL_CONTRACT",
+      "executionStatus": "EXECUTED_LOCAL",
+      "dryRunStatus": "PASS",
+      "evidence": "SYNTHETIC_CONTRACT",
+      "limitation": "local transition fixture and runbook contract only; outage, restore, rotation, break-glass, backlog and rollback drills require authorized staging and independent incident review"
+    },
+    {
+      "id": "deepseek-harness-outage",
+      "file": "docs/runbooks/deepseek-harness-outage.md",
+      "required": [
+        "UNAVAILABLE",
+        "manifest",
+        "bloquear"
+      ],
+      "promptPhase": "FASE 35 — RUNBOOK EXECUTION",
+      "promptScenario": "deepseek-harness-outage",
+      "dryRun": {
+        "initialState": "HARNESS_READY",
+        "failureState": "UNAVAILABLE",
+        "transition": "HARNESS_READY → UNAVAILABLE",
+        "blockedEffect": "turno dependente, troca silenciosa de provider ou endpoint não aprovado",
+        "recoveryState": "HEALTH_AND_APPROVAL_REQUIRED"
+      },
+      "status": "VERIFIED_LOCAL_CONTRACT",
+      "executionStatus": "EXECUTED_LOCAL",
+      "dryRunStatus": "PASS",
+      "evidence": "SYNTHETIC_CONTRACT",
+      "limitation": "local transition fixture and runbook contract only; outage, restore, rotation, break-glass, backlog and rollback drills require authorized staging and independent incident review"
+    },
+    {
+      "id": "security-incident",
+      "file": "docs/runbooks/security-incident.md",
+      "required": [
+        "preservar",
+        "quarentena",
+        "invalidar"
+      ],
+      "promptPhase": "LOCAL RUNBOOK CONTRACT",
+      "dryRun": {
+        "initialState": "NORMAL",
+        "failureState": "LOCKDOWN",
+        "transition": "NORMAL → LOCKDOWN",
+        "blockedEffect": "apagar evidência, manter sessão/capability afetada ou restaurar fora de quarentena",
+        "recoveryState": "INDEPENDENT_REVIEW_REQUIRED"
+      },
+      "status": "VERIFIED_LOCAL_CONTRACT",
+      "executionStatus": "NOT_RUN",
+      "dryRunStatus": "PASS",
+      "evidence": "SYNTHETIC_CONTRACT",
+      "limitation": "local transition fixture and runbook contract only; outage, restore, rotation, break-glass, backlog and rollback drills require authorized staging and independent incident review"
+    },
+    {
+      "id": "credential-rotation",
+      "file": "docs/runbooks/credential-rotation.md",
+      "required": [
+        "rotation",
+        "revog",
+        "correlation"
+      ],
+      "promptPhase": "FASE 35 — RUNBOOK EXECUTION",
+      "promptScenario": "credential-rotation",
+      "dryRun": {
+        "initialState": "CREDENTIAL_ACTIVE",
+        "failureState": "CREDENTIAL_ROTATION_BLOCKED",
+        "transition": "CREDENTIAL_ACTIVE → CREDENTIAL_ROTATION_BLOCKED",
+        "blockedEffect": "manter segredo antigo, imprimir material secreto ou repetir efeito incerto",
+        "recoveryState": "REVOKE_AND_RECONCILE_REQUIRED"
+      },
+      "status": "VERIFIED_LOCAL_CONTRACT",
+      "executionStatus": "EXECUTED_LOCAL",
+      "dryRunStatus": "PASS",
+      "evidence": "SYNTHETIC_CONTRACT",
+      "limitation": "local transition fixture and runbook contract only; outage, restore, rotation, break-glass, backlog and rollback drills require authorized staging and independent incident review"
+    },
+    {
+      "id": "worker-backlog",
+      "file": "docs/runbooks/worker-backlog.md",
+      "required": [
+        "lease",
+        "fence",
+        "QUARANTINED"
+      ],
+      "promptPhase": "FASE 35 — RUNBOOK EXECUTION",
+      "promptScenario": "worker-backlog",
+      "dryRun": {
+        "initialState": "PENDING",
+        "failureState": "QUARANTINED",
+        "transition": "PENDING → CLAIMED → QUARANTINED",
+        "blockedEffect": "assumir sem claim/fence, aumentar concorrência cegamente ou apagar a fila",
+        "recoveryState": "AUTHORIZED_REPLAY_REQUIRED"
+      },
+      "status": "VERIFIED_LOCAL_CONTRACT",
+      "executionStatus": "EXECUTED_LOCAL",
+      "dryRunStatus": "PASS",
+      "evidence": "SYNTHETIC_CONTRACT",
+      "limitation": "local transition fixture and runbook contract only; outage, restore, rotation, break-glass, backlog and rollback drills require authorized staging and independent incident review"
+    },
+    {
+      "id": "quarantine",
+      "file": "docs/runbooks/quarantine.md",
+      "required": [
+        "quarentena",
+        "digest",
+        "independente"
+      ],
+      "promptPhase": "LOCAL RUNBOOK CONTRACT",
+      "dryRun": {
+        "initialState": "UNTRUSTED",
+        "failureState": "QUARANTINED",
+        "transition": "UNTRUSTED → QUARANTINED",
+        "blockedEffect": "leitura, exportação, retry, promoção ou exclusão para ocultar o item",
+        "recoveryState": "AUDITED_DECISION_REQUIRED"
+      },
+      "status": "VERIFIED_LOCAL_CONTRACT",
+      "executionStatus": "NOT_RUN",
+      "dryRunStatus": "PASS",
+      "evidence": "SYNTHETIC_CONTRACT",
+      "limitation": "local transition fixture and runbook contract only; outage, restore, rotation, break-glass, backlog and rollback drills require authorized staging and independent incident review"
+    },
+    {
+      "id": "break-glass",
+      "file": "docs/runbooks/break-glass.md",
+      "required": [
+        "WebAuthn",
+        "revogação",
+        "audit append-only"
+      ],
+      "promptPhase": "FASE 35 — RUNBOOK EXECUTION",
+      "promptScenario": "break-glass",
+      "dryRun": {
+        "initialState": "DISABLED",
+        "failureState": "BLOCKED",
+        "transition": "DISABLED → BLOCKED",
+        "blockedEffect": "ativação sem MFA, dupla aprovação, TTL, revogação ou auditoria",
+        "recoveryState": "INDEPENDENT_AUTHORITY_REQUIRED"
+      },
+      "status": "VERIFIED_LOCAL_CONTRACT",
+      "executionStatus": "EXECUTED_LOCAL",
+      "dryRunStatus": "PASS",
+      "evidence": "SYNTHETIC_CONTRACT",
+      "limitation": "local transition fixture and runbook contract only; outage, restore, rotation, break-glass, backlog and rollback drills require authorized staging and independent incident review"
+    }
+  ],
+  "fixtureExecution": {
+    "status": "PASS",
+    "command": "/home/ricardo/.nvm/versions/node/v24.20.0/bin/node --import tsx --test tests/integration/restore.test.ts tests/integration/faults.test.ts tests/integration/worker-jobs.test.ts tests/unit/auth.test.ts tests/unit/deepseek-bridge.test.ts tests/unit/deepseek-acp.test.ts",
+    "scenarioFixtures": [
+      {
+        "scenario": "restore",
+        "status": "PASS",
+        "executionStatus": "EXECUTED_LOCAL",
+        "observedStates": [
+          "SOURCE_PROTECTED",
+          "QUARANTINED"
+        ],
+        "assertions": [
+          "initial state matches the runbook contract",
+          "failure state is reached before recovery",
+          "blocked effect is explicitly declared",
+          "recovery requires an explicit next authority/state"
+        ]
+      },
+      {
+        "scenario": "database-incident",
+        "status": "PASS",
+        "executionStatus": "EXECUTED_LOCAL",
+        "observedStates": [
+          "ONLINE",
+          "DATABASE_DEGRADED"
+        ],
+        "assertions": [
+          "initial state matches the runbook contract",
+          "failure state is reached before recovery",
+          "blocked effect is explicitly declared",
+          "recovery requires an explicit next authority/state"
+        ]
+      },
+      {
+        "scenario": "provider-outage",
+        "status": "PASS",
+        "executionStatus": "EXECUTED_LOCAL",
+        "observedStates": [
+          "INTEGRATION_READY",
+          "OUTCOME_UNKNOWN",
+          "QUARANTINED"
+        ],
+        "assertions": [
+          "initial state matches the runbook contract",
+          "failure state is reached before recovery",
+          "blocked effect is explicitly declared",
+          "recovery requires an explicit next authority/state"
+        ]
+      },
+      {
+        "scenario": "deepseek-harness-outage",
+        "status": "PASS",
+        "executionStatus": "EXECUTED_LOCAL",
+        "observedStates": [
+          "HARNESS_READY",
+          "UNAVAILABLE"
+        ],
+        "assertions": [
+          "initial state matches the runbook contract",
+          "failure state is reached before recovery",
+          "blocked effect is explicitly declared",
+          "recovery requires an explicit next authority/state"
+        ]
+      },
+      {
+        "scenario": "credential-rotation",
+        "status": "PASS",
+        "executionStatus": "EXECUTED_LOCAL",
+        "observedStates": [
+          "CREDENTIAL_ACTIVE",
+          "CREDENTIAL_ROTATION_BLOCKED"
+        ],
+        "assertions": [
+          "initial state matches the runbook contract",
+          "failure state is reached before recovery",
+          "blocked effect is explicitly declared",
+          "recovery requires an explicit next authority/state"
+        ]
+      },
+      {
+        "scenario": "worker-backlog",
+        "status": "PASS",
+        "executionStatus": "EXECUTED_LOCAL",
+        "observedStates": [
+          "PENDING",
+          "CLAIMED",
+          "QUARANTINED"
+        ],
+        "assertions": [
+          "initial state matches the runbook contract",
+          "failure state is reached before recovery",
+          "blocked effect is explicitly declared",
+          "recovery requires an explicit next authority/state"
+        ]
+      },
+      {
+        "scenario": "break-glass",
+        "status": "PASS",
+        "executionStatus": "EXECUTED_LOCAL",
+        "observedStates": [
+          "DISABLED",
+          "BLOCKED"
+        ],
+        "assertions": [
+          "initial state matches the runbook contract",
+          "failure state is reached before recovery",
+          "blocked effect is explicitly declared",
+          "recovery requires an explicit next authority/state"
+        ]
+      }
+    ]
+  },
+  "externalLimitations": [
+    "No live runbook exercise, alert dispatch, secret rotation, restore RTO/RPO, or human approval was executed."
+  ]
+}

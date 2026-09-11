@@ -1,8 +1,7 @@
 import { z } from "zod";
+import { API_SCHEMA_VERSION } from "./version.js";
 
-export const API_VERSION = "v1" as const;
-export const API_SCHEMA_VERSION = 1 as const;
-export const SESSION_FORMAT_VERSION = "0" as const;
+export { API_SCHEMA_VERSION, API_VERSION, SESSION_FORMAT_VERSION } from "./version.js";
 
 export type OpaqueId = string & { readonly __opaqueId: unique symbol };
 
@@ -332,8 +331,14 @@ export const knowledgeDocumentInputSchema = z.object({
 }).strict();
 export type KnowledgeDocumentInput = z.infer<typeof knowledgeDocumentInputSchema>;
 
+export const governedExportPurposes = ["INCIDENT_RECOVERY", "AUDIT_REVIEW", "MIGRATION_VALIDATION", "LEGAL_HOLD"] as const;
+export type GovernedExportPurpose = (typeof governedExportPurposes)[number];
+
+/** D4 exports are whole-organization recovery bundles.  A unit/workspace
+ * selector must never be accepted and then silently ignored by persistence. */
 export const governedExportInputSchema = z.object({
-  purpose: z.string().trim().min(8).max(240),
+  purpose: z.enum(governedExportPurposes),
+  scopeType: z.literal("ORGANIZATION").default("ORGANIZATION"),
   ttlSeconds: z.number().int().min(60).max(86_400).default(3_600)
 }).strict();
 export type GovernedExportInput = z.infer<typeof governedExportInputSchema>;
@@ -350,6 +355,89 @@ export const aiTurnInputSchema = z.object({
   idempotencyKey: idempotencyKeySchema
 }).strict();
 export type AiTurnInput = z.infer<typeof aiTurnInputSchema>;
+
+/**
+ * Versioned wire schemas for a persisted AI turn.  The bridge and every
+ * provider adapter must use this same schema so durable provenance/usage
+ * fields cannot be silently dropped at an HTTP or process boundary.
+ */
+export const aiTurnReferenceSchema = z.object({
+  title: z.string().max(500),
+  source: z.string().max(2_000)
+}).strict();
+
+/** Transport IDs are opaque to the bridge; domain boundaries validate UUIDs
+ * where a persisted CVG identifier is required. */
+export const aiWireIdSchema = z.string().trim().min(1).max(200).transform((value) => id(value));
+
+export const aiTurnProvenanceSchema = z.object({
+  provider: z.string().trim().min(1).max(160),
+  engineCommit: z.string().trim().min(1).max(200),
+  manifestVersion: z.string().trim().min(1).max(200),
+  profileDigest: z.string().trim().min(1).max(256),
+  policyRevision: z.string().trim().min(1).max(160),
+  references: z.array(aiTurnReferenceSchema).max(128),
+  referencesDigest: z.string().regex(/^[a-f0-9]{64}$/).optional(),
+  correlationId: z.string().regex(/^[A-Za-z0-9._-]{1,80}$/),
+  usageRecordId: aiWireIdSchema.optional()
+}).strict();
+
+export const aiUsageCostSchema = z.object({
+  amountMicros: z.number().int().nonnegative().nullable(),
+  currency: z.string().length(3).nullable(),
+  source: z.enum(["LOCAL_SYNTHETIC", "PROVIDER", "UNAVAILABLE"]),
+  pricingRevision: z.string().trim().min(1).max(160).nullable()
+}).strict();
+
+/**
+ * Accounting facts travel with the usage ledger instead of being inferred
+ * later from an AI turn.  A missing provider price is explicit and cannot be
+ * mistaken for a zero-cost settlement.
+ */
+export const aiUsageSettlementSchema = z.object({
+  model: z.string().trim().min(1).max(200),
+  inputTokens: z.number().int().nonnegative(),
+  outputTokens: z.number().int().nonnegative(),
+  providerResponseDigest: z.string().regex(/^[a-f0-9]{64}$/).nullable(),
+  estimatedCost: aiUsageCostSchema,
+  actualCost: aiUsageCostSchema,
+  discrepancy: z.object({
+    status: z.enum(["NOT_EVALUATED", "MATCHED", "MISMATCH"]),
+    deltaMicros: z.number().int().nullable(),
+    reason: z.string().trim().max(240).nullable()
+  }).strict()
+}).strict();
+
+export type AiUsageCost = z.infer<typeof aiUsageCostSchema>;
+export type AiUsageSettlement = z.infer<typeof aiUsageSettlementSchema>;
+
+export const aiTurnUsageSchema = z.object({
+  id: aiWireIdSchema,
+  reservationId: aiWireIdSchema.nullable(),
+  providerRequestId: z.string().max(512).nullable(),
+  idempotencyKey: z.string().trim().min(1).max(256),
+  usageKind: z.string().trim().min(1).max(160),
+  reservedUnits: z.number().int().nonnegative(),
+  consumedUnits: z.number().int().nonnegative(),
+  status: z.enum(["RECEIVED", "SETTLED", "RECONCILIATION_REQUIRED", "QUARANTINED"]),
+  record: z.record(z.string(), z.unknown()),
+  settlement: aiUsageSettlementSchema.optional()
+}).strict();
+
+export const aiTurnWireSchema = z.object({
+  id: aiWireIdSchema,
+  sessionId: aiWireIdSchema,
+  prompt: z.string().max(8_000),
+  response: z.string().nullable(),
+  status: z.enum(["RECEIVED", "DENIED", "COMPLETED", "QUARANTINED", "OUTCOME_UNKNOWN"]),
+  model: z.string().trim().min(1).max(200),
+  inputTokens: z.number().int().nonnegative(),
+  outputTokens: z.number().int().nonnegative(),
+  references: z.array(aiTurnReferenceSchema).max(128),
+  provenance: aiTurnProvenanceSchema.optional(),
+  usage: aiTurnUsageSchema.optional(),
+  createdAt: z.string().datetime({ offset: true })
+}).strict();
 
 export const approvalInputSchema = z.object({
   decision: z.enum(["allowed-once", "rejected"]),
@@ -952,6 +1040,7 @@ export interface AiTurnUsage {
   consumedUnits: number;
   status: AiUsageStatus;
   record: Record<string, unknown>;
+  settlement?: AiUsageSettlement;
 }
 
 export interface AiTurnProvenance {
@@ -1050,7 +1139,16 @@ export interface CvgMetrics {
     outcomeUnknown: number;
     quarantined: number;
   };
-  queues: { outboxDepth: number; oldestAgeMs: number; poisonMessages: number; reconciliationLag: number };
+  queues: {
+    outboxDepth: number;
+    oldestAgeMs: number;
+    poisonMessages: number;
+    reconciliationLag: number;
+    /** Age of the oldest worker heartbeat observed for the scoped organization. */
+    workerHeartbeatAgeMs?: number;
+    /** Number of durable worker heartbeat records observed for the scoped organization. */
+    workerHeartbeatCount?: number;
+  };
   telemetry: { mode: "REDACTED_BEST_EFFORT" | "OTEL_OTLP_REDACTED"; logsStored: number; dropped: number; duplicates: number };
 }
 
@@ -1081,5 +1179,46 @@ export function failure(code: ErrorCode, message: string, correlationId: string,
 export function isApiError(value: unknown): value is ApiErrorBody {
   return typeof value === "object" && value !== null && "error" in value;
 }
+
+/**
+ * Canonical ownership for every business collection in StoreSnapshot.  The
+ * registry lives in contracts so the in-memory domain validator and the
+ * PostgreSQL projector cannot silently diverge about which collections have
+ * an authoritative normalized owner.
+ */
+export const AUTHORITATIVE_DOMAIN_REGISTRY = [
+  { snapshotKey: "guardians", table: "guardians", scope: "contextual" },
+  { snapshotKey: "patients", table: "patients", scope: "contextual" },
+  { snapshotKey: "providers", table: "providers", scope: "unit" },
+  { snapshotKey: "services", table: "service_catalog_items", scope: "organization" },
+  { snapshotKey: "resources", table: "resources", scope: "unit" },
+  { snapshotKey: "appointments", table: "appointments", scope: "contextual" },
+  { snapshotKey: "queueEntries", table: "queue_entries", scope: "unit" },
+  { snapshotKey: "encounters", table: "encounters", scope: "contextual" },
+  { snapshotKey: "clinicalDocuments", table: "clinical_documents", scope: "contextual" },
+  { snapshotKey: "clinicalAddenda", table: "clinical_addenda", scope: "organization" },
+  { snapshotKey: "diagnosticRequests", table: "diagnostic_requests", scope: "contextual" },
+  { snapshotKey: "specimens", table: "specimens", scope: "contextual" },
+  { snapshotKey: "diagnosticResults", table: "diagnostic_results", scope: "contextual" },
+  { snapshotKey: "beds", table: "beds", scope: "unit" },
+  { snapshotKey: "hospitalEpisodes", table: "hospital_episodes", scope: "unit" },
+  { snapshotKey: "products", table: "products", scope: "organization" },
+  { snapshotKey: "stockLocations", table: "stock_locations", scope: "unit" },
+  { snapshotKey: "lots", table: "lots", scope: "organization" },
+  { snapshotKey: "stockMovements", table: "stock_movements", scope: "organization" },
+  { snapshotKey: "medicationOrders", table: "medication_orders", scope: "organization" },
+  { snapshotKey: "dispensations", table: "dispensations", scope: "organization" },
+  { snapshotKey: "administrationOccurrences", table: "administration_occurrences", scope: "organization" },
+  { snapshotKey: "charges", table: "charges", scope: "unit" },
+  { snapshotKey: "payments", table: "payments", scope: "organization" },
+  { snapshotKey: "ledgerEntries", table: "ledger_entries", scope: "organization" },
+  { snapshotKey: "messages", table: "communication_messages", scope: "contextual" },
+  { snapshotKey: "knowledgeDocuments", table: "knowledge_documents", scope: "contextual" },
+  { snapshotKey: "aiSessions", table: "ai_sessions", scope: "contextual" },
+  { snapshotKey: "aiTurns", table: "ai_turns", scope: "contextual" },
+  { snapshotKey: "aiDrafts", table: "ai_drafts", scope: "contextual" },
+  { snapshotKey: "aiApprovals", table: "ai_approvals", scope: "contextual" },
+  { snapshotKey: "budgetReservations", table: "budget_reservations", scope: "organization" }
+] as const;
 
 export * from "./api-catalog.js";

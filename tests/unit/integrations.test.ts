@@ -1,9 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createHmac } from "node:crypto";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 import { id } from "@cvg/contracts";
 import { DomainError } from "@cvg/domain";
-import { createMessagingExternalEffectQueryAdapter, DockerSecretProvider, EnvironmentSecretProvider, HttpMessagingProvider, inboxEventToOutbox, IntegrationGateway, isSecretReferenceUsable, MessagingCircuitBreaker, MessagingOutboxSink, MessagingProviderError, MessagingRateLimiter, OutboxWorker, reconcileUnknownExternalEffect, redactMessagingError, StaticSecretProvider, SyntheticMessagingProvider, verifyMessagingCallback, type ExternalEffectLedger } from "@cvg/integrations";
+import { createMessagingExternalEffectQueryAdapter, DockerSecretProvider, EnvironmentSecretProvider, HttpMessagingProvider, inboxEventToOutbox, IntegrationGateway, isSecretReferenceUsable, MessagingCircuitBreaker, MessagingOutboxSink, MessagingProviderError, MessagingRateLimiter, OutboxWorker, reconcileUnknownExternalEffect, redactMessagingError, StaticSecretProvider, SyntheticMessagingProvider, UnsupportedSecretProvider, verifyMessagingCallback, type ExternalEffectLedger } from "@cvg/integrations";
 import type { DurableExternalEffectRecord, DurableExternalReconciliationEvidence, DurableInboxInput, DurableOutboxRecord } from "@cvg/persistence";
 
 const organizationId = id("00000000-0000-4000-0000-000000000010");
@@ -229,11 +232,37 @@ test("integration gateway exposes secret-provider health without exposing secret
   assert.equal(docker.has("missing-synthetic-secret"), false);
 });
 
+test("unsupported secret-provider kinds remain explicit and fail closed", async () => {
+  const provider = new UnsupportedSecretProvider("vault");
+  assert.equal(provider.kind, "vault");
+  assert.equal(provider.reason, "SECRET_PROVIDER_ADAPTER_UNAVAILABLE");
+  assert.equal(provider.status(), "UNAVAILABLE");
+  assert.equal(provider.has("production/provider"), false);
+  assert.equal(await provider.resolve("production/provider"), null);
+});
+
 test("secret readiness validates the approved reference without returning its value", async () => {
   const provider = new EnvironmentSecretProvider({ CVG_SECRET_MFA_ADMIN: "synthetic-secret-value" });
   assert.equal(await isSecretReferenceUsable(provider, "mfa.admin"), true);
   assert.equal(await isSecretReferenceUsable(provider, "missing.reference"), false);
   assert.equal(await isSecretReferenceUsable(new StaticSecretProvider(["mfa.admin"]), "mfa.admin"), false);
+});
+
+test("file and Docker secret providers reject empty mounted secret files", async () => {
+  const root = mkdtempSync(join(tmpdir(), "cvg-secret-provider-"));
+  try {
+    const file = join(root, "provider.token");
+    writeFileSync(file, "  \n", { mode: 0o600 });
+    const provider = new DockerSecretProvider(root);
+    assert.equal(provider.status(), "READY");
+    assert.equal(provider.has("provider.token"), false);
+    assert.equal(await provider.resolve("provider.token"), null);
+    writeFileSync(file, "real-secret\n", { mode: 0o600 });
+    assert.equal(provider.has("provider.token"), true);
+    assert.equal(await provider.resolve("provider.token"), "real-secret");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });
 
 test("synthetic messaging preserves idempotency and reconciles an unknown outcome", async () => {
@@ -356,6 +385,14 @@ test("HTTP messaging validates receipts, keeps credentials out of results and ne
   const unknownProvider = new HttpMessagingProvider({ endpoint: "https://provider.example.test", credentialRef: "messaging.token", secretResolver: async () => "fixture-secret", fetch: async () => new Promise(() => undefined) });
   const unknown = await unknownProvider.send({ idempotencyKey: "http-timeout-1", channel: "SMS", recipient: "+5511999999999", body: "fixture", timeoutMs: 100 });
   assert.equal(unknown.status, "OUTCOME_UNKNOWN");
+  const oversized = new HttpMessagingProvider({ endpoint: "https://provider.example.test", credentialRef: "messaging.token", secretResolver: async () => "fixture-secret", maxResponseBodyBytes: 32, fetch: async () => ({ ok: true, status: 200, text: async () => "x".repeat(64), json: async () => ({}) }) });
+  const oversizedResult = await oversized.send({ idempotencyKey: "http-oversized-response", channel: "SMS", recipient: "+5511999999999", body: "fixture" });
+  assert.equal(oversizedResult.status, "OUTCOME_UNKNOWN");
+  const hangingBody = new HttpMessagingProvider({ endpoint: "https://provider.example.test", credentialRef: "messaging.token", secretResolver: async () => "fixture-secret", fetch: async () => ({ ok: true, status: 200, text: async () => new Promise<string>(() => undefined), json: async () => ({}) }) });
+  const hangingBodyResult = await hangingBody.send({ idempotencyKey: "http-hanging-response", channel: "SMS", recipient: "+5511999999999", body: "fixture", timeoutMs: 50 });
+  assert.equal(hangingBodyResult.status, "OUTCOME_UNKNOWN");
+  const hangingSecret = new HttpMessagingProvider({ endpoint: "https://provider.example.test", credentialRef: "messaging.token", secretResolver: async () => new Promise<string>(() => undefined), fetch: async () => { throw new Error("must not dispatch without a bounded credential"); } });
+  await assert.rejects(() => hangingSecret.send({ idempotencyKey: "http-hanging-secret", channel: "SMS", recipient: "+5511999999999", body: "fixture", timeoutMs: 50 }), (error: unknown) => error instanceof MessagingProviderError && error.failure === "CREDENTIAL");
   await assert.rejects(() => new HttpMessagingProvider({ endpoint: "http://provider.example.test", credentialRef: "messaging.token", secretResolver: async () => "fixture-secret" }).send({ idempotencyKey: "insecure-1", channel: "SMS", recipient: "+5511999999999", body: "fixture" }), (error: unknown) => error instanceof MessagingProviderError && error.failure === "CONFIGURATION");
 });
 

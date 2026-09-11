@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { createOpenTelemetryRuntime, evaluateSlo, evaluateSloAlerts, OpsTelemetry, PROPOSED_SLO_ALERT_RULES, PROPOSED_SLO_DEFINITIONS, renderPrometheusMetrics } from "@cvg/ops";
+import { OperationalMetricsApplicationService } from "../../apps/api/src/application/operational-metrics-service.ts";
 
 test("redacted telemetry preserves safe diagnostics and removes sensitive metadata", () => {
   const telemetry = new OpsTelemetry();
@@ -28,6 +29,29 @@ test("telemetry exposes an OpenTelemetry-compatible span seam without sensitive 
   assert.equal(metrics.telemetry.dropped, 0);
 });
 
+test("correlated spans preserve the cross-boundary identifiers with nulls when a boundary has no value", () => {
+  const telemetry = new OpsTelemetry();
+  const span = telemetry.startCorrelatedSpan("worker.provider.dispatch", {
+    requestId: "req-1",
+    correlationId: "corr-1",
+    sessionId: "session-1",
+    toolInvocationId: null,
+    jobId: "job-1",
+    outboxId: "outbox-1",
+    providerRequestId: "provider-1"
+  });
+  telemetry.finishSpan(span, 200);
+  assert.deepEqual({
+    requestId: telemetry.spans[0]?.attributes.requestId,
+    correlationId: telemetry.spans[0]?.attributes.correlationId,
+    sessionId: telemetry.spans[0]?.attributes.sessionId,
+    toolInvocationId: telemetry.spans[0]?.attributes.toolInvocationId,
+    jobId: telemetry.spans[0]?.attributes.jobId,
+    outboxId: telemetry.spans[0]?.attributes.outboxId,
+    providerRequestId: telemetry.spans[0]?.attributes.providerRequestId
+  }, { requestId: "req-1", correlationId: "corr-1", sessionId: "session-1", toolInvocationId: null, jobId: "job-1", outboxId: "outbox-1", providerRequestId: "provider-1" });
+});
+
 test("Prometheus rendering exposes aggregate operational signals without tenant or route labels", () => {
   const telemetry = new OpsTelemetry();
   telemetry.requestStarted();
@@ -42,9 +66,25 @@ test("Prometheus rendering exposes aggregate operational signals without tenant 
   assert.match(rendered, /cvg_api_requests_total 1/);
   assert.match(rendered, /cvg_dependency_ready\{dependency="outbox"\} 0/);
   assert.match(rendered, /cvg_outbox_depth 4/);
+  assert.match(rendered, /cvg_worker_heartbeat_age_seconds 0/);
+  assert.match(rendered, /cvg_worker_heartbeat_count 0/);
   assert.match(rendered, /cvg_agent_runtime_ready 0/);
   assert.equal(rendered.includes("GET /internal"), false);
   assert.equal(rendered.includes("organization"), false);
+});
+
+test("operational metrics expose the oldest scoped worker heartbeat for the alert contract", async () => {
+  const lastSeenAt = new Date(Date.now() - 125_000).toISOString();
+  const service = new OperationalMetricsApplicationService({
+    outboxStats: async () => ({ depth: 0, oldestAgeMs: 0, poisonMessages: 0 }),
+    externalEffectStats: async () => ({ reconciliationRequired: 0, dispatchInFlight: 0, oldestReconciliationAgeMs: 0 }),
+    listWorkerHeartbeats: async () => [{ lastSeenAt }] as never,
+    check: async () => ({ database: "READY", serverVersion: "synthetic" })
+  });
+  const snapshot = await service.readInternal("org-synthetic" as never);
+  assert.equal(snapshot.queueSignals.workerHeartbeatCount, 1);
+  assert.ok(snapshot.queueSignals.workerHeartbeatAgeMs >= 124_000);
+  assert.ok(snapshot.queueSignals.workerHeartbeatAgeMs < 140_000);
 });
 
 test("OTLP runtime exports a real protobuf span only after redaction", async () => {

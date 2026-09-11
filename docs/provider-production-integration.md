@@ -1,6 +1,6 @@
 # Provider externo e efeitos de produção
 
-Status: `PARTIAL/LOCAL-CONTRACT/SYNTHETIC_ONLY`. O CVG tem contratos de provider, outbox, inbox, idempotência, recibos, efeitos desconhecidos e reconciliação fail-closed. `npm run verify:provider-sandbox` executa o `HttpMessagingProvider` contra um servidor HTTP real em loopback e prova replay, perda de resposta após aceite, consulta de reconciliação e callback HMAC. Isso não é um provider externo autorizado: `externalProvider` permanece `NOT_RUN`.
+Status: `PARTIAL/LOCAL-CONTRACT/SYNTHETIC_ONLY`. O CVG tem contratos de provider, outbox, inbox, idempotência, recibos, efeitos desconhecidos e reconciliação fail-closed. `npm run verify:provider-sandbox` executa o `HttpMessagingProvider` contra um servidor HTTP real em loopback e prova replay, perda de resposta após aceite, consulta de reconciliação e callback HMAC. `verify-provider-real` exige adicionalmente `CVG_PROVIDER_REAL_EVIDENCE_FILE`, um bundle same-SHA em checkout limpo com as doze etapas da cadeia vertical e `CVG_PROVIDER_REAL_PROOF_PUBLIC_KEY`, uma chave Ed25519 confiável para a atestação do bundle; um envio HTTP direto nunca produz a marca de provider real. Isso não é um provider externo autorizado: `externalProvider` permanece `NOT_RUN`.
 
 ## Fluxo obrigatório
 
@@ -25,4 +25,4 @@ O scheduler local mantém seis lanes com concorrência em lotes, budgets por lan
 
 Nenhum dado real, mensagem externa ou cobrança foi autorizada. A passagem de `PROPOSED` para `READY` exige um recibo redigido, callback assinado, replay idempotente, reconciliação de timeout e prova de que uma segunda entrega não produz efeito duplicado.
 
-O bridge DeepSeek segue a mesma disciplina de fronteira: além do bearer de serviço, cada operação que carrega `CvgContext` pode exigir `x-cvg-context-signature: sha256=...`, calculado sobre `{ context, correlationId }`. Em produção a assinatura é obrigatória e o segredo deve ser resolvido por `CVG_DEEPSEEK_CONTEXT_SIGNING_SECRET_REF`; ausência, adulteração ou divergência de correlação retornam `UNAUTHENTICATED` antes do dispatch.
+O bridge DeepSeek segue a mesma disciplina de fronteira: além do bearer de serviço, cada operação que carrega `CvgContext` pode exigir `x-cvg-context-signature: sha256=...`, calculado sobre o envelope v2 `{ version: 2, method, path, issuedAt, payload }`, com prazo de 60 segundos em `x-cvg-context-issued-at`. Em produção a assinatura é obrigatória e o segredo deve ser resolvido por `CVG_DEEPSEEK_CONTEXT_SIGNING_SECRET_REF`; ausência, adulteração ou divergência de correlação retornam `UNAUTHENTICATED` antes do dispatch.

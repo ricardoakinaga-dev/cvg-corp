@@ -8,8 +8,8 @@ if (!configuredPort) {
   process.exitCode = 2;
 } else {
   // Exercise the real stdio transport separately from the public CVG bridge.
-  // The local ACP adapter currently lacks governed CVG tools/approvals/replay,
-  // so the public bridge must remain unavailable even when ACP itself starts.
+  // The environment factory has no injected DeepSeekAcpGovernance, so the
+  // public bridge must remain unavailable even when ACP itself starts.
   const created = createDeepSeekBridgeServer();
   const controller = new AbortController();
   const context: CvgContext = {
@@ -39,7 +39,7 @@ if (!configuredPort) {
       }
       const manifestPath = process.env.CVG_DEEPSEEK_ACP_MANIFEST_PATH;
       const manifestVersion = manifestPath ? await readAcpManifestVersion(manifestPath) : null;
-      console.log(JSON.stringify({ verification: process.exitCode === 1 ? "FAIL" : "PASS", boundary: "ACP stdio transport", transportHealth, bridgeHealth, session, manifestVersion, modelTurn: "NOT_RUN_NO_API_KEY", runtime: "BLOCKED_CAPABILITIES" }, null, 2));
+      console.log(JSON.stringify({ verification: process.exitCode === 1 ? "FAIL" : "PASS", boundary: "ACP stdio transport", transportHealth, bridgeHealth, session, manifestVersion, governance: "NOT_INJECTED", modelTurn: "NOT_RUN_NO_API_KEY", runtime: "BLOCKED_CAPABILITIES" }, null, 2));
     }
   } finally {
     await created.bridge.shutdown(controller.signal);

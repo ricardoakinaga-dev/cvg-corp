@@ -1,0 +1,111 @@
+{
+  "schemaVersion": 1,
+  "status": "PASS_WITH_LIMITATIONS",
+  "observedAt": "2026-09-11T15:56:59.093Z",
+  "sourceSha": "e43b3b0032aafb9d17563b1fce00fbae88ee0d51",
+  "worktree": "MODIFIED",
+  "database": {
+    "engine": "PostgreSQL",
+    "serverVersion": "16.15",
+    "migrationFilesApplied": 36,
+    "runtimeRole": "cvg_runtime",
+    "runtimeRoleConstraints": [
+      "LOGIN",
+      "NOSUPERUSER",
+      "NOBYPASSRLS",
+      "NOCREATEDB",
+      "NOCREATEROLE",
+      "NOINHERIT"
+    ],
+    "isolation": "ephemeral local database cvg_verify_20260912; no production or staging data"
+  },
+  "concurrency": {
+    "status": "PASS",
+    "processes": 2,
+    "claims": [
+      "CLAIMED",
+      "IN_FLIGHT"
+    ],
+    "replay": "REPLAY",
+    "divergentBody": "IDEMPOTENCY_CONFLICT",
+    "duplicateEffects": 0
+  },
+  "integration": {
+    "status": "PASS",
+    "restartRead": "PASS",
+    "normalizedReads": "PASS",
+    "diagnosticRequest": "PASS",
+    "diagnosticSpecimen": "PASS",
+    "diagnosticResult": "PASS",
+    "diagnosticChildIntegrity": "PASS",
+    "idempotency": "PASS",
+    "outbox": "PASS",
+    "externalEffects": "PASS",
+    "inbox": "PASS",
+    "usageLedger": "PASS",
+    "breakGlass": "PASS",
+    "cas": "PASS",
+    "rls": {
+      "status": "PASS",
+      "domainTables": 59,
+      "protectedTables": 59,
+      "organizationForeignKeys": 116
+    }
+  },
+  "restore": {
+    "status": "PASS",
+    "algorithm": "AES-256-GCM",
+    "tamperRejected": true,
+    "partialRejected": true,
+    "staleRejected": true,
+    "migrationMismatchRejected": true,
+    "targetStatus": "QUARANTINED",
+    "loginBlocked": true,
+    "readinessBlocked": true,
+    "sourceUnchanged": true
+  },
+  "promotion": {
+    "globalVerdict": "AAA_NOT_PROVEN",
+    "externalPostgresConcurrency": "BLOCKED_EXTERNAL",
+    "reason": "current local ephemeral evidence covers migrations 001-036 and does not prove staging multi-instance, managed backup, RTO/RPO, observability or release authority"
+  },
+  "lastRevalidated": {
+    "database": "cvg_verify_20260912 (ephemeral local)",
+    "observedAt": "2026-09-11T15:56:59.093Z",
+    "migrations": 36,
+    "runtimeRole": "cvg_runtime NOSUPERUSER NOBYPASSRLS NOINHERIT NOCREATEDB NOCREATEROLE",
+    "verifyPostgres": "PASS; 59/59 RLS tables; 116 organization FKs; normalized reads, diagnostics, outbox, effects, inbox, usage, break-glass, CAS; schema_migrations SELECT-only for runtime role",
+    "concurrency": "POSTGRES_CONCURRENCY_VERIFIED processes=2 claims=CLAIMED,IN_FLIGHT replay=REPLAY conflict=IDEMPOTENCY_CONFLICT duplicateEffects=0",
+    "restore": "PASS; AES-256-GCM tamper/partial/stale/migration mismatch rejected; target QUARANTINED; login/readiness blocked; source unchanged",
+    "externalStatus": "LOCAL_ONLY_CURRENT_001_036; does not prove staging multi-instance, managed backup, RTO/RPO, observability or promotion"
+  },
+  "promptSha256": "39dfbb610267b61854b972bf8513f6562b0ee374aa308f7a79b38d21f2cdeae3",
+  "currentSourceMigrationFiles": 36,
+  "migration035": {
+    "status": "EXECUTED",
+    "observedAt": "2026-09-11T15:56:59.093Z",
+    "checksum": "sha256-bound-by-schema_migrations",
+    "details": "035_break_glass_scope.sql applied and included in verify:postgres/readiness/restore run"
+  },
+  "revalidationScope": "Current local PostgreSQL evidence for migrations 001-036; ephemeral local only; no claim of staging, managed backup, RTO/RPO, observability or release authority",
+  "migration036": {
+    "status": "EXECUTED",
+    "observedAt": "2026-09-11T15:56:59.093Z",
+    "checksum": "sha256-bound-by-schema_migrations",
+    "details": "036_runtime_migration_metadata_privileges.sql applied; cvg_runtime has SELECT and no INSERT/UPDATE/DELETE on schema_migrations"
+  },
+  "priorHistoricalRun": {
+    "observedAt": "2026-09-11T11:40:16.716Z",
+    "migrationFilesApplied": 34,
+    "lastRevalidated": {
+      "database": "cvg_verify_20260911 (ephemeral local)",
+      "migrations": 34,
+      "runtimeRole": "cvg_runtime NOSUPERUSER NOBYPASSRLS NOINHERIT NOCREATEDB NOCREATEROLE",
+      "verifyPostgres": "PASS; 59/59 RLS tables; 116 organization FKs; normalized reads, diagnostics, outbox, effects, inbox, usage, break-glass, CAS",
+      "concurrency": "POSTGRES_CONCURRENCY_VERIFIED processes=2 claims=CLAIMED,IN_FLIGHT replay=REPLAY conflict=IDEMPOTENCY_CONFLICT duplicateEffects=0",
+      "restore": "PASS; AES-256-GCM tamper/partial/stale/migration mismatch rejected; target QUARANTINED; login/readiness blocked; source unchanged",
+      "externalStatus": "LOCAL_ONLY_HISTORICAL_001_034; migration035 NOT_EXECUTED_IN_THIS_ARTIFACT; does not prove staging multi-instance, managed backup, RTO/RPO, or promotion"
+    },
+    "scope": "Historical local PostgreSQL evidence for migrations 001-034; current source/static inventory includes migration035, but no claim is made that this artifact executed it."
+  }
+}

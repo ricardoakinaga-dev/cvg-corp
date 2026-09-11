@@ -1,5 +1,5 @@
-import type { AiSession, AnimalPatient, Appointment, AuditRecord, Bed, Charge, ClinicalDocument, CommunicationMessage, CvgContext, DiagnosticRequest, DiagnosticResult, Encounter, Guardian, HospitalEpisode, KnowledgeDocument, LedgerEntry, Lot, MedicationOrder, OpaqueId, Payment, Product, QueueEntry, Specimen, StockLocation } from "@cvg/contracts";
-import type { CvgStore } from "@cvg/domain";
+import type { AiSession, AnimalPatient, Appointment, AuditRecord, Bed, Charge, ClinicalDocument, CommunicationMessage, ContextSelector, CvgContext, DiagnosticRequest, DiagnosticResult, Encounter, Guardian, HospitalEpisode, KnowledgeDocument, LedgerEntry, Lot, MedicationOrder, OpaqueId, Payment, Product, QueueEntry, Specimen, StockLocation, User } from "@cvg/contracts";
+import type { ContextOption, CvgStore, PublicUser } from "@cvg/domain";
 import type { NormalizedAiSessionRead, NormalizedAppointmentRead, NormalizedEncounterRead, NormalizedMedicationOrderRead, NormalizedQueueRead, NormalizedStockRead, PostgresPersistence } from "@cvg/persistence";
 import { enforceApplicationPolicy } from "@cvg/agent-policy";
 
@@ -70,6 +70,18 @@ export interface QueueReadRepository {
 
 export interface AiSessionReadRepository {
   list(context: CvgContext): Promise<AiSessionRead[]>;
+}
+
+/**
+ * Identity and context reads remain backed by the hydrated CvgStore until a
+ * durable identity projection is introduced. Routes depend on this port so
+ * authentication/context resolution does not become a route-to-store edge.
+ */
+export interface IdentityContextReadRepository {
+  getUser(userId: OpaqueId): User;
+  listContextOptions(userId: OpaqueId): ContextOption[];
+  resolveContext(userId: OpaqueId, selector: ContextSelector, purpose: string, correlationId: string, patientId: OpaqueId | null, encounterId: OpaqueId | null, sessionId: OpaqueId | null): CvgContext;
+  listUsers(context: CvgContext, query?: string): PublicUser[];
 }
 
 class StoreGuardianReadRepository implements GuardianReadRepository {
@@ -382,9 +394,62 @@ class PostgresAiSessionReadRepository implements AiSessionReadRepository {
   }
 }
 
+class StoreIdentityContextReadRepository implements IdentityContextReadRepository {
+  constructor(private readonly store: CvgStore) {}
+
+  getUser(userId: OpaqueId): User {
+    return this.store.getUser(userId);
+  }
+
+  listContextOptions(userId: OpaqueId): ContextOption[] {
+    return this.store.contextOptions(userId);
+  }
+
+  resolveContext(userId: OpaqueId, selector: ContextSelector, purpose: string, correlationId: string, patientId: OpaqueId | null, encounterId: OpaqueId | null, sessionId: OpaqueId | null): CvgContext {
+    return this.store.resolveContext(userId, selector, purpose, correlationId, patientId, encounterId, sessionId);
+  }
+
+  listUsers(context: CvgContext, query = ""): PublicUser[] {
+    return this.store.listUsers(context, query);
+  }
+}
+
 /** Read-side use cases select a repository behind one application boundary. */
 export class ReadApplicationService {
-  constructor(private readonly guardians: GuardianReadRepository, private readonly appointments: AppointmentReadRepository, private readonly audit: AuditRepository, private readonly encounters: EncounterRepository, private readonly clinical: ClinicalRepository, private readonly diagnostics: DiagnosticReadRepository, private readonly hospitalization: HospitalizationReadRepository, private readonly medications: MedicationReadRepository, private readonly stock: StockReadRepository, private readonly finance: FinanceReadRepository, private readonly communications: CommunicationReadRepository, private readonly knowledge: KnowledgeReadRepository, private readonly queue: QueueReadRepository, private readonly aiSessions: AiSessionReadRepository) {}
+  constructor(private readonly guardians: GuardianReadRepository, private readonly appointments: AppointmentReadRepository, private readonly audit: AuditRepository, private readonly encounters: EncounterRepository, private readonly clinical: ClinicalRepository, private readonly diagnostics: DiagnosticReadRepository, private readonly hospitalization: HospitalizationReadRepository, private readonly medications: MedicationReadRepository, private readonly stock: StockReadRepository, private readonly finance: FinanceReadRepository, private readonly communications: CommunicationReadRepository, private readonly knowledge: KnowledgeReadRepository, private readonly queue: QueueReadRepository, private readonly aiSessions: AiSessionReadRepository, private readonly identityContext: IdentityContextReadRepository) {}
+
+  /**
+   * Authentication must establish a user before a CvgContext exists. These
+   * two methods are the only pre-context identity reads admitted to the API
+   * composition; they deliberately do not evaluate application policy.
+   */
+  getUserForAuthentication(userId: OpaqueId): User {
+    return this.identityContext.getUser(userId);
+  }
+
+  listContextOptionsForAuthentication(userId: OpaqueId): ContextOption[] {
+    return this.identityContext.listContextOptions(userId);
+  }
+
+  /** Context selection is the remaining pre-context step; requestContext applies the request-bound PDP immediately after it. */
+  resolveContext(userId: OpaqueId, selector: ContextSelector, purpose: string, correlationId: string, patientId: OpaqueId | null = null, encounterId: OpaqueId | null = null, sessionId: OpaqueId | null = null): CvgContext {
+    return this.identityContext.resolveContext(userId, selector, purpose, correlationId, patientId, encounterId, sessionId);
+  }
+
+  getCurrentUser(context: CvgContext): User {
+    enforceApplicationPolicy(context, "identity.read");
+    return this.identityContext.getUser(context.actorId);
+  }
+
+  listContextOptions(context: CvgContext): ContextOption[] {
+    enforceApplicationPolicy(context, "contexts.read");
+    return this.identityContext.listContextOptions(context.actorId);
+  }
+
+  listUsers(context: CvgContext, query = ""): PublicUser[] {
+    enforceApplicationPolicy(context, "users.read");
+    return this.identityContext.listUsers(context, query);
+  }
 
   listGuardians(context: CvgContext, query?: string): Promise<Guardian[]> {
     enforceApplicationPolicy(context, "guardians.read");
@@ -502,6 +567,7 @@ export function createReadApplicationService(store: CvgStore, persistence: Postg
     persistence ? new PostgresCommunicationReadRepository(persistence) : new StoreCommunicationReadRepository(store),
     persistence ? new PostgresKnowledgeReadRepository(persistence) : new StoreKnowledgeReadRepository(store),
     persistence ? new PostgresQueueReadRepository(persistence) : new StoreQueueReadRepository(store),
-    persistence ? new PostgresAiSessionReadRepository(persistence) : new StoreAiSessionReadRepository(store)
+    persistence ? new PostgresAiSessionReadRepository(persistence) : new StoreAiSessionReadRepository(store),
+    new StoreIdentityContextReadRepository(store)
   );
 }

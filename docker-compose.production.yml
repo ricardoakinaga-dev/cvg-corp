@@ -2,17 +2,82 @@ name: cvg-corp-production
 
 # Production edge overlay. Certificate material is supplied out-of-band via
 # CVG_TLS_DIR; this file intentionally contains no private key or certificate.
+secrets:
+  cvg-deepseek-bearer:
+    external: true
+    name: ${CVG_DOCKER_SECRET_DEEPSEEK_BEARER:-cvg-deepseek-bearer}
+  cvg-deepseek-context:
+    external: true
+    name: ${CVG_DOCKER_SECRET_DEEPSEEK_CONTEXT:-cvg-deepseek-context}
+  cvg-recovery-key:
+    external: true
+    name: ${CVG_DOCKER_SECRET_RECOVERY_KEY:-cvg-recovery-key}
+  cvg-messaging-credential:
+    external: true
+    name: ${CVG_DOCKER_SECRET_MESSAGING_CREDENTIAL:-cvg-messaging-credential}
+
 services:
+  migrate:
+    environment:
+      CVG_RUNTIME_DB_USER: ${CVG_RUNTIME_DB_USER:?CVG_RUNTIME_DB_USER must identify the non-privileged runtime role}
+      CVG_RUNTIME_DB_PASSWORD: ${CVG_RUNTIME_DB_PASSWORD:?CVG_RUNTIME_DB_PASSWORD must provision the runtime role out of band}
+
   api:
     environment:
       NODE_ENV: production
       CVG_TRUST_PROXY: "true"
+      CVG_TRUSTED_PROXY_IPS: ${CVG_TRUSTED_PROXY_IPS:?CVG_TRUSTED_PROXY_IPS must identify the trusted TLS edge addresses/CIDRs}
+      CVG_AUTH_MFA_MODE: "required"
+      CVG_RATE_LIMIT_BACKEND: "distributed"
+      CVG_PASSWORD_MAX_AGE_DAYS: "90"
       CVG_WEB_ORIGIN: ${CVG_WEB_ORIGIN:?CVG_WEB_ORIGIN must be an HTTPS origin}
+      CVG_RELEASE_SHA: ${CVG_RELEASE_SHA:?CVG_RELEASE_SHA must bind the deployed artifact to its audited commit}
+      CVG_RELEASE_ARTIFACT_DIGEST: ${CVG_RELEASE_ARTIFACT_DIGEST:?CVG_RELEASE_ARTIFACT_DIGEST must be immutable}
       CVG_DEMO_MODE: "false"
+      CVG_SECRET_PROVIDER: ${CVG_SECRET_PROVIDER:?CVG_SECRET_PROVIDER must name an approved production authority}
+      CVG_SECRET_DIR: /run/secrets/cvg
+      CVG_DEEPSEEK_BASE_URL: ${CVG_DEEPSEEK_BASE_URL:?CVG_DEEPSEEK_BASE_URL must be supplied as HTTPS}
+      CVG_DEEPSEEK_RUNTIME_ENABLED: "true"
+      CVG_DEEPSEEK_EXPECTED_ENGINE_COMMIT: ${CVG_DEEPSEEK_EXPECTED_ENGINE_COMMIT:?CVG_DEEPSEEK_EXPECTED_ENGINE_COMMIT must bind the approved engine}
+      CVG_DEEPSEEK_EXPECTED_MANIFEST_VERSION: ${CVG_DEEPSEEK_EXPECTED_MANIFEST_VERSION:?CVG_DEEPSEEK_EXPECTED_MANIFEST_VERSION must be immutable}
+      CVG_DEEPSEEK_BEARER_TOKEN_REF: ${CVG_DEEPSEEK_BEARER_TOKEN_REF:?CVG_DEEPSEEK_BEARER_TOKEN_REF must name an approved secret}
+      CVG_DEEPSEEK_CONTEXT_SIGNING_SECRET_REF: ${CVG_DEEPSEEK_CONTEXT_SIGNING_SECRET_REF:?CVG_DEEPSEEK_CONTEXT_SIGNING_SECRET_REF must name an approved secret}
+      CVG_RECOVERY_ENCRYPTION_KEY_REF: ${CVG_RECOVERY_ENCRYPTION_KEY_REF:?CVG_RECOVERY_ENCRYPTION_KEY_REF must name an approved key}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:?OTEL_EXPORTER_OTLP_ENDPOINT must be supplied over HTTPS}
+    secrets:
+      - source: cvg-deepseek-bearer
+        target: cvg/${CVG_DEEPSEEK_BEARER_TOKEN_REF:?CVG_DEEPSEEK_BEARER_TOKEN_REF must name an approved secret}
+      - source: cvg-deepseek-context
+        target: cvg/${CVG_DEEPSEEK_CONTEXT_SIGNING_SECRET_REF:?CVG_DEEPSEEK_CONTEXT_SIGNING_SECRET_REF must name an approved secret}
+      - source: cvg-recovery-key
+        target: cvg/${CVG_RECOVERY_ENCRYPTION_KEY_REF:?CVG_RECOVERY_ENCRYPTION_KEY_REF must name an approved key}
 
   web:
     environment:
       NODE_ENV: production
+
+  worker:
+    environment:
+      NODE_ENV: production
+      CVG_STORAGE: postgres
+      CVG_WORKER_SINK_MODE: "enabled"
+      CVG_BACKUP_ENABLED: "true"
+      CVG_BACKUP_ORGANIZATION_ID: ${CVG_BACKUP_ORGANIZATION_ID:?CVG_BACKUP_ORGANIZATION_ID must identify the one organization covered by this worker backup}
+      CVG_BACKUP_DIRECTORY: /var/lib/cvg/backups
+      CVG_BACKUP_INTERVAL_MS: ${CVG_BACKUP_INTERVAL_MS:?CVG_BACKUP_INTERVAL_MS must define the managed backup cadence}
+      CVG_BACKUP_KEEP_LAST: ${CVG_BACKUP_KEEP_LAST:?CVG_BACKUP_KEEP_LAST must define managed retention}
+      CVG_RECOVERY_ENCRYPTION_KEY_REF: ${CVG_RECOVERY_ENCRYPTION_KEY_REF:?CVG_RECOVERY_ENCRYPTION_KEY_REF must name an approved backup key}
+      CVG_SECRET_PROVIDER: ${CVG_SECRET_PROVIDER:?CVG_SECRET_PROVIDER must name an approved production authority}
+      CVG_SECRET_DIR: /run/secrets/cvg
+      CVG_MESSAGING_PROVIDER_ENDPOINT: ${CVG_MESSAGING_PROVIDER_ENDPOINT:?CVG_MESSAGING_PROVIDER_ENDPOINT must be supplied as HTTPS}
+      CVG_MESSAGING_PROVIDER_ALLOWED_HOSTS: ${CVG_MESSAGING_PROVIDER_ALLOWED_HOSTS:?CVG_MESSAGING_PROVIDER_ALLOWED_HOSTS must be explicit}
+      CVG_MESSAGING_CREDENTIAL_REF: ${CVG_MESSAGING_CREDENTIAL_REF:?CVG_MESSAGING_CREDENTIAL_REF must name an approved secret}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:?OTEL_EXPORTER_OTLP_ENDPOINT must be supplied over HTTPS}
+    secrets:
+      - source: cvg-messaging-credential
+        target: cvg/${CVG_MESSAGING_CREDENTIAL_REF:?CVG_MESSAGING_CREDENTIAL_REF must name an approved secret}
+      - source: cvg-recovery-key
+        target: cvg/${CVG_RECOVERY_ENCRYPTION_KEY_REF:?CVG_RECOVERY_ENCRYPTION_KEY_REF must name an approved backup key}
 
   proxy:
     ports: !override
@@ -24,3 +89,8 @@ services:
       - ${CVG_TLS_DIR:?CVG_TLS_DIR must point to an approved certificate directory}/privkey.pem:/etc/nginx/tls/privkey.pem:ro
     healthcheck:
       test: ["CMD-SHELL", "wget --no-check-certificate -q -O - https://127.0.0.1:8443/healthz | grep -qx ok"]
+
+volumes:
+  cvg_corp_backups:
+    external: true
+    name: ${CVG_DOCKER_VOLUME_BACKUPS:-cvg-corp-backups}

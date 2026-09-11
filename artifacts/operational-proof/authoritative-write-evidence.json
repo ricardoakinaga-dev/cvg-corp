@@ -1,0 +1,30 @@
+{
+  "status": "VERIFIED_LOCAL",
+  "gate": "verify:authoritative-writes",
+  "domainCount": 32,
+  "invariants": [
+    "organization-bound parent and child relationships",
+    "unit and workspace scope consistency",
+    "cross-organization reference rejection",
+    "diagnostic parent-child consistency",
+    "finance reference consistency",
+    "AI session, turn, draft and approval consistency",
+    "explicit quarantine allowance for unresolved external diagnostic results"
+  ],
+  "tamper": "REJECTED",
+  "externalLimitations": [
+    "The local two-process PostgreSQL artifact is historical and covers migrations 001-034; migration035 has not been re-executed in this artifact.",
+    "Staging PostgreSQL concurrency, production-like RLS and rollback drills require authorized infrastructure."
+  ],
+  "globalVerdict": "AAA_NOT_PROVEN",
+  "observedAt": "2026-09-11T12:19:52.588Z",
+  "sourceSha": "e43b3b0032aafb9d17563b1fce00fbae88ee0d51",
+  "promptSha256": "39dfbb610267b61854b972bf8513f6562b0ee374aa308f7a79b38d21f2cdeae3",
+  "record": "VER-CVG-241",
+  "regression": {
+    "tests": 319,
+    "passed": 318,
+    "skipped": 1,
+    "failed": 0
+  }
+}

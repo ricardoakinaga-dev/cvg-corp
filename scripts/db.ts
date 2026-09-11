@@ -36,6 +36,8 @@ async function provisionRuntimeRole(): Promise<void> {
   await client.query(`grant connect on database ${quoteIdentifier(database)} to ${identifier}`);
   await client.query(`grant usage on schema public to ${identifier}`);
   await client.query(`grant select, insert, update, delete on all tables in schema public to ${identifier}`);
+  await client.query(`revoke insert, update, delete on table public.schema_migrations from ${identifier}`);
+  await client.query(`grant select on table public.schema_migrations to ${identifier}`);
   await client.query(`grant usage, select on all sequences in schema public to ${identifier}`);
   await client.query(`revoke create on schema public from ${identifier}`);
   process.stdout.write(`provisioned non-superuser runtime role ${configured.user}\n`);

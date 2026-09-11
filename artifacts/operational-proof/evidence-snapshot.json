@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-09-11T17:36:34.916Z",
+  "sourceSha": "e43b3b0032aafb9d17563b1fce00fbae88ee0d51",
+  "worktree": "MODIFIED",
+  "prompt": {
+    "path": "docs/prompt-final-operational-proof-2026-09-10.txt",
+    "sha256": "39dfbb610267b61854b972bf8513f6562b0ee374aa308f7a79b38d21f2cdeae3"
+  },
+  "artifacts": [
+    {
+      "path": "artifacts/operational-proof/local-verification-2026-09-10.json",
+      "digest": "bc0807b388a59ab906e35a1a66a7acec208433451a81d03cadad18d599748034",
+      "modifiedAt": "2026-09-11T17:36:30.121Z",
+      "declaredObservedAt": "2026-09-11T17:30:54.372Z"
+    },
+    {
+      "path": "artifacts/operational-proof/triple-aaa-evidence.json",
+      "digest": "a20b88c3ca8a827ba0210b792a807072fe1d5f49e1f952167b85827a0cb35818",
+      "modifiedAt": "2026-09-11T17:36:30.122Z",
+      "declaredObservedAt": "2026-09-11T17:30:54.372Z"
+    },
+    {
+      "path": "artifacts/operational-proof/pdp-universal-evidence.json",
+      "digest": "67d18e145fd8195187704df8d431d81c2fb0ce759cad21cc6af2ca12257f8896",
+      "modifiedAt": "2026-09-11T12:19:52.589Z",
+      "declaredObservedAt": "2026-09-11T12:19:52.588Z"
+    },
+    {
+      "path": "artifacts/operational-proof/authoritative-write-evidence.json",
+      "digest": "12e1fd5ccf05b273bc782a4f35d8668138061199e85a32a2b8354b2947ceb50b",
+      "modifiedAt": "2026-09-11T12:19:52.589Z",
+      "declaredObservedAt": "2026-09-11T12:19:52.588Z"
+    },
+    {
+      "path": "artifacts/operational-proof/audit-chain-evidence.json",
+      "digest": "b3cc854546702f912d1a40f5daefd80b9df9055e92cfe807194c287d0df4dbd0",
+      "modifiedAt": "2026-09-11T12:19:52.589Z",
+      "declaredObservedAt": "2026-09-11T12:19:52.588Z"
+    },
+    {
+      "path": "artifacts/operational-proof/browser-matrix-local-2026-09-10.json",
+      "digest": "4338c070cd382e8ca3118cad22d80452b3b0a5a3e33bcbcf3f2aa295d91014b8",
+      "modifiedAt": "2026-09-11T15:27:51.686Z",
+      "declaredObservedAt": "2026-09-11T12:48:44.171Z"
+    },
+    {
+      "path": "artifacts/operational-proof/postgres-real-local-2026-09-10.json",
+      "digest": "cb8037f4fb2d3cbd49fbe73d06494ad27bcafe08389e9d2f07f3bbb873f2c445",
+      "modifiedAt": "2026-09-11T15:56:59.092Z",
+      "declaredObservedAt": "2026-09-11T15:56:59.093Z"
+    },
+    {
+      "path": "artifacts/operational-proof/security-red-team-local.json",
+      "digest": "59a8adc7aad7b41729bfae2eb5adad196250fcce99fbb966369dc486a370e8da",
+      "modifiedAt": "2026-09-11T17:27:31.770Z",
+      "declaredObservedAt": "2026-09-11T17:27:31.769Z"
+    },
+    {
+      "path": "artifacts/operational-proof/resource-pressure-local.json",
+      "digest": "069b4374aecbd333e15114775679b2d7cd0f0694e8d0fc92f9abe58a1b659168",
+      "modifiedAt": "2026-09-11T17:27:33.694Z",
+      "declaredObservedAt": "2026-09-11T17:27:33.692Z"
+    },
+    {
+      "path": "artifacts/operational-proof/runbook-execution-local.json",
+      "digest": "06c18fd527248b47930d13a5a60a9413129f6d070501a65cad8acf206d999c18",
+      "modifiedAt": "2026-09-11T17:27:39.272Z",
+      "declaredObservedAt": "2026-09-11T17:27:39.271Z"
+    }
+  ],
+  "runId": "76518144d894beed7821e79789531bbe101c80db1ada5883303d161647c71ea4"
+}

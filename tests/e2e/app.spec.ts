@@ -5,12 +5,29 @@ test("demonstração local atravessa login, dashboard e pacientes", async ({ pag
   await expect(page.getByRole("heading", { name: "O cuidado em foco." })).toBeVisible();
   await page.getByRole("button", { name: /Abrir demonstração sintética/i }).click();
   await expect(page.getByRole("heading", { name: "Bom dia, Ricardo." })).toBeVisible();
+  await expect(page.locator("#main-content")).toBeFocused();
   await expect(page.getByText("LOCAL SINTÉTICO", { exact: true })).toBeVisible();
   const menu = page.getByRole("button", { name: "Abrir menu" });
   if (await menu.isVisible()) await menu.click();
+  await expect(page.getByRole("group", { name: /Espaço ativo:/ })).toBeVisible();
   await page.getByRole("button", { name: "Pacientes" }).click();
   await expect(page.getByRole("heading", { name: "Pacientes", exact: true })).toBeVisible();
   await expect(page.getByText("Luna")).toBeVisible();
+});
+
+test("troca de contexto no menu móvel fecha o drawer e preserva o foco", async ({ page }, testInfo) => {
+  test.skip(!testInfo.project.name.includes("mobile-375"), "A troca de contexto no drawer é específica do viewport móvel.");
+  await page.goto("/");
+  await page.getByRole("button", { name: /Abrir demonstração sintética/i }).click();
+  await expect(page.getByRole("heading", { name: "Bom dia, Ricardo." })).toBeVisible();
+  const menu = page.getByRole("button", { name: "Abrir menu" });
+  await menu.click();
+  const contextSelect = page.getByLabel("Selecionar unidade e workspace");
+  await contextSelect.selectOption({ label: "Unidade Sul · Operação clínica" });
+  await expect(page.getByText("Aqui está o pulso da Unidade Sul.", { exact: true })).toBeVisible();
+  await expect(page.locator(".sidebar.sidebar-open")).toHaveCount(0);
+  await expect(page.locator("#cvg-mobile-nav")).toHaveAttribute("aria-hidden", "true");
+  await expect(menu).toBeFocused();
 });
 
 test("rotas e controles permanecem utilizáveis sem overflow", async ({ page }, testInfo) => {
@@ -114,6 +131,24 @@ test("busca rápida abre pacientes com filtro e histórico do navegador", async 
   await expect(page.getByText("Luna")).toBeVisible();
   await page.goBack();
   await expect(page.getByRole("heading", { name: "Bom dia, Ricardo.", exact: true })).toBeVisible();
+});
+
+test("skip link and global search expose a visible keyboard focus", async ({ page }, testInfo) => {
+  test.skip(!testInfo.project.name.includes("wide-1440"), "A busca global fica oculta em viewports móveis.");
+  await page.goto("/");
+  await page.getByRole("button", { name: /Abrir demonstração sintética/i }).click();
+  await expect(page.locator("#main-content")).toBeFocused();
+  await expect(page.locator("#main-content")).toHaveCSS("outline-style", "solid");
+
+  const skipLink = page.getByRole("link", { name: "Pular para o conteúdo principal" });
+  await skipLink.focus();
+  await expect(skipLink).toBeFocused();
+  await expect(skipLink).toHaveCSS("transform", /matrix/);
+
+  const search = page.getByLabel("Busca rápida");
+  await search.focus();
+  await expect(search.locator("..")).toHaveCSS("border-bottom-color", "rgb(12, 149, 136)");
+  await expect(search).toHaveCSS("outline-style", "solid");
 });
 
 test("captura os limites visuais principais", async ({ page }, testInfo) => {

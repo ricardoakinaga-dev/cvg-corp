@@ -1,4 +1,4 @@
-import type { AiApproval, AiTurnInput, AiTurnProvenance, AiTurnUsage, CvgContext, OpaqueId } from "@cvg/contracts";
+import { aiUsageSettlementSchema, type AiApproval, type AiTurnInput, type AiTurnProvenance, type AiTurnUsage, type CvgContext, type OpaqueId } from "@cvg/contracts";
 import { digest, makeId, type CvgStore, type IdempotencyInput } from "@cvg/domain";
 import type { AgentDraftPromotion, AgentReplayResult, AgentRuntime, AgentRuntimeHealth, AgentTurnResult } from "@cvg/agent-runtime";
 import { DomainError } from "@cvg/domain";
@@ -21,7 +21,7 @@ export class AgentApplicationService {
   async executeTurn(context: CvgContext, input: AiTurnInput): Promise<IdempotentCommandResult<AgentTurnResult>> {
     this.store.validateContext(context);
     enforceApplicationPolicy(context, `ai.turn.${input.purpose}`, { resourceId: input.resourceId ?? input.encounterId ?? input.patientId });
-    return this.commands.execute(this.command(context, "ai.turn", input.idempotencyKey, input.sessionId, input), async () => this.persistRuntimeResult(context, await this.runtime.executeTurn(context, input, input.approvalId)));
+    return this.commands.execute(this.command(context, "ai.turn", input.idempotencyKey, input.sessionId, input), async () => this.persistRuntimeResult(context, await this.runtime.executeTurn(context, input, input.approvalId)), { external: true });
   }
 
   async approve(context: CvgContext, approvalId: OpaqueId, decision: "allowed-once" | "rejected", reason: string | null, idempotencyKey: string): Promise<IdempotentCommandResult<AiApproval>> {
@@ -33,7 +33,7 @@ export class AgentApplicationService {
   async retryTurn(context: CvgContext, input: AiTurnInput, approvalId: OpaqueId): Promise<IdempotentCommandResult<AgentTurnResult>> {
     this.store.validateContext(context);
     enforceApplicationPolicy(context, "ai.approval.retry", { resourceId: input.resourceId ?? input.encounterId ?? approvalId });
-    return this.commands.execute(this.command(context, "ai.approval.retry", input.idempotencyKey, approvalId, input), async () => this.persistRuntimeResult(context, await this.runtime.executeTurn(context, input, approvalId)));
+    return this.commands.execute(this.command(context, "ai.approval.retry", input.idempotencyKey, approvalId, input), async () => this.persistRuntimeResult(context, await this.runtime.executeTurn(context, input, approvalId)), { external: true });
   }
 
   async promoteDraft(context: CvgContext, draftId: OpaqueId, idempotencyKey: string): Promise<IdempotentCommandResult<AgentDraftPromotion>> {
@@ -69,6 +69,21 @@ export class AgentApplicationService {
     const referencesDigest = digest(references);
     const units = turn.inputTokens + turn.outputTokens;
     const existingUsage = turn.usage;
+    const settlement = existingUsage?.settlement ?? {
+      model: turn.model,
+      inputTokens: turn.inputTokens,
+      outputTokens: turn.outputTokens,
+      // A request id proves which attempt was made; it is not a digest of the
+      // provider response. Keep the response fact absent until the adapter
+      // supplies an actual response digest.
+      providerResponseDigest: null,
+      estimatedCost: { amountMicros: null, currency: null, source: "UNAVAILABLE" as const, pricingRevision: null },
+      actualCost: { amountMicros: null, currency: null, source: "UNAVAILABLE" as const, pricingRevision: null },
+      discrepancy: { status: "NOT_EVALUATED" as const, deltaMicros: null, reason: "provider pricing evidence was not supplied" }
+    };
+    if (!aiUsageSettlementSchema.safeParse(settlement).success || settlement.model !== turn.model || settlement.inputTokens !== turn.inputTokens || settlement.outputTokens !== turn.outputTokens) {
+      throw new DomainError("QUARANTINED", "O settlement de usage não corresponde ao turno retornado pelo runtime.", 503);
+    }
     const usage: AiTurnUsage = {
       id: existingUsage?.id ?? makeId(),
       reservationId: existingUsage?.reservationId ?? null,
@@ -90,8 +105,10 @@ export class AgentApplicationService {
         policyRevision: context.policyRevision,
         correlationId: context.correlationId,
         referencesDigest,
-        responseDigest: digest(turn.response ?? "")
-      }
+        responseDigest: digest(turn.response ?? ""),
+        settlement
+      },
+      settlement
     };
     const provenance: AiTurnProvenance = {
       ...result.provenance,
@@ -101,12 +118,10 @@ export class AgentApplicationService {
       correlationId: context.correlationId,
       usageRecordId: usage.id
     };
-    const persistedSession = { ...session };
-    const persistedTurn = { ...turn, references, provenance, usage };
-    this.store.aiSessions.set(persistedSession.id, persistedSession);
-    this.store.aiTurns.set(persistedTurn.id, persistedTurn);
-    if (result.draft) this.store.aiDrafts.set(result.draft.id, { ...result.draft });
-    if (result.approval) this.store.aiApprovals.set(result.approval.id, { ...result.approval });
-    return { ...result, session: persistedSession, turn: persistedTurn, provenance };
+    const persistedSession = this.store.persistAiSession({ ...session });
+    const persistedTurn = this.store.persistAiTurn({ ...turn, references, provenance, usage });
+    const persistedDraft = result.draft ? this.store.persistAiDraft({ ...result.draft }) : null;
+    const persistedApproval = result.approval ? this.store.persistAiApproval({ ...result.approval }) : null;
+    return { ...result, session: persistedSession, turn: persistedTurn, draft: persistedDraft, approval: persistedApproval, provenance };
   }
 }

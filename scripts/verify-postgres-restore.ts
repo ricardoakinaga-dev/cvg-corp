@@ -8,7 +8,10 @@ import { decryptRecoveryBundle, encryptRecoveryBundle, PersistenceCorruptionErro
 
 const { Client } = pg;
 const sourceUrl = process.env.DATABASE_URL;
-if (!sourceUrl) throw new Error("DATABASE_URL is required; use an explicitly identified synthetic source database");
+if (!sourceUrl) {
+  process.stderr.write("POSTGRES_RESTORE_BLOCKED_EXTERNAL DATABASE_URL is required; use an explicitly identified synthetic source database\n");
+  process.exit(2);
+}
 const migrationUrl = process.env.MIGRATION_DATABASE_URL ?? sourceUrl;
 const maintenanceConnectionString = process.env.ADMIN_DATABASE_URL ?? maintenanceUrl(migrationUrl);
 
@@ -68,6 +71,8 @@ async function migrate(connectionString: string): Promise<void> {
     await client.query(`grant connect on database ${quoteIdentifier(database)} to ${runtimeIdentifier}`);
     await client.query(`grant usage on schema public to ${runtimeIdentifier}`);
     await client.query(`grant select, insert, update, delete on all tables in schema public to ${runtimeIdentifier}`);
+    await client.query(`revoke insert, update, delete on table public.schema_migrations from ${runtimeIdentifier}`);
+    await client.query(`grant select on table public.schema_migrations to ${runtimeIdentifier}`);
     await client.query(`grant usage, select on all sequences in schema public to ${runtimeIdentifier}`);
     await client.query(`revoke create on schema public from ${runtimeIdentifier}`);
   } finally {

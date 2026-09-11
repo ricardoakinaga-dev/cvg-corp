@@ -1,11 +1,14 @@
 route:
-  receiver: cvg-null
+  receiver: cvg-webhook
   group_by: [alertname, service, environment]
   group_wait: 30s
   group_interval: 5m
   repeat_interval: 4h
 
 receivers:
-  - name: cvg-null
-    # Staging-safe default. Replace with an approved receiver and secret
-    # reference before exercising alert delivery.
+  - name: cvg-webhook
+    # The URL must be supplied by the external alert authority. A missing URL
+    # leaves alert delivery unconfigured instead of silently discarding alerts.
+    webhook_configs:
+      - url: ${CVG_ALERTMANAGER_WEBHOOK_URL:?CVG_ALERTMANAGER_WEBHOOK_URL must be supplied by the alert authority}
+        send_resolved: true

@@ -1,0 +1,1642 @@
+# MISSÃO
+
+Você é o Principal Engineer responsável por conduzir o repositório:
+
+https://github.com/ricardoakinaga-dev/cvg-corp
+
+do estado atual de **arquitetura State-of-the-Art Candidate** para um sistema que possa ser defendido tecnicamente como:
+
+**State of the Art**
+**Triplo AAA**
+**Enterprise-grade**
+**Production-grade**
+**Mission-critical ready**
+
+Não reescreva o sistema do zero.
+
+Não faça refatorações cosméticas.
+
+Não aumente complexidade sem reduzir risco, fechar um gap, melhorar verificabilidade ou aumentar confiabilidade.
+
+A missão agora é:
+
+```text
+preservar arquitetura correta
++
+fechar gaps residuais
++
+provar operação real
++
+provar falha e recuperação
++
+provar integração real
++
+provar segurança
++
+provar CI/staging
++
+obter crítica independente
+```
+
+---
+
+# ESTADO DE PARTIDA
+
+Antes de qualquer alteração, confirme no repositório o estado real.
+
+O projeto já possui, em diferentes graus de maturidade:
+
+```text
+AgentRuntime
+MockHarnessAdapter
+DeepSeekHarnessAdapter
+DeepSeek bridge
+PDP / ABAC
+Tool Gateway governado
+durable idempotency/effect ledger
+PostgreSQL
+RLS
+CAS
+advisory locks
+journal
+snapshot
+audit hash chain
+outbox
+inbox
+fencing
+provider receipt
+OUTCOME_UNKNOWN
+reconciliation
+worker jobs
+SKIP LOCKED
+leases
+heartbeats
+break-glass durable lifecycle
+MFA/TOTP boundary
+governed export
+usage/provenance ledger
+API modularizada
+frontend modularizado
+worker separado
+Docker/Compose
+TLS topology
+OpenTelemetry boundary
+Prometheus endpoint
+CI
+SBOM
+Trivy
+E2E Chromium/Firefox
+axe
+verify:provider-sandbox
+verify:deepseek-acp
+verify:staging
+verify:triplo-aaa
+```
+
+A barra atual deve continuar falhando se houver:
+
+```text
+PARTIAL
+NOT_RUN
+BLOCKED
+SYNTHETIC_ONLY
+STAGING_ONLY
+FAIL_WITH_LIMITATIONS
+```
+
+---
+
+# OBJETIVO FINAL
+
+Meta mínima:
+
+```text
+Architecture                  >= 97/100
+Domain integrity              >= 97/100
+Security                      >= 97/100
+Authorization                 >= 97/100
+Tool Gateway                  >= 97/100
+Database                      >= 97/100
+Reliability                   >= 97/100
+Workers                       >= 96/100
+AI Governance                 >= 97/100
+DeepSeek Integration          >= 95/100
+Provider Integration          >= 95/100
+Testing                       >= 97/100
+Observability                 >= 95/100
+Recovery                      >= 97/100
+DevOps                        >= 96/100
+Frontend                      >= 95/100
+Production Readiness          >= 95/100
+Overall                       >= 97/100
+```
+
+Não declare esses números automaticamente.
+
+Cada nota deve ser sustentada por evidência executável.
+
+---
+
+# PRINCÍPIOS INEGOCIÁVEIS
+
+## 1. Domain sovereignty
+
+A fonte de verdade é o domínio transacional do CVG.
+
+Nunca permitir que:
+
+```text
+LLM
+chat
+agent memory
+RAG
+conversation state
+```
+
+substituam:
+
+```text
+Patient
+Guardian
+Appointment
+Encounter
+ClinicalDocument
+DiagnosticRequest
+DiagnosticResult
+HospitalEpisode
+MedicationOrder
+StockMovement
+Charge
+Payment
+Audit
+```
+
+---
+
+## 2. DeepSeek como runtime externo
+
+Arquitetura obrigatória:
+
+```text
+CVG Domain
+   ↓
+Application Layer
+   ↓
+PDP / Tool Gateway
+   ↓
+AgentRuntime
+   ↓
+DeepSeek Adapter / Bridge
+   ↓
+DeepSeek Harness
+```
+
+Nunca:
+
+```text
+DeepSeek Harness
+   ↓
+PostgreSQL CVG
+```
+
+O Harness não recebe acesso direto ao banco.
+
+---
+
+## 3. Fail closed
+
+Se faltar:
+
+```text
+policy
+approval
+secret
+manifest
+engine identity
+provider
+receipt
+context
+schema
+version
+attestation
+```
+
+o comportamento deve ser:
+
+```text
+DENY
+BLOCK
+UNAVAILABLE
+QUARANTINE
+```
+
+Nunca fallback silencioso.
+
+---
+
+## 4. No overclaim
+
+Usar:
+
+```text
+NOT_RUN
+PARTIAL
+SYNTHETIC_ONLY
+STAGING_ONLY
+BLOCKED
+VERIFIED
+```
+
+Somente permitir:
+
+```text
+STATE_OF_THE_ART_CANDIDATE
+TRIPLE_AAA_CANDIDATE
+PRODUCTION_READY
+```
+
+quando os gates correspondentes forem realmente provados.
+
+---
+
+# FASE 0 — REAUDITORIA FINAL
+
+Antes de alterar código:
+
+Inspecione:
+
+```text
+README.md
+docs/
+.agent/
+.gauntlet/
+.github/
+apps/
+packages/
+db/
+docker/
+tests/
+scripts/
+Dockerfiles
+Compose
+migrations
+```
+
+Gere:
+
+```text
+docs/final-operational-proof-audit.md
+```
+
+Incluindo:
+
+* estado corrente;
+* blockers reais;
+* gaps residuais;
+* severidade;
+* blast radius;
+* owner técnico;
+* critérios de aceite;
+* testes exigidos;
+* rollback;
+* dependências externas;
+* itens que não podem ser resolvidos apenas com código.
+
+---
+
+# FASE 1 — PDP UNIVERSAL DE VERDADE
+
+Fechar definitivamente o gap de autorização parcial.
+
+Provar que TODA operação sensível passa por policy enforcement.
+
+Cobrir:
+
+```text
+identity
+users
+roles
+guardians
+patients
+appointments
+queue
+encounters
+clinical
+diagnostics
+hospitalization
+medication
+stock
+finance
+communications
+knowledge
+AI
+exports
+break-glass
+worker jobs
+recovery
+admin operations
+```
+
+Criar um verificador estático ou metadado de registro obrigatório.
+
+Meta:
+
+```text
+sensitive route
+→ application service
+→ policy enforcement
+→ repository
+```
+
+Proibir:
+
+```text
+route → repository
+route → persistence
+worker → unrestricted persistence
+```
+
+sem policy.
+
+Criar:
+
+```text
+npm run verify:pdp-universal
+```
+
+Esse gate deve falhar se uma operação sensível não estiver registrada.
+
+---
+
+# FASE 2 — AUTHORITATIVE WRITES UNIVERSAIS
+
+O projeto já está migrando writes para caminhos authoritative.
+
+Complete isso em todos os domínios.
+
+Garantir authoritative write para:
+
+```text
+guardians
+patients
+appointments
+encounters
+clinical
+diagnostics
+specimens
+diagnostic results
+hospitalization
+medication
+stock
+finance
+communications
+AI state
+```
+
+Nenhuma entidade-filha pode aceitar inconsistência com o parent.
+
+Exemplos que devem falhar:
+
+```text
+specimen.requestId != result.requestId
+patient.organization != encounter.organization
+workspace mismatch
+unit mismatch
+foreign child relationship
+cross-organization FK relationship
+```
+
+Adicionar invariantes em:
+
+```text
+application
+domain
+database FK/RLS/check
+```
+
+quando apropriado.
+
+---
+
+# FASE 3 — DEEPSEEK HARNESS REAL
+
+Esse continua sendo blocker obrigatório.
+
+Provar ponta a ponta:
+
+```text
+CVG API
+ ↓
+AgentRuntime
+ ↓
+DeepSeekAdapter
+ ↓
+DeepSeek bridge
+ ↓
+DeepSeek Harness real
+ ↓
+modelo real
+```
+
+Executar no mínimo:
+
+```text
+health
+initialize
+session/new
+turn
+structured response
+tool request
+tool denial
+tool allow
+approval required
+approval accepted
+approval rejected
+replay
+usage
+provenance
+cancellation
+timeout
+engine restart
+```
+
+Nenhum fallback para mock em staging/produção.
+
+---
+
+# FASE 4 — DEEPSEEK FAILURE MATRIX
+
+Testar:
+
+```text
+wrong engine commit
+wrong manifest
+wrong tool registry
+bad attestation
+invalid HMAC
+expired context
+invalid JSON
+schema mismatch
+slow model
+timeout
+broken connection
+Harness restart
+partial output
+provider failure
+replay mismatch
+approval replay
+```
+
+Criar:
+
+```text
+npm run verify:deepseek-real
+```
+
+---
+
+# FASE 5 — PROVIDER EXTERNO REAL
+
+A prova loopback já existe.
+
+Agora implementar um provider externo autorizado.
+
+Preferência:
+
+```text
+WhatsApp / messaging
+```
+
+Fluxo completo:
+
+```text
+Appointment
+ ↓
+communication.stage
+ ↓
+PDP
+ ↓
+human approval
+ ↓
+outbox
+ ↓
+worker
+ ↓
+provider adapter
+ ↓
+external provider
+ ↓
+receipt
+ ↓
+callback
+ ↓
+inbox
+ ↓
+effect ledger
+ ↓
+reconciliation
+ ↓
+audit
+```
+
+Não chamar provider diretamente de rota HTTP.
+
+---
+
+# FASE 6 — PROVIDER CHAOS
+
+Testar provider real/sandbox com:
+
+```text
+timeout
+duplicate callback
+invalid callback HMAC
+response lost after acceptance
+rate limit
+provider 500
+provider 429
+provider unavailable
+queryStatus success
+queryStatus unknown
+```
+
+Nunca retry cego após `OUTCOME_UNKNOWN`.
+
+---
+
+# FASE 7 — DURABLE IDEMPOTENCY SOB CONCORRÊNCIA
+
+Provar em PostgreSQL real:
+
+```text
+2 processos
+same idempotency key
+same digest
+```
+
+Resultado:
+
+```text
+1 execução
+1 replay
+```
+
+E:
+
+```text
+same key
+different digest
+```
+
+Resultado:
+
+```text
+IDEMPOTENCY_CONFLICT
+```
+
+Executar com processos separados, não apenas promises no mesmo processo.
+
+Criar teste multi-process.
+
+---
+
+# FASE 8 — POSTGRESQL MULTI-INSTANCE
+
+Executar PostgreSQL production-like com múltiplas instâncias de:
+
+```text
+API
+workers
+```
+
+Provar:
+
+```text
+SKIP LOCKED
+lease
+fencing
+CAS
+advisory locks
+RLS
+transaction isolation
+worker takeover
+heartbeat
+concurrent writes
+```
+
+---
+
+# FASE 9 — WORKER HANDLERS REAIS
+
+Hoje a orquestração existe.
+
+Implementar handlers reais para:
+
+```text
+outbox
+jobs
+schedule
+reconciliation
+notifications
+maintenance
+```
+
+Cada handler deve ter:
+
+```text
+typed input
+policy
+timeout
+retry policy
+idempotency
+audit
+metrics
+dead-letter/quarantine
+```
+
+---
+
+# FASE 10 — BACKPRESSURE
+
+Implementar e provar:
+
+```text
+queue depth limit
+lane concurrency
+worker budget
+provider concurrency
+AI concurrency
+DB pool saturation response
+```
+
+Sob sobrecarga:
+
+```text
+degrade safely
+```
+
+Nunca:
+
+```text
+unbounded spawn
+unbounded queue
+```
+
+---
+
+# FASE 11 — SECRET AUTHORITY REAL
+
+Substituir secret authority sintética em staging.
+
+Suportar pelo menos:
+
+```text
+Docker Secrets
+```
+
+e idealmente um provider real:
+
+```text
+Infisical
+Vault
+```
+
+Testar:
+
+```text
+missing secret
+rotated secret
+wrong secret version
+expired secret
+provider unavailable
+```
+
+Fail closed.
+
+---
+
+# FASE 12 — WEBAUTHN / BREAK-GLASS REAL
+
+Completar a autoridade de aprovação forte.
+
+Break-glass deve exigir:
+
+```text
+independent approver
+WebAuthn/passkey
+reason
+TTL
+scope
+audit
+post-event review
+```
+
+Provar:
+
+```text
+self approval denied
+expired grant denied
+wrong resource denied
+wrong scope denied
+reuse denied
+```
+
+---
+
+# FASE 13 — OBSERVABILITY STAGING
+
+Subir stack real:
+
+```text
+OpenTelemetry Collector
+Prometheus
+Grafana
+Alertmanager
+```
+
+Instrumentar:
+
+```text
+HTTP
+PDP
+Tool Gateway
+DB
+worker
+outbox
+jobs
+provider
+reconciliation
+DeepSeek
+```
+
+Correlacionar:
+
+```text
+requestId
+correlationId
+sessionId
+toolInvocationId
+jobId
+outboxId
+providerRequestId
+```
+
+---
+
+# FASE 14 — ALERT DELIVERY REAL
+
+Não apenas avaliar regras.
+
+Disparar alertas de staging reais para um sink controlado.
+
+Testar:
+
+```text
+API down
+worker heartbeat stale
+outbox backlog
+reconciliation backlog
+provider errors
+DeepSeek unavailable
+DB unavailable
+```
+
+Cada alerta deve apontar para runbook.
+
+---
+
+# FASE 15 — SLO MEASUREMENTS
+
+Executar workload staging.
+
+Medir:
+
+```text
+availability
+p50/p95/p99
+patient lookup
+appointment listing
+clinical read/write
+outbox latency
+provider ack latency
+worker backlog age
+DeepSeek latency
+```
+
+Só então marcar SLO como `MEASURED`.
+
+---
+
+# FASE 16 — LOAD TEST PRODUCTION-LIKE
+
+Criar:
+
+```text
+tests/load/
+```
+
+Usar:
+
+```text
+k6
+ou autocannon
+```
+
+Testar:
+
+```text
+50 concurrent users
+100 concurrent users
+burst traffic
+AI traffic
+provider traffic
+worker backlog
+```
+
+Não inventar capacidade.
+
+Registrar resultados brutos.
+
+---
+
+# FASE 17 — CHAOS INFRA
+
+Automatizar:
+
+```text
+kill API
+kill worker
+restart DB
+network delay
+network disconnect
+provider failure
+DeepSeek failure
+secret provider failure
+```
+
+Provar que:
+
+```text
+data integrity preserved
+no duplicate effects
+recovery succeeds
+audit preserved
+```
+
+---
+
+# FASE 18 — RECOVERY REAL
+
+Executar restore em ambiente separado.
+
+Provar:
+
+```text
+snapshot
+journal
+audit
+outbox
+usage
+inbox
+effects
+jobs
+```
+
+Testar:
+
+```text
+tampered backup
+wrong key
+partial bundle
+stale backup
+migration mismatch
+```
+
+---
+
+# FASE 19 — RTO / RPO
+
+Executar recovery drill cronometrado.
+
+Registrar:
+
+```text
+observed RTO
+observed RPO
+```
+
+Não usar valor teórico.
+
+---
+
+# FASE 20 — BACKUP OPERACIONAL
+
+Criar processo de backup automático com:
+
+```text
+encryption
+manifest
+digest
+retention
+rotation
+key reference
+restore test
+```
+
+Adicionar job periódico de verificação.
+
+---
+
+# FASE 21 — FULL BROWSER MATRIX
+
+Fechar:
+
+```text
+Chromium
+Firefox
+WebKit
+```
+
+Nos viewports:
+
+```text
+mobile
+tablet
+desktop
+```
+
+Cobrir também:
+
+```text
+touch
+DPR 2
+reduced motion
+zoom 200%
+```
+
+---
+
+# FASE 22 — ACCESSIBILITY REAL
+
+Além de axe:
+
+executar avaliação manual/semiautomática com:
+
+```text
+keyboard only
+focus order
+dialogs
+screen-reader semantics
+forms
+live regions
+errors
+tables
+navigation
+```
+
+Registrar evidências.
+
+---
+
+# FASE 23 — SECURITY RED TEAM
+
+Executar red-team de:
+
+```text
+cross-organization access
+cross-unit access
+cross-workspace access
+IDOR
+role escalation
+session fixation
+CSRF
+MFA bypass
+break-glass abuse
+prompt injection
+indirect prompt injection
+tool injection
+approval bypass
+RAG poisoning
+secret extraction
+provider callback forgery
+```
+
+---
+
+# FASE 24 — DB SECURITY RED TEAM
+
+Testar:
+
+```text
+RLS bypass
+superuser assumptions
+runtime role escalation
+cross-tenant joins
+FK poisoning
+unsafe search_path
+SQL injection
+migration/runtime privilege confusion
+```
+
+Runtime DB user nunca deve possuir privilégios de migration.
+
+---
+
+# FASE 25 — AUDIT IMMUTABILITY
+
+A cadeia:
+
+```text
+previous_hash
+record_hash
+```
+
+deve ser verificada automaticamente.
+
+Adicionar:
+
+```text
+npm run verify:audit-chain
+```
+
+Testar adulteração.
+
+Preparar mecanismo de external anchoring/WORM como futura extensão.
+
+---
+
+# FASE 26 — USAGE SETTLEMENT
+
+Completar usage ledger de IA.
+
+Registrar:
+
+```text
+reservation
+actual usage
+settlement
+provider response
+model
+input tokens
+output tokens
+cost estimate
+```
+
+Tratar discrepância entre estimate e actual.
+
+---
+
+# FASE 27 — EXPORT HARDENING
+
+Testar export governado com:
+
+```text
+wrong purpose
+expired TTL
+wrong scope
+wrong key
+tampered bundle
+replay
+cross-org request
+```
+
+---
+
+# FASE 28 — CI DO MESMO SHA
+
+Requisito obrigatório:
+
+O commit auditado precisa possuir CI remoto verde no MESMO SHA.
+
+Não aceitar:
+
+```text
+commit A tested
+commit B audited
+```
+
+Obrigatório:
+
+```text
+audit SHA == CI SHA == artifact SHA
+```
+
+---
+
+# FASE 29 — RELEASE PROVENANCE
+
+Gerar artefato contendo:
+
+```text
+git SHA
+build timestamp
+SBOM digest
+container digest
+migration version
+policy revision
+tool registry digest
+DeepSeek expected commit
+```
+
+Assinar quando infraestrutura permitir.
+
+---
+
+# FASE 30 — CONTAINER SMOKE REAL
+
+Subir o Compose.
+
+Executar:
+
+```text
+health
+readiness
+login
+patient lookup
+DB write
+worker cycle
+outbox
+provider sandbox
+DeepSeek health
+shutdown
+restart
+```
+
+Não considerar Compose “verificado” apenas por render/config.
+
+---
+
+# FASE 31 — RESOURCE PRESSURE TEST
+
+Testar:
+
+```text
+CPU limit
+memory limit
+DB pool exhaustion
+worker concurrency limit
+file descriptor pressure
+```
+
+O sistema deve degradar e recuperar sem corrupção.
+
+---
+
+# FASE 32 — SECURITY HEADERS REAL
+
+Verificar em staging:
+
+```text
+HSTS
+CSP
+X-Content-Type-Options
+Referrer-Policy
+Permissions-Policy
+frame protection
+Secure cookies
+```
+
+Criar teste automático.
+
+---
+
+# FASE 33 — PRODUCTION CONFIG FAIL-CLOSED
+
+`verify:production` deve falhar se:
+
+```text
+demo mode enabled
+memory storage
+HTTP insecure
+placeholder DeepSeek commit
+placeholder secret authority
+weak cookie settings
+missing TLS
+mock provider enabled
+```
+
+---
+
+# FASE 34 — STAGING PROMOTION MODEL
+
+Criar fluxo:
+
+```text
+commit
+ ↓
+CI
+ ↓
+artifact
+ ↓
+staging
+ ↓
+verification
+ ↓
+approval
+ ↓
+production candidate
+```
+
+Nenhum rebuild entre staging aprovado e promoção.
+
+Promover o mesmo artifact digest.
+
+---
+
+# FASE 35 — RUNBOOK EXECUTION
+
+Não basta ter runbooks.
+
+Executar pelo menos:
+
+```text
+provider outage
+worker backlog
+DB outage
+DeepSeek outage
+restore
+secret rotation
+break-glass
+```
+
+Registrar resultado.
+
+---
+
+# FASE 36 — FINAL GAUNTLET
+
+Executar critics read-only e fresh:
+
+```text
+architecture
+security
+authorization
+database
+reliability
+AI safety
+DeepSeek
+provider
+worker
+observability
+frontend
+accessibility
+recovery
+DevOps
+production readiness
+```
+
+Cada critic deve emitir:
+
+```text
+PASS
+PASS_WITH_LIMITATIONS
+FAIL
+```
+
+e findings:
+
+```text
+CRITICAL
+HIGH
+MEDIUM
+LOW
+```
+
+---
+
+# FASE 37 — REPAIR LOOP
+
+Para qualquer:
+
+```text
+CRITICAL
+HIGH
+```
+
+executar:
+
+```text
+finding
+→ fix
+→ focused test
+→ full regression
+→ critic rerun
+```
+
+Não ignorar findings.
+
+---
+
+# FASE 38 — HUMAN APPROVAL GATE
+
+Itens que não podem ser aprovados pelo código devem permanecer explicitamente bloqueados.
+
+Exemplos:
+
+```text
+production release
+real patient data
+break-glass authority
+retention
+RTO/RPO target acceptance
+SLO target acceptance
+residual risk acceptance
+```
+
+Não simular aprovação humana.
+
+---
+
+# GATE STATE OF THE ART
+
+Somente permitir:
+
+```text
+STATE_OF_THE_ART_CANDIDATE
+```
+
+se:
+
+```text
+[ ] architecture >=95
+[ ] security >=95
+[ ] reliability >=95
+[ ] universal PDP
+[ ] authoritative writes
+[ ] DeepSeek real
+[ ] provider real
+[ ] staging
+[ ] CI same SHA green
+[ ] load test
+[ ] chaos
+[ ] recovery
+[ ] observability
+[ ] no critical blocker
+```
+
+---
+
+# GATE TRIPLO AAA
+
+Somente permitir:
+
+```text
+TRIPLE_AAA_CANDIDATE
+```
+
+se:
+
+```text
+[ ] all mandatory dimensions >=95
+[ ] zero CRITICAL
+[ ] zero unresolved HIGH
+[ ] no mandatory PARTIAL
+[ ] no mandatory NOT_RUN
+[ ] no mandatory BLOCKED
+[ ] DeepSeek real verified
+[ ] external provider verified
+[ ] PostgreSQL concurrency verified
+[ ] staging verified
+[ ] observability verified
+[ ] load verified
+[ ] chaos verified
+[ ] restore verified
+[ ] RTO/RPO observed
+[ ] CI green same SHA
+[ ] final critics approved
+```
+
+---
+
+# TRIPLO AAA VERIFY
+
+Fortalecer:
+
+```bash
+npm run verify:triplo-aaa
+```
+
+O comando deve retornar sucesso SOMENTE se os manifests/evidências exigidos estiverem presentes e ligados ao SHA atual.
+
+Se faltar qualquer prova obrigatória:
+
+```text
+AAA_NOT_PROVEN
+```
+
+com exit code não zero.
+
+---
+
+# DELIVERABLES
+
+Criar/atualizar:
+
+```text
+docs/final-operational-proof-audit.md
+docs/pdp-universal-proof.md
+docs/authoritative-write-proof.md
+docs/deepseek-real-proof.md
+docs/provider-real-proof.md
+docs/postgres-concurrency-proof.md
+docs/worker-production-proof.md
+docs/observability-proof.md
+docs/load-proof.md
+docs/chaos-proof.md
+docs/recovery-proof-final.md
+docs/accessibility-proof.md
+docs/security-red-team-final.md
+docs/triple-aaa-final-scorecard.md
+```
+
+Atualizar:
+
+```text
+README.md
+docs/adr/
+docs/runbooks/
+```
+
+---
+
+# SCORECARD FINAL
+
+Avaliar:
+
+```text
+Architecture
+Domain Integrity
+Security
+Authentication
+Authorization
+PDP
+Tool Gateway
+Database
+Reliability
+Workers
+DeepSeek
+AI Governance
+Provider Integration
+Frontend
+Accessibility
+Testing
+Observability
+Performance
+Recovery
+DevOps
+Supply Chain
+Production Readiness
+```
+
+Cada nota deve conter:
+
+```text
+score
+evidence
+SHA
+test
+artifact
+limitations
+residual risk
+```
+
+---
+
+# PROIBIÇÕES
+
+Não:
+
+```text
+rewrite from scratch
+weaken RLS
+bypass PDP
+bypass Tool Gateway
+give Harness DB access
+use mock as production fallback
+retry unknown external effects blindly
+commit secrets
+fake staging
+fake approval
+fake provider
+fake CI evidence
+claim AAA from synthetic tests
+claim AAA from different commit evidence
+```
+
+---
+
+# DEFINITION OF DONE
+
+A tarefa NÃO termina quando:
+
+```text
+typecheck passes
+unit tests pass
+Docker config renders
+```
+
+Ela termina quando:
+
+```text
+universal authorization
++
+authoritative domain writes
++
+real DeepSeek
++
+real provider
++
+real PostgreSQL concurrency
++
+real staging
++
+real telemetry
++
+real load
++
+real chaos
++
+real recovery
++
+same-SHA CI
++
+independent critics
+```
+
+estiverem comprovados.
+
+Se algo depender de infraestrutura, credencial ou autorização indisponível:
+
+```text
+não invente
+não simule como real
+não marque como concluído
+```
+
+Marque:
+
+```text
+BLOCKED_EXTERNAL
+```
+
+e continue fechando todo o trabalho local possível.
+
+---
+
+# ORDEM DE EXECUÇÃO
+
+Execute nesta ordem:
+
+```text
+1  Reaudit
+2  PDP universal
+3  Authoritative writes
+4  DeepSeek real
+5  Provider real
+6  Durable idempotency concurrency
+7  PostgreSQL multi-instance
+8  Worker handlers
+9  Secrets/WebAuthn
+10 Observability
+11 Staging
+12 Load
+13 Chaos
+14 Recovery
+15 Browser/accessibility
+16 Security red-team
+17 Same-SHA CI
+18 Final gauntlet
+19 Scorecard
+```
+
+Após cada fase:
+
+```text
+implement
+→ focused tests
+→ full tests
+→ verify
+→ critic
+→ repair
+→ document
+```
+
+---
+
+# COMANDO FINAL
+
+Comece agora pela auditoria do estado atual.
+
+Não faça mudanças profundas antes de produzir:
+
+```text
+docs/final-operational-proof-audit.md
+```
+
+Depois execute as fases pela ordem de dependência.
+
+Preserve qualquer implementação atual que seja mais forte que esta especificação.
+
+O objetivo não é produzir mais código.
+
+O objetivo é produzir **evidência suficiente para que o CVG-Corp seja tecnicamente defensável como State of the Art e, somente quando todos os gates reais forem fechados, Triplo AAA.**

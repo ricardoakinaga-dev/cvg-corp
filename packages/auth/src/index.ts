@@ -1,4 +1,4 @@
-import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, createPublicKey, randomBytes, timingSafeEqual, verify as verifySignature } from "node:crypto";
 
 export interface PasswordPolicy {
   minLength: number;
@@ -134,6 +134,21 @@ export interface WebAuthnAssertionEnvelope {
   userVerified: boolean;
 }
 
+/**
+ * Credential material held by the WebAuthn authority.  The public key is a
+ * base64url encoded DER SubjectPublicKeyInfo value; private keys never cross
+ * this boundary.  WebAuthn authenticators use different signature schemes,
+ * so the verifier requires the registered algorithm instead of guessing it.
+ */
+export interface WebAuthnCredential {
+  credentialId: string;
+  userId: string;
+  publicKeySpki: string;
+  algorithm: "sha256" | "sha384" | "sha512" | "null";
+  signCount: number;
+  userHandle?: string | null;
+}
+
 export interface WebAuthnProvider {
   begin(input: { userId: string; rpId: string; origin: string }): Promise<WebAuthnChallenge>;
   verify(input: { challenge: WebAuthnChallenge; assertion: WebAuthnAssertionEnvelope }): Promise<{ userId: string; credentialId: string; signCount: number }>;
@@ -143,17 +158,95 @@ function encodedField(value: string, field: string, minLength: number, maxLength
   if (typeof value !== "string" || value.length < minLength || value.length > maxLength || !/^[A-Za-z0-9_-]+$/.test(value)) throw new Error(`${field} must be a bounded base64url value`);
 }
 
+function decodeBase64Url(value: string, field: string, maxBytes: number): Buffer {
+  encodedField(value, field, 1, Math.ceil(maxBytes * 4 / 3) + 4);
+  if (value.length % 4 === 1) throw new Error(`${field} is not valid base64url`);
+  const decoded = Buffer.from(value.replace(/-/g, "+").replace(/_/g, "/"), "base64");
+  if (decoded.length === 0 || decoded.length > maxBytes) throw new Error(`${field} decoded size is outside the safe range`);
+  return decoded;
+}
+
+function parseJsonObject(value: Buffer, field: string): Record<string, unknown> {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(value.toString("utf8")) as unknown;
+  } catch {
+    throw new Error(`${field} is not valid JSON`);
+  }
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) throw new Error(`${field} must be a JSON object`);
+  return parsed as Record<string, unknown>;
+}
+
 /** Shape and state validation before delegating cryptographic verification. */
 export function validateWebAuthnAssertion(challenge: WebAuthnChallenge, assertion: WebAuthnAssertionEnvelope, atMs = Date.now()): void {
   if (challenge.status !== "PENDING") throw new Error("WebAuthn challenge is not pending");
-  if (Date.parse(challenge.expiresAt) <= atMs) throw new Error("WebAuthn challenge expired");
+  const expiresAt = Date.parse(challenge.expiresAt);
+  if (!Number.isFinite(expiresAt) || expiresAt <= atMs) throw new Error("WebAuthn challenge expired or malformed");
   if (!Number.isInteger(challenge.attempts) || !Number.isInteger(challenge.maxAttempts) || challenge.attempts >= challenge.maxAttempts) throw new Error("WebAuthn challenge attempt budget exhausted");
   if (assertion.challengeId !== challenge.challengeId || !assertion.userVerified) throw new Error("WebAuthn assertion is not bound to the pending challenge");
+  if (typeof challenge.userId !== "string" || challenge.userId.trim().length < 1 || challenge.userId.length > 200) throw new Error("WebAuthn challenge user is invalid");
+  if (typeof challenge.rpId !== "string" || !/^[A-Za-z0-9.-]{1,253}$/.test(challenge.rpId)) throw new Error("WebAuthn relying-party id is invalid");
+  let origin: URL;
+  try {
+    origin = new URL(challenge.origin);
+  } catch {
+    throw new Error("WebAuthn origin is invalid");
+  }
+  if (!["http:", "https:"].includes(origin.protocol) || origin.username || origin.password || origin.search || origin.hash || origin.pathname !== "/") throw new Error("WebAuthn origin is invalid");
+  encodedField(challenge.challenge, "challenge", 8, 512);
   encodedField(assertion.credentialId, "credentialId", 8, 512);
   encodedField(assertion.clientDataJson, "clientDataJson", 8, 16_384);
   encodedField(assertion.authenticatorData, "authenticatorData", 8, 16_384);
   encodedField(assertion.signature, "signature", 8, 16_384);
   if (assertion.userHandle !== null) encodedField(assertion.userHandle, "userHandle", 1, 512);
+}
+
+/**
+ * Verify the cryptographic portion of a WebAuthn assertion after the
+ * challenge lifecycle has admitted it.  This is deliberately provider
+ * neutral: credential registration, counter persistence and authenticator
+ * policy stay with the authority, while this function makes the signed bytes
+ * and relying-party binding explicit and testable.
+ */
+export function verifyWebAuthnAssertionCryptographically(
+  challenge: WebAuthnChallenge,
+  assertion: WebAuthnAssertionEnvelope,
+  credential: WebAuthnCredential,
+  atMs = Date.now()
+): { userId: string; credentialId: string; signCount: number } {
+  validateWebAuthnAssertion(challenge, assertion, atMs);
+  if (credential.credentialId !== assertion.credentialId || credential.userId !== challenge.userId) throw new Error("WebAuthn credential is not bound to the challenge");
+  if (!Number.isInteger(credential.signCount) || credential.signCount < 0 || credential.signCount > 0xffff_ffff) throw new Error("WebAuthn credential counter is invalid");
+  if (credential.userHandle !== undefined && credential.userHandle !== assertion.userHandle) throw new Error("WebAuthn user handle is not bound to the credential");
+
+  const clientData = decodeBase64Url(assertion.clientDataJson, "clientDataJson", 16_384);
+  const clientDataObject = parseJsonObject(clientData, "clientDataJson");
+  if (clientDataObject.type !== "webauthn.get" || clientDataObject.challenge !== challenge.challenge || clientDataObject.origin !== challenge.origin) throw new Error("WebAuthn client data is not bound to the challenge");
+
+  const authenticatorData = decodeBase64Url(assertion.authenticatorData, "authenticatorData", 16_384);
+  if (authenticatorData.length < 37) throw new Error("WebAuthn authenticator data is truncated");
+  const expectedRpIdHash = createHash("sha256").update(challenge.rpId).digest();
+  if (!timingSafeEqual(authenticatorData.subarray(0, 32), expectedRpIdHash)) throw new Error("WebAuthn relying-party hash does not match");
+  const flags = authenticatorData[32]!;
+  if ((flags & 0x01) === 0 || (flags & 0x04) === 0) throw new Error("WebAuthn user presence and verification are required");
+  const signCount = authenticatorData.readUInt32BE(33);
+  if (credential.signCount !== 0 && signCount !== 0 && signCount <= credential.signCount) throw new Error("WebAuthn signature counter did not advance");
+
+  const publicKeyBytes = decodeBase64Url(credential.publicKeySpki, "publicKeySpki", 8_192);
+  const signature = decodeBase64Url(assertion.signature, "signature", 8_192);
+  let publicKey: ReturnType<typeof createPublicKey>;
+  try {
+    publicKey = createPublicKey({ key: publicKeyBytes, format: "der", type: "spki" });
+  } catch {
+    throw new Error("WebAuthn credential public key is invalid");
+  }
+  const clientDataHash = createHash("sha256").update(clientData).digest();
+  const signedBytes = Buffer.concat([authenticatorData, clientDataHash]);
+  const valid = credential.algorithm === "null"
+    ? verifySignature(null, signedBytes, publicKey, signature)
+    : verifySignature(credential.algorithm, signedBytes, publicKey, signature);
+  if (!valid) throw new Error("WebAuthn assertion signature is invalid");
+  return { userId: credential.userId, credentialId: credential.credentialId, signCount };
 }
 
 export interface BreakGlassRequest {

@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "@cvg/agent-policy": "*",
+    "@cvg/agent-runtime": "*",
     "@cvg/agent-tools": "*",
     "@cvg/contracts": "*",
     "@cvg/domain": "*"

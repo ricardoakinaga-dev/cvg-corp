@@ -3,6 +3,7 @@ import type { AiApproval, AiDraft, AiSession, AiTurn, CvgContext, DataClass, Opa
 import type { AiTurnInput } from "@cvg/contracts";
 import { CvgStore, DomainError, digest, isInContext, makeId, now } from "@cvg/domain";
 import { enforceApplicationPolicy, StaticPolicyDecisionPoint } from "@cvg/agent-policy";
+import { replayDigest } from "@cvg/agent-runtime";
 import { ToolGateway, ToolGatewayError, toolExecutionDigest, type ToolExecutionLedger, type ToolExecutionLedgerClaim, type ToolExecutionLedgerInput, type ToolExecutionLedgerRecord, type ToolExecutionRequest } from "@cvg/agent-tools";
 
 export const DSH_ENGINE_COMMIT = "6454e3270642c3a7551dcae4f7447e4032febd77";
@@ -44,7 +45,7 @@ class CvgStoreToolExecutionLedger implements ToolExecutionLedger {
   claim(input: ToolExecutionLedgerInput): ToolExecutionLedgerClaim {
     const existing = this.store.commandReceipts.get(input.lookup);
     if (!existing) {
-      this.store.commandReceipts.set(input.lookup, { id: makeId(), organizationId: input.organizationId, actorId: input.actorId, unitId: input.unitId, workspaceId: input.workspaceId, auditRecordId: null, operation: `tool.${input.operation}`, idempotencyLookup: input.lookup, bodyDigest: input.requestDigest, status: "IN_FLIGHT", result: null, createdAt: now(), completedAt: null });
+      this.store.setCommandReceipt({ id: makeId(), organizationId: input.organizationId, actorId: input.actorId, unitId: input.unitId, workspaceId: input.workspaceId, auditRecordId: null, operation: `tool.${input.operation}`, idempotencyLookup: input.lookup, bodyDigest: input.requestDigest, status: "IN_FLIGHT", result: null, createdAt: now(), completedAt: null });
       return { status: "NEW" };
     }
     if (existing.bodyDigest !== input.requestDigest) return { status: "CONFLICT" };
@@ -57,24 +58,20 @@ class CvgStoreToolExecutionLedger implements ToolExecutionLedger {
   complete(lookup: string, record: ToolExecutionLedgerRecord): void {
     const receipt = this.store.commandReceipts.get(lookup);
     if (!receipt || receipt.bodyDigest !== record.requestDigest) throw new DomainError("IDEMPOTENCY_CONFLICT", "O receipt da tool não corresponde ao digest autorizado.", 409);
-    receipt.status = "SUCCEEDED";
-    receipt.result = record;
-    receipt.completedAt = now();
+    this.store.updateCommandReceipt(lookup, { status: "SUCCEEDED", result: record, completedAt: now() });
   }
 
   markOutcomeUnknown(lookup: string, requestDigest: string): void {
     const receipt = this.store.commandReceipts.get(lookup);
     if (receipt?.bodyDigest === requestDigest) {
-      receipt.status = "OUTCOME_UNKNOWN";
-      receipt.completedAt = now();
+      this.store.updateCommandReceipt(lookup, { status: "OUTCOME_UNKNOWN", completedAt: now() });
     }
   }
 
   markFailed(lookup: string, requestDigest: string): void {
     const receipt = this.store.commandReceipts.get(lookup);
     if (receipt?.bodyDigest === requestDigest) {
-      receipt.status = "FAILED";
-      receipt.completedAt = now();
+      this.store.updateCommandReceipt(lookup, { status: "FAILED", completedAt: now() });
     }
   }
 }
@@ -138,8 +135,7 @@ export class GovernedHarness {
     enforceApplicationPolicy(context, `ai.turn.${input.purpose}`, { resourceId: input.patientId ?? input.encounterId });
     this.store.requireRole(context, ["admin", "veterinario", "recepcao"], "ai:session");
     const session: AiSession = { id: makeId(), organizationId: context.organizationId, actorId: context.actorId, unitId: context.unitId, workspaceId: context.workspaceId, patientId: input.patientId, encounterId: input.encounterId, purpose: input.purpose, engineCommit: DSH_ENGINE_COMMIT, profileDigest: this.profileDigest, status: "ACTIVE", createdAt: now() };
-    this.store.aiSessions.set(session.id, session);
-    return session;
+    return this.store.persistAiSession(session);
   }
 
   private getOrCreateSession(context: CvgContext, input: Pick<AiTurnInput, "purpose" | "patientId" | "encounterId" | "sessionId">): AiSession {
@@ -187,8 +183,8 @@ export class GovernedHarness {
       if (!approval) {
         const turn = this.persistTurn(context, session, prompt, "RECEIVED", null, this.estimateInput(prompt), 0, []);
         const pending: AiApproval = { id: makeId(), organizationId: context.organizationId, actorId: context.actorId, sessionId: session.id, turnId: turn.id, toolName: tool.name, resourceId: input.resourceId ?? input.encounterId ?? input.patientId, patientId: input.patientId, encounterId: input.encounterId, unitId: context.unitId, workspaceId: context.workspaceId, purpose: input.purpose, requestDigest, policyRevision: context.policyRevision, expiresAt: new Date(Date.now() + 5 * 60_000).toISOString(), decision: "unavailable", decidedBy: null, reason: "Ação exige confirmação contextual e não pode ser presumida.", createdAt: now() };
-        this.store.aiApprovals.set(pending.id, pending);
-        return this.result(context, session, turn, null, pending, []);
+        const persistedApproval = this.store.persistAiApproval(pending);
+        return this.result(context, session, turn, null, persistedApproval, []);
       }
       const originalTurn = this.store.aiTurns.get(approval.turnId);
       if (!originalTurn || originalTurn.prompt !== prompt) {
@@ -227,14 +223,12 @@ export class GovernedHarness {
     this.consumeBudget(session, estimated + outputTokens);
     const turn = this.persistTurn(context, session, prompt, "COMPLETED", response, estimated, outputTokens, references);
     if (approvalId) {
-      const approval = this.store.aiApprovals.get(approvalId);
-      if (approval) approval.decision = "consumed";
+      if (this.store.aiApprovals.has(approvalId)) this.store.updateAiApproval(approvalId, { decision: "consumed" });
     }
     let draft: AiDraft | null = null;
     if (input.purpose === "DRAFT_CLINICAL") {
       const createdDraft: AiDraft = { id: makeId(), sessionId: session.id, encounterId: input.encounterId, draftType: "CLINICAL_NOTE", content: response, sourceTurnId: turn.id, status: "DRAFT", createdAt: now() };
-      this.store.aiDrafts.set(createdDraft.id, createdDraft);
-      draft = createdDraft;
+      draft = this.store.persistAiDraft(createdDraft);
     }
     return this.result(context, session, turn, draft, null, references);
   }
@@ -255,10 +249,7 @@ export class GovernedHarness {
     }
     if (tool.risk === "HIGH_IMPACT" && approval.actorId === context.actorId) throw new DomainError("POLICY_DENIED", "Ações de alto impacto exigem aprovador independente.", 403);
     if (approval.decision !== "unavailable") throw new DomainError("CONFLICT", "Aprovação já foi decidida.", 409);
-    approval.decision = decision;
-    approval.decidedBy = context.actorId;
-    approval.reason = reason;
-    return approval;
+    return this.store.updateAiApproval(approvalId, { decision, decidedBy: context.actorId, reason });
   }
 
   promoteDraft(context: CvgContext, draftId: OpaqueId): { draft: AiDraft; documentId: OpaqueId } {
@@ -270,8 +261,8 @@ export class GovernedHarness {
     if (!encounter || encounter.organizationId !== context.organizationId) throw new DomainError("NOT_FOUND", "Atendimento não encontrado.", 404);
     if (draft.status !== "DRAFT" && draft.status !== "REVIEWED") throw new DomainError("CONFLICT", "Rascunho não está disponível para promoção.", 409);
     const document = this.store.createClinicalDocument(context, { encounterId: encounter.id, documentType: "EVOLUTION", title: "Rascunho do copiloto — revisão humana", content: draft.content, dataClass: "D3" });
-    draft.status = "PROMOTED";
-    return { draft, documentId: document.id };
+    const promoted = this.store.updateAiDraftStatus(draftId, "PROMOTED");
+    return { draft: promoted, documentId: document.id };
   }
 
   private persistTurn(context: CvgContext, session: AiSession, prompt: string, status: AiTurn["status"], response: string | null, inputTokens: number, outputTokens: number, references: Array<{ title: string; source: string }>): AiTurn {
@@ -289,11 +280,29 @@ export class GovernedHarness {
       outputTokens,
       references,
       provenance: { provider: "local-stub", engineCommit: DSH_ENGINE_COMMIT, manifestVersion: DSH_MANIFEST_VERSION, profileDigest: this.profileDigest, policyRevision: context.policyRevision, references, referencesDigest, correlationId: context.correlationId, usageRecordId: usageId },
-      usage: { id: usageId, reservationId: null, providerRequestId: null, idempotencyKey: `ai-turn:${id}`, usageKind: "TOKENS", reservedUnits: inputTokens + outputTokens, consumedUnits: inputTokens + outputTokens, status: status === "OUTCOME_UNKNOWN" ? "RECONCILIATION_REQUIRED" : "SETTLED", record: { kind: "AI_TURN_USAGE", turnId: id, sessionId: session.id, model: "cvg-local-governed-stub", provider: "local-stub", engineCommit: DSH_ENGINE_COMMIT, manifestVersion: DSH_MANIFEST_VERSION, profileDigest: this.profileDigest, policyRevision: context.policyRevision, correlationId: context.correlationId, referencesDigest, responseDigest: digest(response ?? "") } },
+      usage: {
+        id: usageId,
+        reservationId: null,
+        providerRequestId: null,
+        idempotencyKey: `ai-turn:${id}`,
+        usageKind: "TOKENS",
+        reservedUnits: inputTokens + outputTokens,
+        consumedUnits: inputTokens + outputTokens,
+        status: status === "OUTCOME_UNKNOWN" ? "RECONCILIATION_REQUIRED" : "SETTLED",
+        record: { kind: "AI_TURN_USAGE", turnId: id, sessionId: session.id, model: "cvg-local-governed-stub", provider: "local-stub", engineCommit: DSH_ENGINE_COMMIT, manifestVersion: DSH_MANIFEST_VERSION, profileDigest: this.profileDigest, policyRevision: context.policyRevision, correlationId: context.correlationId, referencesDigest, responseDigest: digest(response ?? "") },
+        settlement: {
+          model: "cvg-local-governed-stub",
+          inputTokens,
+          outputTokens,
+          providerResponseDigest: digest({ provider: "local-stub", response: response ?? "" }),
+          estimatedCost: { amountMicros: 0, currency: "USD", source: "LOCAL_SYNTHETIC", pricingRevision: "local-no-charge-v1" },
+          actualCost: { amountMicros: 0, currency: "USD", source: "LOCAL_SYNTHETIC", pricingRevision: "local-no-charge-v1" },
+          discrepancy: { status: "MATCHED", deltaMicros: 0, reason: null }
+        }
+      },
       createdAt: now()
     };
-    this.store.aiTurns.set(turn.id, turn);
-    return turn;
+    return this.store.persistAiTurn(turn);
   }
 
   private result(context: CvgContext, session: AiSession, turn: AiTurn, draft: AiDraft | null, approval: AiApproval | null, references: Array<{ title: string; source: string }>): HarnessTurnResult {
@@ -327,10 +336,9 @@ export class GovernedHarness {
     let reservation = [...this.store.budgetReservations.values()].find((candidate) => candidate.sessionId === session.id && candidate.status === "RESERVED");
     if (!reservation) {
       reservation = { id: makeId(), organizationId: session.organizationId, sessionId: session.id, category: "TOKENS", reservedUnits: this.budgetLimit, consumedUnits: 0, status: "RESERVED", createdAt: now() };
-      this.store.budgetReservations.set(reservation.id, reservation);
+      this.store.persistBudgetReservation(reservation);
     }
-    reservation.consumedUnits += units;
-    if (reservation.consumedUnits >= reservation.reservedUnits) reservation.status = "EXHAUSTED";
+    this.store.consumeBudgetReservation(reservation.id, units);
   }
 
   private estimateInput(prompt: string): number {
@@ -360,6 +368,6 @@ export class GovernedHarness {
     const session = this.store.aiSessions.get(sessionId);
     if (!session || session.organizationId !== context.organizationId || session.actorId !== context.actorId || !isInContext(session, context)) throw new DomainError("NOT_FOUND", "Sessão de copiloto não encontrada.", 404);
     const turns = [...this.store.aiTurns.values()].filter((turn) => turn.sessionId === sessionId);
-    return { session, turns, digest: digest({ engineCommit: session.engineCommit, profileDigest: session.profileDigest, turns }) };
+    return { session, turns, digest: replayDigest(session, turns) };
   }
 }

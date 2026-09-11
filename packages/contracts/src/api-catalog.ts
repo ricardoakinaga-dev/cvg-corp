@@ -1,3 +1,5 @@
+import { API_SCHEMA_VERSION } from "./version.js";
+
 export type ApiCatalogAuth = "PUBLIC" | "SESSION" | "SESSION+CSRF" | "SESSION+ROLE" | "SESSION+CSRF+ROLE";
 
 export interface ApiRouteDescriptor {
@@ -93,11 +95,69 @@ export const API_ROUTE_CATALOG: readonly ApiRouteDescriptor[] = [
   { version: "v1", method: "GET", path: "/ai/sessions/:id/replay", operation: "ai.replay", auth: "SESSION+ROLE", requestSchema: null, responseSchema: "AgentReplayResult", idempotent: false, deprecation: null }
 ] as const;
 
+export type ApiVersionedValue = Readonly<Record<string, unknown>>;
+
+export type ApiUpcaster = {
+  readonly fromSchemaVersion: number;
+  readonly toSchemaVersion: number;
+  readonly canHandle: (value: ApiVersionedValue) => boolean;
+  readonly upcast: (value: ApiVersionedValue) => ApiVersionedValue;
+};
+
+/**
+ * Compatibility is an explicit registry.  It is empty until a legacy wire
+ * shape has a reviewed, reversible migration.  The empty registry is useful
+ * in its own right: callers can ask for an upcast and receive a deterministic
+ * failure instead of silently accepting a mixed-version payload.
+ */
+export const API_UPCASTERS: readonly ApiUpcaster[] = Object.freeze([]);
+
+export class ApiCompatibilityError extends Error {
+  readonly code = "API_COMPATIBILITY_UNAVAILABLE" as const;
+
+  constructor(message: string) {
+    super(message);
+    this.name = "ApiCompatibilityError";
+  }
+}
+
+function isApiVersionedValue(value: unknown): value is ApiVersionedValue {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/**
+ * Apply only explicitly registered one-step migrations.  No public v2 route
+ * calls this today; the helper makes the prepared boundary executable and
+ * keeps unsupported legacy/future payloads fail-closed.
+ */
+export function upcastApiValue(value: unknown, targetSchemaVersion: number = API_SCHEMA_VERSION): ApiVersionedValue {
+  if (!isApiVersionedValue(value)) throw new ApiCompatibilityError("versioned API payload must be an object");
+  if (!Number.isInteger(targetSchemaVersion) || targetSchemaVersion < 1) throw new ApiCompatibilityError("target schema version is invalid");
+  const rawVersion = value.schemaVersion;
+  if (!Number.isInteger(rawVersion) || typeof rawVersion !== "number" || rawVersion < 1) throw new ApiCompatibilityError("API payload schemaVersion is invalid");
+  if (rawVersion > targetSchemaVersion) throw new ApiCompatibilityError(`API payload schemaVersion ${rawVersion} is newer than target ${targetSchemaVersion}`);
+  if (rawVersion === targetSchemaVersion) return Object.freeze({ ...value });
+
+  let currentVersion = rawVersion;
+  let current: ApiVersionedValue = Object.freeze({ ...value });
+  while (currentVersion < targetSchemaVersion) {
+    const upcaster = API_UPCASTERS.find((candidate) => candidate.fromSchemaVersion === currentVersion && candidate.toSchemaVersion === currentVersion + 1 && candidate.canHandle(current));
+    if (!upcaster) throw new ApiCompatibilityError(`no approved API upcaster exists from schema ${currentVersion} to ${currentVersion + 1}`);
+    const next = upcaster.upcast(current);
+    if (!isApiVersionedValue(next) || next.schemaVersion !== currentVersion + 1) throw new ApiCompatibilityError(`API upcaster from schema ${currentVersion} returned an invalid target payload`);
+    current = Object.freeze({ ...next });
+    currentVersion += 1;
+  }
+  return current;
+}
+
 export const API_V2_COMPATIBILITY = {
   status: "PREPARED_ONLY",
   basePath: "/api/v2",
   migration: "v1 envelopes remain supported until an approved deprecation window; no v2 route is enabled",
-  upcasters: "NOT_IMPLEMENTED"
+  upcasters: "FAIL_CLOSED_REGISTRY",
+  registered: API_UPCASTERS.length,
+  legacySchemasAccepted: false
 } as const;
 
 export function apiCatalogFingerprint(catalog: readonly ApiRouteDescriptor[] = API_ROUTE_CATALOG): string {

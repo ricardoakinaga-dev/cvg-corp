@@ -1,8 +1,9 @@
 import { z } from "zod";
-import { aiTurnInputSchema, id, roles, type AiApproval, type AiDraft, type AiSession, type AiTurn, type AiTurnInput, type CvgContext, type OpaqueId } from "@cvg/contracts";
-import type { AgentDraftPromotion, AgentReplayResult, AgentRuntime, AgentRuntimeCapabilities, AgentRuntimeHealth, AgentTurnResult } from "@cvg/agent-runtime";
+import { aiTurnInputSchema, aiTurnWireSchema, id, roles, type AiApproval, type AiDraft, type AiSession, type AiTurn, type AiTurnInput, type CvgContext, type OpaqueId } from "@cvg/contracts";
+import { replayDigest, type AgentDraftPromotion, type AgentReplayResult, type AgentRuntime, type AgentRuntimeCapabilities, type AgentRuntimeHealth, type AgentTurnResult } from "@cvg/agent-runtime";
 
 export const DEEPSEEK_BRIDGE_SCHEMA_VERSION = 1 as const;
+export { bridgeRequestSignature, BRIDGE_REQUEST_MAX_AGE_MS, BRIDGE_REQUEST_CLOCK_SKEW_MS } from "@cvg/agent-runtime";
 export const DEEPSEEK_BRIDGE_ADAPTER_ID = "deepseek-harness-bridge" as const;
 
 export type DeepSeekBridgeErrorCode =
@@ -141,18 +142,7 @@ const sessionWireSchema = z.object({
   createdAt: z.string().datetime({ offset: true })
 }).strict();
 const referenceSchema = z.object({ title: z.string().max(500), source: z.string().max(2_000) }).strict();
-const turnWireSchema = z.object({
-  id: opaqueIdSchema,
-  sessionId: opaqueIdSchema,
-  prompt: z.string().max(8_000),
-  response: z.string().nullable(),
-  status: z.enum(["RECEIVED", "DENIED", "COMPLETED", "QUARANTINED", "OUTCOME_UNKNOWN"]),
-  model: z.string().trim().min(1).max(200),
-  inputTokens: z.number().int().nonnegative(),
-  outputTokens: z.number().int().nonnegative(),
-  references: z.array(referenceSchema).max(128),
-  createdAt: z.string().datetime({ offset: true })
-}).strict();
+const turnWireSchema = aiTurnWireSchema;
 const draftWireSchema = z.object({
   id: opaqueIdSchema,
   sessionId: opaqueIdSchema,
@@ -211,7 +201,7 @@ const turnResultWireSchema = z.object({
 const replayWireSchema = z.object({
   session: sessionWireSchema,
   turns: z.array(turnWireSchema).max(10_000),
-  digest: z.string().trim().min(1).max(256),
+  digest: z.string().regex(/^[a-f0-9]{64}$/),
   provenance: capabilityWireSchema
 }).strict();
 const promotionWireSchema = z.object({ draft: draftWireSchema, documentId: opaqueIdSchema }).strict();
@@ -281,18 +271,19 @@ function assertSessionBinding(session: AiSession, context: CvgContext, expected:
 function assertTurnResultBinding(result: AgentTurnResult, context: CvgContext, input: AiTurnInput, expectedEngineCommit: string, expectedManifestVersion: string): void {
   assertSessionBinding(result.session, context, input, expectedEngineCommit, input.sessionId);
   if (result.turn.sessionId !== result.session.id || result.turn.prompt !== input.prompt) throw new DeepSeekBridgeError("CONTRACT_MISMATCH", "O turno retornado não corresponde à sessão ou ao prompt enviado.");
-  if (result.provenance.provider !== "deepseek" || result.provenance.engineCommit !== expectedEngineCommit || result.provenance.manifestVersion !== expectedManifestVersion || result.provenance.policyRevision !== context.policyRevision || result.provenance.correlationId !== context.correlationId) throw new DeepSeekBridgeError("CONTRACT_MISMATCH", "Provenance, policy revision ou correlation ID não correspondem ao contexto CVG.");
+  if (result.session.profileDigest !== result.provenance.profileDigest || result.provenance.provider !== "deepseek" || result.provenance.engineCommit !== expectedEngineCommit || result.provenance.manifestVersion !== expectedManifestVersion || result.provenance.policyRevision !== context.policyRevision || result.provenance.correlationId !== context.correlationId) throw new DeepSeekBridgeError("CONTRACT_MISMATCH", "Provenance, policy revision ou correlation ID não correspondem ao contexto CVG.");
   if (result.approval) {
     const approval = result.approval;
     const expectedResourceId = input.resourceId ?? input.encounterId ?? input.patientId ?? null;
-    if (approval.organizationId !== context.organizationId || approval.actorId !== context.actorId || approval.sessionId !== result.session.id || approval.unitId !== context.unitId || approval.workspaceId !== context.workspaceId || approval.patientId !== input.patientId || approval.encounterId !== input.encounterId || approval.purpose !== input.purpose || approval.resourceId !== expectedResourceId || approval.policyRevision !== context.policyRevision || (input.requestedTool !== null && approval.toolName !== input.requestedTool)) throw new DeepSeekBridgeError("CONTRACT_MISMATCH", "A aprovação retornada não está vinculada ao turno exato.");
+    if (approval.turnId !== result.turn.id || approval.organizationId !== context.organizationId || approval.actorId !== context.actorId || approval.sessionId !== result.session.id || approval.unitId !== context.unitId || approval.workspaceId !== context.workspaceId || approval.patientId !== input.patientId || approval.encounterId !== input.encounterId || approval.purpose !== input.purpose || approval.resourceId !== expectedResourceId || approval.policyRevision !== context.policyRevision || (input.requestedTool !== null && approval.toolName !== input.requestedTool)) throw new DeepSeekBridgeError("CONTRACT_MISMATCH", "A aprovação retornada não está vinculada ao turno exato.");
   }
-  if (result.draft && (result.draft.sessionId !== result.session.id || result.draft.encounterId !== input.encounterId)) throw new DeepSeekBridgeError("CONTRACT_MISMATCH", "O rascunho retornado escapou da sessão ou atendimento.");
+  if (result.draft && (result.draft.sourceTurnId !== result.turn.id || result.draft.sessionId !== result.session.id || result.draft.encounterId !== input.encounterId)) throw new DeepSeekBridgeError("CONTRACT_MISMATCH", "O rascunho retornado escapou da sessão ou atendimento.");
 }
 
 function assertReplayBinding(result: AgentReplayResult, context: CvgContext, sessionId: OpaqueId, expectedEngineCommit: string, expectedManifestVersion: string): void {
   if (result.session.id !== sessionId || result.session.organizationId !== context.organizationId || result.session.actorId !== context.actorId || result.session.unitId !== context.unitId || result.session.workspaceId !== context.workspaceId || result.session.engineCommit !== expectedEngineCommit || result.provenance.engineCommit !== expectedEngineCommit || result.provenance.manifestVersion !== expectedManifestVersion || result.provenance.provider !== "deepseek") throw new DeepSeekBridgeError("CONTRACT_MISMATCH", "O replay retornado não está vinculado ao contexto ou ao profile aprovado.");
   if (result.turns.some((turn) => turn.sessionId !== sessionId)) throw new DeepSeekBridgeError("CONTRACT_MISMATCH", "O replay contém turno de outra sessão.");
+  if (result.digest !== replayDigest(result.session, result.turns)) throw new DeepSeekBridgeError("CONTRACT_MISMATCH", "O digest do replay não corresponde ao ledger canônico recebido.");
 }
 
 export function parseBridgeContext(value: unknown): CvgContext {
@@ -424,6 +415,7 @@ export class DeepSeekBridge implements AgentRuntime {
     const safeContext = parseBridgeContext(context);
     const safeInput = parseBridgeTurnInput(input);
     const safeApprovalId = approvalId === null ? null : parseBridgeOpaqueId(approvalId, "approvalId");
+    if (safeApprovalId && safeInput.approvalId && safeApprovalId !== safeInput.approvalId) throw new DeepSeekBridgeError("CONTRACT_MISMATCH", "O approvalId do envelope não corresponde ao approvalId do turno.");
     await this.requireReady(signal);
     const raw = await this.invoke("executeTurn", safeContext.correlationId, signal, (request) => this.native.executeTurn({ ...request, context: safeContext, input: safeInput, approvalId: safeApprovalId }));
     const result = parseResponse(turnResultWireSchema, raw, "turn") as AgentTurnResult;
@@ -438,7 +430,7 @@ export class DeepSeekBridge implements AgentRuntime {
     await this.requireReady(signal);
     const raw = await this.invoke("approve", safeContext.correlationId, signal, (request) => this.native.approve({ ...request, context: safeContext, approvalId: safeApprovalId, ...safeInput }));
     const approval = parseResponse(approvalWireSchema, raw, "approval") as AiApproval;
-    if (approval.id !== safeApprovalId || approval.organizationId !== safeContext.organizationId || approval.actorId !== safeContext.actorId || approval.decidedBy !== safeContext.actorId || approval.decision !== safeInput.decision || approval.reason !== safeInput.reason || approval.policyRevision !== safeContext.policyRevision) throw new DeepSeekBridgeError("CONTRACT_MISMATCH", "A decisão de aprovação não corresponde ao ator ou aos argumentos enviados.");
+    if (approval.id !== safeApprovalId || approval.organizationId !== safeContext.organizationId || approval.actorId !== safeContext.actorId || approval.decidedBy !== safeContext.actorId || approval.unitId !== safeContext.unitId || approval.workspaceId !== safeContext.workspaceId || approval.patientId !== safeContext.patientId || approval.encounterId !== safeContext.encounterId || approval.purpose !== safeContext.purpose || approval.decision !== safeInput.decision || approval.reason !== safeInput.reason || approval.policyRevision !== safeContext.policyRevision) throw new DeepSeekBridgeError("CONTRACT_MISMATCH", "A decisão de aprovação não corresponde ao ator, escopo ou argumentos enviados.");
     return approval;
   }
 
@@ -448,7 +440,7 @@ export class DeepSeekBridge implements AgentRuntime {
     await this.requireReady(signal);
     const raw = await this.invoke("promoteDraft", safeContext.correlationId, signal, (request) => this.native.promoteDraft({ ...request, context: safeContext, draftId: safeDraftId }));
     const promotion = parseResponse(promotionWireSchema, raw, "draft promotion") as AgentDraftPromotion;
-    if (promotion.draft.id !== safeDraftId || promotion.draft.status !== "PROMOTED") throw new DeepSeekBridgeError("CONTRACT_MISMATCH", "A promoção retornada não corresponde ao draft solicitado.");
+    if (promotion.draft.id !== safeDraftId || promotion.draft.status !== "PROMOTED" || promotion.draft.encounterId !== safeContext.encounterId) throw new DeepSeekBridgeError("CONTRACT_MISMATCH", "A promoção retornada não corresponde ao atendimento ou ao estado solicitado.");
     return promotion;
   }
 
@@ -520,3 +512,4 @@ export const deepSeekBridgeSchemas = {
 } as const;
 
 export * from "./acp.ts";
+export * from "./real-proof.ts";

@@ -169,6 +169,97 @@ export interface ApplicationPolicyRule {
   requiresApproval: boolean;
 }
 
+/**
+ * Policies for signed integration callbacks do not have a user session, but
+ * they still need an explicit admission rule before an inbox repository can
+ * mutate durable state.  Keeping this registry beside the application and
+ * tool registries prevents a public webhook from becoming an implicit write
+ * authority.
+ */
+export interface IntegrationPolicyRule {
+  operation: "integration.inbox";
+  allowedAlgorithms: readonly ["HMAC-SHA256"];
+  providerPattern: RegExp;
+  requiresRawBody: true;
+}
+
+export const INTEGRATION_POLICY_REGISTRY: readonly IntegrationPolicyRule[] = [
+  { operation: "integration.inbox", allowedAlgorithms: ["HMAC-SHA256"], providerPattern: /^[a-z][a-z0-9._:-]{1,119}$/, requiresRawBody: true }
+];
+
+export interface IntegrationPolicyRequest {
+  operation: string;
+  provider: string;
+  signatureAlgorithm: string;
+  signatureKeyRef: string;
+  signature: string;
+  rawBody?: string;
+}
+
+export class IntegrationPolicyError extends Error {
+  readonly code = "INTEGRATION_POLICY_DENIED" as const;
+
+  constructor(message: string) {
+    super(message);
+    this.name = "IntegrationPolicyError";
+  }
+}
+
+/** Fail-closed policy admission for provider callbacks before persistence. */
+export function assertIntegrationCallbackAllowed(request: IntegrationPolicyRequest): void {
+  const rule = INTEGRATION_POLICY_REGISTRY.find((candidate) => candidate.operation === request.operation);
+  if (!rule) throw new IntegrationPolicyError("A operação de integração não possui uma policy registrada.");
+  if (!rule.providerPattern.test(request.provider)) throw new IntegrationPolicyError("O provider do callback não é reconhecido pela policy.");
+  if (!rule.allowedAlgorithms.includes(request.signatureAlgorithm as "HMAC-SHA256")) throw new IntegrationPolicyError("O algoritmo de assinatura do callback não é permitido.");
+  if (!/^[A-Za-z0-9._:-]{1,160}$/.test(request.signatureKeyRef)) throw new IntegrationPolicyError("A referência da chave do callback é inválida.");
+  if (!/^[A-Fa-f0-9]{64,256}$/.test(request.signature)) throw new IntegrationPolicyError("A assinatura do callback é inválida.");
+  if (rule.requiresRawBody && (!request.rawBody || request.rawBody.length === 0)) throw new IntegrationPolicyError("O corpo bruto assinado é obrigatório para o callback.");
+}
+
+/** The internal scrape route has no user context; its network admission is
+ * enforced by the runtime route catalog. This guard still rejects malformed
+ * tenant scope before the repository-facing metrics adapter is called. */
+export function assertInternalMetricsPolicy(organizationId: string): void {
+  if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/.test(organizationId)) throw new Error("internal metrics organization scope is invalid");
+}
+
+export interface WorkerPolicyRule {
+  lane: "outbox" | "jobs" | "schedule" | "reconciliation" | "notifications" | "maintenance";
+  jobType: string;
+  operation: string;
+  requiresIdempotencyKey: true;
+  requiresOrganizationScope: true;
+}
+
+/** Canonical admission registry for every durable worker job type. */
+export const WORKER_POLICY_REGISTRY: readonly WorkerPolicyRule[] = [
+  { lane: "outbox", jobType: "outbox.dispatch", operation: "worker.outbox.dispatch", requiresIdempotencyKey: true, requiresOrganizationScope: true },
+  { lane: "jobs", jobType: "storage.verify", operation: "worker.jobs.storage.verify", requiresIdempotencyKey: true, requiresOrganizationScope: true },
+  { lane: "schedule", jobType: "schedule.tick", operation: "worker.schedule.tick", requiresIdempotencyKey: true, requiresOrganizationScope: true },
+  { lane: "reconciliation", jobType: "external.reconcile", operation: "worker.reconciliation.external", requiresIdempotencyKey: true, requiresOrganizationScope: true },
+  { lane: "notifications", jobType: "communication.dispatch", operation: "worker.notifications.dispatch", requiresIdempotencyKey: true, requiresOrganizationScope: true },
+  { lane: "maintenance", jobType: "maintenance.cleanup", operation: "worker.maintenance.cleanup", requiresIdempotencyKey: true, requiresOrganizationScope: true }
+];
+
+/** Test-only policy seam. It is intentionally separate from the production registry. */
+export const WORKER_TEST_POLICY_REGISTRY: readonly WorkerPolicyRule[] = [
+  ...WORKER_POLICY_REGISTRY,
+  { lane: "jobs", jobType: "synthetic.rebuild", operation: "worker.jobs.rebuild.test", requiresIdempotencyKey: true, requiresOrganizationScope: true }
+];
+
+export function workerPolicyFor(lane: WorkerPolicyRule["lane"], jobType: string, registry: readonly WorkerPolicyRule[] = WORKER_POLICY_REGISTRY): WorkerPolicyRule | null {
+  return registry.find((rule) => rule.lane === lane && rule.jobType === jobType) ?? null;
+}
+
+export function enforceWorkerPolicy(input: { lane: WorkerPolicyRule["lane"]; jobType: string; organizationId: string; idempotencyKey: string; payload: Record<string, unknown> }, registry: readonly WorkerPolicyRule[] = WORKER_POLICY_REGISTRY): WorkerPolicyRule {
+  const rule = workerPolicyFor(input.lane, input.jobType, registry);
+  if (!rule) throw new Error(`worker job ${input.lane}/${input.jobType} has no registered policy`);
+  if (rule.requiresOrganizationScope && !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/.test(input.organizationId)) throw new Error("worker job organization scope is invalid");
+  if (rule.requiresIdempotencyKey && !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/.test(input.idempotencyKey)) throw new Error("worker job idempotency key is invalid");
+  if (!input.payload || typeof input.payload !== "object" || Array.isArray(input.payload)) throw new Error("worker job payload is invalid");
+  return rule;
+}
+
 export interface ApplicationPolicyAuthorizationOptions {
   resourceId?: OpaqueId | null;
   dataClass?: DataClass;
@@ -288,7 +379,9 @@ export const APPLICATION_POLICY_REGISTRY: readonly ApplicationPolicyRule[] = [
   applicationRule("metrics.read", "metrics:read", ["admin", "operador"], d4),
   applicationRule("ops.snapshot", "ops:snapshot", ["admin"], d4, "MEDIUM"),
   applicationRule("ops.export", "ops:export", ["admin"], d4, "MEDIUM"),
-  applicationRule("ops.restore", "ops:restore", ["admin"], d4, "MEDIUM")
+  applicationRule("ops.restore", "ops:restore", ["admin"], d4, "MEDIUM"),
+  applicationRule("security.break_glass.activate", "security:break-glass:activate", ["admin"], d4, "MEDIUM"),
+  applicationRule("security.break_glass.assert", "security:break-glass:assert", ["admin"], d4, "MEDIUM")
 ];
 
 const toolPolicy = (

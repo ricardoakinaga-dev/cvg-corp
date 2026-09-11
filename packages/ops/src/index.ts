@@ -19,6 +19,29 @@ export interface RedactedLog {
 
 export type TelemetryAttribute = string | number | boolean | null;
 
+/** Stable correlation contract carried across HTTP, AI, worker and provider boundaries. */
+export interface TelemetryCorrelationContext {
+  requestId: string | null;
+  correlationId: string | null;
+  sessionId: string | null;
+  toolInvocationId: string | null;
+  jobId: string | null;
+  outboxId: string | null;
+  providerRequestId: string | null;
+}
+
+export function correlationAttributes(context: TelemetryCorrelationContext): Record<string, TelemetryAttribute> {
+  return {
+    requestId: context.requestId,
+    correlationId: context.correlationId,
+    sessionId: context.sessionId,
+    toolInvocationId: context.toolInvocationId,
+    jobId: context.jobId,
+    outboxId: context.outboxId,
+    providerRequestId: context.providerRequestId
+  };
+}
+
 export interface OtelSpan {
   traceId: string;
   spanId: string;
@@ -104,6 +127,10 @@ export class OpsTelemetry {
     return started;
   }
 
+  startCorrelatedSpan(name: string, context: TelemetryCorrelationContext, attributes: Record<string, TelemetryAttribute> = {}) {
+    return this.startSpan(name, { ...correlationAttributes(context), ...attributes });
+  }
+
   finishSpan(span: { traceId: string; spanId: string; name: string; startedAt: number; attributes: Record<string, TelemetryAttribute> }, statusCode: number): void {
     const finished: OtelSpan = { ...span, finishedAt: Date.now(), statusCode, attributes: this.redactAttributes(span.attributes) };
     if (this.spans.length >= this.maxSpans) {
@@ -148,7 +175,7 @@ export class OpsTelemetry {
       quarantined: 0,
       ...signals.domain
     };
-    const queues: CvgMetrics["queues"] = { outboxDepth: 0, oldestAgeMs: 0, poisonMessages: 0, reconciliationLag: 0, ...signals.queues };
+    const queues: CvgMetrics["queues"] = { outboxDepth: 0, oldestAgeMs: 0, poisonMessages: 0, reconciliationLag: 0, workerHeartbeatAgeMs: 0, workerHeartbeatCount: 0, ...signals.queues };
     return {
       requestsTotal: this.requestsTotal,
       requestsDenied: this.requestsDenied,
@@ -212,6 +239,12 @@ export function renderPrometheusMetrics(metrics: CvgMetrics): string {
     "# HELP cvg_reconciliation_lag External effects awaiting reconciliation.",
     "# TYPE cvg_reconciliation_lag gauge",
     `cvg_reconciliation_lag ${metrics.queues.reconciliationLag}`,
+    "# HELP cvg_worker_heartbeat_age_seconds Age of the oldest durable worker heartbeat observed by this process.",
+    "# TYPE cvg_worker_heartbeat_age_seconds gauge",
+    `cvg_worker_heartbeat_age_seconds ${Math.max(0, metrics.queues.workerHeartbeatAgeMs ?? 0) / 1_000}`,
+    "# HELP cvg_worker_heartbeat_count Number of durable worker heartbeat records observed by this process.",
+    "# TYPE cvg_worker_heartbeat_count gauge",
+    `cvg_worker_heartbeat_count ${Math.max(0, metrics.queues.workerHeartbeatCount ?? 0)}`,
     "# HELP cvg_outcome_unknown_total Command receipts with an unknown external outcome.",
     "# TYPE cvg_outcome_unknown_total gauge",
     `cvg_outcome_unknown_total ${metrics.domain.outcomeUnknown}`,

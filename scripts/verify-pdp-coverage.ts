@@ -4,6 +4,7 @@ import { API_ROUTE_CATALOG } from "@cvg/contracts";
 import { applicationPolicyFor, APPLICATION_POLICY_REGISTRY, toolPolicyFor, TOOL_POLICY_REGISTRY } from "@cvg/agent-policy";
 import { TOOL_REGISTRY } from "@cvg/harness";
 import { inspectApplicationPdpBoundaries, type PdpBoundarySource } from "./pdp-boundary.ts";
+import { inspectHttpRouteInventory } from "./pdp-route-inventory.ts";
 
 const failures: string[] = [];
 const apiSources = await Promise.all([
@@ -29,6 +30,8 @@ const applicationPdpInspection = inspectApplicationPdpBoundaries([
   ...await collectApplicationSources("apps/api/src/application"),
   { path: "packages/harness/src/index.ts", source: await readFile("packages/harness/src/index.ts", "utf8") }
 ]);
+const routeInventory = inspectHttpRouteInventory(await collectApplicationSources("apps/api/src"), API_ROUTE_CATALOG);
+for (const finding of routeInventory.findings) failures.push(`HTTP inventory ${finding.path}:${finding.line} ${finding.code}: ${finding.detail}`);
 for (const violation of applicationPdpInspection.findings) {
   const method = violation.method ? `.${violation.method}` : "";
   const operation = violation.operation ? ` (${violation.operation})` : "";

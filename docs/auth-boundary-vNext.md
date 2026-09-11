@@ -15,6 +15,23 @@ Esta boundary separa credencial, desafio, sessão, dispositivo e recuperação d
 - Recuperação devolve a mesma forma de resposta para usuário conhecido ou desconhecido, consome o desafio e o código de recuperação uma única vez, gira a credencial e abre uma sessão marcada como recuperada/MFA.
 - Listagem e revogação de sessões são escopadas ao próprio usuário, com CSRF nas mutações e auditoria em cada decisão.
 
+## Leitura de identidade e contexto
+
+As rotas não acessam `CvgStore` diretamente para `getUser`, `contextOptions`,
+`resolveContext` ou `listUsers`. Essas leituras atravessam o
+`ReadApplicationService`, que aplica a policy de aplicação nas operações
+`identity.read`, `contexts.read` e `users.read` antes de consultar o repository.
+
+Há três exceções pré-contexto, mantidas em métodos explícitos e somente de
+delegação: a recuperação do usuário durante login/MFA/recuperação, a listagem
+de opções necessária para montar uma sessão e a seleção inicial de contexto.
+Nessa fase ainda não existe um `CvgContext`; portanto não é possível avaliar o
+PDP contextual. `requestContext` aplica a policy vinculada à requisição
+imediatamente após a seleção. O guard estático falha se qualquer rota criar uma
+nova chamada direta aos quatro métodos protegidos. Consultas de credencial
+(`getUserByLogin`) e de challenge/session permanecem no boundary de
+autenticação pré-contexto e não expõem dados de domínio.
+
 ## Durabilidade e configuração
 
 A migration aditiva `db/migrations/020_auth_security_boundary.sql` adiciona o estado de segurança aos usuários/sessões e cria `auth_challenges` com FK organizacional, RLS forçado, expiração, tentativas e versão de credencial. O parser de configuração exige MFA, rotação e host não-loopback em `production`; o runtime verifica referências resolvíveis de MFA para usuários ativos e falha fechado quando a autoridade não existe. Readiness não promove provider `DEGRADED` para runtime DeepSeek habilitado.
@@ -27,6 +44,8 @@ Variáveis relevantes: `CVG_AUTH_MFA_MODE`, `CVG_PASSWORD_MIN_LENGTH`, `CVG_PASS
 
 ## Break-glass e WebAuthn
 
-`BreakGlassRegistry` implementa a política provider-neutral de ativação explícita, aprovação independente WebAuthn, TTL máximo de 15 minutos, expiração lazy, revogação e revisão pós-evento. A classe não é autoridade de persistência nem habilita acesso sozinha: sem provider criptográfico WebAuthn/passkey, persistência autorizada e decisão humana, a operação permanece bloqueada.
+`BreakGlassRegistry` implementa a política provider-neutral de ativação explícita, aprovação independente WebAuthn, TTL máximo de 15 minutos, expiração lazy, revogação e revisão pós-evento. `verifyWebAuthnAssertionCryptographically` valida `clientDataJSON`, challenge/origin, `rpIdHash`, user-presence/user-verification, contador monotônico e assinatura sobre `authenticatorData || SHA-256(clientDataJSON)` usando a chave pública registrada. A classe não é autoridade de persistência nem habilita acesso sozinha: registro de credencial, provider/passkey real, persistência autorizada e decisão humana continuam externos.
+
+O teste local gera uma chave RSA efêmera, valida um assertion assinado e rejeita assinatura adulterada, contador repetido e `rpId` divergente. Isso comprova a fronteira criptográfica do adapter, não a posse de um autenticador físico nem a aprovação operacional de break-glass.
 
 Essa evidência não autoriza produção: ainda faltam banco limpo production-like, secret manager/KMS, TLS/HTTPS no ambiente-alvo, rate limit distribuído, sessões compartilhadas, recuperação por canal aprovado, testes de browsers adicionais, revisão independente sem limitações e aprovação humana de risco.

@@ -4,6 +4,7 @@ export function useMobileMenu() {
   const [mobileMenu, setMobileMenu] = useState(false);
   const [mobileViewport, setMobileViewport] = useState(false);
   const sidebarRef = useRef<HTMLElement | null>(null);
+  const mainShellRef = useRef<HTMLDivElement | null>(null);
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
   const menuToggleRef = useRef<HTMLButtonElement | null>(null);
 
@@ -21,6 +22,10 @@ export function useMobileMenu() {
   }, []);
 
   useEffect(() => {
+    if (!mobileViewport) setMobileMenu(false);
+  }, [mobileViewport]);
+
+  useEffect(() => {
     const sidebar = sidebarRef.current;
     if (!sidebar) return;
     const managed = sidebar as HTMLElement & { inert?: boolean };
@@ -28,6 +33,16 @@ export function useMobileMenu() {
     if (mobileViewport) sidebar.setAttribute("aria-hidden", String(!mobileMenu));
     else sidebar.removeAttribute("aria-hidden");
     if (mobileViewport && mobileMenu) closeButtonRef.current?.focus();
+  }, [mobileMenu, mobileViewport]);
+
+  useEffect(() => {
+    const mainShell = mainShellRef.current;
+    if (!mainShell) return;
+    const managed = mainShell as HTMLElement & { inert?: boolean };
+    const backgroundBlocked = mobileViewport && mobileMenu;
+    managed.inert = backgroundBlocked;
+    if (backgroundBlocked) mainShell.setAttribute("aria-hidden", "true");
+    else mainShell.removeAttribute("aria-hidden");
   }, [mobileMenu, mobileViewport]);
 
   useEffect(() => {
@@ -55,5 +70,5 @@ export function useMobileMenu() {
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [closeMobileMenu, mobileMenu, mobileViewport]);
 
-  return { mobileMenu, setMobileMenu, sidebarRef, closeButtonRef, menuToggleRef, closeMobileMenu };
+  return { mobileMenu, setMobileMenu, sidebarRef, mainShellRef, closeButtonRef, menuToggleRef, closeMobileMenu };
 }

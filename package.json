@@ -80,7 +80,7 @@
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "tsx": "^4.20.5",
-    "zod": "^4.1.5"
+    "zod": "^4.6.4"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.13.0",

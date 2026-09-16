@@ -55,6 +55,17 @@ candidate SHA será congelado após o commit).
 - Documentação: auditoria, proviniência, 5 ADRs, arquitetura final, data flow,
   threat model, security review, red team, rollout, comparison, verification,
   evals e 8 runbooks.
+- Executor de aplicação vinculado: `cvg.patient.read`, `cvg.agenda.read` e
+  `cvg.clinical.draft` resolvem leituras governadas com projeção mínima e
+  revalidação de escopo; tools de efeito sem binding falham fechado.
+- Custos: pricing opcional por operador (`CVG_EMBEDDED_MODEL_PRICING_JSON`) com
+  revisão e teto global (`CVG_AI_MAX_COST_MICROS`); sem preço, o custo permanece
+  explicitamente desconhecido.
+- Estados de IA na UI: disponibilidade (`/ai/health`), falhas distintas
+  (indisponível/aguardando aprovação/limite/negado/reconciliação), prévia de
+  aprovação completa (operação, efeito, risco, alvo, escopo, digest, expiração)
+  e rótulo `AI_GENERATED_DRAFT`.
+- Chaos local (7 falhas) e baseline de carga (1–50 sessões) com artefatos.
 
 ## TESTED (real, local)
 
@@ -70,6 +81,10 @@ candidate SHA será congelado após o commit).
 | `verify:agent-runtime-smoke` | PASS (session → tool → approval → checkpoint → resume → drain) |
 | `verify:architecture` | PASS (domainImports=0, applicationProviderImports=0) |
 | `verify:pdp-universal` / `verify:pdp` | PASS |
+| `verify:agent-chaos` | PASS (7 falhas: provider down, timeout, tool OUTCOME_UNKNOWN, ledger, restart em approval, persistência de outcome unknown, budget port; sem corrupção de domínio) |
+| `benchmark:agent-runtime` | baseline local 1/5/10/25/50 sessões; concorrência limitada a 8 com backpressure (8 aceitos, 42 rejeitados em 50) |
+| `verify:assistant-state` (testes) | PASS (estados de IA e prévia de aprovação) |
+| `agent-tool-executor` (integração) | PASS (projeção mínima, escopo cruzado negado, argumentos do modelo não redirecionam recurso, efeitos sem binding falham fechado) |
 
 ## EXTERNAL BLOCKERS
 
@@ -97,12 +112,16 @@ encontrou HIGH/MEDIUM reais, que foram reparados nesta rodada:
 
 Achados residuais assumidos:
 
-- **HIGH (limitação de prova):** o executor de tool ligado à camada de aplicação é
-  injetável e o default é sintético; ligar leituras reais de aplicação é o próximo
-  passo da camada de aplicação.
-- **MEDIUM:** as correções SQL de fence/sequência não foram executadas contra
-  PostgreSQL real nesta máquina (sem Docker/PostgreSQL); os testes atuais usam um
-  executor com semântica de guarda. Prova real permanece pendente de staging.
+- **HIGH (fechado):** o executor de aplicação agora resolve leituras reais
+  governadas (`patient.read`, `agenda.read`, `clinical.draft`) com projeção mínima
+  e revalidação de escopo; `communication.stage`, `stock.dispense` e
+  `finance.refund` permanecem sem binding e falham fechado (nenhum sucesso
+  sintético). Ligar comandos de efeito exige um binding de aplicação dedicado e
+  aprovação de produto.
+- **MEDIUM:** as correções SQL de fence/sequência agora são exercitadas pelo
+  `verify:postgres` (RLS, fence stale, sequência global, append-only, round-trip
+  de checkpoint) sempre que houver PostgreSQL autorizado — em CI e staging. Nesta
+  máquina (sem Docker/PostgreSQL) permanecem `NOT_RUN` localmente.
 - **MEDIUM:** `disabledPlugins` só é aplicado quando um `pluginRuntime` é injetado;
   a API não registra plugins hoje (sem plugins de produção).
 - **LOW:** `/api/v1/ai/ready` usa `auth: PUBLIC` no catálogo (metadado sem dado de

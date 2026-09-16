@@ -5,6 +5,7 @@ import { id } from "@cvg/contracts";
 import { digest } from "@cvg/domain";
 import { OutboxWorker, type ExternalEffectQueryAdapter } from "@cvg/integrations";
 import { OutboxLeaseLostError, PersistenceConflictError, PersistenceStateError, PostgresPersistence, type DurableInboxInput } from "@cvg/persistence";
+import { AgentSessionError, PostgresAgentSessionStore, createScopedSqlExecutor } from "@cvg/agent-session";
 
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) {
@@ -622,4 +623,68 @@ try {
   await contenderB.close();
 }
 
-console.log(JSON.stringify({ postgres: "PASS", restartRead: "PASS", normalizedReads: "PASS", diagnosticRequest: "PASS", diagnosticSpecimen: "PASS", diagnosticResult: "PASS", diagnosticChildIntegrity: "PASS", idempotency: "PASS", outbox: "PASS", externalEffects: "PASS", inbox: "PASS", usageLedger: "PASS", breakGlass: "PASS", cas: "PASS", rls: "PASS", rlsDomainTables: catalogProtection.domainTables, rlsProtectedTables: catalogProtection.protectedTables, organizationForeignKeys: catalogProtection.organizationForeignKeys, runtimeRole, migrationPrivileges, receiptId: firstResult.receiptId, counts }, null, 2));
+// Agent runtime session state against real PostgreSQL: tenant-scoped RLS,
+// monotonic leases/fences, append-only ledger and tamper-evident checkpoints.
+let agentSessionProof: Record<string, unknown> = { status: "NOT_RUN" };
+{
+  const agentPool = new pg.Pool({ connectionString: databaseUrl, max: 3, application_name: "cvg-agent-runtime-verify" });
+  try {
+    const store = new PostgresAgentSessionStore(createScopedSqlExecutor({
+      connect: async () => {
+        const client = await agentPool.connect();
+        return { query: async (text: string, params: readonly unknown[]) => ({ rows: (await client.query(text, params as unknown[])).rows as Record<string, unknown>[] }), release: () => client.release() };
+      }
+    }));
+    const organizationId = String(second.store.bootstrapCredentials.organizationId);
+    const actorId = String(second.store.bootstrapCredentials.userId);
+    const option = second.store.contextOptions(second.store.bootstrapCredentials.userId)[0];
+    if (!option) throw new Error("agent session verification requires a context option");
+    const sessionId = randomUUID();
+    await store.create({ sessionId, organizationId, actorId, unitId: String(option.unit.id), workspaceId: String(option.workspace.id), purpose: "SUMMARY", taskObjective: "verify-postgres agent session", ttlMs: 120_000 });
+    const leaseA = await store.acquireLease({ sessionId, organizationId, ownerId: "verify-instance-a", ttlMs: 120_000 });
+    if (!leaseA || leaseA.fence !== 1) throw new Error(`agent lease A expected fence 1, observed ${JSON.stringify(leaseA)}`);
+    const leaseB = await store.acquireLease({ sessionId, organizationId, ownerId: "verify-instance-b", ttlMs: 120_000 });
+    if (leaseB !== null) throw new Error("a live agent lease must block a second owner");
+    const checkpoint = await store.checkpoint({ sessionId, organizationId, fence: leaseA.fence, payload: { turn: 1, state: "WAITING_APPROVAL" } });
+    if (checkpoint.sequence !== 1) throw new Error(`checkpoint sequence expected 1, observed ${checkpoint.sequence}`);
+    await expectSqlRejected(agentPool, "stale-fence checkpoint", "insert into agent_checkpoints (session_id, organization_id, sequence, schema_version, digest, payload, fence) values ($1,$2,99,1,$3,'{}'::jsonb,0)", [sessionId, organizationId, "a".repeat(64)]);
+    let staleRejected = false;
+    try {
+      await store.checkpoint({ sessionId, organizationId, fence: leaseA.fence + 5, payload: { forged: true } });
+    } catch (error) {
+      staleRejected = error instanceof AgentSessionError && error.code === "DENIED_STALE_FENCE";
+    }
+    if (!staleRejected) throw new Error("the agent session store must reject a future fence with DENIED_STALE_FENCE");
+    const firstTurn = await store.appendTurn({ turnId: randomUUID(), sessionId, organizationId, sequence: 0, status: "COMPLETED", inputDigest: digest({ turn: 1 }), contextDigest: null, modelRequestDigest: null, modelResponseDigest: null, toolRequestIds: [], usageRecordId: null, provenance: { provider: "verify" }, startedAt: new Date().toISOString(), completedAt: new Date().toISOString(), fence: leaseA.fence });
+    const secondTurn = await store.appendTurn({ turnId: randomUUID(), sessionId, organizationId, sequence: 0, status: "COMPLETED", inputDigest: digest({ turn: 2 }), contextDigest: null, modelRequestDigest: null, modelResponseDigest: null, toolRequestIds: [], usageRecordId: null, provenance: { provider: "verify" }, startedAt: new Date().toISOString(), completedAt: new Date().toISOString(), fence: leaseA.fence });
+    if (firstTurn.sequence !== 1 || secondTurn.sequence !== 2) throw new Error(`agent turn sequence expected 1,2 observed ${firstTurn.sequence},${secondTurn.sequence}`);
+    let immutableRejected = false;
+    try {
+      await agentPool.query("update agent_turns set status = 'FAILED' where turn_id = $1", [firstTurn.turnId]);
+    } catch {
+      immutableRejected = true;
+    }
+    if (!immutableRejected) throw new Error("agent turn ledger must be append-only");
+    const latest = await store.latestCheckpoint(sessionId, { organizationId, actorId });
+    if (!latest || latest.sequence !== 1 || latest.payload["state"] !== "WAITING_APPROVAL") throw new Error("latest checkpoint did not round-trip");
+    let staleCompletionRejected = false;
+    try {
+      await store.complete({ sessionId, organizationId, fence: leaseA.fence + 7, runState: "COMPLETED" });
+    } catch (error) {
+      staleCompletionRejected = error instanceof AgentSessionError && error.code === "DENIED_STALE_FENCE";
+    }
+    if (!staleCompletionRejected) throw new Error("stale completion must be rejected");
+    const completed = await store.complete({ sessionId, organizationId, fence: leaseA.fence, runState: "COMPLETED" });
+    if (completed.runState !== "COMPLETED") throw new Error("agent session completion did not persist");
+    const unscoped = await agentPool.query<{ count: number }>("select count(*)::int as count from agent_sessions");
+    if (Number(unscoped.rows[0]?.count ?? -1) !== 0) throw new Error("agent_sessions leaked rows without a tenant GUC (RLS failure)");
+    await store.releaseLease({ sessionId, organizationId, ownerId: leaseA.ownerId, fence: leaseA.fence });
+    agentSessionProof = { status: "PASS", fence: leaseA.fence, checkpointSequence: checkpoint.sequence, turnSequences: [firstTurn.sequence, secondTurn.sequence], appendOnly: true, rlsUnscopedRows: 0 };
+  } catch (error) {
+    await agentPool.end();
+    throw error;
+  }
+  await agentPool.end();
+}
+
+console.log(JSON.stringify({ postgres: "PASS", restartRead: "PASS", normalizedReads: "PASS", diagnosticRequest: "PASS", diagnosticSpecimen: "PASS", diagnosticResult: "PASS", diagnosticChildIntegrity: "PASS", idempotency: "PASS", outbox: "PASS", externalEffects: "PASS", inbox: "PASS", usageLedger: "PASS", breakGlass: "PASS", cas: "PASS", rls: "PASS", agentSession: agentSessionProof, rlsDomainTables: catalogProtection.domainTables, rlsProtectedTables: catalogProtection.protectedTables, organizationForeignKeys: catalogProtection.organizationForeignKeys, runtimeRole, migrationPrivileges, receiptId: firstResult.receiptId, counts }, null, 2));

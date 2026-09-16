@@ -72,6 +72,8 @@ export interface ModelUsage {
   costMicros: number | null;
   currency: string | null;
   source: "PROVIDER" | "LOCAL_SYNTHETIC" | "UNAVAILABLE";
+  /** Operator-supplied pricing revision; null when cost is unknown or synthetic. */
+  pricingRevision?: string | null;
 }
 
 export type ModelFinishReason = "stop" | "length" | "tool_calls" | "content_filter" | "error";

@@ -84,6 +84,7 @@ import { DisabledAgentRuntime } from "@cvg/agent-runtime";
 import { DeepSeekHarnessAdapter, MockHarnessAdapter } from "@cvg/harness-adapters";
 import { AgentRuntimeUnavailableError } from "@cvg/agent-runtime";
 import { EmbeddedAgentRuntime } from "@cvg/embedded-agent-runtime";
+import { createAgentToolExecutor } from "./agent-tool-executor.ts";
 import { PostgresAgentSessionStore, createScopedSqlExecutor } from "@cvg/agent-session";
 import { createDeepSeekModelProvider, createLocalModelProvider, MockModelProvider } from "@cvg/model-adapters";
 import { configuredSecretProvider, IntegrationGateway, inboxEventToOutbox, integrationContracts, isSecretReferenceUsable, OutboxWorker, reconcileUnknownExternalEffect, verifyMessagingCallback, type ExternalEffectQueryAdapter, type OutboxSink, type OutboxWorkerResult, type SecretProvider, type SecretProviderStatus } from "@cvg/integrations";
@@ -116,6 +117,12 @@ import { BreakGlassApplicationService, type BreakGlassScopeAuthority, type Break
 function createEmbeddedRuntimeAdapter(config: ServerConfig, secretProvider: SecretProvider | null | undefined, store: CvgStore): AgentRuntime {
   const allowedDataClasses = config.embeddedModelAllowedDataClasses;
   const bearerRef = config.deepseekBearerTokenRef;
+  // Operator-supplied pricing only; absence keeps cost explicitly unknown.
+  const pricing = (() => {
+    if (!config.embeddedModelPricingJson) return null;
+    const parsed = JSON.parse(config.embeddedModelPricingJson) as { inputMicrosPerToken: number; outputMicrosPerToken: number; currency: string; revision: string };
+    return parsed;
+  })();
   const provider = config.embeddedModelProvider === "deepseek"
     ? createDeepSeekModelProvider({
         ...(config.embeddedModelBaseUrl ? { baseUrl: config.embeddedModelBaseUrl } : {}),
@@ -126,7 +133,8 @@ function createEmbeddedRuntimeAdapter(config: ServerConfig, secretProvider: Secr
         },
         allowedDataClasses,
         timeoutMs: config.embeddedModelTimeoutMs,
-        allowInsecureHttp: config.nodeEnv !== "production"
+        allowInsecureHttp: config.nodeEnv !== "production",
+        ...(pricing ? { pricing } : {})
       })
     : config.embeddedModelProvider === "local"
       ? createLocalModelProvider({
@@ -134,7 +142,8 @@ function createEmbeddedRuntimeAdapter(config: ServerConfig, secretProvider: Secr
           model: config.embeddedModelName ?? "local-model",
           allowedDataClasses,
           timeoutMs: config.embeddedModelTimeoutMs,
-          allowInsecureHttp: config.nodeEnv !== "production"
+          allowInsecureHttp: config.nodeEnv !== "production",
+          ...(pricing ? { pricing } : {})
         })
       : new MockModelProvider();
   // Dedicated pool for agent-runtime session state: AI load must not consume
@@ -156,8 +165,11 @@ function createEmbeddedRuntimeAdapter(config: ServerConfig, secretProvider: Secr
   return new EmbeddedAgentRuntime({
     store,
     modelProvider: provider,
+    // Real governed application reads; effect tools stay unbound and fail closed.
+    toolExecutor: createAgentToolExecutor({ store }),
     controls: () => ({ aiEnabled: true, safeMode: config.aiSafeMode, disabledProviders: config.aiDisabledProviders, disabledTools: config.aiDisabledTools, disabledPlugins: [] }),
     maxConcurrentTurns: config.aiMaxConcurrentTurns,
+    maxCostMicros: config.aiMaxCostMicros,
     ...(sessionStore ? { sessionStore } : {}),
     ...(closePool ? { onClose: closePool } : {}),
     ...(config.embeddedRuntimeCommit ? { runtimeCommit: config.embeddedRuntimeCommit } : {})
@@ -214,6 +226,8 @@ export interface ServerConfig {
   embeddedModelTimeoutMs: number;
   embeddedModelAllowedDataClasses: ("D0" | "D1" | "D2" | "D3" | "D4" | "D5")[];
   embeddedRuntimeCommit: string | null;
+  embeddedModelPricingJson: string | null;
+  aiMaxCostMicros: number | null;
   secretDir: string;
   workerOrganizationId: string | null;
   secretProvider: "none" | "env" | "file" | "docker" | "vault" | "aws" | "gcp" | "azure" | "kubernetes";
@@ -439,6 +453,8 @@ function getConfig(overrides: Partial<ServerConfig> = {}): ServerConfig {
     embeddedModelTimeoutMs: overrides.embeddedModelTimeoutMs ?? typed.embeddedModelTimeoutMs,
     embeddedModelAllowedDataClasses: overrides.embeddedModelAllowedDataClasses ?? typed.embeddedModelAllowedDataClasses,
     embeddedRuntimeCommit: overrides.embeddedRuntimeCommit ?? typed.embeddedRuntimeCommit,
+    embeddedModelPricingJson: overrides.embeddedModelPricingJson ?? typed.embeddedModelPricingJson,
+    aiMaxCostMicros: overrides.aiMaxCostMicros ?? typed.aiMaxCostMicros,
     secretDir: overrides.secretDir ?? typed.secretDir,
     workerOrganizationId: overrides.workerOrganizationId ?? typed.workerOrganizationId,
     secretProvider: overrides.secretProvider ?? typed.secretProvider,
@@ -446,7 +462,7 @@ function getConfig(overrides: Partial<ServerConfig> = {}): ServerConfig {
     rateLimitRequestsPerWindow: overrides.rateLimitRequestsPerWindow ?? typed.rateLimitRequestsPerWindow,
     rateLimitWindowSeconds: overrides.rateLimitWindowSeconds ?? typed.rateLimitWindowSeconds
   });
-  return { nodeEnv: validated.nodeEnv, host: validated.host, trustProxy: validated.trustProxy, trustedProxyIps: [...validated.trustedProxyIps], port: validated.apiPort, webOrigin: validated.webOrigin, releaseSha: validated.releaseSha, releaseArtifactDigest: validated.releaseArtifactDigest, storageMode: validated.storageMode, demoMode: validated.demoMode, sessionTtlMinutes: validated.sessionTtlMinutes, authMfaMode: validated.authMfaMode, passwordMinLength: validated.passwordMinLength, passwordMaxAgeDays: validated.passwordMaxAgeDays, authMaxFailedAttempts: validated.authMaxFailedAttempts, authIdentifierRateLimit: validated.authIdentifierRateLimit, authIpRateLimit: validated.authIpRateLimit, authLockoutMinutes: validated.authLockoutMinutes, authChallengeTtlSeconds: validated.authChallengeTtlSeconds, authMaxChallengeAttempts: validated.authMaxChallengeAttempts, databaseUrl: validated.databaseUrl, bootstrapPassword: validated.bootstrapPassword, deepseekBaseUrl: validated.deepseekBaseUrl, deepseekRuntimeEnabled: validated.deepseekRuntimeEnabled, deepseekExpectedEngineCommit: validated.deepseekExpectedEngineCommit, deepseekExpectedManifestVersion: validated.deepseekExpectedManifestVersion, deepseekBearerTokenRef: validated.deepseekBearerTokenRef, deepseekContextSigningSecretRef: validated.deepseekContextSigningSecretRef, recoveryEncryptionKeyRef: validated.recoveryEncryptionKeyRef, agentRuntimeMode: validated.agentRuntimeMode, aiSafeMode: validated.aiSafeMode, aiDisabledProviders: [...validated.aiDisabledProviders], aiDisabledTools: [...validated.aiDisabledTools], aiMaxConcurrentTurns: validated.aiMaxConcurrentTurns, embeddedModelProvider: validated.embeddedModelProvider, embeddedModelBaseUrl: validated.embeddedModelBaseUrl, embeddedModelName: validated.embeddedModelName, embeddedModelTimeoutMs: validated.embeddedModelTimeoutMs, embeddedModelAllowedDataClasses: [...validated.embeddedModelAllowedDataClasses], embeddedRuntimeCommit: validated.embeddedRuntimeCommit, secretDir: validated.secretDir, workerOrganizationId: validated.workerOrganizationId, secretProvider: validated.secretProvider, rateLimitBackend: validated.rateLimitBackend, rateLimitRequestsPerWindow: validated.rateLimitRequestsPerWindow, rateLimitWindowSeconds: validated.rateLimitWindowSeconds };
+  return { nodeEnv: validated.nodeEnv, host: validated.host, trustProxy: validated.trustProxy, trustedProxyIps: [...validated.trustedProxyIps], port: validated.apiPort, webOrigin: validated.webOrigin, releaseSha: validated.releaseSha, releaseArtifactDigest: validated.releaseArtifactDigest, storageMode: validated.storageMode, demoMode: validated.demoMode, sessionTtlMinutes: validated.sessionTtlMinutes, authMfaMode: validated.authMfaMode, passwordMinLength: validated.passwordMinLength, passwordMaxAgeDays: validated.passwordMaxAgeDays, authMaxFailedAttempts: validated.authMaxFailedAttempts, authIdentifierRateLimit: validated.authIdentifierRateLimit, authIpRateLimit: validated.authIpRateLimit, authLockoutMinutes: validated.authLockoutMinutes, authChallengeTtlSeconds: validated.authChallengeTtlSeconds, authMaxChallengeAttempts: validated.authMaxChallengeAttempts, databaseUrl: validated.databaseUrl, bootstrapPassword: validated.bootstrapPassword, deepseekBaseUrl: validated.deepseekBaseUrl, deepseekRuntimeEnabled: validated.deepseekRuntimeEnabled, deepseekExpectedEngineCommit: validated.deepseekExpectedEngineCommit, deepseekExpectedManifestVersion: validated.deepseekExpectedManifestVersion, deepseekBearerTokenRef: validated.deepseekBearerTokenRef, deepseekContextSigningSecretRef: validated.deepseekContextSigningSecretRef, recoveryEncryptionKeyRef: validated.recoveryEncryptionKeyRef, agentRuntimeMode: validated.agentRuntimeMode, aiSafeMode: validated.aiSafeMode, aiDisabledProviders: [...validated.aiDisabledProviders], aiDisabledTools: [...validated.aiDisabledTools], aiMaxConcurrentTurns: validated.aiMaxConcurrentTurns, embeddedModelProvider: validated.embeddedModelProvider, embeddedModelBaseUrl: validated.embeddedModelBaseUrl, embeddedModelName: validated.embeddedModelName, embeddedModelTimeoutMs: validated.embeddedModelTimeoutMs, embeddedModelAllowedDataClasses: [...validated.embeddedModelAllowedDataClasses], embeddedRuntimeCommit: validated.embeddedRuntimeCommit, embeddedModelPricingJson: validated.embeddedModelPricingJson, aiMaxCostMicros: validated.aiMaxCostMicros, secretDir: validated.secretDir, workerOrganizationId: validated.workerOrganizationId, secretProvider: validated.secretProvider, rateLimitBackend: validated.rateLimitBackend, rateLimitRequestsPerWindow: validated.rateLimitRequestsPerWindow, rateLimitWindowSeconds: validated.rateLimitWindowSeconds };
 }
 
 function tokenDigest(value: string): string {

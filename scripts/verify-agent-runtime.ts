@@ -22,6 +22,11 @@ for (const marker of ["implements AgentRuntime", "createGovernedToolGateway", "A
   if (!embedded.includes(marker)) failures.push(`embedded runtime is missing ${marker}`);
 }
 if (!embedded.includes("DENIED_STALE_FENCE")) failures.push("embedded runtime must surface DENIED_STALE_FENCE");
+const apiHost = read("apps/api/src/app.ts");
+if (!apiHost.includes("createAgentToolExecutor({ store })")) failures.push("the API must bind the governed application tool executor for the embedded runtime");
+const executorSource = read("apps/api/src/agent-tool-executor.ts");
+if (!executorSource.includes("AgentToolExecutorNotBoundError")) failures.push("unbound effect tools must fail closed");
+if (!executorSource.includes("isInContext")) failures.push("the tool executor must re-validate scope for every read");
 if (!embedded.includes("AI_DISABLED")) failures.push("embedded runtime must surface the AI disable state");
 
 const manifestRuntime = read("packages/agent-runtime/src/runtime-manifest.ts");

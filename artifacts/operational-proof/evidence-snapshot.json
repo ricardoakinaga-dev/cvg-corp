@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "capturedAt": "2026-09-16T05:45:32.704Z",
-  "sourceSha": "f53f9eb3e5a44240823f29cbf7307a52f6b5a139",
+  "capturedAt": "2026-09-16T06:05:15.119Z",
+  "sourceSha": "e68ed05e74ee64f6d0ab5b15b027df6eb390e1d7",
   "worktree": "MODIFIED",
   "prompt": {
     "path": "docs/prompt-final-operational-proof-2026-09-10.txt",
@@ -69,5 +69,5 @@
       "declaredObservedAt": "2026-09-14T07:38:06.878Z"
     }
   ],
-  "runId": "5e607b1168a97b46e39d61f30a6cd48f352b052307c34350925097ae4777b695"
+  "runId": "d47934c4ab7e13a05fc9e58f02201f260ad718d803446108f3c28c60d26ec038"
 }

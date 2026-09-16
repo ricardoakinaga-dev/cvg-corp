@@ -74,7 +74,7 @@ export class MockModelProvider implements ModelProvider {
     const step = this.options.script?.length ? this.options.script[Math.min(this.index, this.options.script.length - 1)] : undefined;
     this.index += 1;
     if (step === undefined) {
-      return this.response({ kind: "MESSAGE", content: `[mock] ${request.purpose}` }, request, { inputTokens: estimateRequestTokens(request), outputTokens: 8, costMicros: 0, currency: "USD", source: "LOCAL_SYNTHETIC" });
+      return this.response({ kind: "MESSAGE", content: `[mock] ${request.purpose}` }, request, { inputTokens: estimateRequestTokens(request), outputTokens: 8, costMicros: 0, currency: "USD", source: "LOCAL_SYNTHETIC", pricingRevision: "local-no-charge-v1" });
     }
     return typeof step === "function" ? step(request) : step;
   }
@@ -101,10 +101,19 @@ export class MockModelProvider implements ModelProvider {
   }
 }
 
+export interface ModelPricing {
+  inputMicrosPerToken: number;
+  outputMicrosPerToken: number;
+  currency: string;
+  revision: string;
+}
+
 export interface OpenAiCompatibleProviderConfig {
   providerId: string;
   baseUrl: string;
   model: string;
+  /** Optional operator-supplied pricing; without it cost stays explicitly unknown. */
+  pricing?: ModelPricing | null;
   /** Resolved per call from the SecretProvider; never stored on the provider object. */
   apiKeyResolver: () => string | null | Promise<string | null>;
   capabilities?: Partial<ModelProviderCapabilities>;
@@ -244,12 +253,16 @@ export class OpenAiCompatibleProvider implements ModelProvider {
     const choice = parsed.choices?.[0];
     const message = choice?.message;
     const finishReason = mapFinishReason(choice?.finish_reason);
+    const inputTokens = parsed.usage?.prompt_tokens ?? estimateRequestTokens(request);
+    const outputTokens = parsed.usage?.completion_tokens ?? estimateTextTokens(message?.content ?? "");
+    const pricing = this.config.pricing ?? null;
     const usage: ModelUsage = {
-      inputTokens: parsed.usage?.prompt_tokens ?? estimateRequestTokens(request),
-      outputTokens: parsed.usage?.completion_tokens ?? estimateTextTokens(message?.content ?? ""),
-      costMicros: null,
-      currency: null,
-      source: parsed.usage ? "PROVIDER" : "UNAVAILABLE"
+      inputTokens,
+      outputTokens,
+      costMicros: pricing ? Math.round(inputTokens * pricing.inputMicrosPerToken + outputTokens * pricing.outputMicrosPerToken) : null,
+      currency: pricing ? pricing.currency : null,
+      source: parsed.usage ? "PROVIDER" : "UNAVAILABLE",
+      pricingRevision: pricing ? pricing.revision : null
     };
     const responseDigest = createHash("sha256").update(rawText).digest("hex");
     const toolCall = message?.tool_calls?.[0];
@@ -309,6 +322,7 @@ export class OpenAiCompatibleProvider implements ModelProvider {
 }
 
 export interface DeepSeekProviderConfig {
+  pricing?: ModelPricing | null;
   model?: string;
   baseUrl?: string;
   apiKeyResolver: () => string | null | Promise<string | null>;
@@ -330,6 +344,7 @@ export function createDeepSeekModelProvider(config: DeepSeekProviderConfig): Ope
     providerId: "deepseek",
     baseUrl: config.baseUrl ?? "https://api.deepseek.com",
     model: config.model ?? DEEPSEEK_DEFAULT_MODEL,
+    ...(config.pricing ? { pricing: config.pricing } : {}),
     apiKeyResolver: config.apiKeyResolver,
     capabilities: { toolCalling: true, structuredOutput: true, streaming: true, reasoning: true, ...(config.capabilities ?? {}) },
     dataPolicy: {
@@ -348,6 +363,7 @@ export function createDeepSeekModelProvider(config: DeepSeekProviderConfig): Ope
 export interface LocalProviderConfig {
   baseUrl: string;
   model: string;
+  pricing?: ModelPricing | null;
   apiKeyResolver?: () => string | null | Promise<string | null>;
   allowedDataClasses?: readonly DataClass[];
   timeoutMs?: number;
@@ -363,6 +379,7 @@ export function createLocalModelProvider(config: LocalProviderConfig): OpenAiCom
     providerId: "local",
     baseUrl: config.baseUrl,
     model: config.model,
+    ...(config.pricing ? { pricing: config.pricing } : {}),
     apiKeyResolver: config.apiKeyResolver ?? (() => "local"),
     capabilities: { toolCalling: true, structuredOutput: true, streaming: true, ...(config.capabilities ?? {}) },
     dataPolicy: { allowedDataClasses: config.allowedDataClasses ?? ["D0", "D1", "D2", "D3", "D4"], region: "on-prem", retention: "NONE", training: "NONE" },

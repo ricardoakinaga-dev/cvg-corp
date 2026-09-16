@@ -5,6 +5,16 @@ import { PageHeader, StatePanel, StatusBadge } from "../../components/ui";
 import { formatDate } from "../../state/formatters";
 import { Knowledge } from "../knowledge/Knowledge";
 import type { ContextOption } from "../../state/types";
+import {
+  approvalPreview,
+  availabilityFromReadiness,
+  availabilityPresentation,
+  failureMessageForError,
+  outcomeFromTurn,
+  outcomePresentation,
+  type ApprovalLike,
+  type AssistantAvailability
+} from "./assistant-state";
 
 type TurnReference = { title: string; source: string };
 type TurnProvenance = {
@@ -18,10 +28,10 @@ type TurnProvenance = {
 };
 type AiTurn = { id: string; sessionId: string; prompt: string; response: string | null; status: string; model: string; inputTokens: number; outputTokens: number; references: TurnReference[]; createdAt: string; provenance?: TurnProvenance };
 type AiSessionRead = { id: string; purpose: string; createdAt: string; turns: number };
-type TurnResult = { session?: { id: string } | null; turn: AiTurn; approval: { id: string; toolName: string } | null; provenance: TurnProvenance | null; receiptId: string };
+type TurnResult = { session?: { id: string } | null; turn: AiTurn; approval: ApprovalLike | null; provenance: TurnProvenance | null; receiptId: string };
 type Patient = { id: string; name: string; species: string };
 type Encounter = { id: string; patientId: string; patient: { name: string } | null };
-type CopilotResponse = { text: string; approval: { id: string; toolName: string } | null; quarantined: boolean; status: string; model: string | null; createdAt: string | null; references: TurnReference[]; provenance: TurnProvenance | null; usage: { inputTokens: number; outputTokens: number } | null };
+type CopilotResponse = { text: string; approval: ApprovalLike | null; quarantined: boolean; status: string; model: string | null; createdAt: string | null; references: TurnReference[]; provenance: TurnProvenance | null; usage: { inputTokens: number; outputTokens: number } | null };
 
 const TURN_STATUS: Record<string, { label: string; tone: "teal" | "amber" | "coral" | "slate" }> = {
   COMPLETED: { label: "derivado", tone: "teal" },
@@ -63,6 +73,7 @@ export function Copilot({ client, context, notify, canWrite, prompt, onPromptCha
   const [patientId, setPatientId] = useState("");
   const [encounterId, setEncounterId] = useState("");
   const [replaying, setReplaying] = useState(false);
+  const [availability, setAvailability] = useState<AssistantAvailability>("UNKNOWN");
   const submissionKey = useRef<string | null>(null);
   const approvalKey = useRef<string | null>(null);
 
@@ -86,6 +97,19 @@ export function Copilot({ client, context, notify, canWrite, prompt, onPromptCha
   }, [client, context]);
 
   useEffect(() => { void loadSessions(); void loadBindings(); }, [loadSessions, loadBindings]);
+
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      try {
+        const readiness = await client.get<{ status?: string }>("/ai/health", context);
+        if (active) setAvailability(availabilityFromReadiness(readiness));
+      } catch {
+        if (active) setAvailability("UNKNOWN");
+      }
+    })();
+    return () => { active = false; };
+  }, [client, context]);
 
   const idempotencyKey = (): string => {
     submissionKey.current ??= crypto.randomUUID();
@@ -119,7 +143,7 @@ export function Copilot({ client, context, notify, canWrite, prompt, onPromptCha
       onPromptChange("");
       await loadSessions();
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Copiloto indisponível.");
+      setError(failureMessageForError(reason));
     } finally {
       setLoading(false);
     }
@@ -174,11 +198,17 @@ export function Copilot({ client, context, notify, canWrite, prompt, onPromptCha
   };
 
   const turnPresentation = response ? TURN_STATUS[response.status] ?? { label: response.status, tone: "slate" as const } : { label: "recebido", tone: "slate" as const };
+  const outcome = response ? outcomeFromTurn({ status: response.status, approval: response.approval !== null, quarantined: response.quarantined }) : null;
+  const outcomeInfo = outcome ? outcomePresentation(outcome) : null;
+  const availabilityInfo = availabilityPresentation(availability);
+  const approvalDetails = response?.approval ? approvalPreview(response.approval, response.text) : null;
+  const aiDraft = Boolean(response && purpose === "DRAFT_CLINICAL" && response.status === "COMPLETED" && !response.quarantined);
   const encounterOptions = encounters.filter((encounter) => !patientId || encounter.patientId === patientId);
 
   return (
     <>
       <PageHeader eyebrow="INTELIGÊNCIA GOVERNADA" title="Copiloto" description="Contexto mínimo, resposta rastreável e nenhuma ação silenciosa." />
+      {availability !== "READY" && <div className={`inline-note note-${availabilityInfo.tone}`} role="status"><Icon name="alert" size={16} /><div><strong>{availabilityInfo.label}</strong><span>{availabilityInfo.message}</span></div></div>}
       <div className="segmented" role="group" aria-label="Seção de IA">
         <button className={section === "copilot" ? "selected" : undefined} aria-pressed={section === "copilot"} type="button" onClick={() => setSection("copilot")}>Sessões e turnos</button>
         <button className={section === "knowledge" ? "selected" : undefined} aria-pressed={section === "knowledge"} type="button" onClick={() => setSection("knowledge")}>Conhecimento</button>
@@ -212,8 +242,25 @@ export function Copilot({ client, context, notify, canWrite, prompt, onPromptCha
       </div>
       {response && <section className={`surface copilot-response ${response.quarantined ? "response-quarantined" : ""}`}>
         <div className="surface-head"><div><span className="eyebrow">RESULTADO DO TURNO</span><h2>{response.quarantined ? "Conteúdo retido" : "Resposta para revisão"}</h2></div><StatusBadge tone={turnPresentation.tone}>{turnPresentation.label}</StatusBadge></div>
+        {outcomeInfo && <div className="inline-note note-slate" role="status"><Icon name="alert" size={16} /><div><strong>{outcomeInfo.label}</strong><span>{outcomeInfo.message}</span></div></div>}
+        {aiDraft && <div className="inline-note note-amber" role="status"><Icon name="spark" size={16} /><div><strong>AI_GENERATED_DRAFT</strong><span>Texto gerado por IA: rascunho derivado, não é fato clínico nem documento assinado.</span></div></div>}
         <p>{response.text}</p>
-        {response.approval && <div className="approval-card"><div className="approval-icon"><Icon name="alert" size={18} /></div><div><strong>Confirmação necessária · {response.approval.toolName}</strong><span>Esta capability não executará nada sem sua decisão explícita.</span></div><button className="button button-dark" type="button" onClick={() => void approve("allowed-once")} disabled={!canWrite}>Permitir uma vez</button><button className="button button-ghost" type="button" onClick={() => void approve("rejected")} disabled={!canWrite}>Negar</button></div>}
+        {response.approval && approvalDetails && <div className="approval-card"><div className="approval-icon"><Icon name="alert" size={18} /></div><div className="approval-body">
+          <strong>Confirmação necessária · {approvalDetails.tool}</strong>
+          <dl className="approval-details">
+            <div><dt>Operação</dt><dd>{approvalDetails.operation}</dd></div>
+            <div><dt>Efeito</dt><dd>{approvalDetails.effect}</dd></div>
+            <div><dt>Risco declarado</dt><dd>{approvalDetails.risk}</dd></div>
+            <div><dt>Alvo</dt><dd>{approvalDetails.target}</dd></div>
+            <div><dt>Recurso</dt><dd>{approvalDetails.resource}</dd></div>
+            <div><dt>Unidade / workspace</dt><dd>{approvalDetails.scope}</dd></div>
+            <div><dt>Finalidade</dt><dd>{approvalDetails.purpose}</dd></div>
+            <div><dt>Digest da solicitação</dt><dd>{approvalDetails.requestDigest}</dd></div>
+            <div><dt>Expira em</dt><dd>{approvalDetails.expiresAt ? formatDate(approvalDetails.expiresAt) : "não informado"}</dd></div>
+          </dl>
+          <div className="approval-preview"><span className="eyebrow">PRÉVIA DO CONTEÚDO</span><p>{approvalDetails.preview}</p></div>
+          <span>Esta capability não executará nada sem sua decisão explícita.</span>
+        </div><div className="approval-actions"><button className="button button-dark" type="button" onClick={() => void approve("allowed-once")} disabled={!canWrite}>Permitir uma vez</button><button className="button button-ghost" type="button" onClick={() => void approve("rejected")} disabled={!canWrite}>Negar</button></div></div>}
         <div className="provenance-row">
           <span><Icon name="check" size={14} />modelo: {provenanceValue(response.model)}</span>
           <span><Icon name="check" size={14} />provider: {provenanceValue(response.provenance?.provider)}</span>

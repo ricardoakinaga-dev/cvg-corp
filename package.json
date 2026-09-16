@@ -65,6 +65,8 @@
     "verify:architecture": "tsx scripts/verify-architecture.ts",
     "verify:agent-runtime": "tsx scripts/verify-agent-runtime.ts",
     "verify:agent-runtime-smoke": "tsx scripts/verify-agent-runtime-smoke.ts",
+    "verify:agent-chaos": "tsx scripts/verify-agent-chaos.ts",
+    "benchmark:agent-runtime": "tsx scripts/benchmark-agent-runtime.ts",
     "verify:embedded-harness": "tsx scripts/verify-embedded-harness.ts",
     "verify:agent-security": "tsx scripts/verify-agent-security.ts",
     "verify:plugins": "tsx scripts/verify-plugins.ts",

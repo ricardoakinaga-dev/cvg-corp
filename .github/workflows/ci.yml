@@ -99,6 +99,29 @@ jobs:
       - name: Authoritative write invariants
         run: npm run verify:authoritative-writes
 
+      - name: Agent runtime architecture and kernel
+        run: |
+          npm run verify:architecture
+          npm run verify:agent-runtime
+          npm run verify:agent-runtime-smoke
+
+      - name: Embedded harness governance
+        run: |
+          npm run verify:embedded-harness
+          npm run verify:agent-security
+          npm run verify:plugins
+          npm run verify:skills
+
+      - name: Agent evals and AI-disabled continuity
+        run: |
+          npm run verify:agent-evals
+          npm run verify:ai-disabled
+
+      - name: Agent chaos and load baseline
+        run: |
+          npm run verify:agent-chaos
+          npm run benchmark:agent-runtime
+
       - name: Contrast audit
         run: npm run audit:contrast
 

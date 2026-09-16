@@ -29,6 +29,8 @@ const gates = [
   "verify:agent-evals",
   "verify:ai-disabled",
   "verify:agent-runtime-smoke",
+  "verify:agent-chaos",
+  "benchmark:agent-runtime",
   "verify:evidence-snapshot",
   "test:e2e:smoke:serial",
   "verify:evidence-snapshot",

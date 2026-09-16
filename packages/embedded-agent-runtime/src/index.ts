@@ -182,6 +182,18 @@ export interface EmbeddedTurnDiagnostics {
   fence: number | null;
 }
 
+export interface AgentRuntimeSupportBundle {
+  runtimeVersion: string;
+  runtimeCommit: string;
+  manifest: RuntimeManifest;
+  manifestDigest: string;
+  health: { status: AgentRuntimeHealth["status"]; reason: string | null; checkedAt: string };
+  supervisor: SupervisorSnapshot;
+  controls: { aiEnabled: boolean; safeMode: boolean; disabledProviders: readonly string[]; disabledTools: readonly string[]; disabledPlugins: readonly string[] };
+  toolNames: readonly string[];
+  limitations: readonly string[];
+}
+
 export interface EmbeddedAgentRuntimeOptions {
   store: CvgStore;
   modelProvider: ModelProvider;
@@ -201,6 +213,8 @@ export interface EmbeddedAgentRuntimeOptions {
   drainDeadlineMs?: number;
   modelRetryAttempts?: number;
   allowProviderFallback?: boolean;
+  /** Global cost ceiling in micros; null keeps the profile value (which may be null/PROPOSED). */
+  maxCostMicros?: number | null;
 }
 
 interface TurnRunState {
@@ -214,6 +228,9 @@ interface TurnRunState {
   model: string | null;
   modelResponseDigests: string[];
   usageSource: "PROVIDER" | "LOCAL_SYNTHETIC" | "UNAVAILABLE" | null;
+  costMicros: number | null;
+  currency: string | null;
+  pricingRevision: string | null;
   sanitized: boolean;
   usedDataClasses: DataClass[];
   contextDigest: string | null;
@@ -231,6 +248,9 @@ function emptyRunState(): TurnRunState {
     model: null,
     modelResponseDigests: [],
     usageSource: null,
+    costMicros: null,
+    currency: null,
+    pricingRevision: null,
     sanitized: false,
     usedDataClasses: [],
     contextDigest: null
@@ -285,6 +305,30 @@ export class EmbeddedAgentRuntime implements AgentRuntime {
 
   supervisorSnapshot(): SupervisorSnapshot {
     return this.supervisor.snapshot();
+  }
+
+  /**
+   * Sanitized diagnostic bundle: version, manifest, health, supervisor and
+   * control state.  It never contains prompts, clinical payload, secrets or
+   * provider credentials.
+   */
+  async supportBundle(): Promise<AgentRuntimeSupportBundle> {
+    const health = await this.health();
+    const controls = this.controls();
+    return {
+      runtimeVersion: EMBEDDED_RUNTIME_VERSION,
+      runtimeCommit: this.runtimeCommit,
+      manifest: this.runtimeManifest(),
+      manifestDigest: this.runtimeManifestDigest(),
+      health: { status: health.status, reason: health.reason, checkedAt: health.checkedAt },
+      supervisor: this.supervisor.snapshot(),
+      controls: { aiEnabled: controls.aiEnabled, safeMode: controls.safeMode, disabledProviders: [...controls.disabledProviders], disabledTools: [...controls.disabledTools], disabledPlugins: [...controls.disabledPlugins] },
+      toolNames: TOOL_REGISTRY.map((tool) => tool.name),
+      limitations: [
+        "No prompts, clinical payloads, secrets or provider credentials are included.",
+        "Retention policies for session state remain PROPOSED until human approval."
+      ]
+    };
   }
 
   capabilities(): AgentRuntimeCapabilities {
@@ -522,7 +566,7 @@ export class EmbeddedAgentRuntime implements AgentRuntime {
       maxToolCalls: profile.budgets.maxToolCalls,
       maxTokens: profile.budgets.maxTokens,
       maxWallTimeMs: profile.budgets.maxWallTimeMs,
-      maxCostMicros: profile.budgets.maxCostMicros,
+      maxCostMicros: this.options.maxCostMicros ?? profile.budgets.maxCostMicros,
       maxFailures: profile.budgets.maxFailures,
       maxRepeatedToolCalls: 2
     };
@@ -700,6 +744,11 @@ export class EmbeddedAgentRuntime implements AgentRuntime {
       runState.providerId = response.providerId;
       runState.model = response.model;
       runState.usageSource = response.usage.source;
+      if (response.usage.costMicros !== null) {
+        runState.costMicros = (runState.costMicros ?? 0) + response.usage.costMicros;
+        runState.currency = response.usage.currency;
+        runState.pricingRevision = response.usage.pricingRevision ?? null;
+      }
       runState.modelResponseDigests.push(response.responseDigest);
       const reply = response.reply.kind === "MESSAGE"
         ? ({ kind: "MESSAGE", content: response.reply.content } as const)
@@ -1198,19 +1247,20 @@ export class EmbeddedAgentRuntime implements AgentRuntime {
     const outputTokens = options.outputTokens ?? 0;
     const reservedUnits = options.reservedUnits ?? options.runState.reservedUnits;
     const consumedUnits = options.consumedUnits ?? inputTokens + outputTokens;
+    const costKnown = options.runState.costMicros !== null;
     const settlement = buildAiUsageSettlement({
       model,
       inputTokens,
       outputTokens,
       providerResponseDigest: options.runState.modelResponseDigests.length > 0 ? kernelDigest(options.runState.modelResponseDigests) : null,
-      estimatedCostMicros: null,
-      actualCostMicros: null,
-      currency: null,
-      costSource: "UNAVAILABLE",
-      pricingRevision: null,
-      discrepancy: "NOT_EVALUATED",
-      discrepancyDeltaMicros: null,
-      discrepancyReason: "provider pricing evidence was not supplied"
+      estimatedCostMicros: options.runState.costMicros,
+      actualCostMicros: options.runState.costMicros,
+      currency: options.runState.currency,
+      costSource: costKnown ? "PROVIDER" : "UNAVAILABLE",
+      pricingRevision: options.runState.pricingRevision,
+      discrepancy: costKnown ? "MATCHED" : "NOT_EVALUATED",
+      discrepancyDeltaMicros: costKnown ? 0 : null,
+      discrepancyReason: costKnown ? null : "provider pricing evidence was not supplied"
     });
     const unknownUsage = options.runState.usageSource === null || options.runState.usageSource === "UNAVAILABLE";
     const usageStatus: AiTurnUsage["status"] = options.usageStatus ?? (status === "OUTCOME_UNKNOWN" || (status === "COMPLETED" && unknownUsage) ? "RECONCILIATION_REQUIRED" : status === "RECEIVED" ? "RECEIVED" : status === "QUARANTINED" ? "QUARANTINED" : "SETTLED");

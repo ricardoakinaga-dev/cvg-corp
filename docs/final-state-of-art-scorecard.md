@@ -21,9 +21,9 @@
 | 5 | Authorization | null | PROVEN_LOCAL | `verify:pdp-universal` (85 operações, 88 regras); `verify:pdp` | PDP de produção ainda exige homologação humana |
 | 6 | PDP | null | PROVEN_LOCAL | `scripts/verify-pdp-universal.ts`; `packages/agent-policy/src/index.ts` | — |
 | 7 | Tool Gateway | null | PROVEN_LOCAL | `packages/agent-tools/src/index.ts`; `createGovernedToolGateway`; receipts duráveis em `store.commandReceipts` | Executor de aplicação real ainda é injetável (sintético por padrão) |
-| 8 | Agent Runtime | null | PROVEN_LOCAL | `verify:agent-runtime` (46 testes focados); `verify:agent-runtime-smoke` (session/tool/approval/checkpoint/resume/drain) | Execução multi-instância com PostgreSQL real não exercitada |
+| 8 | Agent Runtime | null | PROVEN_LOCAL | `verify:agent-runtime` (55 testes focados); `verify:agent-runtime-smoke`; `verify:agent-chaos` (7 falhas + retomada após restart); `benchmark:agent-runtime` (1–50 sessões, backpressure em 8) | Execução multi-instância com PostgreSQL real coberta por `verify:postgres` (CI/staging), não executada nesta máquina |
 | 9 | Embedded Harness | null | PROVEN_LOCAL | `verify:embedded-harness` (17 artefatos, 43 testes); decisão HYBRID; 0 arquivos upstream incorporados | Paridade com o harness externo não é pretendida nem medida |
-| 10 | Plugin Security | null | PROVEN_LOCAL | `verify:plugins` (manifesto, digest, allowlist, risco, dependências, ciclo, crash) | Sandbox de plugins HIGH/UNTRUSTED não implementado (não exigido sem plugin real) |
+| 10 | Plugin Security | null | PROVEN_LOCAL | `verify:plugins` (manifesto, digest, allowlist, risco, dependências, ciclo, crash); kill switch de plugin aplicado pelo runtime quando `pluginRuntime` é injetado | Sandbox de plugins HIGH/UNTRUSTED não implementado (não exigido sem plugin real); API não registra plugins hoje |
 | 11 | Skill Governance | null | PROVEN_LOCAL | `verify:skills` (schema, digest, requirementos, quarentena, frontmatter) | Nenhuma skill aprovada em produção |
 | 12 | Context Governance | null | PROVEN_LOCAL | `tests/unit/agent-context.test.ts`; firewall estrutural + findings; projeção mínima | Custo de token real por provider não medido |
 | 13 | Database | null | NOT_RUN | migrations 001–037 aplicadas em evidência anterior; migration 038 escrita | 038 não aplicada/validada localmente (sem PostgreSQL/Docker) |
@@ -32,12 +32,12 @@
 | 16 | DeepSeek Integration | null | BLOCKED_EXTERNAL | `verify:deepseek-real` ausente de credenciais; `verify:state-of-art-external` → BLOCKED_EXTERNAL | Nenhum turno real executado |
 | 17 | AI Governance | null | PROVEN_LOCAL | PDP + approval one-shot + kill switches + `AI_SAFE_MODE` + `/api/v1/ai/ready` | Sem prova de runtime sob carga real |
 | 18 | Provider Integration | null | BLOCKED_EXTERNAL | `verify:provider-real` requer endpoint/token reais | Callbacks reais e reconciliação externa não executados |
-| 19 | Frontend | null | PARTIAL | UI existente de copiloto/approval; estados de degradação de IA | Ajustes de UX de degradação pendentes de revisão visual |
+| 19 | Frontend | null | PROVEN_LOCAL | Estados de IA (`apps/web/src/features/copilot/assistant-state.ts`), banner de degradação via `/ai/health`, prévia de aprovação completa e rótulo AI_GENERATED_DRAFT; testes unitários e E2E de copiloto verdes | Revisão visual dedicada e leitor de tela permanecem fora desta rodada |
 | 20 | Accessibility | null | NOT_RUN_FOR_CHANGE | Matriz axe anterior inalterada | Sem re-execução completa nesta rodada |
 | 21 | Testing | null | PROVEN_LOCAL | `npm test` 480/479 pass + 1 skip; evals 7/7; diferencial 1/1 | Sem cobertura E2E nova para o runtime embarcado |
 | 22 | Observability | null | PARTIAL | `EmbeddedTelemetryPort` + eventos do kernel + `/api/v1/ai/ready` | Sem collector/SLO externos |
-| 23 | Performance | null | NOT_RUN | Nenhum benchmark do kernel executado | Budgets `PROPOSED` |
-| 24 | Recovery | null | PARTIAL | Checkpoint/resume comprovado localmente (`verify:agent-runtime-smoke`) | Backup/restore de `agent_*` e RTO/RPO não medidos |
+| 23 | Performance | null | PROVEN_LOCAL | `benchmark:agent-runtime` (overhead do runtime com provider determinístico; amostras brutas em `artifacts/operational-proof/agent-runtime-load-local.json`) | Sem baseline de provider real; budgets `PROPOSED` |
+| 24 | Recovery | null | PARTIAL | Checkpoint/resume comprovado (`verify:agent-runtime-smoke`); retomada após restart durante WAITING_APPROVAL e persistência de OUTCOME_UNKNOWN (`verify:agent-chaos`) | Backup/restore de `agent_*` e RTO/RPO não medidos |
 | 25 | DevOps | null | PARTIAL | Gates declarados em `package.json`; CI existente inalterado | Nenhum dos novos gates foi adicionado ao workflow CI ainda |
 | 26 | Supply Chain | null | PROVEN_LOCAL | `audit:licenses`; 0 dependências novas; SBOM inalterado | Sem análise CVE do upstream incorporado (porque nada foi incorporado) |
 | 27 | Production Readiness | null | NOT_PROVEN | — | Requer staging, provider real, observability, carga/chaos/recovery e aprovação humana |

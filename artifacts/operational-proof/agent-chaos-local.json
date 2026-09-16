@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-09-16T12:21:41.858Z",
+  "subjectSha": "local",
+  "evidenceClass": "SYNTHETIC",
+  "faults": 7,
+  "results": [
+    {
+      "fault": "model provider down",
+      "observed": "turn=OUTCOME_UNKNOWN",
+      "invariant": "domain intact · no duplicated effect"
+    },
+    {
+      "fault": "model timeout",
+      "observed": "turn=OUTCOME_UNKNOWN",
+      "invariant": "domain intact · no duplicated effect"
+    },
+    {
+      "fault": "tool OUTCOME_UNKNOWN",
+      "observed": "receipts=1 retry=OUTCOME_UNKNOWN",
+      "invariant": "domain intact · no duplicated effect"
+    },
+    {
+      "fault": "session persistence failure",
+      "observed": "turn=OUTCOME_UNKNOWN",
+      "invariant": "domain intact · no duplicated effect"
+    },
+    {
+      "fault": "restart during WAITING_APPROVAL",
+      "observed": "checkpoint=present resume=COMPLETED",
+      "invariant": "domain intact · no duplicated effect"
+    },
+    {
+      "fault": "OUTCOME_UNKNOWN across restart",
+      "observed": "status=OUTCOME_UNKNOWN",
+      "invariant": "domain intact · no duplicated effect"
+    },
+    {
+      "fault": "budget settlement failure",
+      "observed": "modelCalls=0 turn=OUTCOME_UNKNOWN",
+      "invariant": "domain intact · no duplicated effect"
+    }
+  ]
+}

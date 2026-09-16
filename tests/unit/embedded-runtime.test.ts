@@ -152,6 +152,19 @@ test("a consumed approval cannot be reused even when the effect fails", async ()
   assert.equal(replay.turn.status, "DENIED");
 });
 
+test("a known cost cap stops the loop before exceeding the operator budget", async () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const ctx = veterinarian(store);
+  const costly = { ...message("custoso"), usage: { inputTokens: 10, outputTokens: 5, costMicros: 5_000, currency: "USD", source: "PROVIDER" as const, pricingRevision: "pricing-test-1" } };
+  const provider = new MockModelProvider({ script: [costly] });
+  const runtime = new EmbeddedAgentRuntime({ store, modelProvider: provider, runtimeCommit: "test-commit", maxCostMicros: 1_000 });
+  const result = await runtime.executeTurn(ctx, { sessionId: null, prompt: "turno custoso", purpose: "SUMMARY", patientId: null, encounterId: null, requestedTool: null, approvalId: null, idempotencyKey: "embedded-cost-1" });
+  assert.equal(result.turn.status, "DENIED");
+  assert.equal(result.turn.usage?.settlement?.actualCost.amountMicros, 5_000);
+  assert.equal(result.turn.usage?.settlement?.actualCost.source, "PROVIDER");
+  assert.equal(result.turn.usage?.settlement?.actualCost.pricingRevision, "pricing-test-1");
+});
+
 test("unknown provider usage is never settled as if measured", async () => {
   const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
   const ctx = veterinarian(store);
@@ -299,6 +312,22 @@ test("embedded runtime enforces the plugin kill switch before a turn", async () 
   assert.equal(pluginRuntime.snapshot().find((record) => record.name === "sample-plugin")?.state, "DISABLED");
   assert.deepEqual(pluginRuntime.availableCapabilities(), []);
   void runtime;
+});
+
+test("support bundle is sanitized and never carries prompts or secrets", async () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const ctx = veterinarian(store);
+  const { runtime } = makeRuntime(store, [message("resposta")]);
+  await runtime.executeTurn(ctx, { sessionId: null, prompt: "conteúdo clínico confidencial do paciente", purpose: "SUMMARY", patientId: null, encounterId: null, requestedTool: null, approvalId: null, idempotencyKey: "embedded-support-1" });
+  const bundle = await runtime.supportBundle();
+  const serialized = JSON.stringify(bundle);
+  assert.equal(serialized.includes("conteúdo clínico confidencial"), false);
+  assert.equal(serialized.includes("synthetic-password-123"), false);
+  assert.equal(bundle.runtimeVersion, "embedded-agent-runtime/1.0.0");
+  assert.equal(bundle.manifestDigest.length, 64);
+  assert.equal(bundle.toolNames.includes("cvg.patient.read"), true);
+  assert.equal(bundle.supervisor.state, "READY");
+  assert.ok(bundle.limitations.length >= 1);
 });
 
 test("embedded runtime manifests are deterministic and content-bound", async () => {

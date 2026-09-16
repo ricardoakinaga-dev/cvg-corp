@@ -121,6 +121,28 @@ test("deepseek provider normalizes HTTP errors and enforces timeout", async () =
   await assert.rejects(timeout.complete(request()), (error: unknown) => error instanceof ModelProviderError && error.code === "MODEL_TIMEOUT");
 });
 
+test("operator-supplied pricing produces a known, revisioned cost", async () => {
+  const priced = createDeepSeekModelProvider({
+    apiKeyResolver: () => "test-key",
+    pricing: { inputMicrosPerToken: 2, outputMicrosPerToken: 6, currency: "USD", revision: "pricing-2026-09" },
+    fetchImpl: (async () => jsonResponse({ model: "deepseek-v4-flash", choices: [{ message: { content: "ok" }, finish_reason: "stop" }], usage: { prompt_tokens: 10, completion_tokens: 5 } })) as typeof fetch
+  });
+  const response = await priced.complete(request());
+  assert.equal(response.usage.costMicros, 10 * 2 + 5 * 6);
+  assert.equal(response.usage.currency, "USD");
+  assert.equal(response.usage.pricingRevision, "pricing-2026-09");
+});
+
+test("without pricing the cost stays explicitly unknown, never zero", async () => {
+  const unpriced = createDeepSeekModelProvider({
+    apiKeyResolver: () => "test-key",
+    fetchImpl: (async () => jsonResponse({ model: "deepseek-v4-flash", choices: [{ message: { content: "ok" }, finish_reason: "stop" }], usage: { prompt_tokens: 10, completion_tokens: 5 } })) as typeof fetch
+  });
+  const response = await unpriced.complete(request());
+  assert.equal(response.usage.costMicros, null);
+  assert.equal(response.usage.pricingRevision, null);
+});
+
 test("local provider declares on-prem data policy and works without credentials", async () => {
   const local = createLocalModelProvider({
     baseUrl: "http://127.0.0.1:11434",

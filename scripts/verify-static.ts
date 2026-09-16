@@ -41,6 +41,8 @@ const required = [
   "docs/runbooks/agent-runtime-rollback.md",
   "docs/runbooks/embedded-harness-upgrade.md",
   "artifacts/quality/current-state.json",
+  "artifacts/operational-proof/agent-chaos-local.json",
+  "artifacts/operational-proof/agent-runtime-load-local.json",
   "artifacts/quality/last-verification.json",
   "evals/README.md",
   "evals/golden/reception-appointment-confirmation.json",
@@ -67,6 +69,8 @@ const required = [
   "scripts/verify-architecture.ts",
   "scripts/verify-agent-runtime.ts",
   "scripts/verify-agent-runtime-smoke.ts",
+  "scripts/verify-agent-chaos.ts",
+  "scripts/benchmark-agent-runtime.ts",
   "scripts/verify-embedded-harness.ts",
   "scripts/verify-agent-security.ts",
   "scripts/verify-plugins.ts",
@@ -194,7 +198,7 @@ if (!packageManifest.includes("verify:agent-runtime") || !packageManifest.includ
 const contractCatalog = await readFile("packages/contracts/src/api-catalog.ts", "utf8");
 if (!contractCatalog.includes("API_UPCASTERS") || !contractCatalog.includes("upcastApiValue") || !contractCatalog.includes('upcasters: "FAIL_CLOSED_REGISTRY"')) failures.push("packages/contracts/src/api-catalog.ts: API compatibility must expose an executable fail-closed upcaster registry");
 const ciWorkflow = await readFile(".github/workflows/ci.yml", "utf8");
-if (!ciWorkflow.includes("npm run verify:pdp-universal") || !ciWorkflow.includes("npm run verify:audit-chain") || !ciWorkflow.includes("npm run verify:authoritative-writes") || !ciWorkflow.includes("npm run verify:postgres:concurrency") || !ciWorkflow.includes("npm run verify:release-provenance") || !ciWorkflow.includes("npm run verify:evidence-snapshot")) failures.push(".github/workflows/ci.yml: operational proof gates are not executed");
+if (!ciWorkflow.includes("npm run verify:agent-runtime") || !ciWorkflow.includes("npm run verify:embedded-harness") || !ciWorkflow.includes("npm run verify:agent-evals") || !ciWorkflow.includes("npm run verify:agent-chaos") || !ciWorkflow.includes("npm run verify:pdp-universal") || !ciWorkflow.includes("npm run verify:audit-chain") || !ciWorkflow.includes("npm run verify:authoritative-writes") || !ciWorkflow.includes("npm run verify:postgres:concurrency") || !ciWorkflow.includes("npm run verify:release-provenance") || !ciWorkflow.includes("npm run verify:evidence-snapshot")) failures.push(".github/workflows/ci.yml: operational proof gates are not executed");
 const containerJob = /container-build:[\s\S]*?(?=\n  [A-Za-z0-9_-]+:|$)/.exec(ciWorkflow)?.[0] ?? "";
 if (!containerJob.includes("actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020") || !containerJob.includes("npm ci --ignore-scripts")) failures.push(".github/workflows/ci.yml: container provenance job must install the pinned Node toolchain locally");
 if (containerJob.includes("docker image inspect --format '{{.Id}}'")) failures.push(".github/workflows/ci.yml: container provenance must not use a local image ID as a deployable digest");

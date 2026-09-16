@@ -32,7 +32,10 @@ if (!existsSync(statePath)) {
   if (classification === "CURRENT" && dirty) {
     // Fresh evidence is regenerated after the subject commit; only evidence
     // artifacts may be dirty when CURRENT is claimed.
-    const dirtyPaths = (spawnSync("git", ["status", "--porcelain"], { encoding: "utf8" }).stdout ?? "").trim().split("\n").filter(Boolean).map((line) => line.slice(3).trim());
+    const dirtyPaths = (spawnSync("git", ["status", "--porcelain"], { encoding: "utf8" }).stdout ?? "")
+      .split("\n")
+      .filter((line) => line.trim().length > 0)
+      .map((line) => line.slice(3).trim());
     const evidenceOnlyDirty = dirtyPaths.every((path) => path.startsWith("artifacts/"));
     if (!evidenceOnlyDirty) failures.push(`${statePath}: CURRENT cannot be claimed with uncommitted non-evidence changes: ${dirtyPaths.filter((path) => !path.startsWith("artifacts/")).join(", ")}`);
   }

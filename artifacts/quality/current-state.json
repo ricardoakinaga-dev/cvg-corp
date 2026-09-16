@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-17T00:10:00.000Z",
-  "subjectSha": "27ad1653d139207040457d32774356ba30444fc1",
+  "generatedAt": "2026-09-16T21:40:30.000Z",
+  "subjectSha": "0759f7d1c4bc84d3968436aaa64f9741308044b6",
   "classification": "CURRENT",
   "candidateSha": null,
   "engineeringState": "LOCAL_STATE_OF_THE_ART_CANDIDATE",
@@ -16,7 +16,7 @@
     "provider real, staging, observability SLOs, RTO/RPO and container execution remain NOT_RUN"
   ],
   "lastVerification": {
-    "at": "2026-09-17T00:10:00.000Z",
+    "at": "2026-09-16T21:40:30.000Z",
     "artifact": "artifacts/quality/last-verification.json",
     "evidenceClass": "LOCAL_REAL"
   },

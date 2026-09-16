@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "project": "CVG-Corp",
-  "goal": "CVG-Corp State of the Art / Triplo AAA conforme prompt preservado",
+  "goal": "CVG-Corp Embedded Agent Runtime + final Triple AAA closure (HYBRID)",
   "project_profile": "BROWNFIELD",
   "work_mode": "EVOLUTION",
   "work_mode_overlays": [
@@ -10,16 +10,16 @@
     "INTEGRATION",
     "AUDIT"
   ],
-  "lifecycle_stage": "BUILD",
-  "active_activity": "BUILD",
+  "lifecycle_stage": "PROMOTION",
+  "active_activity": "PROMOTION",
   "engineering_tier": "T4_CONTROLS",
   "risk_level": "CRITICAL",
   "blast_radius": "SYSTEM",
   "status": "IN_PROGRESS",
   "active_execplan": ".agent/plans/2026-09-13-aaa2.md",
-  "active_task": "AUD13-16",
-  "verification_state": "READY",
-  "repository_state": "HEAD 1c22c5dc79c52151f4c7c94c4402dfdc86812cbc; worktree modified by AUD13 waves (15 DONE, AUD13-01 DONE local, AUD13-16 IN_PROGRESS, AUD13-02/14/15/17/18/19/20/21/22/23/24/25/27/29 PARTIAL, AUD13-28/30-38 PLANNED, filhos 14A/16A/17A/18A/20A/25A PLANNED) plus pre-existing overlay; npm test 387=386 pass+1 skip+0 fail; test:database 66/66; typecheck/lint/static/build limpos; external evidence BLOCKED_EXTERNAL",
+  "active_task": "EMBEDDED-RUNTIME-LOCAL-CLOSURE",
+  "verification_state": "LOCAL_STATE_OF_THE_ART_CANDIDATE",
+  "repository_state": "HEAD-to-be-committed; worktree carries the embedded agent runtime program; npm test 497 (496 pass, 1 skip, 0 fail); verify:state-of-art 27/27 PASS; external evidence BLOCKED_EXTERNAL",
   "instruction_scope_refs": [
     "docs/prompt-state-of-the-art-triplo-aaa.md",
     "docs/prompt-state-of-the-art-triplo-aaa-2026-09-09-v2.txt",
@@ -51,7 +51,7 @@
   "last_gate_record": null,
   "last_event_id": "EVT-CVG-20260913-AAA2-02-CLOSE-036",
   "state_revision": 352,
-  "latest_evidence_note": "AAA2-02/E01 DONE_WITH_LIMITATION no escopo local apos critica I1 aprovada; AUD13-16 permanece IN_PROGRESS por AUD13-16A/D-02. AAA2-01 permanece DONE local com limitacao; Triplo AAA global e promocao permanecem bloqueados; AAA_NOT_PROVEN.",
+  "latest_evidence_note": "Hybrid embedding decision, embedded kernel/context/session/plugins/skills/model runtime, migration 038, evals 7/7 and 12 new local gates green. AAA_NOT_PROVEN; production and external proofs absent.",
   "historical_checkpoint": {
     "commit": "e43b3b0032aafb9d17563b1fce00fbae88ee0d51",
     "worktree": "modified",
@@ -98,27 +98,16 @@
     "next_gate": "CVG-FULL-STATE-OF-THE-ART:EXTERNAL-EVIDENCE-AND-HUMAN-ACCEPTANCE"
   },
   "blocked_by": [
-    "Docker daemon permission denied on /var/run/docker.sock; local image startup and local resolved-image inspection remain unavailable",
-    "no authorized staging URL or external provider/secret authority; ACP model turn/provider remains unexecuted",
-    "external collector/observability/SLO, load/chaos/recovery, screen-reader/assistive-tech/real-zoom and staging browser evidence not executed",
-    "staging PostgreSQL multi-instance concurrency, managed backup/restore, production job handlers and worker lane operations remain unproven despite local real PostgreSQL multi-process/RLS/CAS/restore evidence, local 32-domain authoritative invariant validation, migration 031, worker policy registry, worker ledger, export/audit-read/clinical-read/operational-read tests",
-    "fresh worker-jobs and PDP critics returned no criterion report after bounded waits and were closed; status is NOT_COMPLETED and not approval",
-    "production release, real data, credential handling, break-glass, retention/residency, RTO/RPO/SLO and residual high/critical risk require human approval",
-    "fresh H-01 critic closed public-domain return aliases and direct governed-map bypasses; residual textual/partial PDP guard remains HIGH locally; no approval was issued",
-    "Docker daemon/staging/provider/secret authority and external operational evidence remain unavailable; the external evidence bundle, same-SHA provenance, independent approvals and human acceptance are absent",
-    "H-02-L remains MEDIUM/advisory: AST now covers direct/bracket/cast/nested-destructuring/function-parameter/function-return aliases and fails closed on dynamic collections; full call-graph/data-flow proof remains external to this local guard",
-    "external evidence bundle/CI same-SHA for current HEAD, separate reviewer authority, staging smoke/shutdown/restart, production-like operations and human approval remain unavailable",
-    "the current local PostgreSQL artifact executes migrations 001-036; staging multi-instance, managed backup, RTO/RPO and production-like promotion remain unproven",
-    "host-native WebKit is unavailable because libgstcodecparsers-1.0.so.0 is missing; the current 153-case matrix used user-local libraries, and Firefox/WebKit did not expose touch points; this does not replace staging or manual assistive review",
-    "recovery validation now enforces the audit chain locally; managed restore, RTO/RPO and staging evidence remain unavailable",
-    "recovery validation now enforces the audit chain and strict authentication timestamps locally; managed restore, RTO/RPO and staging evidence remain unavailable",
-    "recovery validation now rejects incomplete raw authentication state before parseSnapshot while enforcing audit chain and temporal fields locally; managed restore, RTO/RPO and staging evidence remain unavailable",
-    "recovery validation now binds outbox, usage, inbox, external-effect and worker-job digests to immutable content locally; managed restore, RTO/RPO and staging evidence remain unavailable"
+    "external DeepSeek/model execution not authorized (BLOCKED_EXTERNAL)",
+    "no authorized staging, real provider, secret authority, TLS or telemetry collector",
+    "PostgreSQL migration 038 and the agent_* SQL repairs were not executed against real PostgreSQL (no local Docker/PostgreSQL)",
+    "verify:production full browser matrix BLOCKED_ENVIRONMENT: WebKit libgstcodecparsers-1.0.so.0 missing; supported subset test:e2e:smoke:serial PASS (254/22 skips)",
+    "no independent critics signatures, same-SHA CI, or human approvals at this state"
   ],
   "human_approval_required": [
     "production release, real data, real provider, credential handling, break-glass, retention/residency, RTO/RPO/SLO and residual high/critical risk"
   ],
-  "updated_at": "2026-09-13T22:09:07-03:00",
+  "updated_at": "2026-09-16T18:00:00-03:00",
   "latest_remote_observation": {
     "run": "34503647191",
     "sha": "539d34e48e4b94d83d161797219bbc95fb43fec4",
@@ -133,7 +122,7 @@
     "limitations": "Remote CI is not staging or external provider/DeepSeek/secret authority. Operational Collector/SLO, production-like load/chaos/recovery, staging browser/assistive-tech/real-zoom matrix and human acceptance remain absent",
     "observed_at": "2026-09-10T13:50:43-03:00"
   },
-  "next_gate": "AUD13-16:AAA2-02-E01-WAIT-D02",
+  "next_gate": "CI same-SHA -> staging autorizado -> provider real -> observability/load/chaos/recovery -> critics -> human approval",
   "active_action_id": "AUD13-16:AAA2-02-E01-WAIT-D02",
   "active_checkpoint": {
     "task": "AUD13-16",
@@ -165,5 +154,6 @@
     ],
     "result": "VER-CVG-AAA2-02-004: E01 aprovado no escopo local com ressalvas; suite e gates locais passam; PostgreSQL multi-processo, AUD13-16A, gates externos e aprovacao humana permanecem ausentes",
     "globalVerdict": "AAA_NOT_PROVEN"
-  }
+  },
+  "active_plan": "docs/prompt-embedded-agent-runtime-2026-09-16.md"
 }

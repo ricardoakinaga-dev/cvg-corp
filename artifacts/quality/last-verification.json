@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-09-16T18:30:00.000Z",
+  "subjectSha": "e80985b35d8b3b83dca90cecebb42a91180866a0",
+  "status": "STATE_OF_ART_LOCAL_VERIFIED",
+  "gates": {
+    "verify:architecture": "PASS",
+    "verify:agent-runtime": "PASS",
+    "verify:agent-runtime-smoke": "PASS",
+    "verify:embedded-harness": "PASS",
+    "verify:agent-security": "PASS (10 ataques, sem assertion engolida)",
+    "verify:plugins": "PASS",
+    "verify:skills": "PASS",
+    "verify:agent-evals": "PASS",
+    "verify:ai-disabled": "PASS",
+    "verify:pdp-universal": "PASS",
+    "verify:pdp": "PASS",
+    "test": "PASS",
+    "typecheck": "PASS",
+    "verify:state-of-art": "PASS",
+    "test:e2e:smoke:serial": "PASS (254 pass, 22 skipped)"
+  },
+  "external": "BLOCKED_EXTERNAL",
+  "notes": [
+    "cr\u00edtica independente encontrou 3 HIGH e 5 MEDIUM; todos reparados com testes (ver docs/final-triplo-aaa-report.md)",
+    "corre\u00e7\u00f5es SQL de agent_* n\u00e3o executadas contra PostgreSQL real",
+    "verify:production full browser matrix BLOCKED_ENVIRONMENT (WebKit libgstcodecparsers ausente); subset suportado test:e2e:smoke:serial PASS"
+  ]
+}

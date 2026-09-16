@@ -1,0 +1,185 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-09-16T05:45:34.342Z",
+  "subjectSha": "f53f9eb3e5a44240823f29cbf7307a52f6b5a139",
+  "evidenceClass": "LOCAL_REAL",
+  "status": "STATE_OF_ART_LOCAL_VERIFIED",
+  "blockedGates": [
+    {
+      "gate": "verify:production (full browser matrix)",
+      "status": "BLOCKED_ENVIRONMENT",
+      "reason": "WebKit host libraries are missing (libgstcodecparsers-1.0.so.0); the full Playwright matrix cannot launch WebKit on this host",
+      "handling": "The supported local subset test:e2e:smoke (Chromium/Firefox) runs here; the full production structural gate remains a CI/staging requirement with `npx playwright install --with-deps`."
+    },
+    {
+      "gate": "verify:deepseek-real / verify:provider-real / verify:staging / verify:load",
+      "status": "BLOCKED_EXTERNAL",
+      "reason": "no authorized endpoints, credentials, staging URL or load target",
+      "handling": "See artifacts/operational-proof/state-of-art-external.json."
+    }
+  ],
+  "results": [
+    {
+      "gate": "typecheck",
+      "status": "PASS",
+      "exitCode": 0,
+      "seconds": 7.4
+    },
+    {
+      "gate": "lint",
+      "status": "PASS",
+      "exitCode": 0,
+      "seconds": 0.2
+    },
+    {
+      "gate": "test",
+      "status": "PASS",
+      "exitCode": 0,
+      "seconds": 17.4
+    },
+    {
+      "gate": "test:contract",
+      "status": "PASS",
+      "exitCode": 0,
+      "seconds": 0.3
+    },
+    {
+      "gate": "test:security",
+      "status": "PASS",
+      "exitCode": 0,
+      "seconds": 2.7
+    },
+    {
+      "gate": "test:database",
+      "status": "PASS",
+      "exitCode": 0,
+      "seconds": 12.9
+    },
+    {
+      "gate": "test:fault",
+      "status": "PASS",
+      "exitCode": 0,
+      "seconds": 0.4
+    },
+    {
+      "gate": "build",
+      "status": "PASS",
+      "exitCode": 0,
+      "seconds": 7.7
+    },
+    {
+      "gate": "verify:pdp-universal",
+      "status": "PASS",
+      "exitCode": 0,
+      "seconds": 3.5
+    },
+    {
+      "gate": "verify:authoritative-writes",
+      "status": "PASS",
+      "exitCode": 0,
+      "seconds": 0.5
+    },
+    {
+      "gate": "verify:audit-chain",
+      "status": "PASS",
+      "exitCode": 0,
+      "seconds": 0.3
+    },
+    {
+      "gate": "verify:worker-runtime",
+      "status": "PASS",
+      "exitCode": 0,
+      "seconds": 0.7
+    },
+    {
+      "gate": "verify:agent-runtime",
+      "status": "PASS",
+      "exitCode": 0,
+      "seconds": 3.1
+    },
+    {
+      "gate": "verify:embedded-harness",
+      "status": "PASS",
+      "exitCode": 0,
+      "seconds": 0.5
+    },
+    {
+      "gate": "verify:agent-security",
+      "status": "PASS",
+      "exitCode": 0,
+      "seconds": 1.6
+    },
+    {
+      "gate": "verify:plugins",
+      "status": "PASS",
+      "exitCode": 0,
+      "seconds": 0.3
+    },
+    {
+      "gate": "verify:skills",
+      "status": "PASS",
+      "exitCode": 0,
+      "seconds": 0.3
+    },
+    {
+      "gate": "verify:agent-evals",
+      "status": "PASS",
+      "exitCode": 0,
+      "seconds": 1.8
+    },
+    {
+      "gate": "verify:ai-disabled",
+      "status": "PASS",
+      "exitCode": 0,
+      "seconds": 0.8
+    },
+    {
+      "gate": "verify:agent-runtime-smoke",
+      "status": "PASS",
+      "exitCode": 0,
+      "seconds": 0.5
+    },
+    {
+      "gate": "verify:evidence-snapshot",
+      "status": "PASS",
+      "exitCode": 0,
+      "seconds": 0.2
+    },
+    {
+      "gate": "test:e2e:smoke:serial",
+      "status": "PASS",
+      "exitCode": 0,
+      "seconds": 478.2
+    },
+    {
+      "gate": "verify:evidence-snapshot",
+      "status": "PASS",
+      "exitCode": 0,
+      "seconds": 0.2
+    },
+    {
+      "gate": "verify:static",
+      "status": "PASS",
+      "exitCode": 0,
+      "seconds": 1
+    },
+    {
+      "gate": "verify:docs-provenance",
+      "status": "PASS",
+      "exitCode": 0,
+      "seconds": 0.2
+    },
+    {
+      "gate": "verify:claims",
+      "status": "PASS",
+      "exitCode": 0,
+      "seconds": 0.2
+    },
+    {
+      "gate": "audit:licenses",
+      "status": "PASS",
+      "exitCode": 0,
+      "seconds": 0.2
+    }
+  ]
+}

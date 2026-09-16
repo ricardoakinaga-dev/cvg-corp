@@ -75,7 +75,7 @@
     "@agentclientprotocol/sdk": "1.4.0",
     "@fastify/cookie": "^11.0.2",
     "@fastify/cors": "^11.0.1",
-    "fastify": "^5.5.0",
+    "fastify": "^5.12.4",
     "pg": "^8.16.3",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",

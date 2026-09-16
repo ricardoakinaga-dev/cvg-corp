@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-16T22:00:00.000Z",
-  "subjectSha": "3c9eb9d68833852e7f3c90fc67e5054f4bd9a548",
+  "generatedAt": "2026-09-16T22:30:00.000Z",
+  "subjectSha": "73e12081b67217ccfe453262abb25440e223c4d6",
   "status": "STATE_OF_ART_LOCAL_VERIFIED",
   "gates": {
     "verify:architecture": "PASS",
@@ -21,7 +21,8 @@
     "test:e2e:smoke:serial": "PASS (254 pass, 22 skipped)",
     "verify:agent-chaos": "PASS (7 falhas + retomada)",
     "benchmark:agent-runtime": "PASS (1-50 sess\u00f5es; backpressure 8)",
-    "verify:postgres": "CI/local autorizado: agent session RLS/fence/append-only"
+    "verify:postgres": "CI/local autorizado: agent session RLS/fence/append-only",
+    "verify:triplo-aaa": "AAA_NOT_PROVEN (exit 2/incomplete; externos NOT_RUN; production-structural BLOCKED por timeout 180s; demais locais PASS)"
   },
   "external": "BLOCKED_EXTERNAL",
   "notes": [

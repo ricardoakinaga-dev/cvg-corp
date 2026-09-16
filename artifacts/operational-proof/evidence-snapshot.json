@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "capturedAt": "2026-09-16T12:42:51.088Z",
-  "sourceSha": "3c9eb9d68833852e7f3c90fc67e5054f4bd9a548",
+  "capturedAt": "2026-09-16T12:59:57.432Z",
+  "sourceSha": "73e12081b67217ccfe453262abb25440e223c4d6",
   "worktree": "MODIFIED",
   "prompt": {
     "path": "docs/prompt-final-operational-proof-2026-09-10.txt",
@@ -52,22 +52,22 @@
     },
     {
       "path": "artifacts/operational-proof/security-red-team-local.json",
-      "digest": "50cc1c4b830e7895051bc1a33b9a93592d779b15b37cb169382ef592f3f4a4bc",
-      "modifiedAt": "2026-09-14T07:38:00.180Z",
-      "declaredObservedAt": "2026-09-14T07:38:00.179Z"
+      "digest": "658fd85555c8efab166e250fc91871dd9f4d2893de3bcf08cc087b1f8e2ca8b5",
+      "modifiedAt": "2026-09-16T12:56:37.551Z",
+      "declaredObservedAt": "2026-09-16T12:56:37.549Z"
     },
     {
       "path": "artifacts/operational-proof/resource-pressure-local.json",
-      "digest": "cc3935fa11977a3aac4c2055dd62a54b0c5d23a5e1360349a0c3667120b66f4c",
-      "modifiedAt": "2026-09-14T07:38:01.720Z",
-      "declaredObservedAt": "2026-09-14T07:38:01.719Z"
+      "digest": "484df41d604e6df243d38b635d407bd2832398997b0f31e9bdd2b2a597a76539",
+      "modifiedAt": "2026-09-16T12:56:39.431Z",
+      "declaredObservedAt": "2026-09-16T12:56:39.429Z"
     },
     {
       "path": "artifacts/operational-proof/runbook-execution-local.json",
-      "digest": "48a8a905c1a44b00cf04ff584159d91d246cc08ac76acc2ab6b29ac781511e83",
-      "modifiedAt": "2026-09-14T07:38:06.879Z",
-      "declaredObservedAt": "2026-09-14T07:38:06.878Z"
+      "digest": "655510ced22038fe88a384af664ebe63cdd4bd0f710ff03703b7fea0e1b8bd9b",
+      "modifiedAt": "2026-09-16T12:56:44.998Z",
+      "declaredObservedAt": "2026-09-16T12:56:44.997Z"
     }
   ],
-  "runId": "fc70f0f3665fbba24e474d7e1284dd4ea16f7dde9535590552159d500662fae2"
+  "runId": "089604ae00cb1c44c284c950c213402be3400c672147df516c84918a7c0cd06d"
 }

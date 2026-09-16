@@ -146,3 +146,31 @@ Achados residuais assumidos:
 4. Staging autorizado: `verify:staging`, provider real, observability, carga,
    chaos e recovery; registrar `observed RTO/RPO`.
 5. Critics independentes e aprovações humanas.
+
+## Execução do verificador oficial (verify:triplo-aaa)
+
+Resultado literal no SHA local:
+
+```text
+VERDICT AAA_NOT_PROVEN
+PROMOTION BLOCKED synthetic/local evidence is not Triple AAA evidence; use a validated same-SHA external bundle separately
+FAIL-CLOSED verification is incomplete; no AAA promotion is possible
+```
+
+Fatos registrados pelo próprio verificador:
+
+- gates externos (`deepseek`, `provider`, `secretAuthority`, `webauthnBreakGlass`,
+  `staging`, `observability`, `browserMatrix`, `recovery`, `restore`, `rtoRpo`,
+  `load`, `resourcePressure`, `securityHeaders`, `productionConfig`,
+  `containerSmoke`, `stagingPromotion`, `runbookExecution`, `critics`,
+  `repairLoop`, `humanApproval`): `NOT_RUN` — sem bundle externo same-SHA;
+- `audit:dependency-registry`: `BLOCKED` (acesso a registry desabilitado por política);
+- `production-structural-local`: `BLOCKED` por timeout limitado de 180 s do
+  verificador; a matriz completa de browsers exige `libgstcodecparsers-1.0.so.0`
+  (WebKit) e leva ~10 min neste host. O subset suportado
+  (`test:e2e:smoke:serial`, 254 pass / 22 skips) é verificado por
+  `verify:state-of-art`, que está **verde em 30/30 gates**;
+- `sbom`, `diff` e demais gates locais do verificador: `PASS`.
+
+Conclusão: nenhuma promoção é possível; o estado permanece
+`LOCAL_STATE_OF_THE_ART_CANDIDATE` / `AAA_NOT_PROVEN`.

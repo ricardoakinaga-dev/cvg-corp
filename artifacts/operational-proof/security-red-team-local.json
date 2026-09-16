@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "status": "SECURITY_RED_TEAM_LOCAL_CONTRACT_VERIFIED",
-  "observedAt": "2026-09-14T07:38:00.179Z",
+  "observedAt": "2026-09-16T12:56:37.549Z",
   "criteria": [
     {
       "id": "F23-01",

@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-16T12:42:52.817Z",
-  "subjectSha": "3c9eb9d68833852e7f3c90fc67e5054f4bd9a548",
+  "generatedAt": "2026-09-16T12:55:16.518Z",
+  "subjectSha": "73e12081b67217ccfe453262abb25440e223c4d6",
   "evidenceClass": "LOCAL_REAL",
-  "status": "STATE_OF_ART_LOCAL_FAILED",
+  "status": "STATE_OF_ART_LOCAL_VERIFIED",
   "blockedGates": [
     {
       "gate": "verify:production (full browser matrix)",
@@ -23,7 +23,7 @@
       "gate": "typecheck",
       "status": "PASS",
       "exitCode": 0,
-      "seconds": 8.6
+      "seconds": 7.6
     },
     {
       "gate": "lint",
@@ -35,37 +35,37 @@
       "gate": "test",
       "status": "PASS",
       "exitCode": 0,
-      "seconds": 19.6
+      "seconds": 17.4
     },
     {
       "gate": "test:contract",
       "status": "PASS",
       "exitCode": 0,
-      "seconds": 0.4
+      "seconds": 0.3
     },
     {
       "gate": "test:security",
       "status": "PASS",
       "exitCode": 0,
-      "seconds": 2.9
+      "seconds": 2.6
     },
     {
       "gate": "test:database",
       "status": "PASS",
       "exitCode": 0,
-      "seconds": 13.8
+      "seconds": 12.6
     },
     {
       "gate": "test:fault",
       "status": "PASS",
       "exitCode": 0,
-      "seconds": 0.5
+      "seconds": 0.4
     },
     {
       "gate": "build",
       "status": "PASS",
       "exitCode": 0,
-      "seconds": 9
+      "seconds": 7.6
     },
     {
       "gate": "verify:architecture",
@@ -77,13 +77,13 @@
       "gate": "verify:pdp-universal",
       "status": "PASS",
       "exitCode": 0,
-      "seconds": 3.9
+      "seconds": 3.4
     },
     {
       "gate": "verify:authoritative-writes",
       "status": "PASS",
       "exitCode": 0,
-      "seconds": 0.6
+      "seconds": 0.5
     },
     {
       "gate": "verify:audit-chain",
@@ -101,7 +101,7 @@
       "gate": "verify:agent-runtime",
       "status": "PASS",
       "exitCode": 0,
-      "seconds": 3.7
+      "seconds": 3.4
     },
     {
       "gate": "verify:embedded-harness",
@@ -113,37 +113,37 @@
       "gate": "verify:agent-security",
       "status": "PASS",
       "exitCode": 0,
-      "seconds": 1.8
+      "seconds": 1.6
     },
     {
       "gate": "verify:plugins",
       "status": "PASS",
       "exitCode": 0,
-      "seconds": 0.4
+      "seconds": 0.3
     },
     {
       "gate": "verify:skills",
       "status": "PASS",
       "exitCode": 0,
-      "seconds": 0.4
+      "seconds": 0.3
     },
     {
       "gate": "verify:agent-evals",
       "status": "PASS",
       "exitCode": 0,
-      "seconds": 2
+      "seconds": 1.8
     },
     {
       "gate": "verify:ai-disabled",
       "status": "PASS",
       "exitCode": 0,
-      "seconds": 1
+      "seconds": 0.8
     },
     {
       "gate": "verify:agent-runtime-smoke",
       "status": "PASS",
       "exitCode": 0,
-      "seconds": 0.6
+      "seconds": 0.5
     },
     {
       "gate": "verify:agent-chaos",
@@ -155,25 +155,25 @@
       "gate": "benchmark:agent-runtime",
       "status": "PASS",
       "exitCode": 0,
-      "seconds": 1.3
+      "seconds": 1.2
     },
     {
       "gate": "verify:evidence-snapshot",
       "status": "PASS",
       "exitCode": 0,
-      "seconds": 0.3
+      "seconds": 0.2
     },
     {
       "gate": "test:e2e:smoke:serial",
-      "status": "FAIL",
-      "exitCode": 1,
-      "seconds": 530.3
+      "status": "PASS",
+      "exitCode": 0,
+      "seconds": 509
     },
     {
       "gate": "verify:evidence-snapshot",
       "status": "PASS",
       "exitCode": 0,
-      "seconds": 0.3
+      "seconds": 0.2
     },
     {
       "gate": "verify:static",

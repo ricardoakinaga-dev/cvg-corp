@@ -174,3 +174,14 @@ Fatos registrados pelo próprio verificador:
 
 Conclusão: nenhuma promoção é possível; o estado permanece
 `LOCAL_STATE_OF_THE_ART_CANDIDATE` / `AAA_NOT_PROVEN`.
+
+## Avaliações técnicas deliberadamente não adotadas (com justificativa)
+
+| Avaliação (prompt) | Decisão | Justificativa |
+| --- | --- | --- |
+| Mutation testing (523) | não adotado nesta rodada | PDP/gateway/approval/fencing já têm suítes adversariais e de invariantes; mutação adiciona custo alto de CI sem mudar o veredito externo. Reavaliar em staging |
+| Property-based testing (524) | parcial | fencing, idempotência e sequenciamento têm casos adversariais determinísticos (fence stale, replay, OUTCOME_UNKNOWN, sequência global); gerador aleatório não traria cobertura nova comprovada |
+| Fuzzing (525) | parcial | manifestos de plugin/skill e envelopes já validam digest/schema e falham fechado; fuzzing estruturado (callbacks externos) depende de superfície externa autorizada |
+| Processo standalone do runtime (50/161/165) | adiado por ADR | `ADR-agent-runtime-process-boundary.md`: in-process com portas tipadas e fail-closed; extração para processo próprio é reavaliada com staging |
+| Hot reload de plugins (160) | rejeitado em produção | deploy validado é a única forma; documentado no ADR de plugins |
+| IDs de sessão/turno gerados por modelo (445/446) | rejeitado por desenho | IDs e recursos são sempre resolvidos pelo runtime a partir do contexto autenticado, nunca do texto do modelo |

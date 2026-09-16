@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-16T12:23:23.674Z",
+  "generatedAt": "2026-09-16T12:34:00.313Z",
   "subjectSha": "local",
   "evidenceClass": "LOCAL_REAL",
   "scope": "embedded runtime overhead with deterministic mock provider (no real model latency)",
@@ -12,20 +12,20 @@
       "accepted": 1,
       "rejectedByBackpressure": 0,
       "maxConcurrentTurns": 8,
-      "wallMs": 16.36,
+      "wallMs": 17.01,
       "latencyMs": {
-        "min": 16.3,
-        "p50": 16.3,
-        "p95": 16.3,
-        "max": 16.3
+        "min": 16.94,
+        "p50": 16.94,
+        "p95": 16.94,
+        "max": 16.94
       },
-      "tokensPerSecond": 916.87,
-      "heapUsedDeltaBytes": -2105184,
-      "rssDeltaBytes": 3522560,
+      "tokensPerSecond": 881.83,
+      "heapUsedDeltaBytes": -2371128,
+      "rssDeltaBytes": 3719168,
       "samples": [
         {
           "accepted": true,
-          "latencyMs": 16.3,
+          "latencyMs": 16.94,
           "status": "COMPLETED",
           "reason": null
         }
@@ -36,26 +36,86 @@
       "accepted": 5,
       "rejectedByBackpressure": 0,
       "maxConcurrentTurns": 8,
-      "wallMs": 6.04,
+      "wallMs": 5.99,
       "latencyMs": {
-        "min": 4.79,
-        "p50": 5.21,
-        "p95": 5.5,
-        "max": 5.5
+        "min": 4.47,
+        "p50": 5.19,
+        "p95": 5.56,
+        "max": 5.56
       },
-      "tokensPerSecond": 12417.22,
-      "heapUsedDeltaBytes": 1205904,
-      "rssDeltaBytes": 131072,
+      "tokensPerSecond": 12520.87,
+      "heapUsedDeltaBytes": 1190952,
+      "rssDeltaBytes": 0,
       "samples": [
         {
           "accepted": true,
-          "latencyMs": 4.79,
+          "latencyMs": 4.47,
           "status": "COMPLETED",
           "reason": null
         },
         {
           "accepted": true,
-          "latencyMs": 4.94,
+          "latencyMs": 4.84,
+          "status": "COMPLETED",
+          "reason": null
+        },
+        {
+          "accepted": true,
+          "latencyMs": 5.19,
+          "status": "COMPLETED",
+          "reason": null
+        },
+        {
+          "accepted": true,
+          "latencyMs": 5.4,
+          "status": "COMPLETED",
+          "reason": null
+        },
+        {
+          "accepted": true,
+          "latencyMs": 5.56,
+          "status": "COMPLETED",
+          "reason": null
+        }
+      ]
+    },
+    {
+      "sessions": 10,
+      "accepted": 8,
+      "rejectedByBackpressure": 2,
+      "maxConcurrentTurns": 8,
+      "wallMs": 6.51,
+      "latencyMs": {
+        "min": 4.81,
+        "p50": 5.69,
+        "p95": 6.15,
+        "max": 6.15
+      },
+      "tokensPerSecond": 18433.18,
+      "heapUsedDeltaBytes": 1997848,
+      "rssDeltaBytes": 393216,
+      "samples": [
+        {
+          "accepted": false,
+          "latencyMs": 0.55,
+          "status": "REJECTED",
+          "reason": "O runtime de IA está saturado ou indisponível."
+        },
+        {
+          "accepted": false,
+          "latencyMs": 0.4,
+          "status": "REJECTED",
+          "reason": "O runtime de IA está saturado ou indisponível."
+        },
+        {
+          "accepted": true,
+          "latencyMs": 4.81,
+          "status": "COMPLETED",
+          "reason": null
+        },
+        {
+          "accepted": true,
+          "latencyMs": 4.96,
           "status": "COMPLETED",
           "reason": null
         },
@@ -67,91 +127,31 @@
         },
         {
           "accepted": true,
-          "latencyMs": 5.39,
+          "latencyMs": 5.51,
           "status": "COMPLETED",
           "reason": null
         },
         {
           "accepted": true,
-          "latencyMs": 5.5,
-          "status": "COMPLETED",
-          "reason": null
-        }
-      ]
-    },
-    {
-      "sessions": 10,
-      "accepted": 8,
-      "rejectedByBackpressure": 2,
-      "maxConcurrentTurns": 8,
-      "wallMs": 7.55,
-      "latencyMs": {
-        "min": 5.26,
-        "p50": 6.6,
-        "p95": 7.13,
-        "max": 7.13
-      },
-      "tokensPerSecond": 15894.04,
-      "heapUsedDeltaBytes": 2198872,
-      "rssDeltaBytes": 131072,
-      "samples": [
-        {
-          "accepted": false,
-          "latencyMs": 0.6,
-          "status": "REJECTED",
-          "reason": "O runtime de IA está saturado ou indisponível."
-        },
-        {
-          "accepted": false,
-          "latencyMs": 0.44,
-          "status": "REJECTED",
-          "reason": "O runtime de IA está saturado ou indisponível."
-        },
-        {
-          "accepted": true,
-          "latencyMs": 5.26,
+          "latencyMs": 5.69,
           "status": "COMPLETED",
           "reason": null
         },
         {
           "accepted": true,
-          "latencyMs": 5.59,
+          "latencyMs": 5.83,
           "status": "COMPLETED",
           "reason": null
         },
         {
           "accepted": true,
-          "latencyMs": 6.08,
+          "latencyMs": 5.99,
           "status": "COMPLETED",
           "reason": null
         },
         {
           "accepted": true,
-          "latencyMs": 6.41,
-          "status": "COMPLETED",
-          "reason": null
-        },
-        {
-          "accepted": true,
-          "latencyMs": 6.6,
-          "status": "COMPLETED",
-          "reason": null
-        },
-        {
-          "accepted": true,
-          "latencyMs": 6.72,
-          "status": "COMPLETED",
-          "reason": null
-        },
-        {
-          "accepted": true,
-          "latencyMs": 6.91,
-          "status": "COMPLETED",
-          "reason": null
-        },
-        {
-          "accepted": true,
-          "latencyMs": 7.13,
+          "latencyMs": 6.15,
           "status": "COMPLETED",
           "reason": null
         }
@@ -162,20 +162,20 @@
       "accepted": 8,
       "rejectedByBackpressure": 17,
       "maxConcurrentTurns": 8,
-      "wallMs": 6.46,
+      "wallMs": 6.12,
       "latencyMs": {
-        "min": 4.15,
-        "p50": 5.62,
-        "p95": 6.11,
-        "max": 6.11
+        "min": 4.98,
+        "p50": 5.42,
+        "p95": 5.78,
+        "max": 5.78
       },
-      "tokensPerSecond": 18575.85,
-      "heapUsedDeltaBytes": 1943632,
+      "tokensPerSecond": 19607.84,
+      "heapUsedDeltaBytes": 1942072,
       "rssDeltaBytes": 0,
       "samples": [
         {
           "accepted": false,
-          "latencyMs": 1.08,
+          "latencyMs": 1.09,
           "status": "REJECTED",
           "reason": "O runtime de IA está saturado ou indisponível."
         },
@@ -199,31 +199,31 @@
         },
         {
           "accepted": false,
-          "latencyMs": 0.85,
+          "latencyMs": 0.86,
           "status": "REJECTED",
           "reason": "O runtime de IA está saturado ou indisponível."
         },
         {
           "accepted": false,
-          "latencyMs": 0.81,
+          "latencyMs": 0.82,
           "status": "REJECTED",
           "reason": "O runtime de IA está saturado ou indisponível."
         },
         {
           "accepted": false,
-          "latencyMs": 0.77,
+          "latencyMs": 0.78,
           "status": "REJECTED",
           "reason": "O runtime de IA está saturado ou indisponível."
         },
         {
           "accepted": false,
-          "latencyMs": 0.73,
+          "latencyMs": 0.74,
           "status": "REJECTED",
           "reason": "O runtime de IA está saturado ou indisponível."
         },
         {
           "accepted": false,
-          "latencyMs": 0.68,
+          "latencyMs": 0.69,
           "status": "REJECTED",
           "reason": "O runtime de IA está saturado ou indisponível."
         },
@@ -253,7 +253,7 @@
         },
         {
           "accepted": false,
-          "latencyMs": 0.48,
+          "latencyMs": 0.47,
           "status": "REJECTED",
           "reason": "O runtime de IA está saturado ou indisponível."
         },
@@ -271,55 +271,55 @@
         },
         {
           "accepted": false,
-          "latencyMs": 0.37,
+          "latencyMs": 0.36,
           "status": "REJECTED",
           "reason": "O runtime de IA está saturado ou indisponível."
         },
         {
           "accepted": true,
-          "latencyMs": 4.15,
+          "latencyMs": 4.98,
           "status": "COMPLETED",
           "reason": null
         },
         {
           "accepted": true,
-          "latencyMs": 4.17,
+          "latencyMs": 5.06,
           "status": "COMPLETED",
           "reason": null
         },
         {
           "accepted": true,
-          "latencyMs": 5.4,
+          "latencyMs": 5.2,
           "status": "COMPLETED",
           "reason": null
         },
         {
           "accepted": true,
-          "latencyMs": 5.49,
+          "latencyMs": 5.3,
           "status": "COMPLETED",
           "reason": null
         },
         {
           "accepted": true,
-          "latencyMs": 5.62,
+          "latencyMs": 5.42,
           "status": "COMPLETED",
           "reason": null
         },
         {
           "accepted": true,
-          "latencyMs": 5.77,
+          "latencyMs": 5.53,
           "status": "COMPLETED",
           "reason": null
         },
         {
           "accepted": true,
-          "latencyMs": 5.93,
+          "latencyMs": 5.64,
           "status": "COMPLETED",
           "reason": null
         },
         {
           "accepted": true,
-          "latencyMs": 6.11,
+          "latencyMs": 5.78,
           "status": "COMPLETED",
           "reason": null
         }
@@ -330,38 +330,32 @@
       "accepted": 8,
       "rejectedByBackpressure": 42,
       "maxConcurrentTurns": 8,
-      "wallMs": 6.35,
+      "wallMs": 6.28,
       "latencyMs": {
-        "min": 4.31,
-        "p50": 5.67,
-        "p95": 6.03,
-        "max": 6.03
+        "min": 5.35,
+        "p50": 5.66,
+        "p95": 5.96,
+        "max": 5.96
       },
-      "tokensPerSecond": 18897.64,
-      "heapUsedDeltaBytes": -4031704,
-      "rssDeltaBytes": 131072,
+      "tokensPerSecond": 19108.28,
+      "heapUsedDeltaBytes": -4026208,
+      "rssDeltaBytes": 0,
       "samples": [
         {
           "accepted": false,
-          "latencyMs": 1.72,
+          "latencyMs": 1.69,
           "status": "REJECTED",
           "reason": "O runtime de IA está saturado ou indisponível."
         },
         {
           "accepted": false,
-          "latencyMs": 1.66,
+          "latencyMs": 1.64,
           "status": "REJECTED",
           "reason": "O runtime de IA está saturado ou indisponível."
         },
         {
           "accepted": false,
-          "latencyMs": 1.63,
-          "status": "REJECTED",
-          "reason": "O runtime de IA está saturado ou indisponível."
-        },
-        {
-          "accepted": false,
-          "latencyMs": 1.6,
+          "latencyMs": 1.61,
           "status": "REJECTED",
           "reason": "O runtime de IA está saturado ou indisponível."
         },
@@ -391,7 +385,13 @@
         },
         {
           "accepted": false,
-          "latencyMs": 1.44,
+          "latencyMs": 1.46,
+          "status": "REJECTED",
+          "reason": "O runtime de IA está saturado ou indisponível."
+        },
+        {
+          "accepted": false,
+          "latencyMs": 1.43,
           "status": "REJECTED",
           "reason": "O runtime de IA está saturado ou indisponível."
         },
@@ -403,61 +403,61 @@
         },
         {
           "accepted": false,
-          "latencyMs": 1.37,
+          "latencyMs": 1.36,
           "status": "REJECTED",
           "reason": "O runtime de IA está saturado ou indisponível."
         },
         {
           "accepted": false,
-          "latencyMs": 1.32,
+          "latencyMs": 1.31,
           "status": "REJECTED",
           "reason": "O runtime de IA está saturado ou indisponível."
         },
         {
           "accepted": false,
-          "latencyMs": 1.29,
+          "latencyMs": 1.27,
           "status": "REJECTED",
           "reason": "O runtime de IA está saturado ou indisponível."
         },
         {
           "accepted": false,
-          "latencyMs": 1.26,
+          "latencyMs": 1.24,
           "status": "REJECTED",
           "reason": "O runtime de IA está saturado ou indisponível."
         },
         {
           "accepted": false,
-          "latencyMs": 1.23,
+          "latencyMs": 1.21,
           "status": "REJECTED",
           "reason": "O runtime de IA está saturado ou indisponível."
         },
         {
           "accepted": false,
-          "latencyMs": 1.19,
+          "latencyMs": 1.18,
           "status": "REJECTED",
           "reason": "O runtime de IA está saturado ou indisponível."
         },
         {
           "accepted": false,
-          "latencyMs": 1.16,
+          "latencyMs": 1.14,
           "status": "REJECTED",
           "reason": "O runtime de IA está saturado ou indisponível."
         },
         {
           "accepted": false,
-          "latencyMs": 1.13,
+          "latencyMs": 1.12,
           "status": "REJECTED",
           "reason": "O runtime de IA está saturado ou indisponível."
         },
         {
           "accepted": false,
-          "latencyMs": 1.1,
+          "latencyMs": 1.09,
           "status": "REJECTED",
           "reason": "O runtime de IA está saturado ou indisponível."
         },
         {
           "accepted": false,
-          "latencyMs": 1.07,
+          "latencyMs": 1.06,
           "status": "REJECTED",
           "reason": "O runtime de IA está saturado ou indisponível."
         },
@@ -469,37 +469,43 @@
         },
         {
           "accepted": false,
-          "latencyMs": 0.96,
+          "latencyMs": 0.97,
           "status": "REJECTED",
           "reason": "O runtime de IA está saturado ou indisponível."
         },
         {
           "accepted": false,
-          "latencyMs": 0.93,
+          "latencyMs": 0.95,
           "status": "REJECTED",
           "reason": "O runtime de IA está saturado ou indisponível."
         },
         {
           "accepted": false,
-          "latencyMs": 0.9,
+          "latencyMs": 0.92,
           "status": "REJECTED",
           "reason": "O runtime de IA está saturado ou indisponível."
         },
         {
           "accepted": false,
-          "latencyMs": 0.87,
+          "latencyMs": 0.89,
           "status": "REJECTED",
           "reason": "O runtime de IA está saturado ou indisponível."
         },
         {
           "accepted": false,
-          "latencyMs": 0.84,
+          "latencyMs": 0.86,
           "status": "REJECTED",
           "reason": "O runtime de IA está saturado ou indisponível."
         },
         {
           "accepted": false,
-          "latencyMs": 0.79,
+          "latencyMs": 0.83,
+          "status": "REJECTED",
+          "reason": "O runtime de IA está saturado ou indisponível."
+        },
+        {
+          "accepted": false,
+          "latencyMs": 0.8,
           "status": "REJECTED",
           "reason": "O runtime de IA está saturado ou indisponível."
         },
@@ -511,73 +517,67 @@
         },
         {
           "accepted": false,
-          "latencyMs": 0.73,
+          "latencyMs": 0.72,
           "status": "REJECTED",
           "reason": "O runtime de IA está saturado ou indisponível."
         },
         {
           "accepted": false,
-          "latencyMs": 0.7,
+          "latencyMs": 0.69,
           "status": "REJECTED",
           "reason": "O runtime de IA está saturado ou indisponível."
         },
         {
           "accepted": false,
-          "latencyMs": 0.68,
+          "latencyMs": 0.66,
           "status": "REJECTED",
           "reason": "O runtime de IA está saturado ou indisponível."
         },
         {
           "accepted": false,
-          "latencyMs": 0.65,
+          "latencyMs": 0.64,
           "status": "REJECTED",
           "reason": "O runtime de IA está saturado ou indisponível."
         },
         {
           "accepted": false,
-          "latencyMs": 0.62,
+          "latencyMs": 0.61,
           "status": "REJECTED",
           "reason": "O runtime de IA está saturado ou indisponível."
         },
         {
           "accepted": false,
-          "latencyMs": 0.59,
+          "latencyMs": 0.58,
           "status": "REJECTED",
           "reason": "O runtime de IA está saturado ou indisponível."
         },
         {
           "accepted": false,
-          "latencyMs": 0.57,
+          "latencyMs": 0.55,
           "status": "REJECTED",
           "reason": "O runtime de IA está saturado ou indisponível."
         },
         {
           "accepted": false,
-          "latencyMs": 0.54,
+          "latencyMs": 0.52,
           "status": "REJECTED",
           "reason": "O runtime de IA está saturado ou indisponível."
         },
         {
           "accepted": false,
-          "latencyMs": 0.51,
+          "latencyMs": 0.5,
           "status": "REJECTED",
           "reason": "O runtime de IA está saturado ou indisponível."
         },
         {
           "accepted": false,
-          "latencyMs": 0.48,
+          "latencyMs": 0.47,
           "status": "REJECTED",
           "reason": "O runtime de IA está saturado ou indisponível."
         },
         {
           "accepted": false,
-          "latencyMs": 0.46,
-          "status": "REJECTED",
-          "reason": "O runtime de IA está saturado ou indisponível."
-        },
-        {
-          "accepted": false,
-          "latencyMs": 0.43,
+          "latencyMs": 0.44,
           "status": "REJECTED",
           "reason": "O runtime de IA está saturado ou indisponível."
         },
@@ -595,13 +595,13 @@
         },
         {
           "accepted": true,
-          "latencyMs": 4.31,
+          "latencyMs": 5.35,
           "status": "COMPLETED",
           "reason": null
         },
         {
           "accepted": true,
-          "latencyMs": 5.39,
+          "latencyMs": 5.4,
           "status": "COMPLETED",
           "reason": null
         },
@@ -619,7 +619,7 @@
         },
         {
           "accepted": true,
-          "latencyMs": 5.67,
+          "latencyMs": 5.66,
           "status": "COMPLETED",
           "reason": null
         },
@@ -631,13 +631,13 @@
         },
         {
           "accepted": true,
-          "latencyMs": 5.87,
+          "latencyMs": 5.85,
           "status": "COMPLETED",
           "reason": null
         },
         {
           "accepted": true,
-          "latencyMs": 6.03,
+          "latencyMs": 5.96,
           "status": "COMPLETED",
           "reason": null
         }

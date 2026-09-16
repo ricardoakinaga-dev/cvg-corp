@@ -421,6 +421,24 @@ test("login com challenge MFA aceita código, nega OTP inválido e permite cance
       await route.fulfill({ status: 401, contentType: "application/json", body: JSON.stringify({ schemaVersion: 1, error: { code: "MFA_INVALID", message: "O código MFA é inválido." }, correlationId: "e2e-mfa-invalid" }) });
     }
   });
+  // The mocked MFA login never creates a server session, so every post-login
+  // read must be fulfilled locally; otherwise a real 401 races the assertion
+  // and flips the shell into REAUTH_REQUIRED.
+  await page.route("**/api/v1/me", async (route) => {
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ schemaVersion: 1, data: mfaSessionPayload.user, correlationId: "e2e-mfa-me" }) });
+  });
+  await page.route("**/api/v1/contexts", async (route) => {
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ schemaVersion: 1, data: mfaSessionPayload.contexts, correlationId: "e2e-mfa-contexts" }) });
+  });
+  await page.route("**/api/v1/operations/summary", async (route) => {
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ schemaVersion: 1, data: { appointmentsToday: 2, waitingPatients: 1, lowStockItems: 0, openCharges: 0, ai: { provider: "local", tools: 6 }, unit: "Unidade Centro" }, correlationId: "e2e-mfa-summary" }) });
+  });
+  await page.route("**/api/v1/appointments", async (route) => {
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ schemaVersion: 1, data: { items: [] }, correlationId: "e2e-mfa-appointments" }) });
+  });
+  await page.route("**/api/v1/patients", async (route) => {
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ schemaVersion: 1, data: { items: [] }, correlationId: "e2e-mfa-patients" }) });
+  });
   await page.goto("/");
   await page.getByRole("button", { name: /Abrir demonstração sintética/i }).click();
   await expect(page.getByRole("heading", { name: "Verificação em duas etapas" })).toBeVisible();

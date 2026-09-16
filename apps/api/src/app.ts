@@ -80,8 +80,12 @@ import {
 } from "@cvg/domain";
 import { GovernedHarness, TOOL_REGISTRY } from "@cvg/harness";
 import type { AgentRuntime } from "@cvg/agent-runtime";
+import { DisabledAgentRuntime } from "@cvg/agent-runtime";
 import { DeepSeekHarnessAdapter, MockHarnessAdapter } from "@cvg/harness-adapters";
 import { AgentRuntimeUnavailableError } from "@cvg/agent-runtime";
+import { EmbeddedAgentRuntime } from "@cvg/embedded-agent-runtime";
+import { PostgresAgentSessionStore, createScopedSqlExecutor } from "@cvg/agent-session";
+import { createDeepSeekModelProvider, createLocalModelProvider, MockModelProvider } from "@cvg/model-adapters";
 import { configuredSecretProvider, IntegrationGateway, inboxEventToOutbox, integrationContracts, isSecretReferenceUsable, OutboxWorker, reconcileUnknownExternalEffect, verifyMessagingCallback, type ExternalEffectQueryAdapter, type OutboxSink, type OutboxWorkerResult, type SecretProvider, type SecretProviderStatus } from "@cvg/integrations";
 import { createOpenTelemetryRuntime, OpsTelemetry, renderPrometheusMetrics, type OpenTelemetryRuntime } from "@cvg/ops";
 import { PersistenceConflictError, PersistenceCorruptionError, PersistenceSignatureError, PersistenceStateError, PersistenceUnavailableError, PostgresPersistence, type DurableExternalEffectRecord, type InboxSignatureVerifier } from "@cvg/persistence";
@@ -102,6 +106,63 @@ import { IntegrationInboxApplicationService } from "./application/integration-se
 import { OperationalMetricsApplicationService } from "./application/operational-metrics-service.ts";
 import { KeyedAsyncCoordinator } from "./application/keyed-coordinator.ts";
 import { BreakGlassApplicationService, type BreakGlassScopeAuthority, type BreakGlassWebAuthnAuthority } from "./application/break-glass-service.ts";
+
+/**
+ * Embedded runtime selection.  `auto` preserves the historical behaviour
+ * (mock harness unless the external DeepSeek runtime is enabled); explicit
+ * `embedded` builds the provider-neutral kernel with a configured model
+ * provider, and `disabled` fails AI closed without touching the domain.
+ */
+function createEmbeddedRuntimeAdapter(config: ServerConfig, secretProvider: SecretProvider | null | undefined, store: CvgStore): AgentRuntime {
+  const allowedDataClasses = config.embeddedModelAllowedDataClasses;
+  const bearerRef = config.deepseekBearerTokenRef;
+  const provider = config.embeddedModelProvider === "deepseek"
+    ? createDeepSeekModelProvider({
+        ...(config.embeddedModelBaseUrl ? { baseUrl: config.embeddedModelBaseUrl } : {}),
+        ...(config.embeddedModelName ? { model: config.embeddedModelName } : {}),
+        apiKeyResolver: () => {
+          const resolved = bearerRef ? secretProvider?.resolve?.(bearerRef) : null;
+          return resolved ?? null;
+        },
+        allowedDataClasses,
+        timeoutMs: config.embeddedModelTimeoutMs,
+        allowInsecureHttp: config.nodeEnv !== "production"
+      })
+    : config.embeddedModelProvider === "local"
+      ? createLocalModelProvider({
+          baseUrl: config.embeddedModelBaseUrl ?? "http://127.0.0.1:11434",
+          model: config.embeddedModelName ?? "local-model",
+          allowedDataClasses,
+          timeoutMs: config.embeddedModelTimeoutMs,
+          allowInsecureHttp: config.nodeEnv !== "production"
+        })
+      : new MockModelProvider();
+  // Dedicated pool for agent-runtime session state: AI load must not consume
+  // the transactional pool, and the runtime role is least-privilege.
+  let sessionStore: PostgresAgentSessionStore | undefined;
+  let closePool: (() => Promise<void>) | undefined;
+  if (config.storageMode === "postgres" && config.databaseUrl) {
+    const agentPool = new Pool({ connectionString: config.databaseUrl, max: 4, connectionTimeoutMillis: 2_500, idleTimeoutMillis: 30_000, application_name: "cvg-agent-runtime" });
+    // Every statement runs in a tenant-scoped transaction: FORCE RLS on the
+    // agent_* tables resolves the organization from `cvg.organization_id`.
+    sessionStore = new PostgresAgentSessionStore(createScopedSqlExecutor({
+      connect: async () => {
+        const client = await agentPool.connect();
+        return { query: async (text: string, params: readonly unknown[]) => ({ rows: (await client.query(text, params as unknown[])).rows as Record<string, unknown>[] }), release: () => client.release() };
+      }
+    }));
+    closePool = async () => { await agentPool.end(); };
+  }
+  return new EmbeddedAgentRuntime({
+    store,
+    modelProvider: provider,
+    controls: () => ({ aiEnabled: true, safeMode: config.aiSafeMode, disabledProviders: config.aiDisabledProviders, disabledTools: config.aiDisabledTools, disabledPlugins: [] }),
+    maxConcurrentTurns: config.aiMaxConcurrentTurns,
+    ...(sessionStore ? { sessionStore } : {}),
+    ...(closePool ? { onClose: closePool } : {}),
+    ...(config.embeddedRuntimeCommit ? { runtimeCommit: config.embeddedRuntimeCommit } : {})
+  });
+}
 
 const SESSION_COOKIE = "cvg_session";
 const CSRF_COOKIE = "cvg_csrf";
@@ -142,6 +203,17 @@ export interface ServerConfig {
   deepseekBearerTokenRef: string | null;
   deepseekContextSigningSecretRef: string | null;
   recoveryEncryptionKeyRef: string | null;
+  agentRuntimeMode: "auto" | "embedded" | "external" | "disabled";
+  aiSafeMode: boolean;
+  aiDisabledProviders: string[];
+  aiDisabledTools: string[];
+  aiMaxConcurrentTurns: number;
+  embeddedModelProvider: "mock" | "deepseek" | "local";
+  embeddedModelBaseUrl: string | null;
+  embeddedModelName: string | null;
+  embeddedModelTimeoutMs: number;
+  embeddedModelAllowedDataClasses: ("D0" | "D1" | "D2" | "D3" | "D4" | "D5")[];
+  embeddedRuntimeCommit: string | null;
   secretDir: string;
   workerOrganizationId: string | null;
   secretProvider: "none" | "env" | "file" | "docker" | "vault" | "aws" | "gcp" | "azure" | "kubernetes";
@@ -356,6 +428,17 @@ function getConfig(overrides: Partial<ServerConfig> = {}): ServerConfig {
     deepseekBearerTokenRef: overrides.deepseekBearerTokenRef ?? typed.deepseekBearerTokenRef,
     deepseekContextSigningSecretRef: overrides.deepseekContextSigningSecretRef ?? typed.deepseekContextSigningSecretRef,
     recoveryEncryptionKeyRef: overrides.recoveryEncryptionKeyRef ?? typed.recoveryEncryptionKeyRef,
+    agentRuntimeMode: overrides.agentRuntimeMode ?? typed.agentRuntimeMode,
+    aiSafeMode: overrides.aiSafeMode ?? typed.aiSafeMode,
+    aiDisabledProviders: overrides.aiDisabledProviders ?? typed.aiDisabledProviders,
+    aiDisabledTools: overrides.aiDisabledTools ?? typed.aiDisabledTools,
+    aiMaxConcurrentTurns: overrides.aiMaxConcurrentTurns ?? typed.aiMaxConcurrentTurns,
+    embeddedModelProvider: overrides.embeddedModelProvider ?? typed.embeddedModelProvider,
+    embeddedModelBaseUrl: overrides.embeddedModelBaseUrl ?? typed.embeddedModelBaseUrl,
+    embeddedModelName: overrides.embeddedModelName ?? typed.embeddedModelName,
+    embeddedModelTimeoutMs: overrides.embeddedModelTimeoutMs ?? typed.embeddedModelTimeoutMs,
+    embeddedModelAllowedDataClasses: overrides.embeddedModelAllowedDataClasses ?? typed.embeddedModelAllowedDataClasses,
+    embeddedRuntimeCommit: overrides.embeddedRuntimeCommit ?? typed.embeddedRuntimeCommit,
     secretDir: overrides.secretDir ?? typed.secretDir,
     workerOrganizationId: overrides.workerOrganizationId ?? typed.workerOrganizationId,
     secretProvider: overrides.secretProvider ?? typed.secretProvider,
@@ -363,7 +446,7 @@ function getConfig(overrides: Partial<ServerConfig> = {}): ServerConfig {
     rateLimitRequestsPerWindow: overrides.rateLimitRequestsPerWindow ?? typed.rateLimitRequestsPerWindow,
     rateLimitWindowSeconds: overrides.rateLimitWindowSeconds ?? typed.rateLimitWindowSeconds
   });
-  return { nodeEnv: validated.nodeEnv, host: validated.host, trustProxy: validated.trustProxy, trustedProxyIps: [...validated.trustedProxyIps], port: validated.apiPort, webOrigin: validated.webOrigin, releaseSha: validated.releaseSha, releaseArtifactDigest: validated.releaseArtifactDigest, storageMode: validated.storageMode, demoMode: validated.demoMode, sessionTtlMinutes: validated.sessionTtlMinutes, authMfaMode: validated.authMfaMode, passwordMinLength: validated.passwordMinLength, passwordMaxAgeDays: validated.passwordMaxAgeDays, authMaxFailedAttempts: validated.authMaxFailedAttempts, authIdentifierRateLimit: validated.authIdentifierRateLimit, authIpRateLimit: validated.authIpRateLimit, authLockoutMinutes: validated.authLockoutMinutes, authChallengeTtlSeconds: validated.authChallengeTtlSeconds, authMaxChallengeAttempts: validated.authMaxChallengeAttempts, databaseUrl: validated.databaseUrl, bootstrapPassword: validated.bootstrapPassword, deepseekBaseUrl: validated.deepseekBaseUrl, deepseekRuntimeEnabled: validated.deepseekRuntimeEnabled, deepseekExpectedEngineCommit: validated.deepseekExpectedEngineCommit, deepseekExpectedManifestVersion: validated.deepseekExpectedManifestVersion, deepseekBearerTokenRef: validated.deepseekBearerTokenRef, deepseekContextSigningSecretRef: validated.deepseekContextSigningSecretRef, recoveryEncryptionKeyRef: validated.recoveryEncryptionKeyRef, secretDir: validated.secretDir, workerOrganizationId: validated.workerOrganizationId, secretProvider: validated.secretProvider, rateLimitBackend: validated.rateLimitBackend, rateLimitRequestsPerWindow: validated.rateLimitRequestsPerWindow, rateLimitWindowSeconds: validated.rateLimitWindowSeconds };
+  return { nodeEnv: validated.nodeEnv, host: validated.host, trustProxy: validated.trustProxy, trustedProxyIps: [...validated.trustedProxyIps], port: validated.apiPort, webOrigin: validated.webOrigin, releaseSha: validated.releaseSha, releaseArtifactDigest: validated.releaseArtifactDigest, storageMode: validated.storageMode, demoMode: validated.demoMode, sessionTtlMinutes: validated.sessionTtlMinutes, authMfaMode: validated.authMfaMode, passwordMinLength: validated.passwordMinLength, passwordMaxAgeDays: validated.passwordMaxAgeDays, authMaxFailedAttempts: validated.authMaxFailedAttempts, authIdentifierRateLimit: validated.authIdentifierRateLimit, authIpRateLimit: validated.authIpRateLimit, authLockoutMinutes: validated.authLockoutMinutes, authChallengeTtlSeconds: validated.authChallengeTtlSeconds, authMaxChallengeAttempts: validated.authMaxChallengeAttempts, databaseUrl: validated.databaseUrl, bootstrapPassword: validated.bootstrapPassword, deepseekBaseUrl: validated.deepseekBaseUrl, deepseekRuntimeEnabled: validated.deepseekRuntimeEnabled, deepseekExpectedEngineCommit: validated.deepseekExpectedEngineCommit, deepseekExpectedManifestVersion: validated.deepseekExpectedManifestVersion, deepseekBearerTokenRef: validated.deepseekBearerTokenRef, deepseekContextSigningSecretRef: validated.deepseekContextSigningSecretRef, recoveryEncryptionKeyRef: validated.recoveryEncryptionKeyRef, agentRuntimeMode: validated.agentRuntimeMode, aiSafeMode: validated.aiSafeMode, aiDisabledProviders: [...validated.aiDisabledProviders], aiDisabledTools: [...validated.aiDisabledTools], aiMaxConcurrentTurns: validated.aiMaxConcurrentTurns, embeddedModelProvider: validated.embeddedModelProvider, embeddedModelBaseUrl: validated.embeddedModelBaseUrl, embeddedModelName: validated.embeddedModelName, embeddedModelTimeoutMs: validated.embeddedModelTimeoutMs, embeddedModelAllowedDataClasses: [...validated.embeddedModelAllowedDataClasses], embeddedRuntimeCommit: validated.embeddedRuntimeCommit, secretDir: validated.secretDir, workerOrganizationId: validated.workerOrganizationId, secretProvider: validated.secretProvider, rateLimitBackend: validated.rateLimitBackend, rateLimitRequestsPerWindow: validated.rateLimitRequestsPerWindow, rateLimitWindowSeconds: validated.rateLimitWindowSeconds };
 }
 
 function tokenDigest(value: string): string {
@@ -520,7 +603,9 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
   if (config.nodeEnv === "production" && config.deepseekRuntimeEnabled && deepseekContextSignatureStatus !== "READY") await closeBeforeRuntimeFailure("Produção exige que a referência de assinatura de contexto DeepSeek seja resolvível; o runtime foi mantido bloqueado.");
   const harness = options.harness ?? new GovernedHarness(store);
   const agentRuntime = options.agentRuntime ?? (() => {
-    if (!config.deepseekRuntimeEnabled) return new MockHarnessAdapter(harness);
+    if (config.agentRuntimeMode === "disabled") return new DisabledAgentRuntime();
+    if (config.agentRuntimeMode === "embedded") return createEmbeddedRuntimeAdapter(config, secretProvider, store);
+    if (config.agentRuntimeMode === "auto" && !config.deepseekRuntimeEnabled) return new MockHarnessAdapter(harness);
     if (!config.deepseekBaseUrl || !config.deepseekExpectedEngineCommit || !config.deepseekExpectedManifestVersion) throw new DomainError("CAPABILITY_DISABLED", "O runtime DeepSeek exige URL, commit e manifest aprovados.", 503);
     const bearerTokenRef = config.deepseekBearerTokenRef;
     const contextSigningSecretRef = config.deepseekContextSigningSecretRef;

@@ -1,0 +1,12 @@
+{
+  "id": "safe-mode-read-only",
+  "version": 1,
+  "description": "AI_SAFE_MODE permite leitura e nega efeitos reversíveis/impactantes.",
+  "tags": ["operations", "safe-mode"],
+  "purpose": "OPERATIONS",
+  "prompt": "prepare a comunicação de retorno",
+  "requestedTool": "cvg.communication.stage",
+  "safeMode": true,
+  "steps": [],
+  "expect": { "turnStatus": "DENIED", "approval": false, "toolReceipts": 0 }
+}

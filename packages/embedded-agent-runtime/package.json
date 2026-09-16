@@ -1,0 +1,22 @@
+{
+  "name": "@cvg/embedded-agent-runtime",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./profiles": "./src/profiles.ts"
+  },
+  "dependencies": {
+    "@cvg/agent-context": "*",
+    "@cvg/agent-kernel": "*",
+    "@cvg/agent-policy": "*",
+    "@cvg/agent-runtime": "*",
+    "@cvg/agent-session": "*",
+    "@cvg/agent-tools": "*",
+    "@cvg/contracts": "*",
+    "@cvg/domain": "*",
+    "@cvg/harness": "*",
+    "@cvg/model-runtime": "*"
+  }
+}

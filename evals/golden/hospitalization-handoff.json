@@ -1,0 +1,11 @@
+{
+  "id": "hospitalization-handoff",
+  "version": 1,
+  "description": "Passagem de plantão lê projeção mínima do paciente via tool governada.",
+  "tags": ["hospitalization", "tool"],
+  "purpose": "SUMMARY",
+  "prompt": "prepare o handoff de plantão",
+  "patientRequired": true,
+  "steps": [{ "kind": "tool", "tool": "cvg.patient.read", "input": {} }, { "kind": "message", "content": "Handoff preparado com pendências e exames agendados; prescrição não foi alterada." }],
+  "expect": { "turnStatus": "COMPLETED", "approval": false, "toolReceipts": 1 }
+}

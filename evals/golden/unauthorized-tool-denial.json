@@ -1,0 +1,11 @@
+{
+  "id": "unauthorized-tool-denial",
+  "version": 1,
+  "description": "Tool fora do profile do agente é negada antes de qualquer dispatch.",
+  "tags": ["security", "policy", "tool"],
+  "purpose": "OPERATIONS",
+  "prompt": "estorne o pagamento do tutor",
+  "requestedTool": "cvg.finance.refund",
+  "steps": [],
+  "expect": { "turnStatus": "DENIED", "approval": false, "policyDenied": true, "toolReceipts": 0 }
+}

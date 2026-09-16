@@ -2,6 +2,17 @@ import type { AiApproval, AiDraft, AiSession, AiTurn, AiTurnInput, AiTurnProvena
 
 export { bridgeRequestSignature, BRIDGE_REQUEST_MAX_AGE_MS, BRIDGE_REQUEST_CLOCK_SKEW_MS } from "./bridge-request.ts";
 export { canonicalJson, replayDigest } from "./replay-digest.ts";
+export {
+  AGENT_RUNTIME_CONTRACT_VERSION,
+  SUPPORTED_AGENT_RUNTIME_CONTRACTS,
+  buildAiUsageSettlement,
+  classifyReplay,
+  runtimeCompatibilitySupported,
+  runtimeManifestDigest,
+  type ReplayEquivalence,
+  type RuntimeCompatibilityMatrix,
+  type RuntimeManifest
+} from "./runtime-manifest.ts";
 
 export type AgentRuntimeStatus = "READY" | "DEGRADED" | "UNAVAILABLE" | "DISABLED";
 
@@ -52,11 +63,5 @@ export interface AgentRuntime {
   shutdown(): Promise<void>;
 }
 
-export class AgentRuntimeUnavailableError extends Error {
-  readonly code = "AGENT_RUNTIME_UNAVAILABLE" as const;
-
-  constructor(message: string) {
-    super(message);
-    this.name = "AgentRuntimeUnavailableError";
-  }
-}
+export { AgentRuntimeUnavailableError } from "./errors.ts";
+export { DisabledAgentRuntime } from "./disabled.ts";

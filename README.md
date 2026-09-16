@@ -45,6 +45,19 @@ npm run verify:audit-chain
 npm run verify:authoritative-writes
 npm run verify:postgres:concurrency
 npm run verify:triplo-aaa
+npm run verify:architecture
+npm run verify:agent-runtime
+npm run verify:agent-runtime-smoke
+npm run verify:embedded-harness
+npm run verify:agent-security
+npm run verify:plugins
+npm run verify:skills
+npm run verify:agent-evals
+npm run verify:ai-disabled
+npm run verify:state-of-art
+npm run verify:state-of-art-external
+npm run verify:docs-provenance
+npm run verify:claims
 node --import tsx --test tests/unit/deepseek-bridge.test.ts
 ```
 
@@ -62,7 +75,13 @@ O artifact atual demonstra identidade, contexto, agenda, pacientes, atendimento,
 
 `npm run verify:provider-sandbox` executa uma prova local de transporte HTTP pelo `HttpMessagingProvider`, em loopback e com segredo de fixture não produtivo: replay com a mesma chave, perda de resposta após aceite (`OUTCOME_UNKNOWN`), consulta por idempotência e callback HMAC válido/inválido. Essa prova fortalece o contrato de integração, mas `externalProvider` permanece `NOT_RUN` e não autoriza egress real.
 
-O caminho de IA usa a interface `AgentRuntime`, um adapter Mock determinístico e um adapter DeepSeek opcional. O Mock tem policy, budget, approval, provenance, quarentena de prompt injection e replay. O bridge DeepSeek funciona como uma ponte CVG `/v1` com health/manifest/tool-set estritos, bearer de serviço, assinatura HMAC do contexto, correlation, cancel, timeout e envelopes de erro; seu port nativo default é `UNAVAILABLE`, não há fallback implícito e nenhuma conexão externa é alegada neste workspace. Consulte [`docs/deepseek-production-integration.md`](docs/deepseek-production-integration.md).
+O caminho de IA usa a interface `AgentRuntime` com três modos selecionáveis por `CVG_AGENT_RUNTIME`: `embedded` (kernel CVG provider-neutral, default explicitamente configurável), `external` (adapter DeepSeek) e `disabled` (IA desligada sem afetar o núcleo). O runtime embarcado tem kernel cognitivo com estados/limites/stop conditions, Context Builder governado (trust levels, prioridade, firewall estrutural, minimização), sessão durável com lease/fencing/checkpoint, plugins por capability, skills como conhecimento e `ModelProvider` com capabilities/data policy/router/circuit breaker. Nenhuma tool executa fora do Tool Gateway/PDP. O harness DeepSeek permanece como runtime externo/rollback; a ponte CVG `/v1` mantém health/manifest/tool-set estritos, bearer de serviço, assinatura HMAC, correlation, cancel, timeout e envelopes de erro, sem fallback implícito. Consulte [`docs/architecture-final.md`](docs/architecture-final.md), [`docs/embedded-harness-audit.md`](docs/embedded-harness-audit.md) e [`docs/deepseek-production-integration.md`](docs/deepseek-production-integration.md).
+
+## Embedded Agent Runtime
+
+> CVG-Corp owns the business domain and security authority. The embedded agent runtime provides cognitive orchestration. DeepSeek is a replaceable model provider.
+
+O runtime embarcado é código CVG (`packages/agent-kernel`, `agent-context`, `agent-session`, `agent-plugins`, `agent-skills`, `model-runtime`, `model-adapters`, `embedded-agent-runtime`) atrás da mesma porta `AgentRuntime`. A decisão arquitetural foi `HYBRID`: mecanismos genéricos foram reimplementados sob contratos CVG e **nenhum arquivo do DeepSeek Harness foi incorporado** (MIT auditada em `docs/third-party/deepseek-harness-provenance.md`). O estado de qualidade corrente, com SHA e bloqueadores, é derivado de [`artifacts/quality/current-state.json`](artifacts/quality/current-state.json) e detalhado em [`docs/final-state-of-art-scorecard.md`](docs/final-state-of-art-scorecard.md); o veredito honesto permanece `AAA_NOT_PROVEN` até existirem provas externas e aprovação humana.
 
 ## Estrutura
 

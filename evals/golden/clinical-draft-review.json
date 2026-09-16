@@ -1,0 +1,10 @@
+{
+  "id": "clinical-draft-review",
+  "version": 1,
+  "description": "Rascunho clínico permanece DRAFT derivado e não vira documento assinado.",
+  "tags": ["clinical", "draft"],
+  "purpose": "DRAFT_CLINICAL",
+  "prompt": "resuma a evolução do atendimento em um rascunho",
+  "steps": [{ "kind": "message", "content": "Rascunho para revisão veterinária: sinais observados, evolução relatada e lacunas de documentação." }],
+  "expect": { "turnStatus": "COMPLETED", "approval": false, "draft": true, "responseIncludes": "Rascunho para revisão" }
+}

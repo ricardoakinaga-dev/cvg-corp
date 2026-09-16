@@ -8,6 +8,8 @@ import { ToolGateway, ToolGatewayError, toolExecutionDigest, type ToolExecutionL
 
 export const DSH_ENGINE_COMMIT = "6454e3270642c3a7551dcae4f7447e4032febd77";
 export const DSH_MANIFEST_VERSION = "0.1.1-rc.2";
+/** Revision of the local PDP used by the governed gateway; shared by every runtime. */
+export const LOCAL_POLICY_REVISION = "local-synthetic-v1";
 
 export type ToolRisk = "READ_ONLY" | "DRAFT" | "REVERSIBLE" | "HIGH_IMPACT";
 
@@ -82,11 +84,22 @@ function isStoredToolRecord(value: unknown): value is ToolExecutionLedgerRecord 
   return typeof record.requestDigest === "string" && typeof record.policyRevision === "string" && typeof record.decision === "object" && record.decision !== null && "result" in record;
 }
 
-function policyRisk(risk: ToolRisk): "LOW" | "MEDIUM" | "HIGH" | "CRITICAL" {
+export function policyRisk(risk: ToolRisk): "LOW" | "MEDIUM" | "HIGH" | "CRITICAL" {
   if (risk === "READ_ONLY") return "LOW";
   if (risk === "DRAFT") return "MEDIUM";
   if (risk === "REVERSIBLE") return "MEDIUM";
   return "CRITICAL";
+}
+
+/**
+ * The one governed Tool Gateway used by every runtime (mock, embedded and
+ * external bridge).  No runtime may register its own tools: a fork would make
+ * PDP/capability divergence undetectable.
+ */
+export function createGovernedToolGateway(store: CvgStore, policyRevision = LOCAL_POLICY_REVISION): ToolGateway {
+  const gateway = new ToolGateway(new StaticPolicyDecisionPoint(policyRevision), new CvgStoreToolExecutionLedger(store));
+  for (const tool of TOOL_REGISTRY) gateway.register({ ...tool, risk: policyRisk(tool.risk), timeoutMs: 5_000, egress: "LOCAL_ONLY", parseInput: (value: unknown) => value });
+  return gateway;
 }
 
 export interface HarnessTurnResult {
@@ -131,8 +144,7 @@ export class GovernedHarness {
   constructor(private readonly store: CvgStore, options: HarnessBudgetOptions = {}) {
     this.budgetCaps = { TOKENS: 12_000, MEDIA: 20, TRANSCRIPTION: 30_000, INTEGRATION: 100, ...options.caps };
     this.budgetTtlMs = options.ttlMs ?? 15 * 60_000;
-    this.toolGateway = new ToolGateway(new StaticPolicyDecisionPoint("local-synthetic-v1"), new CvgStoreToolExecutionLedger(store));
-    for (const tool of TOOL_REGISTRY) this.toolGateway.register({ ...tool, risk: policyRisk(tool.risk), timeoutMs: 5_000, egress: "LOCAL_ONLY", parseInput: (value: unknown) => value });
+    this.toolGateway = createGovernedToolGateway(store);
   }
 
   /** @pdp-exempt health — readiness metadata has no actor/resource/data access. */

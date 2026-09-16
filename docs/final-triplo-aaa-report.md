@@ -1,0 +1,129 @@
+# Final report — Embedded Agent Runtime + Triple AAA closure
+
+**subject SHA:** `f53f9eb3e5a44240823f29cbf7307a52f6b5a139`
+**Data:** 2026-09-16
+**Classificação do estado:** `LOCAL_STATE_OF_THE_ART_CANDIDATE` (local) ·
+`STATE_OF_THE_ART_NOT_PROVEN` (externo) · `AAA_NOT_PROVEN`
+
+## CURRENT SHA
+
+`f53f9eb3e5a44240823f29cbf7307a52f6b5a139` (worktree modificado pelo programa;
+candidate SHA será congelado após o commit).
+
+## DECISION
+
+**HYBRID** — `docs/adr/ADR-agent-runtime-embedding-decision.md`.
+
+- Runtime embarcado **CVG-owned** atrás do `AgentRuntime` (kernel, contexto, sessão,
+  plugins, skills, model runtime/adapters).
+- Runtime externo (DeepSeek Harness) preservado como adapter selecionável e rollback.
+- **Nenhum arquivo do upstream foi incorporado** (MIT auditorada, commit
+  `5dda764ed3aa172535a7967b06ff95d9cbfe536a`); conceitos foram reimplementados
+  (`REIMPLEMENT/ADAPT`), conforme `docs/embedded-harness-audit.md`.
+
+## ARCHITECTURE
+
+- Porta `AgentRuntime` (v1, `AgentRuntimeContract/v1`) com manifest determinístico.
+- Kernel provider-neutral (13 estados, 9 stop conditions, limites de turns/tools/tokens/tempo/custo/falhas,
+  detecção de loop e progresso explícito) em `packages/agent-kernel`.
+- Context Builder governado (trust levels, prioridade, firewall estrutural, minimização)
+  em `packages/agent-context`.
+- Sessão durável com lease/fencing/checkpoint/turn ledger em `packages/agent-session`
+  e migration `038_agent_runtime_session_state.sql` (RLS/append-only).
+- Plugins por capability (sem autoridade ambiente) e skills como conhecimento
+  (sem conceder autoridade).
+- `ModelProvider` com capabilities, data policy, router, circuit breaker e retry
+  classificado; adapters Mock/DeepSeek/Local.
+- Tool Gateway + PDP permanecem soberanos; nenhuma tool é executada fora deles.
+- Seleção `CVG_AGENT_RUNTIME=auto|embedded|external|disabled`; readiness de IA
+  separada (`/api/v1/ai/ready`); indisponibilidade de IA nunca derruba `/api/v1/ready`.
+
+## IMPLEMENTED
+
+- 7 novos pacotes: `agent-kernel`, `agent-context`, `agent-session`, `agent-plugins`,
+  `agent-skills`, `model-runtime`, `model-adapters`; runtime embarcado em
+  `embedded-agent-runtime`.
+- Governança: PDP, approval one-shot vinculado a digest, budget/settlement, receipts
+  duráveis, `AI_SAFE_MODE`, kill switches de provider/tool/plugin, `AI_DEGRADED`.
+- Evals: corpus sintético `evals/golden/*.json` + runner determinístico com
+  differential/shadow estrutural.
+- Gates novos: `verify:architecture`, `verify:agent-runtime`,
+  `verify:agent-runtime-smoke`, `verify:embedded-harness`, `verify:agent-security`,
+  `verify:plugins`, `verify:skills`, `verify:agent-evals`, `verify:ai-disabled`,
+  `verify:state-of-art`, `verify:state-of-art-external`, `verify:docs-provenance`,
+  `verify:claims`; `verify:triplo-aaa` reforçado com os gates locais.
+- Documentação: auditoria, proviniência, 5 ADRs, arquitetura final, data flow,
+  threat model, security review, red team, rollout, comparison, verification,
+  evals e 8 runbooks.
+
+## TESTED (real, local)
+
+| Gate | Resultado |
+| --- | --- |
+| `npm test` | 480 testes, 479 pass, 1 skip, 0 fail |
+| `verify:agent-runtime` | PASS (46 testes focados) |
+| `verify:embedded-harness` | PASS (17 artefatos, 43 testes) |
+| `verify:agent-security` | PASS (10 ataques adversariais) |
+| `verify:plugins` / `verify:skills` | PASS (10 / 5 testes) |
+| `verify:agent-evals` | PASS (7/7 cenários; paridade diferencial 1/1) |
+| `verify:ai-disabled` | PASS (núcleo operacional com IA desabilitada) |
+| `verify:agent-runtime-smoke` | PASS (session → tool → approval → checkpoint → resume → drain) |
+| `verify:architecture` | PASS (domainImports=0, applicationProviderImports=0) |
+| `verify:pdp-universal` / `verify:pdp` | PASS |
+
+## EXTERNAL BLOCKERS
+
+- `verify:deepseek-real`, `verify:provider-real`, `verify:staging`, `verify:load`:
+  `BLOCKED_EXTERNAL` (sem endpoint/credencial/staging autorizados).
+- Chaos, recovery production-like, observability/SLO e RTO/RPO externos: `NOT_RUN`.
+- Migration 038 não aplicada localmente (sem PostgreSQL/Docker neste ambiente).
+- CI same-SHA, critics independentes e aprovações humanas ausentes.
+
+## CRITICAL FINDINGS
+
+Nenhum CRITICAL em aberto no escopo local. Uma crítica independente (fresh context)
+encontrou HIGH/MEDIUM reais, que foram reparados nesta rodada:
+
+| # | Severidade | Achado | Reparo aplicado | Evidência |
+| --- | --- | --- | --- | --- |
+| 1 | HIGH | Postgres agent store sem escopo de tenant (FORCE RLS) e fail-open em erros de lease | `createScopedSqlExecutor` abre transação e aplica `set_config('cvg.organization_id', …, true)`; erros de lease/sessão agora falham com `DEPENDENCY_UNAVAILABLE` | `packages/agent-session/src/index.ts`; `apps/api/src/app.ts` |
+| 2 | HIGH | SQL de checkpoint/turn não validava fence e numerava sequência por fence (colisão no 2º turno e escrita stale possível) | `INSERT … WHERE EXISTS (agent_sessions.fence = $n)` + `MAX(sequence)` global por sessão; `latestCheckpoint` filtra `fence <= session.fence` | novos testes em `tests/unit/agent-session.test.ts` |
+| 3 | HIGH | Lease de 60 s sem renovação podia expirar no meio do turno | TTL = wall budget + 180 s e `assertLeaseHeld` (renovação) antes de checkpoint e da escrita final do turno | `tests/unit/embedded-runtime.test.ts`, `tests/unit/agent-security.test.ts` |
+| 4 | MEDIUM | Reserva de budget `UNKNOWN` permitia turno sem reserva | kernel passa a parar com `DEPENDENCY_UNAVAILABLE` | teste "kernel stops when the budget reservation cannot be confirmed" |
+| 5 | MEDIUM | Consumo do approval não era atômico com a execução | approval one-shot é consumido **antes** do dispatch; crash/falha não deixa aprovação reutilizável | teste "a consumed approval cannot be reused even when the effect fails" |
+| 6 | MEDIUM | Falha de ledger/checkpoint era engolida | falha de checkpoint falha fechado; turno sem entrada de ledger é rebaixado a `OUTCOME_UNKNOWN` | teste "a turn whose ledger entry cannot be written is not reported as completed" |
+| 7 | MEDIUM | Usage desconhecido era liquidado como medido e custo não tinha teto efetivo | `usage.source = UNAVAILABLE` ⇒ `RECONCILIATION_REQUIRED`; custo nulo nunca vira zero; tetos de custo permanecem `PROPOSED` (risco documentado) | teste "unknown provider usage is never settled as if measured" |
+| 8 | MEDIUM | Firewall de contexto não cobria histórico de conversa/tool | histórico passa pelo mesmo `evaluate` do Context Builder (delimitado, findings, quarentena) | teste "tool and assistant history is delimited and injection findings are reported" |
+
+Achados residuais assumidos:
+
+- **HIGH (limitação de prova):** o executor de tool ligado à camada de aplicação é
+  injetável e o default é sintético; ligar leituras reais de aplicação é o próximo
+  passo da camada de aplicação.
+- **MEDIUM:** as correções SQL de fence/sequência não foram executadas contra
+  PostgreSQL real nesta máquina (sem Docker/PostgreSQL); os testes atuais usam um
+  executor com semântica de guarda. Prova real permanece pendente de staging.
+- **MEDIUM:** `disabledPlugins` só é aplicado quando um `pluginRuntime` é injetado;
+  a API não registra plugins hoje (sem plugins de produção).
+- **LOW:** `/api/v1/ai/ready` usa `auth: PUBLIC` no catálogo (metadado sem dado de
+  ator), igual a `/health` e `/ready`.
+
+## RESIDUAL RISKS
+
+- Paridade funcional com o harness externo não é medida (por decisão: HYBRID
+  reutiliza mecanismos, não o produto).
+- Nenhum benchmark de latência/custo do kernel; budgets permanecem `PROPOSED`.
+- UI de estados de degradação de IA implementada no backend (`ai.degraded`);
+  revisão visual dedicada pendente.
+- Checkpoint contém argumentos de tool (não segredos); retenção `PROPOSED`.
+
+## NEXT GATE
+
+1. Aplicar migration 038 em PostgreSQL local autorizado e rodar
+   `verify:postgres:concurrency` + restore para as tabelas `agent_*`.
+2. Congelar candidate SHA, gerar `artifacts/quality/current-state.json` como
+   `CURRENT` e rodar `verify:state-of-art` no mesmo SHA.
+3. CI same-SHA com os novos gates.
+4. Staging autorizado: `verify:staging`, provider real, observability, carga,
+   chaos e recovery; registrar `observed RTO/RPO`.
+5. Critics independentes e aprovações humanas.

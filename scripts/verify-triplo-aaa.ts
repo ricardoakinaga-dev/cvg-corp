@@ -948,6 +948,19 @@ async function main(): Promise<void> {
   runNpmScript(manifest, "runbook-contract-local", "verify:runbook-execution", "SYNTHETIC_ONLY");
   runNpmScript(manifest, "audit-chain-local", "verify:audit-chain", "LOCAL_EXECUTION_ONLY");
   runNpmScript(manifest, "worker-runtime-local", "verify:worker-runtime", "LOCAL_EXECUTION_ONLY");
+  // Embedded agent-runtime governance gates.  Every one of them fails closed;
+  // a missing script is recorded as NOT_RUN and blocks promotion.
+  runNpmScript(manifest, "architecture-local", "verify:architecture", "LOCAL_EXECUTION_ONLY");
+  runNpmScript(manifest, "agent-runtime-local", "verify:agent-runtime", "LOCAL_EXECUTION_ONLY");
+  runNpmScript(manifest, "agent-runtime-smoke-local", "verify:agent-runtime-smoke", "LOCAL_EXECUTION_ONLY");
+  runNpmScript(manifest, "embedded-harness-local", "verify:embedded-harness", "LOCAL_EXECUTION_ONLY");
+  runNpmScript(manifest, "agent-security-local", "verify:agent-security", "SYNTHETIC_ONLY");
+  runNpmScript(manifest, "plugins-local", "verify:plugins", "LOCAL_EXECUTION_ONLY");
+  runNpmScript(manifest, "skills-local", "verify:skills", "LOCAL_EXECUTION_ONLY");
+  runNpmScript(manifest, "agent-evals-local", "verify:agent-evals", "SYNTHETIC_ONLY");
+  runNpmScript(manifest, "ai-disabled-local", "verify:ai-disabled", "LOCAL_EXECUTION_ONLY");
+  runNpmScript(manifest, "docs-provenance-local", "verify:docs-provenance", "LOCAL_EXECUTION_ONLY");
+  runNpmScript(manifest, "claims-local", "verify:claims", "LOCAL_EXECUTION_ONLY");
   // verify:production runs static verification before its own local contract
   // writers; provide it with a snapshot that includes the writers above.
   runNpmScript(manifest, "evidence-snapshot-pre-production", "verify:evidence-snapshot", "LOCAL_EXECUTION_ONLY");

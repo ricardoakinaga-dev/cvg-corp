@@ -1,0 +1,12 @@
+{
+  "id": "tool-outcome-unknown",
+  "version": 1,
+  "description": "Resultado desconhecido de tool nunca é revertido para retryable nem duplica efeito.",
+  "tags": ["reliability", "effect-ledger"],
+  "purpose": "SUMMARY",
+  "prompt": "leia o paciente",
+  "patientRequired": true,
+  "executor": "outcome-unknown",
+  "steps": [{ "kind": "tool", "tool": "cvg.patient.read", "input": {} }],
+  "expect": { "turnStatus": "OUTCOME_UNKNOWN", "approval": false }
+}

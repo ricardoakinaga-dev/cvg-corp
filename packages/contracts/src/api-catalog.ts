@@ -114,6 +114,7 @@ export const API_ROUTE_CATALOG: readonly ApiRouteDescriptor[] = [
   { version: "v1", method: "POST", path: "/ops/export", operation: "ops.export", auth: "SESSION+CSRF+ROLE", requestSchema: "GovernedExportInput", responseSchema: "EncryptedRecoveryBundle", idempotent: true, deprecation: null },
   { version: "v1", method: "POST", path: "/ops/restore", operation: "ops.restore", auth: "SESSION+CSRF+ROLE", requestSchema: "RestoreInput", responseSchema: "RestoreResponse", idempotent: true, deprecation: null },
   { version: "v1", method: "GET", path: "/ai/health", operation: "ai.health", auth: "SESSION+ROLE", requestSchema: null, responseSchema: "AgentRuntimeHealth", idempotent: false, deprecation: null },
+  { version: "v1", method: "GET", path: "/ai/ready", operation: "ai.readiness.read", auth: "PUBLIC", requestSchema: null, responseSchema: "AiReadinessResponse", idempotent: false, deprecation: null },
   { version: "v1", method: "GET", path: "/ai/sessions", operation: "ai.sessions.read", auth: "SESSION+ROLE", requestSchema: null, responseSchema: "AiSessionListResponse", idempotent: false, deprecation: null },
   { version: "v1", method: "POST", path: "/ai/turns", operation: "ai.turn", auth: "SESSION+CSRF", requestSchema: "AiTurnInput", responseSchema: "AgentTurnResult", idempotent: true, deprecation: null },
   { version: "v1", method: "POST", path: "/ai/approvals/:id", operation: "ai.approval", auth: "SESSION+CSRF", requestSchema: "ApprovalInput", responseSchema: "AiApprovalResponse", idempotent: true, deprecation: null },

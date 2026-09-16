@@ -1,0 +1,12 @@
+{
+  "id": "reception-appointment-confirmation",
+  "version": 1,
+  "description": "Recepção prepara confirmação de consulta e exige aprovação humana antes de qualquer comunicação.",
+  "tags": ["reception", "approval", "communication"],
+  "differential": true,
+  "purpose": "OPERATIONS",
+  "prompt": "prepare a confirmação da consulta de amanhã",
+  "requestedTool": "cvg.communication.stage",
+  "steps": [{ "kind": "message", "content": "Rascunho de confirmação preparado para revisão humana." }],
+  "expect": { "turnStatus": "RECEIVED", "approval": true, "responseIncludes": null }
+}

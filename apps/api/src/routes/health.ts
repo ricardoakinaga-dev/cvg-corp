@@ -93,7 +93,24 @@ export async function registerHealthRoutes(app: FastifyInstance, dependencies: H
     const providerReady = !dependencies.secretProviderRequired || checks.secretProvider === "READY" || demoOnly;
     const referencesReady = Object.values(checks.secretReferences).every((status) => status === "READY" || status === "NOT_REQUIRED");
     const mfaReady = checks.authMfa === "READY" || checks.authMfa === "NOT_REQUIRED";
-    const ready = dependencies.store.healthStatus === "READY" && persistenceReady && outboxReady && auditReady && checks.policyStore === "READY" && providerReady && referencesReady && mfaReady && checks.agentRuntime === "READY";
-    return send(reply, success({ ready, status: dependencies.store.healthStatus, checks }, randomUUID()), ready ? 200 : 503);
+    // AI availability is reported but never gates core readiness: a model or
+    // runtime outage degrades the assistant, not the hospital.
+    const ready = dependencies.store.healthStatus === "READY" && persistenceReady && outboxReady && auditReady && checks.policyStore === "READY" && providerReady && referencesReady && mfaReady;
+    const aiDegraded = checks.agentRuntime !== "READY";
+    return send(reply, success({ ready, status: dependencies.store.healthStatus, checks, ai: { status: checks.agentRuntime, degraded: aiDegraded } }, randomUUID()), ready ? 200 : 503);
+  });
+
+  app.get("/api/v1/ai/ready", async (_request, reply) => {
+    const agentHealth = await dependencies.agentRuntime.health();
+    const ready = agentHealth.status === "READY";
+    const aiState = ready ? "READY" : agentHealth.status === "DISABLED" ? "DISABLED" : "AI_DEGRADED";
+    return send(reply, success({
+      ready,
+      aiState,
+      status: agentHealth.status,
+      reason: agentHealth.reason,
+      checkedAt: agentHealth.checkedAt,
+      capabilities: agentHealth.capabilities
+    }, randomUUID()), ready ? 200 : 503);
   });
 }

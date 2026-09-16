@@ -17,6 +17,7 @@ const gates = [
   "test:database",
   "test:fault",
   "build",
+  "verify:architecture",
   "verify:pdp-universal",
   "verify:authoritative-writes",
   "verify:audit-chain",

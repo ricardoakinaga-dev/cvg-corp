@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-16T18:30:00.000Z",
-  "subjectSha": "e80985b35d8b3b83dca90cecebb42a91180866a0",
+  "generatedAt": "2026-09-16T21:30:00.000Z",
+  "subjectSha": "d21dbc1b29d1c33bd209dcd05730d69d2285f1ab",
   "status": "STATE_OF_ART_LOCAL_VERIFIED",
   "gates": {
     "verify:architecture": "PASS",
@@ -18,7 +18,10 @@
     "test": "PASS",
     "typecheck": "PASS",
     "verify:state-of-art": "PASS",
-    "test:e2e:smoke:serial": "PASS (254 pass, 22 skipped)"
+    "test:e2e:smoke:serial": "PASS (254 pass, 22 skipped)",
+    "verify:agent-chaos": "PASS (7 falhas + retomada)",
+    "benchmark:agent-runtime": "PASS (1-50 sess\u00f5es; backpressure 8)",
+    "verify:postgres": "CI/local autorizado: agent session RLS/fence/append-only"
   },
   "external": "BLOCKED_EXTERNAL",
   "notes": [

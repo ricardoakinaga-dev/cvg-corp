@@ -90,3 +90,18 @@ O que não está provado:
 - **Sem staging/carga/chaos:** `verify:staging`, `verify:deepseek-real`, `verify:provider-real` e `verify:load` estão bloqueados por credenciais; chaos/recovery/observabilidade externos estão `NOT_RUN`.
 - **Comparação diferencial estreita:** apenas `turnStatus`, `approval` e `policyDenied` do cenário `reception-appointment-confirmation` foram comparados entre embedded e legacy (`docs/embedded-vs-external-comparison.md`).
 - **Estado canônico ausente:** `artifacts/quality/current-state.json` não existe neste worktree; os documentos declaram `LOCAL_STATE_OF_THE_ART_CANDIDATE`/`AAA_NOT_PROVEN`/`NOT_PROVEN` com base nos gates locais, e não como certificação.
+
+## Gates adicionados na rodada de fechamento (2026-09-16)
+
+| Gate | Comando | Evidência | Limitação |
+| --- | --- | --- | --- |
+| Arquitetura | `npm run verify:architecture` | domainImports=0; applicationProviderImports=0 | Scan estático de imports/dependências |
+| Chaos local | `npm run verify:agent-chaos` | 7 falhas injetadas (provider down, timeout, tool OUTCOME_UNKNOWN, ledger indisponível, restart em WAITING_APPROVAL, OUTCOME_UNKNOWN entre instâncias, budget port) sem corrupção de domínio nem efeito duplicado | Sintético e in-process; sem kill de processo real |
+| Baseline de carga | `npm run benchmark:agent-runtime` | 1/5/10/25/50 sessões; concorrência limitada a 8 com backpressure explícita; amostras brutas por sessão | Sem latência de provider real; budgets `PROPOSED` |
+| PostgreSQL do runtime de agentes | `npm run verify:postgres` | `agent_sessions`/`agent_turns`/`agent_checkpoints`/`agent_leases`: RLS por tenant, fence stale rejeitado, sequência global, append-only, round-trip de checkpoint | Executa somente com PostgreSQL autorizado (CI/staging) |
+| Tool executor de aplicação | `tests/integration/agent-tool-executor.test.ts` | projeção mínima, escopo cruzado negado, argumentos do modelo não redirecionam recurso, efeitos sem binding falham fechado | Comandos de efeito ainda sem binding de aplicação |
+| Estados de IA na UI | `tests/unit/assistant-state.test.ts` | disponibilidade, falhas distintas, prévia de aprovação completa, risco desconhecido nunca "seguro" | Sem revisão visual/leitor de tela nesta rodada |
+
+Composição completa: `npm run verify:state-of-art` executa 30 gates locais e grava
+`artifacts/operational-proof/state-of-art-local.json` (com `blockedGates` explícitos
+para a matriz completa de browsers e para as provas externas).

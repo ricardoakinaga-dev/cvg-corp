@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-16T06:05:16.677Z",
-  "subjectSha": "e68ed05e74ee64f6d0ab5b15b027df6eb390e1d7",
+  "generatedAt": "2026-09-16T12:32:19.926Z",
+  "subjectSha": "d21dbc1b29d1c33bd209dcd05730d69d2285f1ab",
   "evidenceClass": "LOCAL_REAL",
   "status": "STATE_OF_ART_LOCAL_VERIFIED",
   "blockedGates": [
@@ -23,7 +23,7 @@
       "gate": "typecheck",
       "status": "PASS",
       "exitCode": 0,
-      "seconds": 7.2
+      "seconds": 7.4
     },
     {
       "gate": "lint",
@@ -35,7 +35,7 @@
       "gate": "test",
       "status": "PASS",
       "exitCode": 0,
-      "seconds": 16.8
+      "seconds": 17.9
     },
     {
       "gate": "test:contract",
@@ -47,37 +47,37 @@
       "gate": "test:security",
       "status": "PASS",
       "exitCode": 0,
-      "seconds": 2.6
+      "seconds": 2.7
     },
     {
       "gate": "test:database",
       "status": "PASS",
       "exitCode": 0,
-      "seconds": 12.5
+      "seconds": 13.6
     },
     {
       "gate": "test:fault",
       "status": "PASS",
       "exitCode": 0,
-      "seconds": 0.4
+      "seconds": 0.5
     },
     {
       "gate": "build",
       "status": "PASS",
       "exitCode": 0,
-      "seconds": 7.3
+      "seconds": 10.4
     },
     {
       "gate": "verify:pdp-universal",
       "status": "PASS",
       "exitCode": 0,
-      "seconds": 3.3
+      "seconds": 4.1
     },
     {
       "gate": "verify:authoritative-writes",
       "status": "PASS",
       "exitCode": 0,
-      "seconds": 0.5
+      "seconds": 0.6
     },
     {
       "gate": "verify:audit-chain",
@@ -95,7 +95,7 @@
       "gate": "verify:agent-runtime",
       "status": "PASS",
       "exitCode": 0,
-      "seconds": 3
+      "seconds": 3.5
     },
     {
       "gate": "verify:embedded-harness",
@@ -107,37 +107,49 @@
       "gate": "verify:agent-security",
       "status": "PASS",
       "exitCode": 0,
-      "seconds": 1.6
+      "seconds": 1.7
     },
     {
       "gate": "verify:plugins",
       "status": "PASS",
       "exitCode": 0,
-      "seconds": 0.3
+      "seconds": 0.4
     },
     {
       "gate": "verify:skills",
       "status": "PASS",
       "exitCode": 0,
-      "seconds": 0.3
+      "seconds": 0.4
     },
     {
       "gate": "verify:agent-evals",
       "status": "PASS",
       "exitCode": 0,
-      "seconds": 1.8
+      "seconds": 1.9
     },
     {
       "gate": "verify:ai-disabled",
       "status": "PASS",
       "exitCode": 0,
-      "seconds": 0.8
+      "seconds": 0.9
     },
     {
       "gate": "verify:agent-runtime-smoke",
       "status": "PASS",
       "exitCode": 0,
-      "seconds": 0.5
+      "seconds": 0.6
+    },
+    {
+      "gate": "verify:agent-chaos",
+      "status": "PASS",
+      "exitCode": 0,
+      "seconds": 1.7
+    },
+    {
+      "gate": "benchmark:agent-runtime",
+      "status": "PASS",
+      "exitCode": 0,
+      "seconds": 1.2
     },
     {
       "gate": "verify:evidence-snapshot",
@@ -149,19 +161,19 @@
       "gate": "test:e2e:smoke:serial",
       "status": "PASS",
       "exitCode": 0,
-      "seconds": 476.9
+      "seconds": 533.9
     },
     {
       "gate": "verify:evidence-snapshot",
       "status": "PASS",
       "exitCode": 0,
-      "seconds": 0.2
+      "seconds": 0.3
     },
     {
       "gate": "verify:static",
       "status": "PASS",
       "exitCode": 0,
-      "seconds": 0.9
+      "seconds": 1.1
     },
     {
       "gate": "verify:docs-provenance",

@@ -1,0 +1,80 @@
+{
+  "schema_version": 1,
+  "gate_id": "GATE-CVG-AUD13-22",
+  "task_id": "AUD13-22",
+  "status": "PASS_COM_RESSALVAS",
+  "decision": "PARTIAL_PASS",
+  "score": 8.0,
+  "critic_artifact": null,
+  "subject": {
+    "head_sha": "1c22c5dc79c52151f4c7c94c4402dfdc86812cbc",
+    "worktree": "MODIFIED",
+    "task_owned_paths": [
+      "apps/api/src/application/idempotency-service.ts",
+      "packages/domain/src/",
+      "packages/persistence/",
+      "db/migrations/",
+      "docs/adr/",
+      "tests/"
+    ],
+    "registered_surface_extensions": [
+      "packages/contracts/src/index.ts (claimEpoch/claimExpiresAt/dispatchState/failurePhase opcionais)"
+    ],
+    "blocked_proof": "verify:postgres:concurrency (multiprocesso real) sem DATABASE_URL/PostgreSQL local"
+  },
+  "bar": {
+    "path": ".gauntlet/bar-v4.json",
+    "sha256": "2093461a8d6103641a555ad45371dde4649e5f144c32260b80244e219fa70697"
+  },
+  "checks": [
+    {
+      "command": "npm test",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "374 testes: 373 pass, 1 skip, 0 fail"
+    },
+    {
+      "command": "npm run test:database",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "62 testes"
+    },
+    {
+      "command": "npm run verify:pdp",
+      "exit_code": 0,
+      "result": "PASS"
+    },
+    {
+      "command": "npm run verify:postgres:concurrency",
+      "exit_code": 0,
+      "result": "BLOCKED",
+      "summary": "POSTGRES_CONCURRENCY_BLOCKED_EXTERNAL: DATABASE_URL required"
+    },
+    {
+      "command": "npm run typecheck",
+      "exit_code": 0,
+      "result": "PASS"
+    },
+    {
+      "command": "npm run lint",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "175 arquivos"
+    }
+  ],
+  "residuals": [
+    "takeover multiprocesso real em PostgreSQL BLOCKED_EXTERNAL (AUD13-23/36)",
+    "migracao 037 nao reescreve hashes legados por design (leitura dupla cobre)"
+  ],
+  "verification_refs": [
+    "VER-CVG-AUD13-22-001"
+  ],
+  "artifact_digests": {
+    "docs/adr/032-idempotency-identity-and-claim-fence.md": "3a1d8eda09c45eff187d1088d26c4fb1b12d55e69c61764c872252f1a16297ec",
+    "db/migrations/037_command_receipt_claim_fence.sql": "8593cc0f442948ccedf02f3573a7db189983f1b0f85f4abcc3d507e2024065f4",
+    "packages/domain/src/index.ts": "eb7de667dfe59e9366ff3686dc93d23b2798b9c70884e6c14beb2d055afdd2af",
+    "packages/persistence/src/index.ts": "801108e904ebd120d40a06a2dbd9b15f972fbf2d335af88bcfacd4f5e448c970",
+    "apps/api/src/application/idempotency-service.ts": "fd02fdf23d71eadef0fa6d752d1df113bc600e86dd9965aed81d032bc4ef0f5e"
+  },
+  "recorded_at": "2026-09-13T14:20:08-03:00"
+}

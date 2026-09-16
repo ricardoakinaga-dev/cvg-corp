@@ -1,0 +1,28 @@
+{
+  "toast": {
+    "width": 375,
+    "scroll": 375,
+    "main": {
+      "x": 0,
+      "y": 0,
+      "width": 0,
+      "height": 2493.953125,
+      "top": 0,
+      "right": 0,
+      "bottom": 2493.953125,
+      "left": 0
+    },
+    "toast": {
+      "x": 0,
+      "y": 0,
+      "width": 375,
+      "height": 2493.953125,
+      "top": 0,
+      "right": 375,
+      "bottom": 2493.953125,
+      "left": 0
+    },
+    "toastPosition": "static"
+  },
+  "mfaText": "CVG•\nCARE OPERATIONS\nAMBIENTE LOCAL PROTEGIDO\nO cuidado em foco.\n\nUm ponto de clareza para cada decisão clínica, operacional e humana.\n\nIdentificação\nSenha\nCannot read properties of undefined (reading '0')\nEntrar no CVG\nou\nAbrir demonstração sintética\n\nDados descartáveis · providers reais bloqueados\n\nServiços prontos\nv0.1 · loopback"
+}

@@ -1,0 +1,43 @@
+--- prior/packages/domain/src/index.ts
++++ current/packages/domain/src/index.ts
+@@ -1554,10 +1554,12 @@
+ 
+   dispenseMedication(context: CvgContext, medicationOrderId: OpaqueId, lotId: OpaqueId, quantity: number): Dispensation {
+     this.requireRole(context, ["admin", "estoque"], "medication:dispense");
++    if (!context.unitId || !context.workspaceId) throw new DomainError("INVALID_INPUT", "Unidade e workspace são obrigatórios para dispensação.", 400);
+     const order = this.medicationOrdersStore.get(medicationOrderId);
+     const lot = this.lotsStore.get(lotId);
+     const encounter = order?.encounterId ? this.encountersStore.get(order.encounterId) : null;
+     if (!order || !lot || !encounter || order.organizationId !== context.organizationId || encounter.organizationId !== context.organizationId || (context.unitId && encounter.unitId !== context.unitId) || (context.workspaceId && encounter.workspaceId !== context.workspaceId) || lot.organizationId !== context.organizationId || order.productId !== lot.productId || (context.unitId && this.stockLocationsStore.get(lot.locationId)?.unitId !== context.unitId)) throw new DomainError("NOT_FOUND", "Prescrição ou lote não encontrado.", 404);
++    if (order.status !== "ACTIVE") throw new DomainError("INVALID_STATE", "Prescrição não está ativa para dispensação.", 409, { status: order.status });
+     this.createStockMovement(context, { productId: lot.productId, lotId, locationId: lot.locationId, quantity, movementType: "DISPENSE", reason: `Dispensação da prescrição ${medicationOrderId}`, referenceId: medicationOrderId });
+     const dispensation: Dispensation = { id: makeId(), organizationId: context.organizationId, medicationOrderId, lotId, quantity, dispensedBy: context.actorId, createdAt: now() };
+     this.dispensationsStore.set(dispensation.id, dispensation);
+@@ -1603,7 +1605,7 @@
+     const encounter = order?.encounterId ? this.encountersStore.get(order.encounterId) : null;
+     if (!order || !encounter || order.organizationId !== context.organizationId || (context.unitId && encounter.unitId !== context.unitId) || (context.workspaceId && encounter.workspaceId !== context.workspaceId)) throw new DomainError("NOT_FOUND", "Prescrição não encontrada.", 404);
+     if (order.status === status) return clone(order);
+-    if (order.status === "COMPLETED" && status === "ACTIVE") throw new DomainError("INVALID_STATE", "Prescrição concluída não reabre.", 409, { status: order.status });
++    if (order.status === "COMPLETED" && status !== "COMPLETED") throw new DomainError("INVALID_STATE", "Prescrição concluída é terminal e não reabre.", 409, { from: order.status, to: status });
+     order.status = status;
+     return clone(order);
+   }
+@@ -1680,8 +1682,17 @@
+     this.requireRole(context, ["admin", "estoque"], "stock:write");
+     const lot = this.lotsStore.get(input.lotId);
+     const product = this.productsStore.get(input.productId);
+-    if (!lot || !product || lot.organizationId !== context.organizationId || product.organizationId !== context.organizationId || lot.productId !== product.id || (context.unitId && (lot.locationId !== input.locationId || this.stockLocationsStore.get(input.locationId)?.unitId !== context.unitId))) throw new DomainError("NOT_FOUND", "Lote não encontrado.", 404);
++    const location = this.stockLocationsStore.get(input.locationId);
++    if (!lot || !product || !location || lot.organizationId !== context.organizationId || product.organizationId !== context.organizationId || location.organizationId !== context.organizationId || lot.productId !== product.id || lot.locationId !== input.locationId || (context.unitId && location.unitId !== context.unitId)) throw new DomainError("NOT_FOUND", "Lote não encontrado.", 404);
+     const subtract = ["DISPENSE", "TRANSFER_OUT", "ADJUSTMENT_OUT"].includes(input.movementType);
++    if (subtract && input.referenceId) {
++      const referencedOrder = this.medicationOrdersStore.get(input.referenceId);
++      const referencedEncounter = referencedOrder?.encounterId ? this.encountersStore.get(referencedOrder.encounterId) : null;
++      const validReference = Boolean(context.unitId && context.workspaceId && referencedOrder && referencedEncounter && referencedOrder.organizationId === context.organizationId && referencedEncounter.organizationId === context.organizationId && referencedEncounter.unitId === context.unitId && referencedEncounter.workspaceId === context.workspaceId && referencedOrder.productId === product.id);
++      if (!referencedOrder || !validReference) throw new DomainError("NOT_FOUND", "Prescrição vinculada não encontrada neste contexto.", 404);
++      if (referencedOrder.status !== "ACTIVE") throw new DomainError("INVALID_STATE", "Saída vinculada a prescrição não ativa não é permitida.", 409, { status: referencedOrder.status });
++      if (input.movementType !== "DISPENSE") throw new DomainError("INVALID_STATE", "Saída vinculada a prescrição exige o fluxo de dispensação.", 409, { movementType: input.movementType });
++    }
+     const expiryTime = Date.parse(lot.expiresOn);
+     if (!Number.isFinite(expiryTime)) throw new DomainError("CONFLICT", "Movimento rejeitado: a validade do lote é inválida.", 409, { expiresOn: lot.expiresOn });
+     if (lot.status !== "AVAILABLE" || (subtract && (lot.quantity < input.quantity || expiryTime < Date.now()))) throw new DomainError("CONFLICT", expiryTime < Date.now() && subtract ? "Movimento rejeitado: lote vencido não pode sair do estoque." : "Movimento rejeitado: lote indisponível ou saldo insuficiente.", 409, { available: lot.quantity, expiresOn: lot.expiresOn });

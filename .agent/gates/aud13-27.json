@@ -1,0 +1,89 @@
+{
+  "schema_version": 1,
+  "gate_id": "GATE-CVG-AUD13-27",
+  "task_id": "AUD13-27",
+  "status": "PASS_COM_RESSALVAS",
+  "decision": "PARTIAL_PASS",
+  "score": 7.5,
+  "critic_artifact": null,
+  "subject": {
+    "head_sha": "1c22c5dc79c52151f4c7c94c4402dfdc86812cbc",
+    "worktree": "MODIFIED",
+    "task_owned_paths": [
+      "packages/deepseek-bridge/",
+      "packages/harness-adapters/",
+      "packages/agent-runtime/",
+      "apps/deepseek-bridge/",
+      "tests/",
+      "docs/deepseek-real-proof.md"
+    ],
+    "blocked_slices": [
+      "Prova no modelo/runtime DeepSeek real (AUD13-26 recursos externos, AUD13-28 provider/secrets)",
+      "AUD13-20/23 PARTIAL como dependencias (registry/GovernedArtifact e escritas por comando em PG)"
+    ]
+  },
+  "bar": {
+    "path": ".gauntlet/bar-v4.json",
+    "sha256": "2093461a8d6103641a555ad45371dde4649e5f144c32260b80244e219fa70697"
+  },
+  "checks": [
+    {
+      "command": "npm run typecheck",
+      "exit_code": 0,
+      "result": "PASS"
+    },
+    {
+      "command": "npm run lint",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "176 arquivos"
+    },
+    {
+      "command": "npm test",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "385 testes: 384 pass, 1 skip, 0 fail"
+    },
+    {
+      "command": "node --import tsx --test tests/unit/deepseek-acp-governance.test.ts",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "6/6 restart, negacao, aprovacao uma vez, usage ausente, budget, promocao"
+    },
+    {
+      "command": "node --import tsx --test tests/unit/deepseek-bridge.test.ts tests/unit/deepseek-acp.test.ts tests/unit/deepseek-real-proof.test.ts tests/unit/deepseek-acp-governance.test.ts",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "31 testes: 30 pass, 1 skip (E2E real)"
+    },
+    {
+      "command": "npm run verify:deepseek-acp",
+      "exit_code": 2,
+      "result": "BLOCKED_EXTERNAL",
+      "summary": "CVG_DEEPSEEK_ACP_* e attestation ausentes"
+    },
+    {
+      "command": "npm run verify:deepseek-real",
+      "exit_code": 2,
+      "result": "BLOCKED_EXTERNAL",
+      "summary": "DEEPSEEK_REAL_BLOCKED_EXTERNAL missing=11 variaveis"
+    }
+  ],
+  "residuals": [
+    "Matriz de falhas no modelo real (restart de processo, cancelamento, timeout, JSON invalido, manifest/HMAC, usage) permanece NOT_RUN — depende de AUD13-26/AUD13-28 e autorizacao de custo",
+    "Durabilidade exercitada sobre store em memoria; ledger PostgreSQL real continua coberto por AUD13-23 (PARTIAL) e verify:postgres BLOCKED_EXTERNAL"
+  ],
+  "verification_refs": [
+    "VER-CVG-AUD13-27-001"
+  ],
+  "artifact_digests": {
+    "packages/harness-adapters/src/index.ts": "4ed790411e5b61c903e0e66e0c34e971344850124530fe354bcc8219cce7ba4f",
+    "packages/deepseek-bridge/src/acp.ts": "f357700aacf3e1ed8bf13682bd95eb0b2da590b8e48d0ab0fad6108fe457497b",
+    "apps/deepseek-bridge/src/server.ts": "44bd58fbdb88d151d2b6f9f6e9bec70d48508b9d19b5f362a11fd4f11d5190a4",
+    "apps/deepseek-bridge/package.json": "7fea41612cdea7adfa0a91b0b25cf0b9ecc4bf630335ca2edd70a44c08ae0563",
+    "package-lock.json": "5995a80894fa16ff2754b536b1d73fef38a38ff36f85271c691346f863596019",
+    "tests/unit/deepseek-acp-governance.test.ts": "1d26bf8bb24048a39b4a082c1452de124007614f4d57a0ccc854dac54d1eb03d",
+    "docs/deepseek-real-proof.md": "c28859319e6799efec0e65321660ea4a062eb9ea15641726e340bb1feb00a249"
+  },
+  "recorded_at": "2026-09-13T15:17:12-03:00"
+}

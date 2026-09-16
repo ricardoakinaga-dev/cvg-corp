@@ -1,8 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { auditRecordHash, CvgStore, DomainError, idempotent, idempotencyLookup, parseSnapshot, serializeSnapshot } from "@cvg/domain";
+import { auditRecordHash, computeFinancialBalance, CvgStore, DomainError, idempotent, idempotencyLookup, parseSnapshot, serializeSnapshot } from "@cvg/domain";
 import { GovernedHarness } from "@cvg/harness";
-import { id } from "@cvg/contracts";
+import { financialBalanceSchema, id, type Payment } from "@cvg/contracts";
 
 function context(store: CvgStore, userId = store.bootstrapCredentials.userId) {
   const option = store.contextOptions(userId)[0];
@@ -278,8 +278,9 @@ test("signed clinical document requires addendum instead of overwrite", () => {
   const patient = [...store.patients.values()][0]; assert.ok(patient);
   const encounter = store.createEncounter(ctx, { patientId: patient.id, appointmentId: null, chiefComplaint: "revisão", urgency: "ROUTINE" });
   const doc = store.createClinicalDocument(ctx, { encounterId: encounter.id, documentType: "EVOLUTION", title: "Evolução", content: "observação", dataClass: "D3" });
-  const signed = store.signClinicalDocument(ctx, doc.id, "1");
-  assert.equal(signed.version, 2);
+  store.reviewClinicalDocument(ctx, doc.id, "1");
+  const signed = store.signClinicalDocument(ctx, doc.id, "2");
+  assert.equal(signed.version, 3);
   assert.throws(() => store.signClinicalDocument(ctx, doc.id), (error: unknown) => error instanceof DomainError && error.code === "CONFLICT");
   const addendum = store.addClinicalAddendum(ctx, doc.id, "correção", "texto complementar");
   assert.equal(addendum.documentId, doc.id);
@@ -294,6 +295,7 @@ test("snapshot validation enforces signed clinical and stock movement actors", (
   assert.ok(patient);
   const encounter = clinicalStore.createEncounter(clinicalContext, { patientId: patient.id, appointmentId: null, chiefComplaint: "snapshot signedBy", urgency: "ROUTINE" });
   const document = clinicalStore.createClinicalDocument(clinicalContext, { encounterId: encounter.id, documentType: "EVOLUTION", title: "Snapshot signedBy", content: "fixture", dataClass: "D3" });
+  clinicalStore.reviewClinicalDocument(clinicalContext, document.id, null);
   clinicalStore.signClinicalDocument(clinicalContext, document.id);
   const invalidClinical = clinicalStore.snapshot();
   invalidClinical.clinicalDocuments.find((candidate) => candidate.id === document.id)!.signedBy = id("00000000-0000-4000-8000-000000009984");
@@ -451,6 +453,90 @@ test("clinical treatment lifecycle keeps facts separate and approvals are one-sh
   await assert.rejects(() => harness.executeTurn(vet, { sessionId: pending.session.id, prompt: "preparar mensagem", purpose: "OPERATIONS", patientId: null, encounterId: null, requestedTool: "cvg.communication.stage", approvalId: approval.id, idempotencyKey: "one-shot-3" }, approval.id), (error: unknown) => error instanceof DomainError && error.code === "POLICY_DENIED");
 });
 
+test("medication terminal states cannot dispense, reopen, or create indirect stock exits", () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const vetId = [...store.users.values()].find((user) => user.login.startsWith("ana."))?.id;
+  const stockId = [...store.users.values()].find((user) => user.login.startsWith("leo."))?.id;
+  assert.ok(vetId && stockId);
+  const vet = context(store, vetId);
+  const stock = context(store, stockId);
+  const patient = [...store.patients.values()][0];
+  const product = [...store.products.values()][0];
+  const lot = [...store.lots.values()][0];
+  assert.ok(patient && product && lot);
+  const encounter = store.createEncounter(vet, { patientId: patient.id, appointmentId: null, chiefComplaint: "prescrição terminal", urgency: "ROUTINE" });
+  const order = store.createMedicationOrder(vet, { patientId: patient.id, encounterId: encounter.id, productId: product.id, dose: "1", route: "oral", frequency: "12/12h" });
+  const quantityBefore = lot.quantity;
+  const dispensationsBefore = store.dispensations.size;
+  const movementsBefore = store.stockMovements.size;
+
+  assert.equal(store.updateMedicationOrderStatus(vet, order.id, "SUSPENDED").status, "SUSPENDED");
+  assert.throws(
+    () => store.dispenseMedication(stock, order.id, lot.id, 1),
+    (error: unknown) => error instanceof DomainError && error.code === "INVALID_STATE"
+  );
+  assert.equal(store.lots.get(lot.id)?.quantity, quantityBefore);
+  assert.equal(store.dispensations.size, dispensationsBefore);
+  assert.equal(store.stockMovements.size, movementsBefore);
+
+  assert.equal(store.updateMedicationOrderStatus(vet, order.id, "ACTIVE").status, "ACTIVE");
+  assert.equal(store.updateMedicationOrderStatus(vet, order.id, "COMPLETED").status, "COMPLETED");
+  assert.throws(
+    () => store.dispenseMedication(stock, order.id, lot.id, 1),
+    (error: unknown) => error instanceof DomainError && error.code === "INVALID_STATE"
+  );
+  assert.throws(
+    () => store.updateMedicationOrderStatus(vet, order.id, "SUSPENDED"),
+    (error: unknown) => error instanceof DomainError && error.code === "INVALID_STATE"
+  );
+  assert.throws(
+    () => store.createStockMovement(stock, { productId: product.id, lotId: lot.id, locationId: lot.locationId, quantity: 1, movementType: "DISPENSE", reason: "saída indireta de prescrição concluída", referenceId: order.id }),
+    (error: unknown) => error instanceof DomainError && error.code === "INVALID_STATE"
+  );
+  for (const movementType of ["ADJUSTMENT_OUT", "TRANSFER_OUT"] as const) {
+    assert.throws(
+      () => store.createStockMovement(stock, { productId: product.id, lotId: lot.id, locationId: lot.locationId, quantity: 1, movementType, reason: "saída alternativa de prescrição concluída", referenceId: order.id }),
+      (error: unknown) => error instanceof DomainError && error.code === "INVALID_STATE"
+    );
+    assert.throws(
+      () => store.createStockMovement(stock, { productId: product.id, lotId: lot.id, locationId: lot.locationId, quantity: 1, movementType, reason: "saída alternativa sem referência", referenceId: id("00000000-0000-4000-8000-000000009996") }),
+      (error: unknown) => error instanceof DomainError && error.code === "NOT_FOUND"
+    );
+  }
+  assert.equal(store.lots.get(lot.id)?.quantity, quantityBefore);
+  assert.equal(store.dispensations.size, dispensationsBefore);
+  assert.equal(store.stockMovements.size, movementsBefore);
+  assert.throws(
+    () => store.createStockMovement(stock, { productId: product.id, lotId: lot.id, locationId: lot.locationId, quantity: 1, movementType: "DISPENSE", reason: "saída com referência ausente", referenceId: id("00000000-0000-4000-8000-000000009998") }),
+    (error: unknown) => error instanceof DomainError && error.code === "NOT_FOUND"
+  );
+  assert.equal(store.lots.get(lot.id)?.quantity, quantityBefore);
+  assert.equal(store.dispensations.size, dispensationsBefore);
+  assert.equal(store.stockMovements.size, movementsBefore);
+  const otherProduct = store.createProduct(stock, { sku: "TERM-OTHER", name: "Produto incompatível", category: "MEDICINE", unit: "unidade", reorderPoint: 0 });
+  const otherEncounter = store.createEncounter(vet, { patientId: patient.id, appointmentId: null, chiefComplaint: "referência incompatível", urgency: "ROUTINE" });
+  const otherOrder = store.createMedicationOrder(vet, { patientId: patient.id, encounterId: otherEncounter.id, productId: otherProduct.id, dose: "1", route: "oral", frequency: "12/12h" });
+  assert.throws(
+    () => store.createStockMovement(stock, { productId: product.id, lotId: lot.id, locationId: lot.locationId, quantity: 1, movementType: "DISPENSE", reason: "saída com produto incompatível", referenceId: otherOrder.id }),
+    (error: unknown) => error instanceof DomainError && error.code === "NOT_FOUND"
+  );
+  assert.equal(store.lots.get(lot.id)?.quantity, quantityBefore);
+  assert.equal(store.dispensations.size, dispensationsBefore);
+  assert.equal(store.stockMovements.size, movementsBefore);
+  const unscopedAdmin = { ...context(store), unitId: null, workspaceId: null };
+  assert.throws(
+    () => store.dispenseMedication(unscopedAdmin, order.id, lot.id, 1),
+    (error: unknown) => error instanceof DomainError && error.code === "INVALID_INPUT"
+  );
+  assert.throws(
+    () => store.createStockMovement(unscopedAdmin, { productId: product.id, lotId: lot.id, locationId: id("00000000-0000-4000-8000-000000009997"), quantity: 1, movementType: "DISPENSE", reason: "localização ausente", referenceId: null }),
+    (error: unknown) => error instanceof DomainError && error.code === "NOT_FOUND"
+  );
+  assert.equal(store.lots.get(lot.id)?.quantity, quantityBefore);
+  assert.equal(store.dispensations.size, dispensationsBefore);
+  assert.equal(store.stockMovements.size, movementsBefore);
+});
+
 test("hydrate rejects a dispensation whose lot product differs from the prescription", () => {
   const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
   const vetId = [...store.users.values()].find((user) => user.login.startsWith("ana."))?.id;
@@ -587,3 +673,370 @@ test("domain PDP rejects forged scope and capability policy widening", () => {
 });
 
 void id;
+
+test("patient creation rejects duplicate identifiers and cross-scope guardians without partial writes", () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const ctx = context(store);
+  const guardian = [...store.guardians.values()].find((candidate) => candidate.workspaceId === ctx.workspaceId);
+  assert.ok(guardian);
+  const before = store.patients.size;
+  const first = store.createPatient(ctx, { guardianId: guardian.id, name: "Pipoca", species: "Canina", breed: null, sex: "UNKNOWN", reproductiveStatus: "UNKNOWN", birthDate: null, identifiers: ["MICRO-DUP-01"] });
+  assert.equal(store.patients.size, before + 1);
+  assert.throws(
+    () => store.createPatient(ctx, { guardianId: guardian.id, name: "Clone", species: "Felina", breed: null, sex: "UNKNOWN", reproductiveStatus: "UNKNOWN", birthDate: null, identifiers: ["micro-dup-01"] }),
+    (error: unknown) => error instanceof DomainError && error.code === "CONFLICT"
+  );
+  assert.equal(store.patients.size, before + 1);
+  const adminId = store.bootstrapCredentials.userId;
+  const sulSession = store.createSession(adminId, "cross-scope-sul-token", "cross-scope-csrf", 60);
+  const sulContext = store.resolveContext(adminId, { unitId: id("00000000-0000-4000-8000-000000000012"), workspaceId: id("00000000-0000-4000-8000-000000000023") }, "test", "test-cross-scope", null, null, sulSession.id);
+  const sulGuardian = store.createGuardian(sulContext, { displayName: "Tutor Sul", phone: "+55 11 96666-0000", email: null });
+  assert.throws(
+    () => store.createPatient(ctx, { guardianId: sulGuardian.id, name: "Fantasma", species: "Canina", breed: null, sex: "UNKNOWN", reproductiveStatus: "UNKNOWN", birthDate: null, identifiers: [] }),
+    (error: unknown) => error instanceof DomainError && error.code === "NOT_FOUND"
+  );
+  assert.equal(store.patients.size, before + 1);
+  const target = store.createPatient(ctx, { guardianId: guardian.id, name: "Alvo", species: "Felina", breed: null, sex: "UNKNOWN", reproductiveStatus: "UNKNOWN", birthDate: null, identifiers: [] });
+  store.disablePatient(ctx, target.id);
+  assert.throws(
+    () => store.mergePatients(ctx, { sourcePatientId: first.id, targetPatientId: target.id, reason: "destino inativo", confirmation: "MERGE_PATIENTS" }),
+    (error: unknown) => error instanceof DomainError && error.code === "CONFLICT"
+  );
+  assert.equal(store.patients.get(first.id)?.status, "ACTIVE");
+  const activeTarget = store.createPatient(ctx, { guardianId: guardian.id, name: "Alvo Ativo", species: "Felina", breed: null, sex: "UNKNOWN", reproductiveStatus: "UNKNOWN", birthDate: null, identifiers: [] });
+  store.mergePatients(ctx, { sourcePatientId: first.id, targetPatientId: activeTarget.id, reason: "cadastro duplicado", confirmation: "MERGE_PATIENTS" });
+  assert.throws(
+    () => store.findPatient(ctx, first.id),
+    (error: unknown) => error instanceof DomainError && error.code === "NOT_FOUND"
+  );
+  const identifierOfTarget = store.createPatient(ctx, { guardianId: guardian.id, name: "Reuso livre", species: "Canina", breed: null, sex: "UNKNOWN", reproductiveStatus: "UNKNOWN", birthDate: null, identifiers: ["MICRO-DUP-01"] });
+  assert.equal(identifierOfTarget.status, "ACTIVE");
+});
+
+test("appointment lifecycle enforces versioned transitions, conflicts and idempotent handoff", () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const ctx = context(store);
+  const patient = [...store.patients.values()].find((candidate) => candidate.workspaceId === ctx.workspaceId);
+  const provider = [...store.providers.values()].find((candidate) => candidate.unitId === ctx.unitId);
+  const service = [...store.services.values()][0];
+  assert.ok(patient && provider && service);
+  const base = new Date();
+  base.setHours(1, 0, 0, 0);
+  base.setSeconds(0, 0);
+  const at = (offsetMinutes: number) => new Date(base.getTime() + offsetMinutes * 60_000).toISOString();
+  const created = store.createAppointment(ctx, { patientId: patient.id, providerId: provider.id, resourceId: null, serviceId: service.id, startsAt: at(0), endsAt: at(45), purpose: "lifecycle" });
+  assert.equal(created.status, "SCHEDULED");
+  const confirmed = store.confirmAppointment(ctx, created.id, created.version);
+  assert.equal(confirmed.status, "CONFIRMED");
+  assert.equal(confirmed.version, created.version + 1);
+  assert.deepEqual(store.confirmAppointment(ctx, created.id, confirmed.version), confirmed);
+  assert.throws(
+    () => store.rescheduleAppointment(ctx, created.id, { startsAt: at(120), endsAt: at(165), expectedVersion: created.version }),
+    (error: unknown) => error instanceof DomainError && error.code === "REVISION_CONFLICT"
+  );
+  store.createAppointment(ctx, { patientId: patient.id, providerId: provider.id, resourceId: null, serviceId: service.id, startsAt: at(120), endsAt: at(165), purpose: "ocupante" });
+  assert.throws(
+    () => store.rescheduleAppointment(ctx, created.id, { startsAt: at(120), endsAt: at(165), expectedVersion: confirmed.version }),
+    (error: unknown) => error instanceof DomainError && error.code === "CONFLICT"
+  );
+  const moved = store.rescheduleAppointment(ctx, created.id, { startsAt: at(180), endsAt: at(225), expectedVersion: confirmed.version });
+  assert.equal(moved.version, confirmed.version + 1);
+  assert.equal(moved.startsAt, at(180));
+  const checkedIn = store.checkInAppointment(ctx, created.id);
+  assert.equal(checkedIn.status, "WAITING");
+  assert.equal(store.checkInAppointment(ctx, created.id).id, checkedIn.id);
+  assert.equal(store.listAppointments(ctx).find((appointment) => appointment.id === created.id)?.status, "CHECKED_IN");
+  assert.throws(
+    () => store.rescheduleAppointment(ctx, created.id, { startsAt: at(300), endsAt: at(345), expectedVersion: moved.version }),
+    (error: unknown) => error instanceof DomainError && (error.code === "CONFLICT" || error.code === "INVALID_STATE")
+  );
+  const triaged = store.triageQueueEntry(ctx, checkedIn.id, "URGENT");
+  assert.equal(triaged.status, "TRIAGE");
+  assert.equal(triaged.priority, "URGENT");
+  assert.throws(
+    () => store.cancelAppointment(ctx, created.id, "tentativa após triagem", moved.version),
+    (error: unknown) => error instanceof DomainError && error.code === "CONFLICT"
+  );
+  const handoff = store.handoffQueueEntry(ctx, checkedIn.id, { chiefComplaint: "queixa sintética", urgency: "URGENT" });
+  assert.equal(handoff.queueEntry.status, "IN_SERVICE");
+  const replay = store.handoffQueueEntry(ctx, checkedIn.id, { chiefComplaint: "queixa sintética", urgency: "URGENT" });
+  assert.equal(replay.encounter.id, handoff.encounter.id);
+  assert.equal([...store.encounters.values()].filter((encounter) => encounter.appointmentId === created.id).length, 1);
+});
+
+test("cancel before service cancels the waiting queue entry atomically", () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const ctx = context(store);
+  const patient = [...store.patients.values()].find((candidate) => candidate.workspaceId === ctx.workspaceId);
+  const provider = [...store.providers.values()].find((candidate) => candidate.unitId === ctx.unitId);
+  const service = [...store.services.values()][0];
+  assert.ok(patient && provider && service);
+  const start = new Date("2030-01-01T09:00:00.000Z");
+  const appointment = store.createAppointment(ctx, { patientId: patient.id, providerId: provider.id, resourceId: null, serviceId: service.id, startsAt: start.toISOString(), endsAt: new Date(start.getTime() + 45 * 60_000).toISOString(), purpose: "cancelamento" });
+  const entry = store.checkInAppointment(ctx, appointment.id);
+  const cancelled = store.cancelAppointment(ctx, appointment.id, "desistência antes da triagem", appointment.version);
+  assert.equal(cancelled.status, "CANCELLED");
+  assert.equal(store.listQueue(ctx).find((candidate) => candidate.id === entry.id)?.status, "CANCELLED");
+});
+
+test("clinical documents require review before signature, stay immutable and accept only addenda", () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const veterinarianId = [...store.users.values()].find((user) => user.login.startsWith("ana."))?.id;
+  assert.ok(veterinarianId);
+  const vetContext = context(store, veterinarianId);
+  const patient = [...store.patients.values()].find((candidate) => candidate.workspaceId === vetContext.workspaceId);
+  assert.ok(patient);
+  const encounter = store.createEncounter(vetContext, { patientId: patient.id, appointmentId: null, chiefComplaint: "documento sintético", urgency: "ROUTINE" });
+  const document = store.createClinicalDocument(vetContext, { encounterId: encounter.id, documentType: "EVOLUTION", title: "Evolução", content: "primeiro texto", dataClass: "D3" });
+  assert.equal(document.status, "DRAFT");
+  const updated = store.updateClinicalDraft(vetContext, document.id, { content: "texto revisado", expectedVersion: String(document.version) });
+  assert.equal(updated.version, document.version + 1);
+  assert.equal(updated.status, "DRAFT");
+  assert.throws(
+    () => store.updateClinicalDraft(vetContext, document.id, { content: "conflito", expectedVersion: String(document.version) }),
+    (error: unknown) => error instanceof DomainError && error.code === "REVISION_CONFLICT"
+  );
+  assert.throws(
+    () => store.addClinicalAddendum(vetContext, document.id, "motivo", "tentativa em rascunho"),
+    (error: unknown) => error instanceof DomainError && error.code === "INVALID_STATE"
+  );
+  const reviewed = store.reviewClinicalDocument(vetContext, document.id, String(updated.version));
+  assert.equal(reviewed.status, "REVIEW");
+  const signed = store.signClinicalDocument(vetContext, document.id, String(reviewed.version));
+  assert.equal(signed.status, "SIGNED");
+  assert.equal(signed.signedBy, veterinarianId);
+  assert.throws(
+    () => store.updateClinicalDraft(vetContext, document.id, { content: "sobrescrever", expectedVersion: String(signed.version) }),
+    (error: unknown) => error instanceof DomainError && error.code === "CONFLICT"
+  );
+  assert.throws(
+    () => store.signClinicalDocument(vetContext, document.id, String(signed.version)),
+    (error: unknown) => error instanceof DomainError && error.code === "CONFLICT"
+  );
+  const addendum = store.addClinicalAddendum(vetContext, document.id, "correção pós-assinatura", "complemento autorizado");
+  assert.equal(addendum.documentId, document.id);
+  assert.equal(store.findClinicalDocument(vetContext, document.id).content, "texto revisado");
+});
+
+test("diagnostic chain quarantines duplicates and requires a valid result before review", () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const vetId = [...store.users.values()].find((user) => user.login.startsWith("ana."))?.id;
+  assert.ok(vetId);
+  const ctx = context(store, vetId);
+  const patient = [...store.patients.values()].find((candidate) => candidate.workspaceId === ctx.workspaceId);
+  assert.ok(patient);
+  const encounter = store.createEncounter(ctx, { patientId: patient.id, appointmentId: null, chiefComplaint: "diagnóstico", urgency: "ROUTINE" });
+  const request = store.createDiagnosticRequest(ctx, { patientId: patient.id, encounterId: encounter.id, testName: "Hemograma", priority: "ROUTINE" });
+  assert.throws(
+    () => store.reviewDiagnosticRequest(ctx, request.id),
+    (error: unknown) => error instanceof DomainError && error.code === "INVALID_STATE"
+  );
+  assert.throws(
+    () => store.createResult(ctx, { requestId: request.id, specimenId: id("00000000-0000-4000-8000-000000009991"), value: "fora de ordem", source: "lab", sourceVersion: "v1", externalOrderId: null }),
+    (error: unknown) => error instanceof DomainError && error.code === "QUARANTINED"
+  );
+  const specimen = store.createSpecimen(ctx, request.id, "AMOSTRA-HEM-01");
+  const result = store.createResult(ctx, { requestId: request.id, specimenId: specimen.id, value: "sem alterações", source: "lab sintético", sourceVersion: "v1", externalOrderId: null });
+  assert.equal(result.status, "VALID");
+  assert.equal(store.findDiagnosticRequest(ctx, request.id).status, "RESULTED");
+  const quarantinedBefore = store.quarantined.length;
+  assert.throws(
+    () => store.createResult(ctx, { requestId: request.id, specimenId: specimen.id, value: "duplicado", source: "lab sintético", sourceVersion: "v1", externalOrderId: null }),
+    (error: unknown) => error instanceof DomainError && error.code === "QUARANTINED"
+  );
+  assert.equal(store.quarantined.length, quarantinedBefore + 1);
+  assert.equal([...store.diagnosticResults.values()].filter((candidate) => candidate.requestId === request.id).length, 1);
+  const reviewed = store.reviewDiagnosticRequest(ctx, request.id);
+  assert.equal(reviewed.status, "REVIEWED");
+  assert.equal(store.reviewDiagnosticRequest(ctx, request.id).status, "REVIEWED");
+  assert.throws(
+    () => store.createResult(ctx, { requestId: request.id, specimenId: specimen.id, value: "retificação", source: "lab sintético 2", sourceVersion: "v2", externalOrderId: null }),
+    (error: unknown) => error instanceof DomainError && error.code === "INVALID_STATE"
+  );
+  const otherRequest = store.createDiagnosticRequest(ctx, { patientId: patient.id, encounterId: encounter.id, testName: "Urina", priority: "ROUTINE" });
+  assert.throws(
+    () => store.createResult(ctx, { requestId: otherRequest.id, specimenId: specimen.id, value: "parent errado", source: "lab", sourceVersion: "v1", externalOrderId: null }),
+    (error: unknown) => error instanceof DomainError && error.code === "QUARANTINED"
+  );
+  assert.equal([...store.diagnosticResults.values()].some((candidate) => candidate.requestId === otherRequest.id), false);
+});
+
+test("hospitalization enforces bed admission, distinct medication facts, duplicate protection and discharge pendencies", () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const vetId = [...store.users.values()].find((user) => user.login.startsWith("ana."))?.id;
+  assert.ok(vetId);
+  const ctx = context(store, vetId);
+  const patient = [...store.patients.values()].find((candidate) => candidate.workspaceId === ctx.workspaceId);
+  const product = [...store.products.values()][0];
+  const bed = [...store.beds.values()].find((candidate) => candidate.unitId === ctx.unitId && candidate.status === "AVAILABLE");
+  assert.ok(patient && product && bed);
+  const encounter = store.createEncounter(ctx, { patientId: patient.id, appointmentId: null, chiefComplaint: "internação", urgency: "ROUTINE" });
+  assert.throws(
+    () => store.createMedicationOrder(ctx, { patientId: patient.id, encounterId: null, productId: product.id, dose: "1", route: "oral", frequency: "12h" }),
+    (error: unknown) => error instanceof DomainError && error.code === "INVALID_INPUT"
+  );
+  const order = store.createMedicationOrder(ctx, { patientId: patient.id, encounterId: encounter.id, productId: product.id, dose: "1 comprimido", route: "oral", frequency: "12h" });
+  const planned = store.createHospitalEpisode(ctx, { patientId: patient.id, encounterId: encounter.id, bedId: null });
+  assert.equal(planned.status, "PLANNED");
+  assert.throws(
+    () => store.updateHospitalEpisodeStatus(ctx, planned.id, "ADMITTED"),
+    (error: unknown) => error instanceof DomainError && error.code === "CONFLICT"
+  );
+  const admitted = store.createHospitalEpisode(ctx, { patientId: patient.id, encounterId: encounter.id, bedId: bed.id });
+  assert.equal(admitted.status, "ADMITTED");
+  assert.equal(store.beds.get(bed.id)?.status, "OCCUPIED");
+  assert.equal(store.updateHospitalEpisodeStatus(ctx, admitted.id, "PROCEDURE").status, "PROCEDURE");
+  assert.equal(store.updateHospitalEpisodeStatus(ctx, admitted.id, "RECOVERY").status, "RECOVERY");
+  assert.equal(store.updateHospitalEpisodeStatus(ctx, admitted.id, "ADMITTED").status, "ADMITTED");
+  const firstAdministration = store.administerMedication(ctx, order.id, "ADMINISTERED", null);
+  assert.equal(firstAdministration.status, "ADMINISTERED");
+  assert.throws(
+    () => store.administerMedication(ctx, order.id, "ADMINISTERED", null),
+    (error: unknown) => error instanceof DomainError && error.code === "CONFLICT"
+  );
+  assert.equal(store.administerMedication(ctx, order.id, "OMITTED", "paciente dormindo").status, "OMITTED");
+  assert.throws(
+    () => store.dischargeHospitalEpisode(ctx, admitted.id),
+    (error: unknown) => error instanceof DomainError && error.code === "CONFLICT" && Array.isArray((error as DomainError).details?.pending)
+  );
+  const dischargeDocument = store.createClinicalDocument(ctx, { encounterId: encounter.id, documentType: "DISCHARGE", title: "Alta com plano de retorno", content: "retorno em 7 dias", dataClass: "D3" });
+  store.reviewClinicalDocument(ctx, dischargeDocument.id, null);
+  store.signClinicalDocument(ctx, dischargeDocument.id);
+  const pendingOrder = store.createMedicationOrder(ctx, { patientId: patient.id, encounterId: encounter.id, productId: product.id, dose: "2 comprimidos", route: "oral", frequency: "24h" });
+  assert.throws(
+    () => store.dischargeHospitalEpisode(ctx, admitted.id),
+    (error: unknown) => error instanceof DomainError && error.code === "CONFLICT" && Array.isArray((error as DomainError).details?.pendingOrderIds)
+  );
+  assert.equal(store.updateMedicationOrderStatus(ctx, pendingOrder.id, "SUSPENDED").status, "SUSPENDED");
+  const discharged = store.dischargeHospitalEpisode(ctx, admitted.id);
+  assert.equal(discharged.status, "DISCHARGED");
+  assert.equal(store.beds.get(bed.id)?.status, "AVAILABLE");
+  assert.equal(store.dischargeHospitalEpisode(ctx, admitted.id).status, "DISCHARGED");
+  assert.throws(
+    () => store.updateHospitalEpisodeStatus(ctx, admitted.id, "PROCEDURE"),
+    (error: unknown) => error instanceof DomainError && error.code === "INVALID_STATE"
+  );
+});
+
+test("stock entry, movements and inventory stay atomic, auditable and reject invalid balances", () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const ctx = context(store);
+  const location = [...store.stockLocations.values()].find((candidate) => candidate.unitId === ctx.unitId);
+  assert.ok(location);
+  const product = store.createProduct(ctx, { sku: "test-sku-01", name: "Produto de teste", category: "Teste", unit: "unidade", reorderPoint: 5 });
+  assert.throws(
+    () => store.createProduct(ctx, { sku: "TEST-SKU-01", name: "Duplicado", category: "Teste", unit: "unidade", reorderPoint: 5 }),
+    (error: unknown) => error instanceof DomainError && error.code === "CONFLICT"
+  );
+  const future = new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10);
+  const past = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
+  assert.throws(
+    () => store.createLot(ctx, { productId: product.id, lotNumber: "L-EXP-01", expiresOn: past, quantity: 1, locationId: location.id }),
+    (error: unknown) => error instanceof DomainError && error.code === "INVALID_INPUT"
+  );
+  const entry = store.createLot(ctx, { productId: product.id, lotNumber: "L-OK-01", expiresOn: future, quantity: 5, locationId: location.id });
+  assert.equal(entry.lot.quantity, 5);
+  assert.equal(entry.movement?.movementType, "RECEIPT");
+  assert.equal(entry.movement?.quantity, 5);
+  assert.throws(
+    () => store.createLot(ctx, { productId: product.id, lotNumber: "l-ok-01", expiresOn: future, quantity: 1, locationId: location.id }),
+    (error: unknown) => error instanceof DomainError && error.code === "CONFLICT"
+  );
+  const dispensed = store.createStockMovement(ctx, { productId: product.id, lotId: entry.lot.id, locationId: location.id, quantity: 2, movementType: "DISPENSE", reason: "consumo sintético", referenceId: null });
+  assert.equal(dispensed.movementType, "DISPENSE");
+  assert.equal(store.lots.get(entry.lot.id)?.quantity, 3);
+  assert.throws(
+    () => store.createStockMovement(ctx, { productId: product.id, lotId: entry.lot.id, locationId: location.id, quantity: 10, movementType: "DISPENSE", reason: "saldo insuficiente", referenceId: null }),
+    (error: unknown) => error instanceof DomainError && error.code === "CONFLICT"
+  );
+  assert.equal(store.lots.get(entry.lot.id)?.quantity, 3);
+  const returned = store.createStockMovement(ctx, { productId: product.id, lotId: entry.lot.id, locationId: location.id, quantity: 1, movementType: "RETURN", reason: "devolução sintética", referenceId: null });
+  assert.equal(returned.movementType, "RETURN");
+  const noChange = store.adjustStockInventory(ctx, { lotId: entry.lot.id, countedQuantity: 4, reason: "contagem confere" });
+  assert.equal(noChange.movement, null);
+  assert.equal(noChange.delta, 0);
+  const adjusted = store.adjustStockInventory(ctx, { lotId: entry.lot.id, countedQuantity: 2, reason: "divergência de contagem" });
+  assert.equal(adjusted.delta, -2);
+  assert.equal(adjusted.movement?.movementType, "ADJUSTMENT_OUT");
+  assert.equal(store.lots.get(entry.lot.id)?.quantity, 2);
+  const upAdjusted = store.adjustStockInventory(ctx, { lotId: entry.lot.id, countedQuantity: 4, reason: "sobra encontrada" });
+  assert.equal(upAdjusted.movement?.movementType, "ADJUSTMENT_IN");
+  assert.equal(store.lots.get(entry.lot.id)?.quantity, 4);
+  const movements = [...store.stockMovements.values()].filter((movement) => movement.lotId === entry.lot.id);
+  assert.equal(movements.length, 5);
+  assert.ok(movements.every((movement) => movement.createdBy === ctx.actorId && movement.reason.length >= 3));
+});
+
+test("financial sequences keep ledger append-only and the balance contract explicit under seeded randomness", () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const ctx = context(store);
+  let seed = 20260913;
+  const random = (maximum: number): number => {
+    seed = (seed * 1103515245 + 12345) % 2147483648;
+    return seed % maximum;
+  };
+  const methods: Array<Payment["method"]> = ["PIX", "CARD", "CASH", "TRANSFER"];
+  const ledgerCounts: number[] = [];
+  for (let iteration = 0; iteration < 120; iteration += 1) {
+    const charge = store.createCharge(ctx, { patientId: null, description: `sequência ${iteration}`, amountCents: 1_000 + random(9_000), currency: "BRL" });
+    const payments: Payment[] = [];
+    const paymentCount = random(4);
+    for (let index = 0; index < paymentCount; index += 1) {
+      const settlement = store.createPayment(ctx, { chargeId: charge.id, amountCents: 100 + random(2_000), method: methods[random(methods.length)]!, externalReference: null });
+      payments.push(settlement as unknown as Payment);
+    }
+    if (payments.length > 0 && random(3) === 0) {
+      const refundable = payments.find((payment) => payment.amountCents > 0);
+      if (refundable) store.requestRefund(ctx, refundable.id, "estorno de sequência sintética");
+    }
+    const balance = financialBalanceSchema.parse(computeFinancialBalance([...store.charges.values()].filter((candidate) => candidate.id === charge.id), [...store.payments.values()].filter((candidate) => candidate.chargeId === charge.id), { currency: "BRL", observedAt: new Date().toISOString() }));
+    assert.ok(balance.settledPaymentCents <= balance.chargedCents);
+    if (balance.pendingCents !== null) assert.ok(balance.pendingCents >= 0);
+    const ledgerEntries = [...store.ledgerEntries.values()].filter((entry) => entry.kind === "CHARGE" ? entry.referenceId === charge.id : [...store.payments.values()].some((payment) => payment.chargeId === charge.id && payment.id === entry.referenceId));
+    ledgerCounts.push(ledgerEntries.length);
+    assert.ok(ledgerEntries.some((entry) => entry.kind === "CHARGE"));
+    if (balance.state === "REQUIRES_POLICY") {
+      assert.equal(balance.pendingCents, null);
+      assert.equal(balance.refunds.status, "UNRESOLVED");
+      assert.ok(ledgerEntries.some((entry) => entry.kind === "REFUND" && entry.amountCents < 0));
+    }
+  }
+  assert.ok(ledgerCounts.every((count) => count >= 1));
+  assert.ok(ledgerCounts.every((count, index) => index === 0 || count >= 1));
+});
+
+test("knowledge lifecycle gates retrieval on approval, indexing and quarantine", () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const vetId = [...store.users.values()].find((user) => user.login.startsWith("ana."))?.id;
+  assert.ok(vetId);
+  const ctx = context(store, vetId);
+  const document = store.createKnowledgeDocument(ctx, { title: "Protocolo de isolamento", source: "Direção clínica", dataClass: "D1", content: "Parágrafo um sobre isolamento respiratório.\n\nParágrafo dois com precauções adicionais." });
+  assert.equal(document.status, "DRAFT");
+  assert.throws(
+    () => store.indexKnowledgeDocument(ctx, document.id, document.version),
+    (error: unknown) => error instanceof DomainError && error.code === "INVALID_STATE"
+  );
+  const approved = store.approveKnowledgeDocument(ctx, document.id, document.version);
+  assert.equal(approved.status, "APPROVED");
+  assert.equal(approved.version, document.version + 1);
+  assert.throws(
+    () => store.approveKnowledgeDocument(ctx, document.id, document.version),
+    (error: unknown) => error instanceof DomainError && error.code === "REVISION_CONFLICT"
+  );
+  const indexed = store.indexKnowledgeDocument(ctx, document.id, approved.version);
+  assert.equal(indexed.status, "INDEXED");
+  assert.equal(indexed.version, approved.version + 1);
+  assert.equal(store.indexKnowledgeDocument(ctx, document.id, indexed.version).version, indexed.version);
+  const quarantined = store.quarantineKnowledgeDocument(ctx, document.id, "conteúdo desatualizado", indexed.version);
+  assert.equal(quarantined.status, "QUARANTINED");
+  assert.equal(quarantined.version, indexed.version + 1);
+  assert.throws(
+    () => store.approveKnowledgeDocument(ctx, document.id, quarantined.version),
+    (error: unknown) => error instanceof DomainError && error.code === "INVALID_STATE"
+  );
+  const foreignId = id("00000000-0000-4000-8000-000000009999");
+  assert.throws(
+    () => store.findKnowledgeDocument(ctx, foreignId),
+    (error: unknown) => error instanceof DomainError && error.code === "NOT_FOUND"
+  );
+});

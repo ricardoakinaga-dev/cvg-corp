@@ -159,3 +159,29 @@ test("SLO alerts are linked to runbooks and stay NOT_RUN without an evaluated si
   assert.equal(outboxAlert?.status, "NOT_RUN");
   assert.ok(PROPOSED_SLO_ALERT_RULES.every((rule) => rule.status === "PROPOSED"));
 });
+
+test("telemetry keeps logs and latencies bounded and reports observable discards", () => {
+  const telemetry = new OpsTelemetry({ maxSpans: 2, maxLatencies: 16, maxLogs: 16 });
+  const started = telemetry.requestStarted();
+  for (let index = 0; index < 10_000; index += 1) {
+    telemetry.requestFinished(started, 200, "GET /synthetic");
+    telemetry.log({ timestamp: new Date().toISOString(), level: "info", event: "synthetic", correlationId: `corr-${index}`, actorId: null, metadata: { index } });
+  }
+  assert.equal(telemetry.latencySamples, 16);
+  assert.equal(telemetry.logs.length, 16);
+  assert.equal(telemetry.logs[0]?.correlationId, "corr-9984");
+  const metrics = telemetry.metrics("memory");
+  assert.equal(metrics.telemetry.logsStored, 16);
+  assert.equal(metrics.telemetry.dropped, (10_000 - 16) * 2);
+  assert.ok(metrics.latencyMs.p50 >= 0 && metrics.latencyMs.p95 >= metrics.latencyMs.p50);
+});
+
+test("telemetry percentiles never depend on lifetime history after rotation", () => {
+  const telemetry = new OpsTelemetry({ maxLatencies: 16 });
+  telemetry.requestFinished(telemetry.requestStarted() - 5_000, 200, "GET /slow");
+  for (let index = 0; index < 32; index += 1) telemetry.requestFinished(telemetry.requestStarted(), 200, "GET /synthetic");
+  const metrics = telemetry.metrics("memory");
+  assert.equal(metrics.requestsTotal, 33);
+  assert.ok(metrics.latencyMs.p99 <= 2, `p99 should only cover the retained window, got ${metrics.latencyMs.p99}`);
+  assert.equal(metrics.telemetry.dropped, 17);
+});

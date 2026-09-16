@@ -1,0 +1,13 @@
+{
+  "valid": true,
+  "invalid": false,
+  "params": {
+    "N": 131072,
+    "r": 8,
+    "p": 1
+  },
+  "concurrentVerifyMs": 397,
+  "rssDeltaMb": 1,
+  "maxEventLoopLagMs": 3,
+  "queueOverflow": "PasswordDerivationOverloadedError"
+}

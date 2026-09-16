@@ -21,6 +21,7 @@ import {
   type DeepSeekAcpGovernance,
   type DeepSeekNativeHarnessPort
 } from "@cvg/deepseek-bridge";
+import { createDurableDeepSeekAcpGovernance, type DeepSeekAcpGovernanceStorePort, type DurableAcpGovernanceBudgetPort } from "@cvg/harness-adapters";
 import type { CvgContext, OpaqueId } from "@cvg/contracts";
 import { configuredSecretProvider } from "@cvg/integrations";
 import { createOpenTelemetryRuntime, OpsTelemetry } from "@cvg/ops";
@@ -35,6 +36,8 @@ export interface DeepSeekBridgeServerOptions {
   nativePort?: DeepSeekNativeHarnessPort;
   /** Explicit CVG authority required before ACP reports approvals/replay. */
   governance?: DeepSeekAcpGovernance;
+  /** Durable ACP governance composed at the entrypoint when no authority was handed in. */
+  durableAcp?: { store: DeepSeekAcpGovernanceStorePort; toolNames?: readonly string[]; budget?: DurableAcpGovernanceBudgetPort; engineCommit?: string; profileDigest?: string };
   host?: string;
   port?: number;
   maxBodyBytes?: number;
@@ -329,7 +332,8 @@ async function dispatch(
 }
 
 export function createDeepSeekBridgeServer(options: DeepSeekBridgeServerOptions = {}): DeepSeekBridgeServer {
-  const nativePort = options.nativePort ?? (options.bridge ? undefined : createAcpNativeHarnessPortFromEnvironment(process.env, options.governance));
+  const governance = options.governance ?? (options.durableAcp ? createDurableDeepSeekAcpGovernance({ store: options.durableAcp.store, ...(options.durableAcp.toolNames ? { toolNames: options.durableAcp.toolNames } : {}), ...(options.durableAcp.budget ? { budget: options.durableAcp.budget } : {}), ...(options.durableAcp.engineCommit ? { engineCommit: options.durableAcp.engineCommit } : {}), ...(options.durableAcp.profileDigest ? { profileDigest: options.durableAcp.profileDigest } : {}) }) : undefined);
+  const nativePort = options.nativePort ?? (options.bridge ? undefined : createAcpNativeHarnessPortFromEnvironment(process.env, governance));
   const bridge = options.bridge ?? new DeepSeekBridge(bridgeConfigFromEnvironment(process.env, nativePort));
   const maxBodyBytes = options.maxBodyBytes ?? defaultMaxBodyBytes;
   const requireBearerToken = options.requireBearerToken ?? process.env.NODE_ENV === "production";
@@ -369,6 +373,9 @@ export function createDeepSeekBridgeServer(options: DeepSeekBridgeServerOptions 
 }
 
 export async function startDeepSeekBridgeServer(options: DeepSeekBridgeServerOptions = {}): Promise<DeepSeekBridgeServer> {
+  if (!options.governance && !options.durableAcp) {
+    throw new Error("O entrypoint HTTP DeepSeek exige uma autoridade ACP durável explícita; injete governance ou durableAcp antes de abrir a porta.");
+  }
   const created = createDeepSeekBridgeServer(options);
   const host = options.host ?? environmentValue(process.env, "CVG_DEEPSEEK_BRIDGE_HOST", "127.0.0.1");
   const port = options.port ?? environmentNumber(process.env, "CVG_DEEPSEEK_BRIDGE_PORT", 4320);

@@ -65,28 +65,78 @@ export interface TelemetryExporter {
 export interface OpsTelemetryOptions {
   exporter?: TelemetryExporter;
   maxSpans?: number;
+  maxLatencies?: number;
+  maxLogs?: number;
   telemetryMode?: CvgMetrics["telemetry"]["mode"];
 }
 
+/**
+ * Fixed-capacity sliding window. Retention is bounded by construction, so
+ * metrics never sort a lifetime history and memory cannot grow with traffic;
+ * discards are counted instead of silently dropped.
+ */
+class BoundedBuffer<T> {
+  private readonly items: T[] = [];
+  private cursor = 0;
+  dropped = 0;
+
+  constructor(private readonly capacity: number) {}
+
+  push(value: T): void {
+    if (this.items.length < this.capacity) {
+      this.items.push(value);
+      return;
+    }
+    this.items[this.cursor] = value;
+    this.cursor = (this.cursor + 1) % this.capacity;
+    this.dropped += 1;
+  }
+
+  snapshot(): T[] {
+    if (this.items.length < this.capacity || this.cursor === 0) return [...this.items];
+    return [...this.items.slice(this.cursor), ...this.items.slice(0, this.cursor)];
+  }
+
+  get size(): number {
+    return this.items.length;
+  }
+}
+
+const clamp = (value: number | undefined, fallback: number, minimum: number, maximum: number): number => Math.max(minimum, Math.min(Math.floor(value ?? fallback), maximum));
+
 export class OpsTelemetry {
-  private readonly latencies: number[] = [];
+  private readonly latencies: BoundedBuffer<number>;
+  private readonly logBuffer: BoundedBuffer<RedactedLog>;
+  private readonly spanBuffer: BoundedBuffer<OtelSpan>;
   private requestsTotal = 0;
   private requestsDenied = 0;
   private requestsError = 0;
   private activeSessions = 0;
   private readonly operations = new Map<string, number>();
   private readonly statusCodes = new Map<string, number>();
-  readonly logs: RedactedLog[] = [];
-  readonly spans: OtelSpan[] = [];
   private readonly exporter: TelemetryExporter | null;
-  private readonly maxSpans: number;
   private readonly telemetryMode: CvgMetrics["telemetry"]["mode"];
   private droppedSpans = 0;
 
   constructor(options: OpsTelemetryOptions = {}) {
     this.exporter = options.exporter ?? null;
-    this.maxSpans = Math.max(1, Math.min(options.maxSpans ?? 500, 10_000));
+    this.spanBuffer = new BoundedBuffer<OtelSpan>(clamp(options.maxSpans, 500, 1, 10_000));
+    this.latencies = new BoundedBuffer<number>(clamp(options.maxLatencies, 2_048, 16, 65_536));
+    this.logBuffer = new BoundedBuffer<RedactedLog>(clamp(options.maxLogs, 500, 16, 10_000));
     this.telemetryMode = options.telemetryMode ?? "REDACTED_BEST_EFFORT";
+  }
+
+  /** Bounded, most-recent-first-free window access used by tests and diagnostics. */
+  get logs(): RedactedLog[] {
+    return this.logBuffer.snapshot();
+  }
+
+  get spans(): OtelSpan[] {
+    return this.spanBuffer.snapshot();
+  }
+
+  get latencySamples(): number {
+    return this.latencies.size;
   }
 
   requestStarted(): number {
@@ -108,7 +158,7 @@ export class OpsTelemetry {
 
   log(entry: RedactedLog): void {
     const sanitized = { ...entry, metadata: Object.fromEntries(Object.entries(entry.metadata).map(([key, value]) => [key, /password|secret|token|credential|prompt/i.test(key) ? "[REDACTED]" : value])) };
-    this.logs.push(sanitized);
+    this.logBuffer.push(sanitized);
   }
 
   startSpan(name: string, attributes: Record<string, TelemetryAttribute> = {}): { traceId: string; spanId: string; name: string; startedAt: number; attributes: Record<string, TelemetryAttribute> } {
@@ -133,11 +183,7 @@ export class OpsTelemetry {
 
   finishSpan(span: { traceId: string; spanId: string; name: string; startedAt: number; attributes: Record<string, TelemetryAttribute> }, statusCode: number): void {
     const finished: OtelSpan = { ...span, finishedAt: Date.now(), statusCode, attributes: this.redactAttributes(span.attributes) };
-    if (this.spans.length >= this.maxSpans) {
-      this.spans.shift();
-      this.droppedSpans += 1;
-    }
-    this.spans.push(finished);
+    this.spanBuffer.push(finished);
     if (this.exporter) {
       try {
         if (this.exporter.finishSpan) {
@@ -157,7 +203,7 @@ export class OpsTelemetry {
   }
 
   metrics(storageMode: "memory" | "postgres", signals: MetricsSignals = {}): CvgMetrics {
-    const sorted = [...this.latencies].sort((a, b) => a - b);
+    const sorted = this.latencies.snapshot().sort((a, b) => a - b);
     const percentile = (ratio: number): number => sorted.length ? sorted[Math.min(sorted.length - 1, Math.floor((sorted.length - 1) * ratio))] ?? 0 : 0;
     const dependencies: CvgMetrics["dependencies"] = {
       database: storageMode === "postgres" ? "READY" : "NOT_CONFIGURED",
@@ -189,7 +235,7 @@ export class OpsTelemetry {
       domain,
       queues,
       agentRuntime: signals.agentRuntime ?? "UNAVAILABLE",
-      telemetry: { mode: this.telemetryMode, logsStored: this.logs.length, dropped: this.droppedSpans, duplicates: 0 }
+      telemetry: { mode: this.telemetryMode, logsStored: this.logBuffer.size, dropped: this.droppedSpans + this.spanBuffer.dropped + this.latencies.dropped + this.logBuffer.dropped, duplicates: 0 }
     };
   }
 }

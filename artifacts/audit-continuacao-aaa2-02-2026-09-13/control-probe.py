@@ -1,0 +1,11 @@
+from pathlib import Path
+import json,re,hashlib,sys
+R=Path(sys.argv[1]); b=json.loads((R/'.agent/backlog.json').read_text());state=json.loads((R/'.agent/state.json').read_text());items={t['id']:t for t in b['items']}
+vs=[json.loads(x) for x in (R/'.agent/verification.jsonl').read_text().splitlines() if x.strip()];events=[json.loads(x) for x in (R/'.agent/execution-log.jsonl').read_text().splitlines() if x.strip()]
+text=(R/state['active_execplan']).read_text();steps=text.split('## Concrete Steps',1)[1].split('\n## ',1)[0];first=re.search(r'^1\.\s+(.*)',steps,re.M).group(1)
+planmarker=re.search(r'active_action_id:\s*([^\s>]+)',text).group(1)
+action=state['active_action_id'];gate=json.loads((R/'.agent/gates/aud13-16.json').read_text());hashes={p:hashlib.sha256((R/p).read_bytes()).hexdigest()==h for p,h in gate['current_slice_artifact_digests'].items()}
+source=json.loads((R/'docs/plano-triplo-aaa-pos-entrega-2026-09-13/backlog.json').read_text())['tasks'];roots=[t['id'] for t in source if t['depends_on']==['AAA2-01']]
+refs=set(x['id'] for x in vs);eref=set(x['event_id'] for x in events)
+result={'verification_records':len(vs),'verification_ids_unique':len(refs)==len(vs),'execution_events':len(events),'event_ids_unique':len(eref)==len(events),'current_slice_hashes_match':hashes,'state_action':action,'backlog_action':items[state['active_task']]['next_action']['id'],'plan_marker':planmarker,'tail_action':events[-1]['active_action_id'],'first_concrete_step':first,'first_step_matches_active_action':first.lstrip('*').startswith(action),'surface_pointers_match':len({action,planmarker,events[-1]['active_action_id'],items[state['active_task']]['next_action']['id']})==1,'slice_evidence_refs_resolve':all(x in refs for x in gate['current_slice']['verification_refs']),'parent_waits_for_child':{'parent':'AUD13-16','child':'AUD13-16A','parent_next_action':items['AUD13-16']['next_action'],'child_dependencies':items['AUD13-16A']['dependencies'],'completion_cycle_observed':'AUD13-16' in items['AUD13-16A']['dependencies'] and 'AUD13-16A' in items['AUD13-16']['next_action']['dependency']},'aaa2_tasks_depending_only_on_reconciliation':roots}
+print(json.dumps(result,ensure_ascii=False,indent=2))

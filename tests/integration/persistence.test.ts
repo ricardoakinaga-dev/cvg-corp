@@ -58,7 +58,7 @@ function fakePool(options: { revision?: string; failSnapshotInsert?: boolean; fa
         const lookup = String(params[6]);
         const existing = durableReceipts.get(lookup);
         if (existing) return { rows: [] };
-        const row = { id: String(params[0]), organization_id: String(params[1]), actor_id: String(params[2]), unit_id: params[3] ?? null, workspace_id: params[4] ?? null, audit_record_id: null, operation: String(params[5]), idempotency_lookup: lookup, body_digest: String(params[7]), status: "IN_FLIGHT", result: null, created_at: String(params[8]), completed_at: null };
+        const row = { id: String(params[0]), organization_id: String(params[1]), actor_id: String(params[2]), unit_id: params[3] ?? null, workspace_id: params[4] ?? null, audit_record_id: null, operation: String(params[5]), idempotency_lookup: lookup, body_digest: String(params[7]), status: "IN_FLIGHT", result: null, created_at: String(params[8]), completed_at: null, claim_epoch: Number(params[9]), claim_expires_at: params[10] ?? null, dispatch_state: String(params[11]), failure_phase: null };
         durableReceipts.set(lookup, row);
         return { rows: [row] };
       }
@@ -69,6 +69,30 @@ function fakePool(options: { revision?: string; failSnapshotInsert?: boolean; fa
       if (sql.startsWith("select id::text as id") && sql.includes("from command_receipts") && sql.includes("and id = $1")) {
         const row = [...durableReceipts.values()].find((candidate) => candidate.id === String(params[0]));
         return { rows: row ? [row] : [] };
+      }
+      if (sql.startsWith("update command_receipts set dispatch_state")) {
+        const row = [...durableReceipts.values()].find((candidate) => candidate.id === String(params[0]));
+        if (!row || row.status !== "IN_FLIGHT" || Number(row.claim_epoch) !== Number(params[1]) || typeof row.claim_expires_at !== "string" || Date.parse(row.claim_expires_at) <= Date.now()) return { rows: [] };
+        row.dispatch_state = "DISPATCHED";
+        return { rows: [row] };
+      }
+      if (sql.startsWith("update command_receipts set status = case when dispatch_state") && sql.includes("where id = $1")) {
+        const row = [...durableReceipts.values()].find((candidate) => candidate.id === String(params[0]));
+        if (!row || row.status !== "IN_FLIGHT" || Number(row.claim_epoch) !== Number(params[1])) return { rows: [] };
+        row.status = row.dispatch_state === "DISPATCHED" ? "OUTCOME_UNKNOWN" : String(params[2]);
+        row.completed_at = params[3];
+        row.claim_expires_at = null;
+        row.failure_phase = row.dispatch_state === "DISPATCHED" ? "POST_DISPATCH" : params[4];
+        return { rows: [row] };
+      }
+      if (sql.startsWith("update command_receipts set status = case when dispatch_state") && sql.includes("where id = $3")) {
+        const row = [...durableReceipts.values()].find((candidate) => candidate.id === String(params[2]));
+        if (!row || row.status !== "IN_FLIGHT" || Number(row.claim_epoch) !== Number(params[10])) return { rows: [] };
+        row.status = row.dispatch_state === "DISPATCHED" ? "OUTCOME_UNKNOWN" : String(params[0]);
+        row.completed_at = params[1];
+        row.claim_expires_at = null;
+        row.failure_phase = row.dispatch_state === "DISPATCHED" ? "POST_DISPATCH" : params[9];
+        return { rows: [row] };
       }
       if (sql.startsWith("update command_receipts") && sql.includes("returning id::text")) {
         const row = [...durableReceipts.values()].find((candidate) => candidate.id === String(params[2]));
@@ -87,10 +111,18 @@ function fakePool(options: { revision?: string; failSnapshotInsert?: boolean; fa
         const lookup = String(params[7]);
         const row = durableReceipts.get(lookup);
         if (row) {
+          const incomingResult = params[10] === null ? null : typeof params[10] === "string" ? JSON.parse(params[10]) : params[10];
+          const sameTerminal = row.status === String(params[9]) && JSON.stringify(row.result) === JSON.stringify(incomingResult);
+          const liveClaim = typeof row.claim_expires_at === "string" && Date.parse(row.claim_expires_at) > Date.now();
+          if (Number(row.claim_epoch) !== Number(params[13]) || row.dispatch_state !== String(params[15]) || (row.status === "IN_FLIGHT" && !liveClaim) || (row.status !== "IN_FLIGHT" && !sameTerminal)) return { rows: [] };
           row.audit_record_id = params[5] ?? null;
           row.status = String(params[9]);
-          row.result = params[10] === null ? null : typeof params[10] === "string" ? JSON.parse(params[10]) : params[10];
+          row.result = incomingResult;
           row.completed_at = params[12] ?? null;
+          row.claim_epoch = Number(params[13]);
+          row.claim_expires_at = params[14] ?? null;
+          row.dispatch_state = String(params[15]);
+          row.failure_phase = params[16] ?? null;
         }
         return { rows: [{ id: String(params[0]) }] };
       }
@@ -109,7 +141,7 @@ function fakePool(options: { revision?: string; failSnapshotInsert?: boolean; fa
       const normalized = sql.trim().replace(/\s+/g, " ");
       statements.push(normalized);
       if (sql.includes("current_database()")) return { rows: [{ database: "cvg_synthetic", server_version: "16.0" }] };
-      if (sql.includes("to_regclass('public.cvg_state_snapshots')")) return { rows: [{ snapshots: true, journal: true, audit: true, receipts: true, communications: true, outbox: true, usage_ledger: true, inbox: true, external_effects: true, rate_limit_buckets: true, break_glass_grants: true, break_glass_lifecycle: true, break_glass_scope_schema: true, runtime_role: true, runtime_migration_metadata: true, runtime_scope_guards: true, auth_security: true, ai_turn_scope: true, ai_draft_scope: true, ai_turn_provenance_usage: true, audit_tamper_evident_chain: true, append_only_audit_guard: true, append_only_lock_privileges: true, worker_jobs: true, worker_heartbeats: true, worker_lane_schema: true }] };
+      if (sql.includes("to_regclass('public.cvg_state_snapshots')")) return { rows: [{ snapshots: true, journal: true, audit: true, receipts: true, communications: true, outbox: true, usage_ledger: true, inbox: true, external_effects: true, rate_limit_buckets: true, break_glass_grants: true, break_glass_lifecycle: true, break_glass_scope_schema: true, runtime_role: true, runtime_migration_metadata: true, runtime_scope_guards: true, auth_security: true, ai_turn_scope: true, ai_draft_scope: true, ai_turn_provenance_usage: true, audit_tamper_evident_chain: true, append_only_audit_guard: true, append_only_lock_privileges: true, worker_jobs: true, worker_heartbeats: true, worker_lane_schema: true, command_receipt_claim_fence: true }] };
       if (sql.includes("034_diagnostic_child_integrity_backstop")) return { rows: [{ diagnostic_child_scope: true }] };
       if (sql.includes("as snapshot_scope_revision")) return { rows: [{ snapshot_scope_revision: true }] };
       if (sql.includes("from cvg_state_snapshots s")) return { rows: [] };
@@ -1320,7 +1352,7 @@ test("PostgreSQL guardian creation commits one normalized row and replays withou
     const replay = await runtime.app.inject({ method: "POST", url: "/api/v1/guardians", headers, payload });
     assert.equal(replay.statusCode, 201, replay.body);
     assert.equal(fake.statements.filter((statement) => statement.startsWith("insert into guardians") && statement.includes("returning id::text")).length, 1);
-    assert.equal(fake.statements.filter((statement) => statement.startsWith("insert into command_receipts") && statement.includes("on conflict (idempotency_lookup)")).length, 2);
+    assert.equal(fake.statements.filter((statement) => statement.startsWith("insert into command_receipts") && statement.includes("on conflict (idempotency_lookup)")).length, 1);
   } finally {
     await runtime.app.close();
   }
@@ -1355,7 +1387,7 @@ test("PostgreSQL diagnostic request creation commits one normalized row and repl
     const replay = await runtime.app.inject({ method: "POST", url: "/api/v1/diagnostics/requests", headers, payload });
     assert.equal(replay.statusCode, 201, replay.body);
     assert.equal(fake.statements.filter((statement) => statement.startsWith("insert into diagnostic_requests") && statement.includes("returning id::text")).length, 1);
-    assert.equal(fake.statements.filter((statement) => statement.startsWith("insert into command_receipts") && statement.includes("on conflict (idempotency_lookup)")).length - claimsBeforeDiagnostic, 2);
+    assert.equal(fake.statements.filter((statement) => statement.startsWith("insert into command_receipts") && statement.includes("on conflict (idempotency_lookup)")).length - claimsBeforeDiagnostic, 1);
   } finally {
     await runtime.app.close();
   }
@@ -1475,7 +1507,7 @@ test("PostgreSQL encounter creation commits its normalized source row before the
     const replay = await runtime.app.inject({ method: "POST", url: "/api/v1/encounters", headers, payload });
     assert.equal(replay.statusCode, 201, replay.body);
     assert.equal(fake.statements.filter((statement) => statement.startsWith("insert into encounters") && statement.includes("returning id::text")).length, 1);
-    assert.equal(fake.statements.filter((statement) => statement.startsWith("insert into command_receipts") && statement.includes("on conflict (idempotency_lookup)")).length, 2);
+    assert.equal(fake.statements.filter((statement) => statement.startsWith("insert into command_receipts") && statement.includes("on conflict (idempotency_lookup)")).length, 1);
   } finally {
     await runtime.app.close();
   }
@@ -1507,19 +1539,23 @@ test("PostgreSQL clinical signing commits one authoritative update and replays i
     assert.equal(document.statusCode, 201, document.body);
     const documentId = (document.json() as { data: { document: { id: string } } }).data.document.id;
     const clinicalInsertsBeforeSign = fake.statements.filter((statement) => statement.startsWith("insert into clinical_documents")).length;
+    const review = await runtime.app.inject({ method: "POST", url: `/api/v1/clinical/documents/${documentId}/review`, headers: { ...scopeHeaders, "idempotency-key": "clinical-review-001" }, payload: JSON.stringify({ expectedVersion: "1" }) });
+    assert.equal(review.statusCode, 200, review.body);
     const signHeaders = { ...scopeHeaders, "idempotency-key": "clinical-sign-001" };
-    const signPayload = JSON.stringify({ expectedVersion: "1" });
+    const signPayload = JSON.stringify({ expectedVersion: "2" });
     const signed = await runtime.app.inject({ method: "POST", url: `/api/v1/clinical/documents/${documentId}/sign`, headers: signHeaders, payload: signPayload });
     assert.equal(signed.statusCode, 200, signed.body);
     assert.equal((signed.json() as { data: { document: { status: string; version: number } } }).data.document.status, "SIGNED");
-    assert.equal((signed.json() as { data: { document: { status: string; version: number } } }).data.document.version, 2);
+    assert.equal((signed.json() as { data: { document: { status: string; version: number } } }).data.document.version, 3);
     const originalReceipt = [...runtime.store.commandReceipts.values()].find((receipt) => receipt.operation === "clinical.sign");
     assert.ok(originalReceipt?.auditRecordId);
     const originalAuditId = originalReceipt.auditRecordId;
+    const signUpdatesBeforeReplay = fake.statements.filter((statement) => statement.startsWith("update clinical_documents") && statement.includes("returning id::text")).length;
+    const documentInsertsBeforeReplay = fake.statements.filter((statement) => statement.startsWith("insert into clinical_documents")).length;
     const replay = await runtime.app.inject({ method: "POST", url: `/api/v1/clinical/documents/${documentId}/sign`, headers: signHeaders, payload: signPayload });
     assert.equal(replay.statusCode, 200, replay.body);
-    assert.equal(fake.statements.filter((statement) => statement.startsWith("update clinical_documents") && statement.includes("returning id::text")).length, 1);
-    assert.equal(fake.statements.filter((statement) => statement.startsWith("insert into clinical_documents")).length, clinicalInsertsBeforeSign);
+    assert.equal(fake.statements.filter((statement) => statement.startsWith("update clinical_documents") && statement.includes("returning id::text")).length, signUpdatesBeforeReplay);
+    assert.equal(fake.statements.filter((statement) => statement.startsWith("insert into clinical_documents")).length, documentInsertsBeforeReplay);
     assert.equal([...runtime.store.commandReceipts.values()].find((receipt) => receipt.operation === "clinical.sign")?.auditRecordId, originalAuditId);
     assert.equal([...runtime.store.auditRecords.values()].filter((record) => record.action === "clinical.sign").length, 2);
   } finally {
@@ -1537,7 +1573,8 @@ test("authoritative clinical signing fails closed when the CAS update affects no
   const context = store.resolveContext(vetId, { unitId: unit.id, workspaceId: workspace.id }, "clinical.sign", "clinical-sign-cas-failure");
   const encounter = store.createEncounter(context, { patientId: patient.id, appointmentId: null, chiefComplaint: "CAS clínico", urgency: "ROUTINE" });
   const document = store.createClinicalDocument(context, { encounterId: encounter.id, documentType: "EVOLUTION", title: "CAS", content: "conteúdo", dataClass: "D3" });
-  const signed = store.signClinicalDocument(context, document.id, "1");
+  store.reviewClinicalDocument(context, document.id, "1");
+  const signed = store.signClinicalDocument(context, document.id, "2");
   const fake = fakePool({ clinicalSignUpdateRows: false });
   const persistence = new PostgresPersistence({ connectionString: "postgres://synthetic.invalid", pool: fake.pool });
   await assert.rejects(() => persistence.commit({ ...commitInput(store), normalizedClinicalSignWrite: signed }), (error: unknown) => error instanceof PersistenceCorruptionError && error.message.includes("clinical sign"));
@@ -1613,4 +1650,64 @@ test("PostgreSQL runtime routes audit reads through the normalized repository", 
   } finally {
     await runtime.app.close();
   }
+});
+
+test("durable claim fence reconciles expired NOT_STARTED as safe failure and DISPATCHED as unknown", async () => {
+  const fake = fakePool();
+  const persistence = new PostgresPersistence({ connectionString: "postgres://synthetic.invalid", pool: fake.pool });
+  const organizationId = id(randomUUID());
+  const actorId = id(randomUUID());
+  const baseInput = { organizationId, actorId, sessionId: id(randomUUID()), operation: "test.claim", key: "fence-key", resourceId: null, unitId: null, workspaceId: null, body: { value: 1 } };
+  const claim = await persistence.claimCommandReceipt(baseInput);
+  assert.equal(claim.status, "CLAIMED");
+  const secondProcess = await persistence.claimCommandReceipt({ ...baseInput, sessionId: id(randomUUID()) });
+  assert.equal(secondProcess.status, "IN_FLIGHT");
+  const stored = fake.durableReceipts.get(claim.receipt.idempotencyLookup);
+  assert.ok(stored);
+  stored.claim_expires_at = new Date(Date.now() - 1_000).toISOString();
+  const reconciled = await persistence.reconcileCommandReceiptClaim(secondProcess.receipt);
+  assert.equal(reconciled?.status, "FAILED");
+  assert.equal(reconciled?.failurePhase, "PRE_DISPATCH");
+  assert.equal(reconciled?.claimExpiresAt, null);
+  const afterReconcile = await persistence.claimCommandReceipt(baseInput);
+  assert.equal(afterReconcile.status, "FAILED");
+  assert.equal(afterReconcile.receipt.failurePhase, "PRE_DISPATCH");
+
+  const dispatchedInput = { ...baseInput, key: "fence-key-dispatched" };
+  const dispatchedClaim = await persistence.claimCommandReceipt(dispatchedInput);
+  assert.equal(dispatchedClaim.status, "CLAIMED");
+  const fenced = await persistence.markCommandReceiptDispatched(organizationId, dispatchedClaim.receipt.id, dispatchedClaim.receipt.claimEpoch ?? 1);
+  assert.equal(fenced?.dispatchState, "DISPATCHED");
+  const redispatched = await persistence.claimCommandReceipt(dispatchedInput);
+  assert.equal(redispatched.status, "IN_FLIGHT");
+  assert.equal(redispatched.receipt.dispatchState, "DISPATCHED");
+  const dispatchedRow = fake.durableReceipts.get(dispatchedClaim.receipt.idempotencyLookup);
+  assert.ok(dispatchedRow);
+  dispatchedRow.claim_expires_at = new Date(Date.now() - 1_000).toISOString();
+  const unknown = await persistence.reconcileCommandReceiptClaim(redispatched.receipt);
+  assert.equal(unknown?.status, "OUTCOME_UNKNOWN");
+  assert.equal(unknown?.failurePhase, "POST_DISPATCH");
+  const afterUnknown = await persistence.claimCommandReceipt(dispatchedInput);
+  assert.equal(afterUnknown.status, "OUTCOME_UNKNOWN");
+});
+
+test("a stale command commit cannot resurrect a receipt reconciled by another process", async () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const fake = fakePool();
+  const persistence = new PostgresPersistence({ connectionString: "postgres://synthetic.invalid", pool: fake.pool });
+  const input = { organizationId: store.bootstrapCredentials.organizationId, actorId: store.bootstrapCredentials.userId, sessionId: null, operation: "test.stale-commit", key: "stale-commit-key", resourceId: null, unitId: null, workspaceId: null, body: { value: 1 } };
+  const claim = await persistence.claimCommandReceipt(input);
+  const durable = fake.durableReceipts.get(claim.receipt.idempotencyLookup);
+  assert.ok(durable);
+  durable.claim_expires_at = new Date(Date.now() - 1_000).toISOString();
+  const reconciled = await persistence.reconcileCommandReceiptClaim(claim.receipt);
+  assert.equal(reconciled?.status, "FAILED");
+
+  store.setCommandReceipt({ ...claim.receipt, status: "SUCCEEDED", result: { late: true }, completedAt: new Date().toISOString() });
+  const staleSnapshot = store.snapshot();
+  await assert.rejects(
+    () => persistence.commit({ ...commitInput(store), snapshot: staleSnapshot, commandReceipts: staleSnapshot.commandReceipts, eventType: "HTTP_REQUEST", operation: input.operation }),
+    (error: unknown) => error instanceof PersistenceCorruptionError && error.message.includes("command receipt")
+  );
+  assert.equal(durable.status, "FAILED");
 });

@@ -1,0 +1,65 @@
+add rolldown 1.2.8
+add lightningcss-linux-x64-gnu 1.33.0
+add lightningcss 1.33.0
+add detect-libc 2.1.2
+add @rolldown/binding-linux-x64-gnu 1.2.8
+add @oxc-project/types 0.149.0
+change @vitejs/plugin-react 5.2.0 => 6.1.1
+remove @types/estree 1.0.9
+remove @types/babel__traverse 7.28.0
+remove @types/babel__template 7.4.4
+remove @types/babel__core 7.20.5
+remove @types/babel__generator 7.27.0
+remove @rollup/rollup-linux-x64-gnu 4.63.1
+change @rolldown/pluginutils 1.0.0-rc.3 => 1.0.1
+remove @jridgewell/trace-mapping 0.3.31
+remove @napi-rs/lzma-linux-x64-gnu 1.5.1
+remove @jridgewell/resolve-uri 3.1.2
+remove @jridgewell/sourcemap-codec 1.6.0
+remove @jridgewell/remapping 2.3.5
+remove @jridgewell/gen-mapping 0.3.13
+remove @babel/plugin-transform-react-jsx-source 7.29.7
+remove @babel/helper-validator-identifier 7.29.7
+remove @babel/types 7.29.8
+remove @babel/traverse 7.29.8
+remove @babel/plugin-transform-react-jsx-self 7.29.7
+remove @babel/template 7.29.7
+remove @babel/parser 7.29.8
+remove @babel/helpers 7.29.7
+remove @babel/helper-validator-option 7.29.7
+remove @babel/helper-string-parser 7.29.7
+remove @babel/helper-module-transforms 7.29.7
+remove @babel/helper-plugin-utils 7.29.7
+remove @babel/helper-globals 7.29.7
+remove @babel/helper-module-imports 7.29.7
+remove @babel/generator 7.29.8
+remove @babel/helper-compilation-targets 7.29.7
+remove @babel/core 7.29.7
+remove @babel/compat-data 7.29.7
+remove @babel/code-frame 7.29.7
+change vite 7.3.6 => 8.3.0
+remove yallist 3.1.1
+remove update-browserslist-db 1.3.2
+remove semver 6.3.1
+remove rollup 4.63.1
+remove react-refresh 0.18.0
+remove node-releases 2.0.54
+change nanoid 3.3.18 => 3.3.19
+remove ms 2.1.3
+remove json5 2.2.3
+remove lru-cache 5.1.1
+remove jsesc 3.1.0
+remove js-tokens 4.0.0
+remove gensync 1.0.0-beta.2
+remove escalade 3.2.0
+remove electron-to-chromium 1.5.423
+remove debug 4.4.3
+remove convert-source-map 2.0.0
+remove caniuse-lite 1.0.30001810
+remove browserslist 4.28.9
+remove baseline-browser-mapping 2.11.21
+
+added 6 packages, removed 50 packages, and changed 4 packages in 427ms
+
+32 packages are looking for funding
+  run `npm fund` for details

@@ -1,0 +1,2363 @@
+{
+  "schema_version": 1,
+  "kind": "planning_delta_not_execution_state",
+  "created_date": "2026-09-13",
+  "source_report": "docs/auditoria-entrega-2026-09-13.md",
+  "quality_bar": ".gauntlet/bar-v4.json",
+  "quality_bar_sha256": "2093461a8d6103641a555ad45371dde4649e5f144c32260b80244e219fa70697",
+  "canonical_execution_backlog": ".agent/backlog.json",
+  "baseline_manifest": "artifacts/audit-entrega-2026-09-13/baseline.json",
+  "tasks": [
+    {
+      "id": "AAA2-01",
+      "title": "Reconciliar aceite, estado e trabalho residual",
+      "wave": "R0",
+      "priority": "P1",
+      "depends_on": [],
+      "legacy_tasks": [
+        "AUD13-01",
+        "AUD13-21",
+        "AUD13-37",
+        "AUD13-15"
+      ],
+      "findings": [
+        "E10"
+      ],
+      "owner_role": "Lead",
+      "allowed_paths": [
+        ".agent/",
+        "docs/"
+      ],
+      "acceptance": [
+        "Mapear todos38 contratos e6 filhos sem duplicar status",
+        "Reabrir aceites contraditos de budget (AUD13-21) e exames (AUD13-15); vincular regressões clínicas às tarefas parciais",
+        "Preservar histórico e registrar owner/next_action por fatia; crítico ausente não vira aprovação"
+      ],
+      "validation": [
+        "git status --short",
+        "python3 docs/plano-triplo-aaa-pos-entrega-2026-09-13/validar-plano.py"
+      ],
+      "external_prerequisites": [],
+      "estimate": "M: 1–3 sessões técnicas; decompor após reprodução",
+      "evidence_required": [
+        "Comando/procedimento, ambiente sintético, início/fim e exit code",
+        "Identidade do candidato e hash do contrato; logs/screenshots/receipts sanitizados",
+        "Caso positivo, negativo e regressão plausível no boundary relevante",
+        "Crítica independente válida ou limitação explícita; evidência externa separada"
+      ],
+      "recovery": "Preservar alterações preexistentes; reverter somente delta próprio não aplicado; migrations aplicadas usam forward-fix; reconciliar efeitos incertos antes de retry. Registrar próxima ação singular.",
+      "next_action": "Ler fontes e contrato legado, reproduzir o critério pendente e reservar arquivos/recursos exatos antes de iniciar.",
+      "exclusive_resources": [
+        "Arquivos exatos a reservar em AAA2-01; paths são teto de escopo"
+      ],
+      "source_contracts": [
+        "docs/auditoria-entrega-2026-09-13.md",
+        "docs/01-prd-cvg.md",
+        "docs/03-dominio-dados-contratos.md",
+        "docs/plano-melhorias-2026-09-13/backlog.json",
+        ".gauntlet/bar-v4.json"
+      ]
+    },
+    {
+      "id": "AAA2-02",
+      "title": "Proteger prescrição terminal e dispensação",
+      "wave": "R1",
+      "priority": "P1",
+      "depends_on": [
+        "AAA2-01"
+      ],
+      "legacy_tasks": [
+        "AUD13-16",
+        "AUD13-17"
+      ],
+      "findings": [
+        "E01"
+      ],
+      "owner_role": "Builder",
+      "allowed_paths": [
+        "packages/domain/",
+        "apps/api/",
+        "tests/"
+      ],
+      "acceptance": [
+        "Negar dispensação suspensa/concluída sem alterar estoque",
+        "Negar saída indireta de COMPLETED; correção excepcional exige contrato autorizado separado",
+        "HTTP idempotente e concorrência mantêm um receipt e uma movimentação válida"
+      ],
+      "validation": [
+        "Reproduzir E01 via API com roles veterinário e estoque",
+        "npm run test:database",
+        "npm test"
+      ],
+      "external_prerequisites": [],
+      "estimate": "M: 1–3 sessões técnicas; decompor após reprodução",
+      "evidence_required": [
+        "Comando/procedimento, ambiente sintético, início/fim e exit code",
+        "Identidade do candidato e hash do contrato; logs/screenshots/receipts sanitizados",
+        "Caso positivo, negativo e regressão plausível no boundary relevante",
+        "Crítica independente válida ou limitação explícita; evidência externa separada"
+      ],
+      "recovery": "Preservar alterações preexistentes; reverter somente delta próprio não aplicado; migrations aplicadas usam forward-fix; reconciliar efeitos incertos antes de retry. Registrar próxima ação singular.",
+      "next_action": "Ler fontes e contrato legado, reproduzir o critério pendente e reservar arquivos/recursos exatos antes de iniciar.",
+      "exclusive_resources": [
+        "Arquivos exatos a reservar em AAA2-01; paths são teto de escopo",
+        "API root/contratos: um integrador por janela"
+      ],
+      "source_contracts": [
+        "docs/auditoria-entrega-2026-09-13.md",
+        "docs/01-prd-cvg.md",
+        "docs/03-dominio-dados-contratos.md",
+        "docs/plano-melhorias-2026-09-13/backlog.json",
+        ".gauntlet/bar-v4.json"
+      ]
+    },
+    {
+      "id": "AAA2-03",
+      "title": "Contabilizar uso real e reter orçamento em disputa",
+      "wave": "R1",
+      "priority": "P1",
+      "depends_on": [
+        "AAA2-01"
+      ],
+      "legacy_tasks": [
+        "AUD13-21"
+      ],
+      "findings": [
+        "E02"
+      ],
+      "owner_role": "Builder",
+      "allowed_paths": [
+        "packages/domain/",
+        "packages/persistence/",
+        "packages/harness/",
+        "tests/"
+      ],
+      "acceptance": [
+        "Registrar900 quando uso900 exceder reserva100",
+        "Criar hold no escopo antes de nova despesa; liberar apenas por reconciliação autorizada",
+        "Late/duplicado/expirado/outcome_unknown não perdem uso nem liberam capacidade cega",
+        "Aplicar limites de organização/unidade/workspace/ator/sessão e modalidade conforme contrato"
+      ],
+      "validation": [
+        "Reproduzir E02 e exigir nova reserva negada",
+        "npm test",
+        "Provar concorrência em PostgreSQL efêmero"
+      ],
+      "external_prerequisites": [],
+      "estimate": "L: decompor em fatias verticais de 1–3 sessões; estimar após descoberta",
+      "evidence_required": [
+        "Comando/procedimento, ambiente sintético, início/fim e exit code",
+        "Identidade do candidato e hash do contrato; logs/screenshots/receipts sanitizados",
+        "Caso positivo, negativo e regressão plausível no boundary relevante",
+        "Crítica independente válida ou limitação explícita; evidência externa separada"
+      ],
+      "recovery": "Preservar alterações preexistentes; reverter somente delta próprio não aplicado; migrations aplicadas usam forward-fix; reconciliar efeitos incertos antes de retry. Registrar próxima ação singular.",
+      "next_action": "Ler fontes e contrato legado, reproduzir o critério pendente e reservar arquivos/recursos exatos antes de iniciar.",
+      "exclusive_resources": [
+        "Arquivos exatos a reservar em AAA2-01; paths são teto de escopo",
+        "persistence-core",
+        "migration-number",
+        "banco-efêmero exclusivo"
+      ],
+      "source_contracts": [
+        "docs/auditoria-entrega-2026-09-13.md",
+        "docs/01-prd-cvg.md",
+        "docs/03-dominio-dados-contratos.md",
+        "docs/plano-melhorias-2026-09-13/backlog.json",
+        ".gauntlet/bar-v4.json"
+      ]
+    },
+    {
+      "id": "AAA2-04",
+      "title": "Tornar reserva e settlement ACP obrigatórios e duráveis",
+      "wave": "R1",
+      "priority": "P1",
+      "depends_on": [
+        "AAA2-03"
+      ],
+      "legacy_tasks": [
+        "AUD13-21",
+        "AUD13-27"
+      ],
+      "findings": [
+        "E03"
+      ],
+      "owner_role": "Builder",
+      "allowed_paths": [
+        "packages/harness-adapters/",
+        "packages/deepseek-bridge/",
+        "packages/persistence/",
+        "apps/deepseek-bridge/",
+        "tests/"
+      ],
+      "acceptance": [
+        "Sem budget authority não há dispatch permitido",
+        "Persistir vínculo tentativa/reserva antes do efeito",
+        "Restart recupera reserva e settle exatamente uma vez",
+        "Falhas entre reserva/dispatch/commit permanecem reconciliáveis sem SETTLED falso"
+      ],
+      "validation": [
+        "Probe E03 com ausência e recriação",
+        "Teste multiprocesso e crash com adapter sintético",
+        "npm test"
+      ],
+      "external_prerequisites": [],
+      "estimate": "L: decompor em fatias verticais de 1–3 sessões; estimar após descoberta",
+      "evidence_required": [
+        "Comando/procedimento, ambiente sintético, início/fim e exit code",
+        "Identidade do candidato e hash do contrato; logs/screenshots/receipts sanitizados",
+        "Caso positivo, negativo e regressão plausível no boundary relevante",
+        "Crítica independente válida ou limitação explícita; evidência externa separada"
+      ],
+      "recovery": "Preservar alterações preexistentes; reverter somente delta próprio não aplicado; migrations aplicadas usam forward-fix; reconciliar efeitos incertos antes de retry. Registrar próxima ação singular.",
+      "next_action": "Ler fontes e contrato legado, reproduzir o critério pendente e reservar arquivos/recursos exatos antes de iniciar.",
+      "exclusive_resources": [
+        "Arquivos exatos a reservar em AAA2-01; paths são teto de escopo",
+        "persistence-core",
+        "migration-number",
+        "banco-efêmero exclusivo"
+      ],
+      "source_contracts": [
+        "docs/auditoria-entrega-2026-09-13.md",
+        "docs/01-prd-cvg.md",
+        "docs/03-dominio-dados-contratos.md",
+        "docs/plano-melhorias-2026-09-13/backlog.json",
+        ".gauntlet/bar-v4.json"
+      ]
+    },
+    {
+      "id": "AAA2-05",
+      "title": "Revalidar autoridade na conclusão e divulgação da IA",
+      "wave": "R1",
+      "priority": "P1",
+      "depends_on": [
+        "AAA2-01"
+      ],
+      "legacy_tasks": [
+        "AUD13-27"
+      ],
+      "findings": [
+        "E04"
+      ],
+      "owner_role": "Builder",
+      "allowed_paths": [
+        "packages/harness-adapters/",
+        "apps/api/src/application/",
+        "packages/agent-policy/",
+        "tests/"
+      ],
+      "acceptance": [
+        "Revogação durante turno impede conclusão autorizada, draft e consumo de aprovação",
+        "Contabilidade preservada em estado apropriado sem devolver conteúdo sensível",
+        "Revalidar sessão/contexto/revisão de policy/recurso antes de commit e disclosure"
+      ],
+      "validation": [
+        "Probe E04 e requisição remota sintética pendente através da aplicação",
+        "npm run test:security",
+        "npm test"
+      ],
+      "external_prerequisites": [],
+      "estimate": "M: 1–3 sessões técnicas; decompor após reprodução",
+      "evidence_required": [
+        "Comando/procedimento, ambiente sintético, início/fim e exit code",
+        "Identidade do candidato e hash do contrato; logs/screenshots/receipts sanitizados",
+        "Caso positivo, negativo e regressão plausível no boundary relevante",
+        "Crítica independente válida ou limitação explícita; evidência externa separada"
+      ],
+      "recovery": "Preservar alterações preexistentes; reverter somente delta próprio não aplicado; migrations aplicadas usam forward-fix; reconciliar efeitos incertos antes de retry. Registrar próxima ação singular.",
+      "next_action": "Ler fontes e contrato legado, reproduzir o critério pendente e reservar arquivos/recursos exatos antes de iniciar.",
+      "exclusive_resources": [
+        "Arquivos exatos a reservar em AAA2-01; paths são teto de escopo",
+        "API root/contratos: um integrador por janela"
+      ],
+      "source_contracts": [
+        "docs/auditoria-entrega-2026-09-13.md",
+        "docs/01-prd-cvg.md",
+        "docs/03-dominio-dados-contratos.md",
+        "docs/plano-melhorias-2026-09-13/backlog.json",
+        ".gauntlet/bar-v4.json"
+      ]
+    },
+    {
+      "id": "AAA2-06",
+      "title": "Isolar prontuários e carregar todos os adendos",
+      "wave": "R1",
+      "priority": "P1",
+      "depends_on": [
+        "AAA2-01"
+      ],
+      "legacy_tasks": [
+        "AUD13-14"
+      ],
+      "findings": [
+        "E05",
+        "E06"
+      ],
+      "owner_role": "Builder",
+      "allowed_paths": [
+        "apps/web/src/features/clinical/",
+        "apps/web/src/api/",
+        "tests/e2e/"
+      ],
+      "acceptance": [
+        "Troca de paciente/contexto limpa estado e descarta respostas antigas",
+        "Todos documentos assinados têm adendos vinculados e visíveis",
+        "Loading/erro próprios não ocultam correções nem atribuem texto ao paciente errado"
+      ],
+      "validation": [
+        "Browser com A/B, latências invertidas, erro e reabertura",
+        "Regressão integrada UI→API de dois documentos e dois pacientes"
+      ],
+      "external_prerequisites": [],
+      "estimate": "M: 1–3 sessões técnicas; decompor após reprodução",
+      "evidence_required": [
+        "Comando/procedimento, ambiente sintético, início/fim e exit code",
+        "Identidade do candidato e hash do contrato; logs/screenshots/receipts sanitizados",
+        "Caso positivo, negativo e regressão plausível no boundary relevante",
+        "Crítica independente válida ou limitação explícita; evidência externa separada"
+      ],
+      "recovery": "Preservar alterações preexistentes; reverter somente delta próprio não aplicado; migrations aplicadas usam forward-fix; reconciliar efeitos incertos antes de retry. Registrar próxima ação singular.",
+      "next_action": "Ler fontes e contrato legado, reproduzir o critério pendente e reservar arquivos/recursos exatos antes de iniciar.",
+      "exclusive_resources": [
+        "Arquivos exatos a reservar em AAA2-01; paths são teto de escopo",
+        "componentes compartilhados e sessão: um owner"
+      ],
+      "source_contracts": [
+        "docs/auditoria-entrega-2026-09-13.md",
+        "docs/01-prd-cvg.md",
+        "docs/03-dominio-dados-contratos.md",
+        "docs/plano-melhorias-2026-09-13/backlog.json",
+        ".gauntlet/bar-v4.json"
+      ]
+    },
+    {
+      "id": "AAA2-07",
+      "title": "Entregar dispensação acessível ao perfil de farmácia",
+      "wave": "R1",
+      "priority": "P1",
+      "depends_on": [
+        "AAA2-02"
+      ],
+      "legacy_tasks": [
+        "AUD13-16",
+        "AUD13-17"
+      ],
+      "findings": [
+        "E07"
+      ],
+      "owner_role": "Builder",
+      "allowed_paths": [
+        "apps/web/src/features/stock/",
+        "apps/web/src/features/hospital/",
+        "apps/api/src/application/",
+        "tests/"
+      ],
+      "acceptance": [
+        "Perfil estoque conclui dispensação sem exigir acesso a prontuários/leitos",
+        "Veterinário/admin/estoque preservam separação de funções",
+        "Lote, validade, saldo, receipt, negativa e replay visíveis"
+      ],
+      "validation": [
+        "Browser autenticado como estoque contra API real local",
+        "Teste de negativa sem ampliar permissões clínicas"
+      ],
+      "external_prerequisites": [],
+      "estimate": "M: 1–3 sessões técnicas; decompor após reprodução",
+      "evidence_required": [
+        "Comando/procedimento, ambiente sintético, início/fim e exit code",
+        "Identidade do candidato e hash do contrato; logs/screenshots/receipts sanitizados",
+        "Caso positivo, negativo e regressão plausível no boundary relevante",
+        "Crítica independente válida ou limitação explícita; evidência externa separada"
+      ],
+      "recovery": "Preservar alterações preexistentes; reverter somente delta próprio não aplicado; migrations aplicadas usam forward-fix; reconciliar efeitos incertos antes de retry. Registrar próxima ação singular.",
+      "next_action": "Ler fontes e contrato legado, reproduzir o critério pendente e reservar arquivos/recursos exatos antes de iniciar.",
+      "exclusive_resources": [
+        "Arquivos exatos a reservar em AAA2-01; paths são teto de escopo",
+        "API root/contratos: um integrador por janela",
+        "componentes compartilhados e sessão: um owner"
+      ],
+      "source_contracts": [
+        "docs/auditoria-entrega-2026-09-13.md",
+        "docs/01-prd-cvg.md",
+        "docs/03-dominio-dados-contratos.md",
+        "docs/plano-melhorias-2026-09-13/backlog.json",
+        ".gauntlet/bar-v4.json"
+      ]
+    },
+    {
+      "id": "AAA2-08",
+      "title": "Completar admissão de internação planejada",
+      "wave": "R1",
+      "priority": "P1",
+      "depends_on": [
+        "AAA2-01"
+      ],
+      "legacy_tasks": [
+        "AUD13-16",
+        "AUD13-16A"
+      ],
+      "findings": [
+        "E08"
+      ],
+      "owner_role": "Builder",
+      "allowed_paths": [
+        "apps/web/src/features/hospital/",
+        "apps/api/",
+        "packages/domain/",
+        "packages/persistence/",
+        "tests/"
+      ],
+      "acceptance": [
+        "Episódio PLANNED existente recebe leito e vira ADMITTED sem duplicar episódio",
+        "Concorrência pelo mesmo leito nega segundo ator sem parcialidade",
+        "UI permite retomar após conflito e mostra receipt"
+      ],
+      "validation": [
+        "Fluxo local criar sem leito→atribuir→admitir→procedimento→recuperação",
+        "Teste de conflito e replay"
+      ],
+      "external_prerequisites": [],
+      "estimate": "M: 1–3 sessões técnicas; decompor após reprodução",
+      "evidence_required": [
+        "Comando/procedimento, ambiente sintético, início/fim e exit code",
+        "Identidade do candidato e hash do contrato; logs/screenshots/receipts sanitizados",
+        "Caso positivo, negativo e regressão plausível no boundary relevante",
+        "Crítica independente válida ou limitação explícita; evidência externa separada"
+      ],
+      "recovery": "Preservar alterações preexistentes; reverter somente delta próprio não aplicado; migrations aplicadas usam forward-fix; reconciliar efeitos incertos antes de retry. Registrar próxima ação singular.",
+      "next_action": "Ler fontes e contrato legado, reproduzir o critério pendente e reservar arquivos/recursos exatos antes de iniciar.",
+      "exclusive_resources": [
+        "Arquivos exatos a reservar em AAA2-01; paths são teto de escopo",
+        "persistence-core",
+        "migration-number",
+        "banco-efêmero exclusivo",
+        "API root/contratos: um integrador por janela",
+        "componentes compartilhados e sessão: um owner"
+      ],
+      "source_contracts": [
+        "docs/auditoria-entrega-2026-09-13.md",
+        "docs/01-prd-cvg.md",
+        "docs/03-dominio-dados-contratos.md",
+        "docs/plano-melhorias-2026-09-13/backlog.json",
+        ".gauntlet/bar-v4.json"
+      ]
+    },
+    {
+      "id": "AAA2-09",
+      "title": "Corrigir foco e leitura de documentos assinados",
+      "wave": "R1",
+      "priority": "P2",
+      "depends_on": [
+        "AAA2-06"
+      ],
+      "legacy_tasks": [
+        "AUD13-14",
+        "AUD13-35"
+      ],
+      "findings": [
+        "E09"
+      ],
+      "owner_role": "Builder",
+      "allowed_paths": [
+        "apps/web/src/features/clinical/",
+        "apps/web/src/components/",
+        "tests/e2e/"
+      ],
+      "acceptance": [
+        "Foco inicial entra em elemento habilitado do diálogo",
+        "Leitura preserva imutabilidade sem remover conteúdo da navegação assistiva",
+        "Tab/ShiftTab/Escape/retorno de foco funcionam em desktop e mobile"
+      ],
+      "validation": [
+        "Probe de activeElement e teclado",
+        "Matriz automatizada pertinente; leitor humano em AAA2-29"
+      ],
+      "external_prerequisites": [],
+      "estimate": "M: 1–3 sessões técnicas; decompor após reprodução",
+      "evidence_required": [
+        "Comando/procedimento, ambiente sintético, início/fim e exit code",
+        "Identidade do candidato e hash do contrato; logs/screenshots/receipts sanitizados",
+        "Caso positivo, negativo e regressão plausível no boundary relevante",
+        "Crítica independente válida ou limitação explícita; evidência externa separada"
+      ],
+      "recovery": "Preservar alterações preexistentes; reverter somente delta próprio não aplicado; migrations aplicadas usam forward-fix; reconciliar efeitos incertos antes de retry. Registrar próxima ação singular.",
+      "next_action": "Ler fontes e contrato legado, reproduzir o critério pendente e reservar arquivos/recursos exatos antes de iniciar.",
+      "exclusive_resources": [
+        "Arquivos exatos a reservar em AAA2-01; paths são teto de escopo",
+        "componentes compartilhados e sessão: um owner"
+      ],
+      "source_contracts": [
+        "docs/auditoria-entrega-2026-09-13.md",
+        "docs/01-prd-cvg.md",
+        "docs/03-dominio-dados-contratos.md",
+        "docs/plano-melhorias-2026-09-13/backlog.json",
+        ".gauntlet/bar-v4.json"
+      ]
+    },
+    {
+      "id": "AAA2-10",
+      "title": "Reconstruir proveniência e gates do candidato",
+      "wave": "R0",
+      "priority": "P1",
+      "depends_on": [
+        "AAA2-01"
+      ],
+      "legacy_tasks": [
+        "AUD13-03",
+        "AUD13-34",
+        "AUD13-37"
+      ],
+      "findings": [
+        "E10"
+      ],
+      "owner_role": "Builder",
+      "allowed_paths": [
+        "scripts/",
+        "tests/unit/",
+        "artifacts/",
+        "docs/"
+      ],
+      "acceptance": [
+        "verify:static distingue snapshot stale e válido",
+        "Regenerar evidência só a partir de verificações realmente executadas",
+        "Identificar HEAD mais delta do worktree; não retocar hashes manualmente para passar",
+        "Instalação reproduzível e scripts não dependem de portas/dirty tree acidentais"
+      ],
+      "validation": [
+        "npm run verify:static",
+        "npm run build",
+        "npm test",
+        "Fixture negativa de SHA/conteúdo stale"
+      ],
+      "external_prerequisites": [],
+      "estimate": "M: 1–3 sessões técnicas; decompor após reprodução",
+      "evidence_required": [
+        "Comando/procedimento, ambiente sintético, início/fim e exit code",
+        "Identidade do candidato e hash do contrato; logs/screenshots/receipts sanitizados",
+        "Caso positivo, negativo e regressão plausível no boundary relevante",
+        "Crítica independente válida ou limitação explícita; evidência externa separada"
+      ],
+      "recovery": "Preservar alterações preexistentes; reverter somente delta próprio não aplicado; migrations aplicadas usam forward-fix; reconciliar efeitos incertos antes de retry. Registrar próxima ação singular.",
+      "next_action": "Ler fontes e contrato legado, reproduzir o critério pendente e reservar arquivos/recursos exatos antes de iniciar.",
+      "exclusive_resources": [
+        "Arquivos exatos a reservar em AAA2-01; paths são teto de escopo"
+      ],
+      "source_contracts": [
+        "docs/auditoria-entrega-2026-09-13.md",
+        "docs/01-prd-cvg.md",
+        "docs/03-dominio-dados-contratos.md",
+        "docs/plano-melhorias-2026-09-13/backlog.json",
+        ".gauntlet/bar-v4.json"
+      ]
+    },
+    {
+      "id": "AAA2-11",
+      "title": "Provar idempotência e retomada de claims em banco",
+      "wave": "R2",
+      "priority": "P1",
+      "depends_on": [
+        "AAA2-01",
+        "AAA2-02"
+      ],
+      "legacy_tasks": [
+        "AUD13-22"
+      ],
+      "findings": [
+        "E11"
+      ],
+      "owner_role": "Builder",
+      "allowed_paths": [
+        "apps/api/src/application/idempotency-service.ts",
+        "packages/persistence/",
+        "db/migrations/",
+        "tests/",
+        "scripts/"
+      ],
+      "acceptance": [
+        "Re-login não duplica efeito pela troca de identidade de sessão",
+        "Lease/fence rejeitam dono antigo após takeover",
+        "Crash antes/depois do commit tem desfecho reconciliável; migration037 compatível"
+      ],
+      "validation": [
+        "npm run verify:postgres:concurrency em banco efêmero autorizado",
+        "Matriz de crash/replay e cliente antigo/novo"
+      ],
+      "external_prerequisites": [],
+      "estimate": "L: decompor em fatias verticais de 1–3 sessões; estimar após descoberta",
+      "evidence_required": [
+        "Comando/procedimento, ambiente sintético, início/fim e exit code",
+        "Identidade do candidato e hash do contrato; logs/screenshots/receipts sanitizados",
+        "Caso positivo, negativo e regressão plausível no boundary relevante",
+        "Crítica independente válida ou limitação explícita; evidência externa separada"
+      ],
+      "recovery": "Preservar alterações preexistentes; reverter somente delta próprio não aplicado; migrations aplicadas usam forward-fix; reconciliar efeitos incertos antes de retry. Registrar próxima ação singular.",
+      "next_action": "Ler fontes e contrato legado, reproduzir o critério pendente e reservar arquivos/recursos exatos antes de iniciar.",
+      "exclusive_resources": [
+        "Arquivos exatos a reservar em AAA2-01; paths são teto de escopo",
+        "persistence-core",
+        "migration-number",
+        "banco-efêmero exclusivo",
+        "API root/contratos: um integrador por janela"
+      ],
+      "source_contracts": [
+        "docs/auditoria-entrega-2026-09-13.md",
+        "docs/01-prd-cvg.md",
+        "docs/03-dominio-dados-contratos.md",
+        "docs/plano-melhorias-2026-09-13/backlog.json",
+        ".gauntlet/bar-v4.json"
+      ]
+    },
+    {
+      "id": "AAA2-12",
+      "title": "Migrar escritas primárias residuais com invariantes",
+      "wave": "R2",
+      "priority": "P1",
+      "depends_on": [
+        "AAA2-11"
+      ],
+      "legacy_tasks": [
+        "AUD13-23"
+      ],
+      "findings": [
+        "E11"
+      ],
+      "owner_role": "Builder",
+      "allowed_paths": [
+        "packages/persistence/",
+        "apps/api/src/application/",
+        "packages/domain/",
+        "db/migrations/",
+        "tests/",
+        "scripts/"
+      ],
+      "acceptance": [
+        "Inventariar24 coleções e migrar por domínio sem perda",
+        "Fonte autoritativa e snapshot não disputam ownership",
+        "RLS/CAS/filhos/auditoria testados com dois processos e role restrita",
+        "Gate final rejeita coleção operacional sem comando autoritativo ou exceção normativa explícita"
+      ],
+      "validation": [
+        "npm run verify:authoritative-writes",
+        "npm run verify:postgres",
+        "Concorrência e backfill em banco efêmero; rollback/forward-fix documentados"
+      ],
+      "external_prerequisites": [],
+      "estimate": "L: decompor em fatias verticais de 1–3 sessões; estimar após descoberta",
+      "evidence_required": [
+        "Comando/procedimento, ambiente sintético, início/fim e exit code",
+        "Identidade do candidato e hash do contrato; logs/screenshots/receipts sanitizados",
+        "Caso positivo, negativo e regressão plausível no boundary relevante",
+        "Crítica independente válida ou limitação explícita; evidência externa separada"
+      ],
+      "recovery": "Preservar alterações preexistentes; reverter somente delta próprio não aplicado; migrations aplicadas usam forward-fix; reconciliar efeitos incertos antes de retry. Registrar próxima ação singular.",
+      "next_action": "Ler fontes e contrato legado, reproduzir o critério pendente e reservar arquivos/recursos exatos antes de iniciar.",
+      "exclusive_resources": [
+        "Arquivos exatos a reservar em AAA2-01; paths são teto de escopo",
+        "persistence-core",
+        "migration-number",
+        "banco-efêmero exclusivo",
+        "API root/contratos: um integrador por janela"
+      ],
+      "source_contracts": [
+        "docs/auditoria-entrega-2026-09-13.md",
+        "docs/01-prd-cvg.md",
+        "docs/03-dominio-dados-contratos.md",
+        "docs/plano-melhorias-2026-09-13/backlog.json",
+        ".gauntlet/bar-v4.json"
+      ]
+    },
+    {
+      "id": "AAA2-13",
+      "title": "Completar anexos clínicos governados",
+      "wave": "R2",
+      "priority": "P1",
+      "depends_on": [
+        "AAA2-06",
+        "AAA2-12"
+      ],
+      "legacy_tasks": [
+        "AUD13-14",
+        "AUD13-14A"
+      ],
+      "findings": [
+        "E16"
+      ],
+      "owner_role": "Builder",
+      "allowed_paths": [
+        "apps/web/src/features/clinical/",
+        "apps/api/",
+        "packages/domain/",
+        "packages/persistence/",
+        "tests/"
+      ],
+      "acceptance": [
+        "Upload/download vinculado ao paciente e contexto com ACL e auditoria",
+        "Tipo/tamanho/integridade/quarentena e expiração definidos",
+        "Retenção e storage confirmados pelo responsável; teste com dados sintéticos"
+      ],
+      "validation": [
+        "Jornada anexar→consultar→negar outro contexto→expirar",
+        "Casos de arquivo inválido, interrupção e recuperação"
+      ],
+      "external_prerequisites": [
+        "Decisão de storage/retention para operação real"
+      ],
+      "estimate": "L: decompor em fatias verticais de 1–3 sessões; estimar após descoberta",
+      "evidence_required": [
+        "Comando/procedimento, ambiente sintético, início/fim e exit code",
+        "Identidade do candidato e hash do contrato; logs/screenshots/receipts sanitizados",
+        "Caso positivo, negativo e regressão plausível no boundary relevante",
+        "Crítica independente válida ou limitação explícita; evidência externa separada"
+      ],
+      "recovery": "Preservar alterações preexistentes; reverter somente delta próprio não aplicado; migrations aplicadas usam forward-fix; reconciliar efeitos incertos antes de retry. Registrar próxima ação singular.",
+      "next_action": "Ler fontes e contrato legado, reproduzir o critério pendente e reservar arquivos/recursos exatos antes de iniciar.",
+      "exclusive_resources": [
+        "Arquivos exatos a reservar em AAA2-01; paths são teto de escopo",
+        "persistence-core",
+        "migration-number",
+        "banco-efêmero exclusivo",
+        "API root/contratos: um integrador por janela",
+        "componentes compartilhados e sessão: um owner"
+      ],
+      "source_contracts": [
+        "docs/auditoria-entrega-2026-09-13.md",
+        "docs/01-prd-cvg.md",
+        "docs/03-dominio-dados-contratos.md",
+        "docs/plano-melhorias-2026-09-13/backlog.json",
+        ".gauntlet/bar-v4.json"
+      ]
+    },
+    {
+      "id": "AAA2-14",
+      "title": "Completar checklist e consentimento de admissão",
+      "wave": "R2",
+      "priority": "P1",
+      "depends_on": [
+        "AAA2-08",
+        "AAA2-12"
+      ],
+      "legacy_tasks": [
+        "AUD13-16A"
+      ],
+      "findings": [
+        "E16"
+      ],
+      "owner_role": "Builder",
+      "allowed_paths": [
+        "apps/web/src/features/hospital/",
+        "apps/api/",
+        "packages/domain/",
+        "packages/contracts/",
+        "tests/"
+      ],
+      "acceptance": [
+        "Consentimento e checklist têm identidade/versão/autor/proveniência",
+        "Admissão aplica regras aprovadas sem inventar decisão clínica",
+        "Histórico e revogação/correção têm semântica explícita"
+      ],
+      "validation": [
+        "Fluxo clínico com requisito faltante e completo",
+        "Validação do responsável clínico"
+      ],
+      "external_prerequisites": [
+        "Regra clínica de consentimento/checklist quando não definida"
+      ],
+      "estimate": "L: decompor em fatias verticais de 1–3 sessões; estimar após descoberta",
+      "evidence_required": [
+        "Comando/procedimento, ambiente sintético, início/fim e exit code",
+        "Identidade do candidato e hash do contrato; logs/screenshots/receipts sanitizados",
+        "Caso positivo, negativo e regressão plausível no boundary relevante",
+        "Crítica independente válida ou limitação explícita; evidência externa separada"
+      ],
+      "recovery": "Preservar alterações preexistentes; reverter somente delta próprio não aplicado; migrations aplicadas usam forward-fix; reconciliar efeitos incertos antes de retry. Registrar próxima ação singular.",
+      "next_action": "Ler fontes e contrato legado, reproduzir o critério pendente e reservar arquivos/recursos exatos antes de iniciar.",
+      "exclusive_resources": [
+        "Arquivos exatos a reservar em AAA2-01; paths são teto de escopo",
+        "API root/contratos: um integrador por janela",
+        "componentes compartilhados e sessão: um owner"
+      ],
+      "source_contracts": [
+        "docs/auditoria-entrega-2026-09-13.md",
+        "docs/01-prd-cvg.md",
+        "docs/03-dominio-dados-contratos.md",
+        "docs/plano-melhorias-2026-09-13/backlog.json",
+        ".gauntlet/bar-v4.json"
+      ]
+    },
+    {
+      "id": "AAA2-15",
+      "title": "Completar fornecedor e custo de estoque",
+      "wave": "R2",
+      "priority": "P1",
+      "depends_on": [
+        "AAA2-07",
+        "AAA2-12"
+      ],
+      "legacy_tasks": [
+        "AUD13-17A"
+      ],
+      "findings": [
+        "E16"
+      ],
+      "owner_role": "Builder",
+      "allowed_paths": [
+        "apps/web/src/features/stock/",
+        "apps/api/",
+        "packages/domain/",
+        "packages/persistence/",
+        "tests/"
+      ],
+      "acceptance": [
+        "Entrada registra fornecedor/custo/unidade/lote e receipt",
+        "Ajuste/inventário/dispensação preservam saldo e trilha",
+        "Valores monetários em centavos e concorrência impedem saldo inconsistente"
+      ],
+      "validation": [
+        "Jornada entrada→inventário→ajuste→dispensação",
+        "Caso negativo e replay sem movimento duplicado"
+      ],
+      "external_prerequisites": [],
+      "estimate": "L: decompor em fatias verticais de 1–3 sessões; estimar após descoberta",
+      "evidence_required": [
+        "Comando/procedimento, ambiente sintético, início/fim e exit code",
+        "Identidade do candidato e hash do contrato; logs/screenshots/receipts sanitizados",
+        "Caso positivo, negativo e regressão plausível no boundary relevante",
+        "Crítica independente válida ou limitação explícita; evidência externa separada"
+      ],
+      "recovery": "Preservar alterações preexistentes; reverter somente delta próprio não aplicado; migrations aplicadas usam forward-fix; reconciliar efeitos incertos antes de retry. Registrar próxima ação singular.",
+      "next_action": "Ler fontes e contrato legado, reproduzir o critério pendente e reservar arquivos/recursos exatos antes de iniciar.",
+      "exclusive_resources": [
+        "Arquivos exatos a reservar em AAA2-01; paths são teto de escopo",
+        "persistence-core",
+        "migration-number",
+        "banco-efêmero exclusivo",
+        "API root/contratos: um integrador por janela",
+        "componentes compartilhados e sessão: um owner"
+      ],
+      "source_contracts": [
+        "docs/auditoria-entrega-2026-09-13.md",
+        "docs/01-prd-cvg.md",
+        "docs/03-dominio-dados-contratos.md",
+        "docs/plano-melhorias-2026-09-13/backlog.json",
+        ".gauntlet/bar-v4.json"
+      ]
+    },
+    {
+      "id": "AAA2-16",
+      "title": "Completar orçamento, aprovação e conciliação financeira",
+      "wave": "R2",
+      "priority": "P1",
+      "depends_on": [
+        "AAA2-12",
+        "AAA2-15"
+      ],
+      "legacy_tasks": [
+        "AUD13-18",
+        "AUD13-18A"
+      ],
+      "findings": [
+        "E16"
+      ],
+      "owner_role": "Builder",
+      "allowed_paths": [
+        "apps/web/src/features/finance/",
+        "apps/api/",
+        "packages/domain/",
+        "packages/persistence/",
+        "tests/"
+      ],
+      "acceptance": [
+        "Orçamento/aprovação/cobrança/pagamento/conciliação concluíveis",
+        "Estorno segue política confirmada e ledger auditável",
+        "PAID não volta a aberto; efeitos incertos não geram pagamento duplicado"
+      ],
+      "validation": [
+        "Fluxo integrado e divergência financeira",
+        "Regressão de saldo/centavos/permissões"
+      ],
+      "external_prerequisites": [
+        "Política de estorno e conciliação quando não definida; nenhum efeito financeiro real implícito"
+      ],
+      "estimate": "L: decompor em fatias verticais de 1–3 sessões; estimar após descoberta",
+      "evidence_required": [
+        "Comando/procedimento, ambiente sintético, início/fim e exit code",
+        "Identidade do candidato e hash do contrato; logs/screenshots/receipts sanitizados",
+        "Caso positivo, negativo e regressão plausível no boundary relevante",
+        "Crítica independente válida ou limitação explícita; evidência externa separada"
+      ],
+      "recovery": "Preservar alterações preexistentes; reverter somente delta próprio não aplicado; migrations aplicadas usam forward-fix; reconciliar efeitos incertos antes de retry. Registrar próxima ação singular.",
+      "next_action": "Ler fontes e contrato legado, reproduzir o critério pendente e reservar arquivos/recursos exatos antes de iniciar.",
+      "exclusive_resources": [
+        "Arquivos exatos a reservar em AAA2-01; paths são teto de escopo",
+        "persistence-core",
+        "migration-number",
+        "banco-efêmero exclusivo",
+        "API root/contratos: um integrador por janela",
+        "componentes compartilhados e sessão: um owner"
+      ],
+      "source_contracts": [
+        "docs/auditoria-entrega-2026-09-13.md",
+        "docs/01-prd-cvg.md",
+        "docs/03-dominio-dados-contratos.md",
+        "docs/plano-melhorias-2026-09-13/backlog.json",
+        ".gauntlet/bar-v4.json"
+      ]
+    },
+    {
+      "id": "AAA2-17",
+      "title": "Completar conhecimento e registry governado",
+      "wave": "R2",
+      "priority": "P1",
+      "depends_on": [
+        "AAA2-04",
+        "AAA2-12"
+      ],
+      "legacy_tasks": [
+        "AUD13-20",
+        "AUD13-20A"
+      ],
+      "findings": [
+        "E16"
+      ],
+      "owner_role": "Builder",
+      "allowed_paths": [
+        "apps/web/src/features/knowledge/",
+        "packages/agent-policy/",
+        "packages/agent-runtime/",
+        "packages/persistence/",
+        "apps/api/",
+        "tests/"
+      ],
+      "acceptance": [
+        "Ingestão/indexação/versão/consulta/revogação têm estados reais",
+        "Model/prompt/tool/skill/MCP usam admissão e manifesto compatível",
+        "Kill switch impede execução e fontes revogadas deixam de alimentar resposta",
+        "Citação/contexto e isolamento testados; sem índice fictício"
+      ],
+      "validation": [
+        "Jornada ingerir→consultar→revogar com worker local",
+        "Admissão inválida, prompt injection e kill switch"
+      ],
+      "external_prerequisites": [],
+      "estimate": "L: decompor em fatias verticais de 1–3 sessões; estimar após descoberta",
+      "evidence_required": [
+        "Comando/procedimento, ambiente sintético, início/fim e exit code",
+        "Identidade do candidato e hash do contrato; logs/screenshots/receipts sanitizados",
+        "Caso positivo, negativo e regressão plausível no boundary relevante",
+        "Crítica independente válida ou limitação explícita; evidência externa separada"
+      ],
+      "recovery": "Preservar alterações preexistentes; reverter somente delta próprio não aplicado; migrations aplicadas usam forward-fix; reconciliar efeitos incertos antes de retry. Registrar próxima ação singular.",
+      "next_action": "Ler fontes e contrato legado, reproduzir o critério pendente e reservar arquivos/recursos exatos antes de iniciar.",
+      "exclusive_resources": [
+        "Arquivos exatos a reservar em AAA2-01; paths são teto de escopo",
+        "persistence-core",
+        "migration-number",
+        "banco-efêmero exclusivo",
+        "API root/contratos: um integrador por janela",
+        "componentes compartilhados e sessão: um owner"
+      ],
+      "source_contracts": [
+        "docs/auditoria-entrega-2026-09-13.md",
+        "docs/01-prd-cvg.md",
+        "docs/03-dominio-dados-contratos.md",
+        "docs/plano-melhorias-2026-09-13/backlog.json",
+        ".gauntlet/bar-v4.json"
+      ]
+    },
+    {
+      "id": "AAA2-18",
+      "title": "Completar automações, workers e comunicação",
+      "wave": "R2",
+      "priority": "P1",
+      "depends_on": [
+        "AAA2-11",
+        "AAA2-12"
+      ],
+      "legacy_tasks": [
+        "AUD13-25",
+        "AUD13-25A"
+      ],
+      "findings": [
+        "E16"
+      ],
+      "owner_role": "Builder",
+      "allowed_paths": [
+        "apps/web/src/features/communications/",
+        "apps/worker/",
+        "apps/api/",
+        "packages/integrations/",
+        "packages/persistence/",
+        "tests/"
+      ],
+      "acceptance": [
+        "Criar/agendar/cancelar/acompanhar automação com janela e receipt",
+        "Worker real respeita lease/fence/backpressure e exclusão por contexto",
+        "Comunicação exige aprovação e reconcilia outcome_unknown",
+        "Prévia local não envia mensagem real"
+      ],
+      "validation": [
+        "Jornada com adapter sintético e dois workers",
+        "Cancelamento concorrente, atraso, indisponibilidade e replay"
+      ],
+      "external_prerequisites": [],
+      "estimate": "L: decompor em fatias verticais de 1–3 sessões; estimar após descoberta",
+      "evidence_required": [
+        "Comando/procedimento, ambiente sintético, início/fim e exit code",
+        "Identidade do candidato e hash do contrato; logs/screenshots/receipts sanitizados",
+        "Caso positivo, negativo e regressão plausível no boundary relevante",
+        "Crítica independente válida ou limitação explícita; evidência externa separada"
+      ],
+      "recovery": "Preservar alterações preexistentes; reverter somente delta próprio não aplicado; migrations aplicadas usam forward-fix; reconciliar efeitos incertos antes de retry. Registrar próxima ação singular.",
+      "next_action": "Ler fontes e contrato legado, reproduzir o critério pendente e reservar arquivos/recursos exatos antes de iniciar.",
+      "exclusive_resources": [
+        "Arquivos exatos a reservar em AAA2-01; paths são teto de escopo",
+        "persistence-core",
+        "migration-number",
+        "banco-efêmero exclusivo",
+        "API root/contratos: um integrador por janela",
+        "componentes compartilhados e sessão: um owner"
+      ],
+      "source_contracts": [
+        "docs/auditoria-entrega-2026-09-13.md",
+        "docs/01-prd-cvg.md",
+        "docs/03-dominio-dados-contratos.md",
+        "docs/plano-melhorias-2026-09-13/backlog.json",
+        ".gauntlet/bar-v4.json"
+      ]
+    },
+    {
+      "id": "AAA2-19",
+      "title": "Readiness atual por capacidade e operação manual",
+      "wave": "R1",
+      "priority": "P1",
+      "depends_on": [
+        "AAA2-01"
+      ],
+      "legacy_tasks": [
+        "AUD13-30"
+      ],
+      "findings": [
+        "E12"
+      ],
+      "owner_role": "Builder",
+      "allowed_paths": [
+        "apps/api/src/routes/health.ts",
+        "apps/api/src/app.ts",
+        "packages/integrations/",
+        "tests/"
+      ],
+      "acceptance": [
+        "Sinais de banco/auditoria/outbox/secrets vêm de observação atual",
+        "Capacidade manual pode operar quando IA indisponível conforme PRD",
+        "Capacidade dependente falha fechado sem ready global enganoso",
+        "Rotação/revogação de secret atualiza estado sem depender de reinício"
+      ],
+      "validation": [
+        "Probe E12 positivo/negativo",
+        "Falhas simuladas em cada dependência e rota manual real"
+      ],
+      "external_prerequisites": [],
+      "estimate": "M: 1–3 sessões técnicas; decompor após reprodução",
+      "evidence_required": [
+        "Comando/procedimento, ambiente sintético, início/fim e exit code",
+        "Identidade do candidato e hash do contrato; logs/screenshots/receipts sanitizados",
+        "Caso positivo, negativo e regressão plausível no boundary relevante",
+        "Crítica independente válida ou limitação explícita; evidência externa separada"
+      ],
+      "recovery": "Preservar alterações preexistentes; reverter somente delta próprio não aplicado; migrations aplicadas usam forward-fix; reconciliar efeitos incertos antes de retry. Registrar próxima ação singular.",
+      "next_action": "Ler fontes e contrato legado, reproduzir o critério pendente e reservar arquivos/recursos exatos antes de iniciar.",
+      "exclusive_resources": [
+        "Arquivos exatos a reservar em AAA2-01; paths são teto de escopo",
+        "API root/contratos: um integrador por janela"
+      ],
+      "source_contracts": [
+        "docs/auditoria-entrega-2026-09-13.md",
+        "docs/01-prd-cvg.md",
+        "docs/03-dominio-dados-contratos.md",
+        "docs/plano-melhorias-2026-09-13/backlog.json",
+        ".gauntlet/bar-v4.json"
+      ]
+    },
+    {
+      "id": "AAA2-20",
+      "title": "Completar métricas, causalidade e relatórios reais",
+      "wave": "R2",
+      "priority": "P2",
+      "depends_on": [
+        "AAA2-01",
+        "AAA2-19"
+      ],
+      "legacy_tasks": [
+        "AUD13-29"
+      ],
+      "findings": [
+        "E16"
+      ],
+      "owner_role": "Builder",
+      "allowed_paths": [
+        "packages/ops/",
+        "apps/api/src/application/",
+        "apps/web/src/features/overview/",
+        "apps/web/src/features/ops/",
+        "tests/"
+      ],
+      "acceptance": [
+        "Preservar buffers limitados já entregues",
+        "Trace liga request→comando→worker→provider com dados redigidos",
+        "Relatórios usam período/contexto/dados reais e mostram indisponibilidade",
+        "Limites e cardinalidade medidos sob volume"
+      ],
+      "validation": [
+        "npm test",
+        "Probe de volume limitado e jornada de relatório",
+        "Comparar métricas com receipts do dataset"
+      ],
+      "external_prerequisites": [],
+      "estimate": "L: decompor em fatias verticais de 1–3 sessões; estimar após descoberta",
+      "evidence_required": [
+        "Comando/procedimento, ambiente sintético, início/fim e exit code",
+        "Identidade do candidato e hash do contrato; logs/screenshots/receipts sanitizados",
+        "Caso positivo, negativo e regressão plausível no boundary relevante",
+        "Crítica independente válida ou limitação explícita; evidência externa separada"
+      ],
+      "recovery": "Preservar alterações preexistentes; reverter somente delta próprio não aplicado; migrations aplicadas usam forward-fix; reconciliar efeitos incertos antes de retry. Registrar próxima ação singular.",
+      "next_action": "Ler fontes e contrato legado, reproduzir o critério pendente e reservar arquivos/recursos exatos antes de iniciar.",
+      "exclusive_resources": [
+        "Arquivos exatos a reservar em AAA2-01; paths são teto de escopo",
+        "API root/contratos: um integrador por janela",
+        "componentes compartilhados e sessão: um owner"
+      ],
+      "source_contracts": [
+        "docs/auditoria-entrega-2026-09-13.md",
+        "docs/01-prd-cvg.md",
+        "docs/03-dominio-dados-contratos.md",
+        "docs/plano-melhorias-2026-09-13/backlog.json",
+        ".gauntlet/bar-v4.json"
+      ]
+    },
+    {
+      "id": "AAA2-21",
+      "title": "Renderizar alertas e provar entrega",
+      "wave": "R3",
+      "priority": "P1",
+      "depends_on": [
+        "AAA2-19",
+        "AAA2-20",
+        "AAA2-25"
+      ],
+      "legacy_tasks": [
+        "AUD13-31"
+      ],
+      "findings": [
+        "E15"
+      ],
+      "owner_role": "Builder",
+      "allowed_paths": [
+        "docker/observability/",
+        "docker-compose.observability.yml",
+        "scripts/",
+        "tests/",
+        "docs/"
+      ],
+      "acceptance": [
+        "Configuração renderizada válida sem placeholder literal",
+        "Ausência de destinatário impede ativação sem simular entrega",
+        "Alerta e resolução chegam ao sink autorizado com timestamps"
+      ],
+      "validation": [
+        "Validação de config e sink loopback",
+        "Drill real de entrega no ambiente autorizado"
+      ],
+      "external_prerequisites": [
+        "Sink de alertas e destinatário controlado autorizado"
+      ],
+      "estimate": "M: 1–3 sessões técnicas; decompor após reprodução",
+      "evidence_required": [
+        "Comando/procedimento, ambiente sintético, início/fim e exit code",
+        "Identidade do candidato e hash do contrato; logs/screenshots/receipts sanitizados",
+        "Caso positivo, negativo e regressão plausível no boundary relevante",
+        "Crítica independente válida ou limitação explícita; evidência externa separada"
+      ],
+      "recovery": "Preservar alterações preexistentes; reverter somente delta próprio não aplicado; migrations aplicadas usam forward-fix; reconciliar efeitos incertos antes de retry. Registrar próxima ação singular.",
+      "next_action": "Ler fontes e contrato legado, reproduzir o critério pendente e reservar arquivos/recursos exatos antes de iniciar.",
+      "exclusive_resources": [
+        "Arquivos exatos a reservar em AAA2-01; paths são teto de escopo"
+      ],
+      "source_contracts": [
+        "docs/auditoria-entrega-2026-09-13.md",
+        "docs/01-prd-cvg.md",
+        "docs/03-dominio-dados-contratos.md",
+        "docs/plano-melhorias-2026-09-13/backlog.json",
+        ".gauntlet/bar-v4.json"
+      ]
+    },
+    {
+      "id": "AAA2-22",
+      "title": "Substituir prova textual de runbook por execução",
+      "wave": "R2",
+      "priority": "P1",
+      "depends_on": [
+        "AAA2-10",
+        "AAA2-19"
+      ],
+      "legacy_tasks": [
+        "AUD13-32"
+      ],
+      "findings": [
+        "E13"
+      ],
+      "owner_role": "Builder",
+      "allowed_paths": [
+        "scripts/verify-runbook-execution.ts",
+        "tests/",
+        "docs/runbooks/"
+      ],
+      "acceptance": [
+        "Contrato textual separado de EXECUTED",
+        "Cada cenário invoca runtime e registra transição/efeito bloqueado/recuperação",
+        "Mutação conhecida no handler faz gate falhar"
+      ],
+      "validation": [
+        "Probe E13 deve deixar de aprovar execução fictícia",
+        "Casos bons/ruins de cenário runtime; prova externa em AAA2-30"
+      ],
+      "external_prerequisites": [],
+      "estimate": "M: 1–3 sessões técnicas; decompor após reprodução",
+      "evidence_required": [
+        "Comando/procedimento, ambiente sintético, início/fim e exit code",
+        "Identidade do candidato e hash do contrato; logs/screenshots/receipts sanitizados",
+        "Caso positivo, negativo e regressão plausível no boundary relevante",
+        "Crítica independente válida ou limitação explícita; evidência externa separada"
+      ],
+      "recovery": "Preservar alterações preexistentes; reverter somente delta próprio não aplicado; migrations aplicadas usam forward-fix; reconciliar efeitos incertos antes de retry. Registrar próxima ação singular.",
+      "next_action": "Ler fontes e contrato legado, reproduzir o critério pendente e reservar arquivos/recursos exatos antes de iniciar.",
+      "exclusive_resources": [
+        "Arquivos exatos a reservar em AAA2-01; paths são teto de escopo"
+      ],
+      "source_contracts": [
+        "docs/auditoria-entrega-2026-09-13.md",
+        "docs/01-prd-cvg.md",
+        "docs/03-dominio-dados-contratos.md",
+        "docs/plano-melhorias-2026-09-13/backlog.json",
+        ".gauntlet/bar-v4.json"
+      ]
+    },
+    {
+      "id": "AAA2-23",
+      "title": "Criar workloads completos e thresholds por jornada",
+      "wave": "R2",
+      "priority": "P1",
+      "depends_on": [
+        "AAA2-10",
+        "AAA2-11"
+      ],
+      "legacy_tasks": [
+        "AUD13-32",
+        "AUD13-36"
+      ],
+      "findings": [
+        "E14"
+      ],
+      "owner_role": "Builder",
+      "allowed_paths": [
+        "tests/load/",
+        "scripts/verify-load.ts",
+        "tests/unit/",
+        "docs/"
+      ],
+      "acceptance": [
+        "Workloads incluem escritas clínicas, IA, provider e fila com reconciliação",
+        "Autorização, idempotência, assertions semânticas e mix definidos",
+        "Thresholds por operação/cenário e cobertura obrigatória rejeitam omissões",
+        "Teste inválido/GET-only não passa como workload integral"
+      ],
+      "validation": [
+        "Validação local do harness com servidor sintético",
+        "Known-bad em receipt/estado/threshold; execução real em AAA2-30"
+      ],
+      "external_prerequisites": [],
+      "estimate": "L: decompor em fatias verticais de 1–3 sessões; estimar após descoberta",
+      "evidence_required": [
+        "Comando/procedimento, ambiente sintético, início/fim e exit code",
+        "Identidade do candidato e hash do contrato; logs/screenshots/receipts sanitizados",
+        "Caso positivo, negativo e regressão plausível no boundary relevante",
+        "Crítica independente válida ou limitação explícita; evidência externa separada"
+      ],
+      "recovery": "Preservar alterações preexistentes; reverter somente delta próprio não aplicado; migrations aplicadas usam forward-fix; reconciliar efeitos incertos antes de retry. Registrar próxima ação singular.",
+      "next_action": "Ler fontes e contrato legado, reproduzir o critério pendente e reservar arquivos/recursos exatos antes de iniciar.",
+      "exclusive_resources": [
+        "Arquivos exatos a reservar em AAA2-01; paths são teto de escopo"
+      ],
+      "source_contracts": [
+        "docs/auditoria-entrega-2026-09-13.md",
+        "docs/01-prd-cvg.md",
+        "docs/03-dominio-dados-contratos.md",
+        "docs/plano-melhorias-2026-09-13/backlog.json",
+        ".gauntlet/bar-v4.json"
+      ]
+    },
+    {
+      "id": "AAA2-24",
+      "title": "Lifecycle e restore útil com reconciliação",
+      "wave": "R3",
+      "priority": "P1",
+      "depends_on": [
+        "AAA2-12",
+        "AAA2-18"
+      ],
+      "legacy_tasks": [
+        "AUD13-24"
+      ],
+      "findings": [
+        "E17"
+      ],
+      "owner_role": "Builder",
+      "allowed_paths": [
+        "packages/persistence/",
+        "apps/worker/",
+        "scripts/verify-postgres-restore.ts",
+        "docs/runbooks/",
+        "tests/"
+      ],
+      "acceptance": [
+        "Retenção/export/expurgo e backup respeitam autoridade e integridade",
+        "Restore em quarentena reconcilia efeitos e chega a capacidade útil autorizada",
+        "RTO/RPO medidos incluem retorno útil; manifest/chaves/audit intactos"
+      ],
+      "validation": [
+        "npm run test:restore",
+        "npm run verify:postgres:restore em banco efêmero",
+        "Drill operacional posterior no candidato"
+      ],
+      "external_prerequisites": [
+        "Políticas de retenção/residência e objetivos de recuperação aprovados"
+      ],
+      "estimate": "L: decompor em fatias verticais de 1–3 sessões; estimar após descoberta",
+      "evidence_required": [
+        "Comando/procedimento, ambiente sintético, início/fim e exit code",
+        "Identidade do candidato e hash do contrato; logs/screenshots/receipts sanitizados",
+        "Caso positivo, negativo e regressão plausível no boundary relevante",
+        "Crítica independente válida ou limitação explícita; evidência externa separada"
+      ],
+      "recovery": "Preservar alterações preexistentes; reverter somente delta próprio não aplicado; migrations aplicadas usam forward-fix; reconciliar efeitos incertos antes de retry. Registrar próxima ação singular.",
+      "next_action": "Ler fontes e contrato legado, reproduzir o critério pendente e reservar arquivos/recursos exatos antes de iniciar.",
+      "exclusive_resources": [
+        "Arquivos exatos a reservar em AAA2-01; paths são teto de escopo",
+        "persistence-core",
+        "migration-number",
+        "banco-efêmero exclusivo"
+      ],
+      "source_contracts": [
+        "docs/auditoria-entrega-2026-09-13.md",
+        "docs/01-prd-cvg.md",
+        "docs/03-dominio-dados-contratos.md",
+        "docs/plano-melhorias-2026-09-13/backlog.json",
+        ".gauntlet/bar-v4.json"
+      ]
+    },
+    {
+      "id": "AAA2-25",
+      "title": "Preparar e integrar provider, secrets e MFA forte",
+      "wave": "R3",
+      "priority": "P1",
+      "depends_on": [
+        "AAA2-01",
+        "AAA2-05",
+        "AAA2-18"
+      ],
+      "legacy_tasks": [
+        "AUD13-26",
+        "AUD13-28"
+      ],
+      "findings": [
+        "E17"
+      ],
+      "owner_role": "Builder",
+      "allowed_paths": [
+        "packages/integrations/",
+        "packages/auth/",
+        "packages/config/",
+        "apps/api/",
+        "apps/worker/",
+        "docs/staging.md",
+        "tests/"
+      ],
+      "acceptance": [
+        "Inventariar autoridade/disponibilidade sem repetir autorização já válida",
+        "Provider tem query/receipt/reconciliação; secrets rotação/revogação observáveis",
+        "WebAuthn/break-glass provam autenticação forte, TTL e revogação",
+        "Contratos locais continuam quando etapa externa bloqueada"
+      ],
+      "validation": [
+        "npm run verify:provider-sandbox",
+        "npm run verify:provider-real apenas com autoridade",
+        "Cenários reais controlados de secrets/WebAuthn"
+      ],
+      "external_prerequisites": [
+        "Provider e destinatário de teste, secret authority, autenticador e limites autorizados"
+      ],
+      "estimate": "L: decompor em fatias verticais de 1–3 sessões; estimar após descoberta",
+      "evidence_required": [
+        "Comando/procedimento, ambiente sintético, início/fim e exit code",
+        "Identidade do candidato e hash do contrato; logs/screenshots/receipts sanitizados",
+        "Caso positivo, negativo e regressão plausível no boundary relevante",
+        "Crítica independente válida ou limitação explícita; evidência externa separada"
+      ],
+      "recovery": "Preservar alterações preexistentes; reverter somente delta próprio não aplicado; migrations aplicadas usam forward-fix; reconciliar efeitos incertos antes de retry. Registrar próxima ação singular.",
+      "next_action": "Ler fontes e contrato legado, reproduzir o critério pendente e reservar arquivos/recursos exatos antes de iniciar.",
+      "exclusive_resources": [
+        "Arquivos exatos a reservar em AAA2-01; paths são teto de escopo",
+        "API root/contratos: um integrador por janela"
+      ],
+      "source_contracts": [
+        "docs/auditoria-entrega-2026-09-13.md",
+        "docs/01-prd-cvg.md",
+        "docs/03-dominio-dados-contratos.md",
+        "docs/plano-melhorias-2026-09-13/backlog.json",
+        ".gauntlet/bar-v4.json"
+      ]
+    },
+    {
+      "id": "AAA2-26",
+      "title": "Comprovar vertical DeepSeek governada real",
+      "wave": "R3",
+      "priority": "P1",
+      "depends_on": [
+        "AAA2-04",
+        "AAA2-05",
+        "AAA2-17",
+        "AAA2-25"
+      ],
+      "legacy_tasks": [
+        "AUD13-27"
+      ],
+      "findings": [
+        "E17",
+        "E03",
+        "E04"
+      ],
+      "owner_role": "Builder",
+      "allowed_paths": [
+        "apps/deepseek-bridge/",
+        "packages/deepseek-bridge/",
+        "packages/harness-adapters/",
+        "scripts/",
+        "tests/",
+        "docs/"
+      ],
+      "acceptance": [
+        "Composição real injeta governor/budget duráveis",
+        "Turno/approval/usage/receipt ligados a mesmo candidato",
+        "Timeout/revogação/restart/overage falham de modo governado",
+        "Engine/model/manifests e custos registrados sem segredo"
+      ],
+      "validation": [
+        "npm run verify:deepseek-acp",
+        "npm run verify:deepseek-real com autoridade",
+        "Matriz de falhas no adapter real"
+      ],
+      "external_prerequisites": [
+        "Engine/manifest/modelo/credencial e teto de custo autorizados"
+      ],
+      "estimate": "L: decompor em fatias verticais de 1–3 sessões; estimar após descoberta",
+      "evidence_required": [
+        "Comando/procedimento, ambiente sintético, início/fim e exit code",
+        "Identidade do candidato e hash do contrato; logs/screenshots/receipts sanitizados",
+        "Caso positivo, negativo e regressão plausível no boundary relevante",
+        "Crítica independente válida ou limitação explícita; evidência externa separada"
+      ],
+      "recovery": "Preservar alterações preexistentes; reverter somente delta próprio não aplicado; migrations aplicadas usam forward-fix; reconciliar efeitos incertos antes de retry. Registrar próxima ação singular.",
+      "next_action": "Ler fontes e contrato legado, reproduzir o critério pendente e reservar arquivos/recursos exatos antes de iniciar.",
+      "exclusive_resources": [
+        "Arquivos exatos a reservar em AAA2-01; paths são teto de escopo"
+      ],
+      "source_contracts": [
+        "docs/auditoria-entrega-2026-09-13.md",
+        "docs/01-prd-cvg.md",
+        "docs/03-dominio-dados-contratos.md",
+        "docs/plano-melhorias-2026-09-13/backlog.json",
+        ".gauntlet/bar-v4.json"
+      ]
+    },
+    {
+      "id": "AAA2-27",
+      "title": "Publicar candidato verificável em CI e staging autorizado",
+      "wave": "R3",
+      "priority": "P1",
+      "depends_on": [
+        "AAA2-10",
+        "AAA2-12",
+        "AAA2-19",
+        "AAA2-25"
+      ],
+      "legacy_tasks": [
+        "AUD13-34"
+      ],
+      "findings": [
+        "E17"
+      ],
+      "owner_role": "Builder",
+      "allowed_paths": [
+        "Dockerfile.api",
+        "Dockerfile.web",
+        ".github/",
+        "scripts/",
+        "docker/",
+        "docs/"
+      ],
+      "acceptance": [
+        "CI, SBOM, scan, imagem e staging ligados ao mesmo commit/digest",
+        "Smoke prova startup/shutdown/outbox replay/restart e headers",
+        "Config produção falha fechado; rollback/forward-fix ensaiados",
+        "Nenhuma promoção pública implícita"
+      ],
+      "validation": [
+        "npm run build",
+        "npm run verify:release-provenance",
+        "npm run verify:container-smoke",
+        "npm run verify:staging"
+      ],
+      "external_prerequisites": [
+        "Runner/registry/staging autorizado e runtime de containers disponível"
+      ],
+      "estimate": "L: decompor em fatias verticais de 1–3 sessões; estimar após descoberta",
+      "evidence_required": [
+        "Comando/procedimento, ambiente sintético, início/fim e exit code",
+        "Identidade do candidato e hash do contrato; logs/screenshots/receipts sanitizados",
+        "Caso positivo, negativo e regressão plausível no boundary relevante",
+        "Crítica independente válida ou limitação explícita; evidência externa separada"
+      ],
+      "recovery": "Preservar alterações preexistentes; reverter somente delta próprio não aplicado; migrations aplicadas usam forward-fix; reconciliar efeitos incertos antes de retry. Registrar próxima ação singular.",
+      "next_action": "Ler fontes e contrato legado, reproduzir o critério pendente e reservar arquivos/recursos exatos antes de iniciar.",
+      "exclusive_resources": [
+        "Arquivos exatos a reservar em AAA2-01; paths são teto de escopo"
+      ],
+      "source_contracts": [
+        "docs/auditoria-entrega-2026-09-13.md",
+        "docs/01-prd-cvg.md",
+        "docs/03-dominio-dados-contratos.md",
+        "docs/plano-melhorias-2026-09-13/backlog.json",
+        ".gauntlet/bar-v4.json"
+      ]
+    },
+    {
+      "id": "AAA2-28",
+      "title": "Refatorar e otimizar por perfil observado",
+      "wave": "R3",
+      "priority": "P2",
+      "depends_on": [
+        "AAA2-12",
+        "AAA2-18",
+        "AAA2-20",
+        "AAA2-23"
+      ],
+      "legacy_tasks": [
+        "AUD13-33"
+      ],
+      "findings": [
+        "E17"
+      ],
+      "owner_role": "Builder",
+      "allowed_paths": [
+        "apps/api/src/application/",
+        "packages/domain/",
+        "packages/persistence/",
+        "apps/web/",
+        "tests/"
+      ],
+      "acceptance": [
+        "Medir hotspots e dependências antes de extração",
+        "Reduzir acoplamento/payload/chunk apenas com benefício medido",
+        "Preservar contratos e invariantes; não substituir requisito por contagem de linhas"
+      ],
+      "validation": [
+        "Perfil antes/depois com mesmo dataset",
+        "npm run build",
+        "Regressões das fronteiras alteradas"
+      ],
+      "external_prerequisites": [],
+      "estimate": "L: decompor em fatias verticais de 1–3 sessões; estimar após descoberta",
+      "evidence_required": [
+        "Comando/procedimento, ambiente sintético, início/fim e exit code",
+        "Identidade do candidato e hash do contrato; logs/screenshots/receipts sanitizados",
+        "Caso positivo, negativo e regressão plausível no boundary relevante",
+        "Crítica independente válida ou limitação explícita; evidência externa separada"
+      ],
+      "recovery": "Preservar alterações preexistentes; reverter somente delta próprio não aplicado; migrations aplicadas usam forward-fix; reconciliar efeitos incertos antes de retry. Registrar próxima ação singular.",
+      "next_action": "Ler fontes e contrato legado, reproduzir o critério pendente e reservar arquivos/recursos exatos antes de iniciar.",
+      "exclusive_resources": [
+        "Arquivos exatos a reservar em AAA2-01; paths são teto de escopo",
+        "persistence-core",
+        "migration-number",
+        "banco-efêmero exclusivo",
+        "API root/contratos: um integrador por janela",
+        "componentes compartilhados e sessão: um owner"
+      ],
+      "source_contracts": [
+        "docs/auditoria-entrega-2026-09-13.md",
+        "docs/01-prd-cvg.md",
+        "docs/03-dominio-dados-contratos.md",
+        "docs/plano-melhorias-2026-09-13/backlog.json",
+        ".gauntlet/bar-v4.json"
+      ]
+    },
+    {
+      "id": "AAA2-29",
+      "title": "Provar jornadas por persona, browser e tecnologia assistiva",
+      "wave": "R4",
+      "priority": "P1",
+      "depends_on": [
+        "AAA2-02",
+        "AAA2-06",
+        "AAA2-07",
+        "AAA2-08",
+        "AAA2-09",
+        "AAA2-13",
+        "AAA2-14",
+        "AAA2-15",
+        "AAA2-16",
+        "AAA2-17",
+        "AAA2-18",
+        "AAA2-20",
+        "AAA2-27",
+        "AAA2-28",
+        "AAA2-33"
+      ],
+      "legacy_tasks": [
+        "AUD13-35"
+      ],
+      "findings": [
+        "E05",
+        "E06",
+        "E07",
+        "E08",
+        "E09",
+        "E17"
+      ],
+      "owner_role": "Builder",
+      "allowed_paths": [
+        "tests/e2e/",
+        "apps/web/",
+        "docs/"
+      ],
+      "acceptance": [
+        "Todas jornadas FR e personas verificadas além de admin/demo",
+        "Chromium/Firefox/WebKit desktop/tablet/mobile com estados adversos",
+        "Leitor de tela, zoom real, teclado e usuários representativos completam tarefas",
+        "Registrar contexto/período e screenshots sem dados reais"
+      ],
+      "validation": [
+        "npm run test:e2e:full em ambiente isolado",
+        "Sessões assistivas e usabilidade com registros"
+      ],
+      "external_prerequisites": [
+        "Participantes representativos e tecnologias assistivas disponíveis"
+      ],
+      "estimate": "L: decompor em fatias verticais de 1–3 sessões; estimar após descoberta",
+      "evidence_required": [
+        "Comando/procedimento, ambiente sintético, início/fim e exit code",
+        "Identidade do candidato e hash do contrato; logs/screenshots/receipts sanitizados",
+        "Caso positivo, negativo e regressão plausível no boundary relevante",
+        "Crítica independente válida ou limitação explícita; evidência externa separada"
+      ],
+      "recovery": "Preservar alterações preexistentes; reverter somente delta próprio não aplicado; migrations aplicadas usam forward-fix; reconciliar efeitos incertos antes de retry. Registrar próxima ação singular.",
+      "next_action": "Ler fontes e contrato legado, reproduzir o critério pendente e reservar arquivos/recursos exatos antes de iniciar.",
+      "exclusive_resources": [
+        "Arquivos exatos a reservar em AAA2-01; paths são teto de escopo",
+        "componentes compartilhados e sessão: um owner"
+      ],
+      "source_contracts": [
+        "docs/auditoria-entrega-2026-09-13.md",
+        "docs/01-prd-cvg.md",
+        "docs/03-dominio-dados-contratos.md",
+        "docs/plano-melhorias-2026-09-13/backlog.json",
+        ".gauntlet/bar-v4.json"
+      ]
+    },
+    {
+      "id": "AAA2-30",
+      "title": "Provar operação adversa e recuperação no candidato",
+      "wave": "R4",
+      "priority": "P1",
+      "depends_on": [
+        "AAA2-21",
+        "AAA2-22",
+        "AAA2-23",
+        "AAA2-24",
+        "AAA2-25",
+        "AAA2-26",
+        "AAA2-27",
+        "AAA2-28"
+      ],
+      "legacy_tasks": [
+        "AUD13-36"
+      ],
+      "findings": [
+        "E17"
+      ],
+      "owner_role": "Builder",
+      "allowed_paths": [
+        "scripts/",
+        "tests/",
+        "docs/",
+        "artifacts/"
+      ],
+      "acceptance": [
+        "Carga/chaos/recurso/backup/restore medidos no candidato integrado",
+        "RLS e red-teams de aplicação/DB independentes conforme barra",
+        "SLO/RTO/RPO e alertas têm conteúdo bruto e autoridade",
+        "Falhas geram reparo e reteste; não apenas relatório"
+      ],
+      "validation": [
+        "npm run verify:load",
+        "npm run verify:security-red-team",
+        "npm run verify:resource-pressure",
+        "npm run verify:postgres:concurrency",
+        "Runbooks operacionais"
+      ],
+      "external_prerequisites": [
+        "Ambiente e escopo de carga/ataque/chaos, operadores e objetivos autorizados"
+      ],
+      "estimate": "L: decompor em fatias verticais de 1–3 sessões; estimar após descoberta",
+      "evidence_required": [
+        "Comando/procedimento, ambiente sintético, início/fim e exit code",
+        "Identidade do candidato e hash do contrato; logs/screenshots/receipts sanitizados",
+        "Caso positivo, negativo e regressão plausível no boundary relevante",
+        "Crítica independente válida ou limitação explícita; evidência externa separada"
+      ],
+      "recovery": "Preservar alterações preexistentes; reverter somente delta próprio não aplicado; migrations aplicadas usam forward-fix; reconciliar efeitos incertos antes de retry. Registrar próxima ação singular.",
+      "next_action": "Ler fontes e contrato legado, reproduzir o critério pendente e reservar arquivos/recursos exatos antes de iniciar.",
+      "exclusive_resources": [
+        "Arquivos exatos a reservar em AAA2-01; paths são teto de escopo"
+      ],
+      "source_contracts": [
+        "docs/auditoria-entrega-2026-09-13.md",
+        "docs/01-prd-cvg.md",
+        "docs/03-dominio-dados-contratos.md",
+        "docs/plano-melhorias-2026-09-13/backlog.json",
+        ".gauntlet/bar-v4.json"
+      ]
+    },
+    {
+      "id": "AAA2-31",
+      "title": "Consolidar dossiê e Gauntlet final fresco",
+      "wave": "R5",
+      "priority": "P1",
+      "depends_on": [
+        "AAA2-01",
+        "AAA2-02",
+        "AAA2-03",
+        "AAA2-04",
+        "AAA2-05",
+        "AAA2-06",
+        "AAA2-07",
+        "AAA2-08",
+        "AAA2-09",
+        "AAA2-10",
+        "AAA2-11",
+        "AAA2-12",
+        "AAA2-13",
+        "AAA2-14",
+        "AAA2-15",
+        "AAA2-16",
+        "AAA2-17",
+        "AAA2-18",
+        "AAA2-19",
+        "AAA2-20",
+        "AAA2-21",
+        "AAA2-22",
+        "AAA2-23",
+        "AAA2-24",
+        "AAA2-25",
+        "AAA2-26",
+        "AAA2-27",
+        "AAA2-28",
+        "AAA2-29",
+        "AAA2-30",
+        "AAA2-33"
+      ],
+      "legacy_tasks": [
+        "AUD13-37"
+      ],
+      "findings": [
+        "E10",
+        "E17"
+      ],
+      "owner_role": "Lead/Críticos",
+      "allowed_paths": [
+        "docs/",
+        ".agent/",
+        "artifacts/"
+      ],
+      "acceptance": [
+        "Todos E01–E18 e residual AUD13 têm implementação/evidência ou bloqueio explícito",
+        "Matriz FR/NFR, F0–F38,25gates,22dimensões preservada",
+        "Críticos frescos independentes inspecionam artefato imóvel; ausência de revisão não vira score",
+        "Candidato técnico pode ficar pronto com F38 pendente, sem AAA falso"
+      ],
+      "validation": [
+        "Verificar hashes e reexecutar gates pertinentes",
+        "npm run verify:triplo-aaa deve falhar enquanto falta requisito obrigatório"
+      ],
+      "external_prerequisites": [],
+      "estimate": "L: decompor em fatias verticais de 1–3 sessões; estimar após descoberta",
+      "evidence_required": [
+        "Comando/procedimento, ambiente sintético, início/fim e exit code",
+        "Identidade do candidato e hash do contrato; logs/screenshots/receipts sanitizados",
+        "Caso positivo, negativo e regressão plausível no boundary relevante",
+        "Crítica independente válida ou limitação explícita; evidência externa separada"
+      ],
+      "recovery": "Preservar alterações preexistentes; reverter somente delta próprio não aplicado; migrations aplicadas usam forward-fix; reconciliar efeitos incertos antes de retry. Registrar próxima ação singular.",
+      "next_action": "Ler fontes e contrato legado, reproduzir o critério pendente e reservar arquivos/recursos exatos antes de iniciar.",
+      "exclusive_resources": [
+        "Arquivos exatos a reservar em AAA2-01; paths são teto de escopo"
+      ],
+      "source_contracts": [
+        "docs/auditoria-entrega-2026-09-13.md",
+        "docs/01-prd-cvg.md",
+        "docs/03-dominio-dados-contratos.md",
+        "docs/plano-melhorias-2026-09-13/backlog.json",
+        ".gauntlet/bar-v4.json"
+      ]
+    },
+    {
+      "id": "AAA2-32",
+      "title": "Obter decisão humana e promover somente artefato aprovado",
+      "wave": "R5",
+      "priority": "P1",
+      "depends_on": [
+        "AAA2-31"
+      ],
+      "legacy_tasks": [
+        "AUD13-38"
+      ],
+      "findings": [
+        "E17"
+      ],
+      "owner_role": "Release/Humano",
+      "allowed_paths": [
+        "docs/",
+        ".agent/",
+        "scripts/"
+      ],
+      "acceptance": [
+        "Decisor avalia candidato concreto e riscos residuais",
+        "Atestação/assinaturas e requisitos da barra válidos",
+        "Promoção requer autorização específica e mesmo digest; se negada, registrar sem contornar"
+      ],
+      "validation": [
+        "npm run verify:promotion-invariant",
+        "npm run verify:triplo-aaa",
+        "Validar decisão real e receipt de promoção quando autorizada"
+      ],
+      "external_prerequisites": [
+        "Aceite humano real e autorização específica de promoção"
+      ],
+      "estimate": "L: decompor em fatias verticais de 1–3 sessões; estimar após descoberta",
+      "evidence_required": [
+        "Comando/procedimento, ambiente sintético, início/fim e exit code",
+        "Identidade do candidato e hash do contrato; logs/screenshots/receipts sanitizados",
+        "Caso positivo, negativo e regressão plausível no boundary relevante",
+        "Crítica independente válida ou limitação explícita; evidência externa separada"
+      ],
+      "recovery": "Preservar alterações preexistentes; reverter somente delta próprio não aplicado; migrations aplicadas usam forward-fix; reconciliar efeitos incertos antes de retry. Registrar próxima ação singular.",
+      "next_action": "Ler fontes e contrato legado, reproduzir o critério pendente e reservar arquivos/recursos exatos antes de iniciar.",
+      "exclusive_resources": [
+        "Arquivos exatos a reservar em AAA2-01; paths são teto de escopo"
+      ],
+      "source_contracts": [
+        "docs/auditoria-entrega-2026-09-13.md",
+        "docs/01-prd-cvg.md",
+        "docs/03-dominio-dados-contratos.md",
+        "docs/plano-melhorias-2026-09-13/backlog.json",
+        ".gauntlet/bar-v4.json"
+      ]
+    },
+    {
+      "id": "AAA2-33",
+      "title": "Completar semântica clínica dos exames",
+      "wave": "R2",
+      "priority": "P1",
+      "depends_on": [
+        "AAA2-12"
+      ],
+      "legacy_tasks": [
+        "AUD13-15"
+      ],
+      "findings": [
+        "E18"
+      ],
+      "owner_role": "Builder",
+      "allowed_paths": [
+        "packages/contracts/",
+        "packages/domain/",
+        "packages/persistence/",
+        "apps/api/",
+        "apps/web/src/features/diagnostics/",
+        "tests/"
+      ],
+      "acceptance": [
+        "Pedido preserva amostra/instruções conforme UC03",
+        "Resultado estrutura unidade/referência/horário/origem/versão quando aplicável",
+        "Unidade incompatível e resultado incompleto são rejeitados sem publicação parcial",
+        "Compatibilidade e revisão clínica preservadas"
+      ],
+      "validation": [
+        "Jornada pedido→coleta→resultado→revisão",
+        "Teste de unidade incompatível, duplicação e histórico"
+      ],
+      "external_prerequisites": [],
+      "estimate": "L: decompor em fatias verticais de 1–3 sessões; estimar após descoberta",
+      "evidence_required": [
+        "Comando/procedimento, ambiente sintético, início/fim e exit code",
+        "Identidade do candidato e hash do contrato; logs/screenshots/receipts sanitizados",
+        "Caso positivo, negativo e regressão plausível no boundary relevante",
+        "Crítica independente válida ou limitação explícita; evidência externa separada"
+      ],
+      "recovery": "Preservar alterações preexistentes; reverter somente delta próprio não aplicado; migrations aplicadas usam forward-fix; reconciliar efeitos incertos antes de retry. Registrar próxima ação singular.",
+      "next_action": "Ler fontes e contrato legado, reproduzir o critério pendente e reservar arquivos/recursos exatos antes de iniciar.",
+      "exclusive_resources": [
+        "Arquivos exatos a reservar em AAA2-01; paths são teto de escopo",
+        "persistence-core",
+        "migration-number",
+        "banco-efêmero exclusivo",
+        "API root/contratos: um integrador por janela",
+        "componentes compartilhados e sessão: um owner"
+      ],
+      "source_contracts": [
+        "docs/auditoria-entrega-2026-09-13.md",
+        "docs/01-prd-cvg.md",
+        "docs/03-dominio-dados-contratos.md",
+        "docs/plano-melhorias-2026-09-13/backlog.json",
+        ".gauntlet/bar-v4.json"
+      ]
+    }
+  ],
+  "legacy_reconciliation": [
+    {
+      "legacy_id": "AUD13-01",
+      "declared_status": "DONE",
+      "disposition": "CONTINUE_WITH_NEW_CRITERIA",
+      "new_tasks": [
+        "AAA2-01"
+      ],
+      "note": "Status declarado é histórico; não equivale a aceite independente desta auditoria."
+    },
+    {
+      "legacy_id": "AUD13-02",
+      "declared_status": "DONE",
+      "disposition": "PRESERVE_AND_REGRESSION",
+      "new_tasks": [
+        "AAA2-29",
+        "AAA2-31"
+      ],
+      "note": "Status declarado é histórico; não equivale a aceite independente desta auditoria."
+    },
+    {
+      "legacy_id": "AUD13-03",
+      "declared_status": "DONE",
+      "disposition": "CONTINUE_WITH_NEW_CRITERIA",
+      "new_tasks": [
+        "AAA2-10"
+      ],
+      "note": "Status declarado é histórico; não equivale a aceite independente desta auditoria."
+    },
+    {
+      "legacy_id": "AUD13-04",
+      "declared_status": "DONE",
+      "disposition": "PRESERVE_AND_REGRESSION",
+      "new_tasks": [
+        "AAA2-29",
+        "AAA2-31"
+      ],
+      "note": "Status declarado é histórico; não equivale a aceite independente desta auditoria."
+    },
+    {
+      "legacy_id": "AUD13-05",
+      "declared_status": "DONE",
+      "disposition": "PRESERVE_AND_REGRESSION",
+      "new_tasks": [
+        "AAA2-29",
+        "AAA2-31"
+      ],
+      "note": "Status declarado é histórico; não equivale a aceite independente desta auditoria."
+    },
+    {
+      "legacy_id": "AUD13-06",
+      "declared_status": "DONE",
+      "disposition": "PRESERVE_AND_REGRESSION",
+      "new_tasks": [
+        "AAA2-29",
+        "AAA2-31"
+      ],
+      "note": "Status declarado é histórico; não equivale a aceite independente desta auditoria."
+    },
+    {
+      "legacy_id": "AUD13-07",
+      "declared_status": "DONE",
+      "disposition": "PRESERVE_AND_REGRESSION",
+      "new_tasks": [
+        "AAA2-29",
+        "AAA2-31"
+      ],
+      "note": "Status declarado é histórico; não equivale a aceite independente desta auditoria."
+    },
+    {
+      "legacy_id": "AUD13-08",
+      "declared_status": "DONE",
+      "disposition": "PRESERVE_AND_REGRESSION",
+      "new_tasks": [
+        "AAA2-29",
+        "AAA2-31"
+      ],
+      "note": "Status declarado é histórico; não equivale a aceite independente desta auditoria."
+    },
+    {
+      "legacy_id": "AUD13-09",
+      "declared_status": "DONE",
+      "disposition": "PRESERVE_AND_REGRESSION",
+      "new_tasks": [
+        "AAA2-29",
+        "AAA2-31"
+      ],
+      "note": "Status declarado é histórico; não equivale a aceite independente desta auditoria."
+    },
+    {
+      "legacy_id": "AUD13-10",
+      "declared_status": "DONE",
+      "disposition": "PRESERVE_AND_REGRESSION",
+      "new_tasks": [
+        "AAA2-29",
+        "AAA2-31"
+      ],
+      "note": "Status declarado é histórico; não equivale a aceite independente desta auditoria."
+    },
+    {
+      "legacy_id": "AUD13-11",
+      "declared_status": "DONE",
+      "disposition": "PRESERVE_AND_REGRESSION",
+      "new_tasks": [
+        "AAA2-29",
+        "AAA2-31"
+      ],
+      "note": "Status declarado é histórico; não equivale a aceite independente desta auditoria."
+    },
+    {
+      "legacy_id": "AUD13-12",
+      "declared_status": "DONE",
+      "disposition": "PRESERVE_AND_REGRESSION",
+      "new_tasks": [
+        "AAA2-29",
+        "AAA2-31"
+      ],
+      "note": "Status declarado é histórico; não equivale a aceite independente desta auditoria."
+    },
+    {
+      "legacy_id": "AUD13-13",
+      "declared_status": "DONE",
+      "disposition": "PRESERVE_AND_REGRESSION",
+      "new_tasks": [
+        "AAA2-29",
+        "AAA2-31"
+      ],
+      "note": "Status declarado é histórico; não equivale a aceite independente desta auditoria."
+    },
+    {
+      "legacy_id": "AUD13-14",
+      "declared_status": "PARTIAL",
+      "disposition": "CONTINUE_WITH_NEW_CRITERIA",
+      "new_tasks": [
+        "AAA2-06",
+        "AAA2-09",
+        "AAA2-13"
+      ],
+      "note": "Status declarado é histórico; não equivale a aceite independente desta auditoria."
+    },
+    {
+      "legacy_id": "AUD13-15",
+      "declared_status": "DONE",
+      "disposition": "REOPEN_AFFECTED_ACCEPTANCE",
+      "new_tasks": [
+        "AAA2-33"
+      ],
+      "note": "Status declarado é histórico; não equivale a aceite independente desta auditoria."
+    },
+    {
+      "legacy_id": "AUD13-16",
+      "declared_status": "PARTIAL",
+      "disposition": "CONTINUE_WITH_NEW_CRITERIA",
+      "new_tasks": [
+        "AAA2-02",
+        "AAA2-07",
+        "AAA2-08"
+      ],
+      "note": "Status declarado é histórico; não equivale a aceite independente desta auditoria."
+    },
+    {
+      "legacy_id": "AUD13-17",
+      "declared_status": "PARTIAL",
+      "disposition": "CONTINUE_WITH_NEW_CRITERIA",
+      "new_tasks": [
+        "AAA2-02",
+        "AAA2-07"
+      ],
+      "note": "Status declarado é histórico; não equivale a aceite independente desta auditoria."
+    },
+    {
+      "legacy_id": "AUD13-18",
+      "declared_status": "PARTIAL",
+      "disposition": "CONTINUE_WITH_NEW_CRITERIA",
+      "new_tasks": [
+        "AAA2-16"
+      ],
+      "note": "Status declarado é histórico; não equivale a aceite independente desta auditoria."
+    },
+    {
+      "legacy_id": "AUD13-19",
+      "declared_status": "DONE",
+      "disposition": "PRESERVE_AND_REGRESSION",
+      "new_tasks": [
+        "AAA2-29",
+        "AAA2-31"
+      ],
+      "note": "Status declarado é histórico; não equivale a aceite independente desta auditoria."
+    },
+    {
+      "legacy_id": "AUD13-20",
+      "declared_status": "PARTIAL",
+      "disposition": "CONTINUE_WITH_NEW_CRITERIA",
+      "new_tasks": [
+        "AAA2-17"
+      ],
+      "note": "Status declarado é histórico; não equivale a aceite independente desta auditoria."
+    },
+    {
+      "legacy_id": "AUD13-21",
+      "declared_status": "DONE",
+      "disposition": "REOPEN_AFFECTED_ACCEPTANCE",
+      "new_tasks": [
+        "AAA2-01",
+        "AAA2-03",
+        "AAA2-04"
+      ],
+      "note": "Status declarado é histórico; não equivale a aceite independente desta auditoria."
+    },
+    {
+      "legacy_id": "AUD13-22",
+      "declared_status": "PARTIAL",
+      "disposition": "CONTINUE_WITH_NEW_CRITERIA",
+      "new_tasks": [
+        "AAA2-11"
+      ],
+      "note": "Status declarado é histórico; não equivale a aceite independente desta auditoria."
+    },
+    {
+      "legacy_id": "AUD13-23",
+      "declared_status": "PARTIAL",
+      "disposition": "CONTINUE_WITH_NEW_CRITERIA",
+      "new_tasks": [
+        "AAA2-12"
+      ],
+      "note": "Status declarado é histórico; não equivale a aceite independente desta auditoria."
+    },
+    {
+      "legacy_id": "AUD13-24",
+      "declared_status": "PARTIAL",
+      "disposition": "CONTINUE_WITH_NEW_CRITERIA",
+      "new_tasks": [
+        "AAA2-24"
+      ],
+      "note": "Status declarado é histórico; não equivale a aceite independente desta auditoria."
+    },
+    {
+      "legacy_id": "AUD13-25",
+      "declared_status": "PARTIAL",
+      "disposition": "CONTINUE_WITH_NEW_CRITERIA",
+      "new_tasks": [
+        "AAA2-18"
+      ],
+      "note": "Status declarado é histórico; não equivale a aceite independente desta auditoria."
+    },
+    {
+      "legacy_id": "AUD13-26",
+      "declared_status": "DONE",
+      "disposition": "CONTINUE_WITH_NEW_CRITERIA",
+      "new_tasks": [
+        "AAA2-25"
+      ],
+      "note": "Status declarado é histórico; não equivale a aceite independente desta auditoria."
+    },
+    {
+      "legacy_id": "AUD13-27",
+      "declared_status": "PARTIAL",
+      "disposition": "CONTINUE_WITH_NEW_CRITERIA",
+      "new_tasks": [
+        "AAA2-04",
+        "AAA2-05",
+        "AAA2-26"
+      ],
+      "note": "Status declarado é histórico; não equivale a aceite independente desta auditoria."
+    },
+    {
+      "legacy_id": "AUD13-28",
+      "declared_status": "PLANNED",
+      "disposition": "CONTINUE_WITH_NEW_CRITERIA",
+      "new_tasks": [
+        "AAA2-25"
+      ],
+      "note": "Status declarado é histórico; não equivale a aceite independente desta auditoria."
+    },
+    {
+      "legacy_id": "AUD13-29",
+      "declared_status": "PARTIAL",
+      "disposition": "CONTINUE_WITH_NEW_CRITERIA",
+      "new_tasks": [
+        "AAA2-20"
+      ],
+      "note": "Status declarado é histórico; não equivale a aceite independente desta auditoria."
+    },
+    {
+      "legacy_id": "AUD13-30",
+      "declared_status": "PLANNED",
+      "disposition": "CONTINUE_WITH_NEW_CRITERIA",
+      "new_tasks": [
+        "AAA2-19"
+      ],
+      "note": "Status declarado é histórico; não equivale a aceite independente desta auditoria."
+    },
+    {
+      "legacy_id": "AUD13-31",
+      "declared_status": "PLANNED",
+      "disposition": "CONTINUE_WITH_NEW_CRITERIA",
+      "new_tasks": [
+        "AAA2-21"
+      ],
+      "note": "Status declarado é histórico; não equivale a aceite independente desta auditoria."
+    },
+    {
+      "legacy_id": "AUD13-32",
+      "declared_status": "PLANNED",
+      "disposition": "CONTINUE_WITH_NEW_CRITERIA",
+      "new_tasks": [
+        "AAA2-22",
+        "AAA2-23"
+      ],
+      "note": "Status declarado é histórico; não equivale a aceite independente desta auditoria."
+    },
+    {
+      "legacy_id": "AUD13-33",
+      "declared_status": "PLANNED",
+      "disposition": "CONTINUE_WITH_NEW_CRITERIA",
+      "new_tasks": [
+        "AAA2-28"
+      ],
+      "note": "Status declarado é histórico; não equivale a aceite independente desta auditoria."
+    },
+    {
+      "legacy_id": "AUD13-34",
+      "declared_status": "PLANNED",
+      "disposition": "CONTINUE_WITH_NEW_CRITERIA",
+      "new_tasks": [
+        "AAA2-10",
+        "AAA2-27"
+      ],
+      "note": "Status declarado é histórico; não equivale a aceite independente desta auditoria."
+    },
+    {
+      "legacy_id": "AUD13-35",
+      "declared_status": "PLANNED",
+      "disposition": "CONTINUE_WITH_NEW_CRITERIA",
+      "new_tasks": [
+        "AAA2-09",
+        "AAA2-29"
+      ],
+      "note": "Status declarado é histórico; não equivale a aceite independente desta auditoria."
+    },
+    {
+      "legacy_id": "AUD13-36",
+      "declared_status": "PLANNED",
+      "disposition": "CONTINUE_WITH_NEW_CRITERIA",
+      "new_tasks": [
+        "AAA2-23",
+        "AAA2-30"
+      ],
+      "note": "Status declarado é histórico; não equivale a aceite independente desta auditoria."
+    },
+    {
+      "legacy_id": "AUD13-37",
+      "declared_status": "PLANNED",
+      "disposition": "CONTINUE_WITH_NEW_CRITERIA",
+      "new_tasks": [
+        "AAA2-01",
+        "AAA2-10",
+        "AAA2-31"
+      ],
+      "note": "Status declarado é histórico; não equivale a aceite independente desta auditoria."
+    },
+    {
+      "legacy_id": "AUD13-38",
+      "declared_status": "PLANNED",
+      "disposition": "CONTINUE_WITH_NEW_CRITERIA",
+      "new_tasks": [
+        "AAA2-32"
+      ],
+      "note": "Status declarado é histórico; não equivale a aceite independente desta auditoria."
+    },
+    {
+      "legacy_id": "AUD13-14A",
+      "declared_status": "PLANNED",
+      "disposition": "CONTINUE_WITH_NEW_CRITERIA",
+      "new_tasks": [
+        "AAA2-13"
+      ],
+      "note": "Status declarado é histórico; não equivale a aceite independente desta auditoria."
+    },
+    {
+      "legacy_id": "AUD13-16A",
+      "declared_status": "PLANNED",
+      "disposition": "CONTINUE_WITH_NEW_CRITERIA",
+      "new_tasks": [
+        "AAA2-08",
+        "AAA2-14"
+      ],
+      "note": "Status declarado é histórico; não equivale a aceite independente desta auditoria."
+    },
+    {
+      "legacy_id": "AUD13-17A",
+      "declared_status": "PLANNED",
+      "disposition": "CONTINUE_WITH_NEW_CRITERIA",
+      "new_tasks": [
+        "AAA2-15"
+      ],
+      "note": "Status declarado é histórico; não equivale a aceite independente desta auditoria."
+    },
+    {
+      "legacy_id": "AUD13-18A",
+      "declared_status": "PLANNED",
+      "disposition": "CONTINUE_WITH_NEW_CRITERIA",
+      "new_tasks": [
+        "AAA2-16"
+      ],
+      "note": "Status declarado é histórico; não equivale a aceite independente desta auditoria."
+    },
+    {
+      "legacy_id": "AUD13-20A",
+      "declared_status": "PLANNED",
+      "disposition": "CONTINUE_WITH_NEW_CRITERIA",
+      "new_tasks": [
+        "AAA2-17"
+      ],
+      "note": "Status declarado é histórico; não equivale a aceite independente desta auditoria."
+    },
+    {
+      "legacy_id": "AUD13-25A",
+      "declared_status": "PLANNED",
+      "disposition": "CONTINUE_WITH_NEW_CRITERIA",
+      "new_tasks": [
+        "AAA2-18"
+      ],
+      "note": "Status declarado é histórico; não equivale a aceite independente desta auditoria."
+    }
+  ],
+  "source_report_sha256": "69402de24574a15f7a5550b4e8d5c31e7faf225cebbaa2cc80c6d3a98e152548"
+}

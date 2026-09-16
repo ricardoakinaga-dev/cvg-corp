@@ -1,0 +1,16 @@
+
+> cvg-corp@0.1.0 verify:static
+> tsx scripts/verify-static.ts
+
+FAIL evidence snapshot: evidence snapshot source SHA does not match HEAD
+FAIL evidence snapshot: evidence snapshot worktree state MODIFIED does not match current state CLEAN
+FAIL evidence snapshot: artifacts/operational-proof/local-verification-2026-09-10.json mtime differs from the snapshot
+FAIL evidence snapshot: artifacts/operational-proof/triple-aaa-evidence.json mtime differs from the snapshot
+FAIL evidence snapshot: artifacts/operational-proof/pdp-universal-evidence.json mtime differs from the snapshot
+FAIL evidence snapshot: artifacts/operational-proof/authoritative-write-evidence.json mtime differs from the snapshot
+FAIL evidence snapshot: artifacts/operational-proof/audit-chain-evidence.json mtime differs from the snapshot
+FAIL evidence snapshot: artifacts/operational-proof/browser-matrix-local-2026-09-10.json mtime differs from the snapshot
+FAIL evidence snapshot: artifacts/operational-proof/postgres-real-local-2026-09-10.json mtime differs from the snapshot
+FAIL evidence snapshot: artifacts/operational-proof/security-red-team-local.json mtime differs from the snapshot
+FAIL evidence snapshot: artifacts/operational-proof/resource-pressure-local.json mtime differs from the snapshot
+FAIL evidence snapshot: artifacts/operational-proof/runbook-execution-local.json mtime differs from the snapshot

@@ -1,8 +1,27 @@
 # Estado da implementação local
 
-**Data da leitura:** 2026-09-08
+## Continuação AAA2-02/E01 — nova auditoria em 13/09/2026
+
+A [auditoria da continuação](auditoria-continuacao-aaa2-02-2026-09-13.md) confirmou a correção de medicação no recorte local com probe HTTP independente. E01 permanece aprovado localmente com ressalva de PostgreSQL multiprocesso; AUD13-16 permanece incompleto e AUD13-17 parcial. Nesta rodada npm test teve 386 pass/1 skip; build, lint e static passaram. A falha static da auditoria anterior é histórica.
+
+Os 327 registros de verificação e 392 eventos existem, mas não representam contagem de melhorias. State/backlog/marker/tail concordam; o primeiro Concrete Step não coincide com a ação ativa. Pai16 espera filho16A, que depende do pai; corrigir a dependência sem fechar o pai por inferência. D-02 não bloqueia as correções independentes de budget, autoridade e prontuário.
+
+A [rodada AAA3](rodada-aaa3-2026-09-13/README.md) prioriza 12 contratos e preserva todos os 33 AAA2. Este adendo é documental: código e estado ativo não foram alterados. Veredito global permanece AAA_NOT_PROVEN; nenhuma prova externa ou decisão clínica foi inventada.
+
+
+## Registro anterior — auditoria da entrega, 13/09/2026
+
+**Veredito:** FAIL para Triplo AAA / AAA_NOT_PROVEN, segundo a barra v4. A [auditoria atual](auditoria-entrega-2026-09-13.md) registra 18 achados e distingue avanços locais de aceites ainda não comprovados. Foram executados npm test (384 pass, 1 skip), build/lint (PASS), Chromium desktop/mobile (76 pass, 4 skip) e static (FAIL por snapshot de outro SHA).
+
+Prontuário/adendos, prescrição/dispensação e budget/autoridade ACP contêm defeitos reproduzidos. 24 coleções permanecem snapshotPrimary. CI/staging/provedores/assistividade/recuperação reais não foram executados nesta auditoria. AUD13-15 e AUD13-21 têm aceites contraditos; a reconciliação executiva pertence a AAA2-01.
+
+O [novo programa](plano-triplo-aaa-pos-entrega-2026-09-13/README.md) contém 33 tarefas com ponte para todo o catálogo anterior. Esta atualização é documental; não modifica o backlog ativo nem declara melhorias implementadas. Os registros abaixo permanecem históricos e não substituem a avaliação atual.
+
+## Registro histórico iniciado em 08/09/2026
+
+**Data da leitura histórica:** 2026-09-08
 **Escopo:** artifact local-first em evolução vNext, dados sintéticos, loopback, memória descartável por padrão e PostgreSQL verificável somente quando uma instância explícita estiver disponível.
-**Veredito atual:** `FAIL_WITH_LIMITATIONS` na barra v3; os gates locais determinísticos passam, mas não há release de produção.
+**Veredito histórico desta seção:** `FAIL_WITH_LIMITATIONS` na barra v3; os gates locais determinísticos passam, mas não há release de produção.
 
 Esta página é o estado corrente da implementação e complementa os registros históricos de preparação e veredito em [10](10-preparacao-m1.md) e [09](09-gauntlet-verdict.md). Os documentos históricos continuam válidos como registro do que era proposto ou ainda não executado naquele momento; esta página não transforma seus aceites documentais em aprovação operacional.
 

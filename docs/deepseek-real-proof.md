@@ -46,4 +46,27 @@ No port ACP, `DeepSeekAcpGovernance` é obrigatório para qualquer turno públic
 | Replay mismatch | Smoke rejeita turno ausente/adulterado no replay | `NOT_RUN` |
 | Partial output / provider failure / approval replay | Port ACP exige governance antes de prompt e registra `COMPLETED`/`DENIED`/`OUTCOME_UNKNOWN` por contrato; sem governance durável não há prova operacional correspondente | `NOT_RUN` |
 
-Verificação focada: `npx tsx --test tests/unit/deepseek-bridge.test.ts tests/unit/deepseek-acp.test.ts`. Fixtures sintéticas e loopback são evidência de fronteira, não de qualidade do modelo, autoridade externa ou produção. Próximo gate: injetar uma implementação production-like de `DeepSeekAcpGovernance` conectada ao Tool Gateway/PDP e ledger CVG, com egress controlado, e executar todas as operações das fases 3–4 no SHA aprovado.
+## Governance durável (AUD13-27)
+
+`createDurableDeepSeekAcpGovernance` (em `@cvg/harness-adapters`) implementa `DeepSeekAcpGovernance` sobre uma porta estrutural de store CVG, sem fallback para mock:
+
+- sessão persistida com `engineCommit`/`profileDigest` **atestados pelo port** no momento da criação (`createSession(context, input, attestedFacts)`); restart recarrega a sessão do ledger e recusa escopo, status ou profile divergentes;
+- `authorizeTurn` consulta o catálogo canônico `TOOL_REGISTRY`, aplica `requireRole` por capability, exige aprovação contextual e persiste turno `DENIED`/`RECEIVED` antes de qualquer dispatch nativo;
+- aprovação de alto impacto exige ator independente, decisão única e expiração; o consumo ocorre somente após `recordTurn` `COMPLETED` (uma vez, com replay posterior negado);
+- budget opcional reserva antes do dispatch, libera em `DENY` e mantém retido (`settle(reservation, null)`) quando o custo é desconhecido;
+- usage ausente/inválido vira `OUTCOME_UNKNOWN` com `RECONCILIATION_REQUIRED` e custo `UNAVAILABLE` — nunca custo zero;
+- provenance registra provider `deepseek`, engine, profile, policy revision, correlation e digsests; promoção de rascunho cria documento clínico durável e não promove duas vezes.
+
+O entrypoint aceita `durableAcp: { store, toolNames?, budget? }` e compõe a governance automaticamente quando nenhuma autoridade explícita foi injetada, repassando-a a `createAcpNativeHarnessPortFromEnvironment`.
+
+| Falha | Evidência local | Prova no modelo real |
+|---|---|---|
+| Restart do processo/port | Sessão durável recarregada por nova instância de governance sobre o mesmo ledger | `NOT_RUN` |
+| Cancelamento | Port registra `OUTCOME_UNKNOWN` e preserva reserva de budget | `NOT_RUN` |
+| Timeout | Deadline/cancelamento no port sintético (bridge) | `NOT_RUN` |
+| JSON inválido | Bridge rejeita resposta nativa malformada; wire schema estrito | `NOT_RUN` |
+| Manifest/HMAC incorretos | Attestation do manifesto + HMAC de contexto rejeitados | `NOT_RUN` |
+| Usage ausente | `OUTCOME_UNKNOWN` + `RECONCILIATION_REQUIRED`, sem custo zero | `NOT_RUN` |
+| Sem fallback mock | Turno ACP sem governance falha `CAPABILITY_DISABLED`; entrypoint só habilita com port explícito | `NOT_RUN` |
+
+Verificação focada: `npx tsx --test tests/unit/deepseek-bridge.test.ts tests/unit/deepseek-acp.test.ts tests/unit/deepseek-real-proof.test.ts tests/unit/deepseek-acp-governance.test.ts` (31 testes locais: 30 pass, 1 skip). Fixtures sintéticas e loopback são evidência de fronteira, não de qualidade do modelo, autoridade externa ou produção. `npm run verify:deepseek-acp` e `npm run verify:deepseek-real` permanecem bloqueados externamente (`DEEPSEEK_REAL_BLOCKED_EXTERNAL`) até runtime/modelo/segredos e teto de custo serem autorizados (AUD13-26). Próximo gate: executar todas as operações das fases 3–4 no SHA aprovado com a governance durável injetada.

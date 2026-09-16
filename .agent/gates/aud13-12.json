@@ -1,0 +1,93 @@
+{
+  "schema_version": 1,
+  "gate_id": "GATE-CVG-AUD13-12",
+  "task_id": "AUD13-12",
+  "status": "PASS_COM_RESSALVAS",
+  "decision": "PASS_COM_RESSALVAS",
+  "score": 8.0,
+  "critic_artifact": "critical review registrado no historico da sessao (PASSA_COM_RESSALVAS 7/10; achados 1-6 tratados)",
+  "subject": {
+    "head_sha": "1c22c5dc79c52151f4c7c94c4402dfdc86812cbc",
+    "worktree": "MODIFIED",
+    "task_owned_paths": [
+      "apps/web/src/features/patients/",
+      "packages/domain/src/index.ts",
+      "tests/"
+    ],
+    "exclusive_resources": [
+      "patient-feature",
+      "domain-core"
+    ]
+  },
+  "bar": {
+    "path": ".gauntlet/bar-v4.json",
+    "sha256": "2093461a8d6103641a555ad45371dde4649e5f144c32260b80244e219fa70697"
+  },
+  "checks": [
+    {
+      "command": "npx playwright test tests/e2e/app.spec.ts (375/768/1440)",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "84 passed, 6 skipped"
+    },
+    {
+      "command": "node --import tsx --test tests/unit/domain.test.ts",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "31 testes incl. duplicidade/cross-scope/destino inativo"
+    },
+    {
+      "command": "npm run test:database",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "61 testes"
+    },
+    {
+      "command": "npm run verify:pdp",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "inventario + 26 runtime"
+    },
+    {
+      "command": "npm test",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "350 testes: 349 pass, 1 skip, 0 fail"
+    },
+    {
+      "command": "npm run lint",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "171 arquivos"
+    },
+    {
+      "command": "npm run typecheck",
+      "exit_code": 0,
+      "result": "PASS"
+    }
+  ],
+  "corrections_after_critic": [
+    "cross-scope provado com tutor real da Unidade Sul (antes usava id inexistente)",
+    "merge exige destino ACTIVE; teste cobre conflito sem escrita parcial",
+    "busca de responsavel no cadastro",
+    "focus-trap com Tab/Shift+Tab no dialogo da jornada",
+    "fechar/cancelar desabilitado durante submit em voo (nao cria nova chave com operacao possivelmente enviada)"
+  ],
+  "residuals": [
+    "409 vira STALE global no cliente e oculta a causa inline (AUD13-04/37)",
+    "duplicidade concorrente multi-processo sem indice unico fica para AUD13-23/36",
+    "ficha INACTIVE no adapter Postgres nao coberta",
+    "critico sem shell: execucao e evidencia sao do Lead; revisao independente de execucao em AUD13-37"
+  ],
+  "verification_refs": [
+    "VER-CVG-AUD13-12-001"
+  ],
+  "artifact_digests": {
+    "apps/web/src/features/patients/Patients.tsx": "bf997a6c6236ae25b0cee174c2c93a9c2af3de0687fe639493e6b0cb67c0c496",
+    "packages/domain/src/index.ts": "14c5fe10ed04d82dc3c59d3010e9ebb2e5f215eca25f017a96aa012228bdef90",
+    "tests/e2e/app.spec.ts": "1477680fefc429bcd7d11098dd2bbdeee59c8a3aa69dca845386adb8421f32ac",
+    "tests/unit/domain.test.ts": "65af9fb7cddb22f0117b747d6ecdd9ec7704892d00f3190de891ff3d823fbd6b",
+    "docs/adr/031-journey-inventory-and-open-decisions.md": "758cfeec017d3a324de40e8515a1a7dfa3469f8e65ea1d6bedcd5e2ed40a32b6"
+  },
+  "recorded_at": "2026-09-13T11:38:03-03:00"
+}

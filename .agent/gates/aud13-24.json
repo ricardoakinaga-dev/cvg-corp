@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "gate_id": "GATE-CVG-AUD13-24",
+  "task_id": "AUD13-24",
+  "status": "PASS_COM_RESSALVAS",
+  "decision": "PARTIAL_PASS",
+  "score": 7.5,
+  "critic_artifact": null,
+  "subject": {
+    "head_sha": "1c22c5dc79c52151f4c7c94c4402dfdc86812cbc",
+    "worktree": "MODIFIED",
+    "task_owned_paths": [
+      "packages/persistence/",
+      "apps/api/src/application/export-service.ts",
+      "apps/worker/src/",
+      "scripts/verify-postgres-restore.ts",
+      "docs/runbooks/",
+      "db/migrations/",
+      "tests/"
+    ],
+    "blocked_slices": [
+      "drill externo de restore/RTO/RPO",
+      "stores object/vector por D-03"
+    ]
+  },
+  "bar": {
+    "path": ".gauntlet/bar-v4.json",
+    "sha256": "2093461a8d6103641a555ad45371dde4649e5f144c32260b80244e219fa70697"
+  },
+  "checks": [
+    {
+      "command": "node --import tsx --test tests/integration/restore.test.ts",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "5 testes"
+    },
+    {
+      "command": "npm test",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "379 testes: 378 pass, 1 skip, 0 fail"
+    },
+    {
+      "command": "npm run test:database",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "66 testes"
+    },
+    {
+      "command": "npm run verify:pdp",
+      "exit_code": 0,
+      "result": "PASS"
+    },
+    {
+      "command": "npm run verify:authoritative-writes",
+      "exit_code": 0,
+      "result": "PASS"
+    },
+    {
+      "command": "npm run verify:postgres:restore",
+      "exit_code": 2,
+      "result": "BLOCKED",
+      "summary": "DATABASE_URL is required"
+    },
+    {
+      "command": "npm run lint",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "175 arquivos"
+    }
+  ],
+  "residuals": [
+    "drill de restore/reconciliacao real e RTO/RPO BLOCKED_EXTERNAL (D-03 + PostgreSQL gerenciado)",
+    "object/vector stores permanecem nao integrados por decisao de retencao/residencia"
+  ],
+  "verification_refs": [
+    "VER-CVG-AUD13-24-001"
+  ],
+  "artifact_digests": {
+    "packages/persistence/src/index.ts": "c96653cdf4aec24e573ffc29fdf10ae561bb0482ba17ea6cbed8e8d494d19522",
+    "tests/integration/restore.test.ts": "0b6d8a2f36af4db28bf43af9a61b7ad387382675ac12705527e4ab29e70af665",
+    "docs/runbooks/restore.md": "b61f8a1f68ae06ca1a758150837509650ed664a15cba5b88fb3b657902036bfd",
+    "scripts/verify-postgres-restore.ts": "761c1df55f5f20f96bd8f41e6a9a969c1eee6079a05bea12905a6cd21a412258"
+  },
+  "recorded_at": "2026-09-13T14:50:21-03:00"
+}

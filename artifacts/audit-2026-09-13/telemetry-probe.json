@@ -1,0 +1,6 @@
+{
+  "maxSpans": 2,
+  "observations": 10000,
+  "retainedLatencies": 10000,
+  "retainedLogs": 10000
+}

@@ -3,6 +3,7 @@ import { spawnSync } from "node:child_process";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { CVG_RUNTIME_DATABASE_ROLE, CVG_SECRET_PROVIDER_KINDS, databaseRoleFromUrl } from "@cvg/config";
+import { renderAlertmanagerConfig } from "./render-alertmanager.ts";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const productionMode = process.argv.includes("--production");
@@ -72,6 +73,7 @@ const requiredFiles = [
   "db/migrations/034_diagnostic_child_integrity_backstop.sql",
   "db/migrations/035_break_glass_scope.sql",
   "db/migrations/036_runtime_migration_metadata_privileges.sql",
+  "db/migrations/037_command_receipt_claim_fence.sql",
   "docs/runbooks/deploy.md",
   "docs/runbooks/deployment.md",
   "docs/runbooks/rollback.md",
@@ -217,11 +219,17 @@ function inspectStaticContracts(): void {
   }
   requireText("docker-compose.observability.yml", "internal: true");
   requireText("docker-compose.observability.yml", "GRAFANA_ADMIN_PASSWORD");
+  requireText("docker-compose.observability.yml", "CVG_ALERTMANAGER_CONFIG_FILE");
   requireText("docker/observability/otel-collector.yml", "attributes/redact");
   requireText("docker/observability/prometheus.yml", "rule_files:");
   requireText("docker/observability/alerts.yml", "runbook:");
   requireText("docker/observability/alertmanager.yml", "CVG_ALERTMANAGER_WEBHOOK_URL");
   rejectText("docker/observability/alertmanager.yml", /cvg-null/, "Alertmanager must not silently discard alerts through a null receiver");
+  try {
+    renderAlertmanagerConfig(readArtifacts.get("docker/observability/alertmanager.yml") ?? "", "https://alerts.verify.invalid/webhook", { requireTls: true });
+  } catch (error) {
+    failures.push(`docker/observability/alertmanager.yml: render contract failed (${error instanceof Error ? error.message : String(error)})`);
+  }
   requireText("docker/observability/grafana/dashboards/cvg-runtime.json", "Outbox depth");
   requireText("docker/nginx/proxy.conf", "Content-Security-Policy");
   requireText("docker/nginx/web.conf", "Content-Security-Policy");
@@ -475,7 +483,7 @@ function runComposeConfig(): { available: boolean; config: ComposeConfig | null 
 }
 
 function runObservabilityComposeConfig(): { available: boolean; config: ComposeConfig | null } {
-  const environment = { ...syntheticComposeEnvironment(), CVG_ALERTMANAGER_WEBHOOK_URL: "https://alerts.verify.invalid/webhook", OTEL_COLLECTOR_IMAGE: "otel/opentelemetry-collector-contrib:verify", TEMPO_IMAGE: "grafana/tempo:verify", PROMETHEUS_IMAGE: "prom/prometheus:verify", ALERTMANAGER_IMAGE: "prom/alertmanager:verify", GRAFANA_IMAGE: "grafana/grafana:verify" };
+  const environment = { ...syntheticComposeEnvironment(), CVG_ALERTMANAGER_WEBHOOK_URL: "https://alerts.verify.invalid/webhook", CVG_ALERTMANAGER_CONFIG_FILE: "/tmp/cvg-alertmanager.verify.yml", OTEL_COLLECTOR_IMAGE: "otel/opentelemetry-collector-contrib:verify", TEMPO_IMAGE: "grafana/tempo:verify", PROMETHEUS_IMAGE: "prom/prometheus:verify", ALERTMANAGER_IMAGE: "prom/alertmanager:verify", GRAFANA_IMAGE: "grafana/grafana:verify" };
   const version = spawnSync("docker", ["compose", "version"], { cwd: root, env: environment, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
   if (commandNotFound(version.error) || version.status !== 0) return { available: false, config: null };
   const result = spawnSync("docker", ["compose", "-f", "docker-compose.observability.yml", "config", "--format", "json"], { cwd: root, env: environment, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });

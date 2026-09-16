@@ -1,0 +1,95 @@
+{
+  "schema_version": 1,
+  "gate_id": "GATE-CVG-AUD13-14",
+  "task_id": "AUD13-14",
+  "status": "PASS_COM_RESSALVAS",
+  "decision": "PARTIAL_PASS",
+  "score": 8.0,
+  "critic_artifact": "critical review registrado no historico da sessao (PASSA_COM_RESSALVAS 7,5/10; achado de assinatura sem revisao corrigido)",
+  "subject": {
+    "head_sha": "1c22c5dc79c52151f4c7c94c4402dfdc86812cbc",
+    "worktree": "MODIFIED",
+    "task_owned_paths": [
+      "apps/web/src/features/clinical/",
+      "apps/api/src/application/",
+      "packages/domain/src/",
+      "packages/persistence/",
+      "tests/"
+    ],
+    "registered_surface_extensions": [
+      "packages/contracts/src/api-catalog.ts",
+      "apps/api/src/app.ts",
+      "scripts/verify-postgres.ts"
+    ],
+    "blocked_slice": "anexos clinicos (D-03) -> AUD13-14A"
+  },
+  "bar": {
+    "path": ".gauntlet/bar-v4.json",
+    "sha256": "2093461a8d6103641a555ad45371dde4649e5f144c32260b80244e219fa70697"
+  },
+  "checks": [
+    {
+      "command": "npm test",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "355 testes: 354 pass, 1 skip, 0 fail"
+    },
+    {
+      "command": "npm run test:database",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "61 testes"
+    },
+    {
+      "command": "npm run verify:pdp",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "catalogo+inventario e 26 runtime"
+    },
+    {
+      "command": "npm run verify:authoritative-writes",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "32 dominios; tamper rejeitado"
+    },
+    {
+      "command": "npx playwright test app.spec.ts (375/768/1440)",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "93 passed, 6 skipped"
+    },
+    {
+      "command": "npm run typecheck",
+      "exit_code": 0,
+      "result": "PASS"
+    },
+    {
+      "command": "npm run lint",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "171 arquivos"
+    }
+  ],
+  "corrections_after_critic": [
+    "assinatura exige status REVIEW no servidor; DRAFT responde INVALID_STATE 409",
+    "UI so oferece Assinar em REVIEW; admin ve a restricao de role",
+    "expectedVersion obrigatorio em confirm/cancel/reschedule de reserva"
+  ],
+  "residuals": [
+    "anexos bloqueados por D-03 (AUD13-14A)",
+    "concorrencia PostgreSQL multi-processo (AUD13-23/36)",
+    "foco assistivo/navegacao por leitor de tela dos dialogos (AUD13-35)",
+    "promote->sign do Copiloto sem gatilho de UI (AUD13-19)"
+  ],
+  "verification_refs": [
+    "VER-CVG-AUD13-14-001"
+  ],
+  "artifact_digests": {
+    "apps/web/src/features/clinical/Clinical.tsx": "d8b6e1ace706ca790cc688fa694a7313746da856291d3db533a1f0fbde158d78",
+    "packages/domain/src/index.ts": "5320fbc4452b5f25227ac05889c113e7f05a88caa9d81d18c45291dd3b0d9f1d",
+    "apps/api/src/app.ts": "8780198103ad13d88f16141babc9a4b21f862a72dbe092ad67824e903e12560e",
+    "tests/e2e/app.spec.ts": "06295a8cb6815883b3b398884a28c3ee3165f1617bff997a88fa1c17bb1e7cec",
+    "tests/integration/api.test.ts": "973432d23a97fb0a517dd94b472b486514a0e528a1c289acebe34f5a56e2162a"
+  },
+  "recorded_at": "2026-09-13T12:22:43-03:00"
+}

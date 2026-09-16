@@ -1,0 +1,55 @@
+
+> cvg-corp@0.1.0 audit:contrast
+> tsx scripts/check-contrast.ts
+
+[
+  {
+    "foreground": "#385263",
+    "background": "#f5f8f6",
+    "ratio": 7.69,
+    "threshold": 4.5,
+    "pass": true
+  },
+  {
+    "foreground": "#59717c",
+    "background": "#f5f8f6",
+    "ratio": 4.82,
+    "threshold": 4.5,
+    "pass": true
+  },
+  {
+    "foreground": "#385263",
+    "background": "#fbf8ef",
+    "ratio": 7.74,
+    "threshold": 4.5,
+    "pass": true
+  },
+  {
+    "foreground": "#ffffff",
+    "background": "#08786f",
+    "ratio": 5.35,
+    "threshold": 4.5,
+    "pass": true
+  },
+  {
+    "foreground": "#a83f3c",
+    "background": "#fbe7e1",
+    "ratio": 5.12,
+    "threshold": 4.5,
+    "pass": true
+  },
+  {
+    "foreground": "#8d5d0e",
+    "background": "#fff2d4",
+    "ratio": 5.1,
+    "threshold": 4.5,
+    "pass": true
+  },
+  {
+    "foreground": "#08786f",
+    "background": "#f2f7f5",
+    "threshold": 3,
+    "ratio": 4.94,
+    "pass": true
+  }
+]

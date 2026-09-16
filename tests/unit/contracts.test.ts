@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
-import { aiUsageSettlementSchema, API_UPCASTERS, API_V2_COMPATIBILITY, ApiCompatibilityError, commandEnvelopeSchema, contractDescriptorSchema, domainEventSchema, governedExportInputSchema, id, upcastApiValue } from "@cvg/contracts";
+import { aiUsageSettlementSchema, API_UPCASTERS, API_V2_COMPATIBILITY, ApiCompatibilityError, commandEnvelopeSchema, contractDescriptorSchema, domainEventSchema, governedExportInputSchema, id, loginResponseSchema, upcastApiValue } from "@cvg/contracts";
 
 const identifier = () => id(randomUUID());
 
@@ -91,4 +91,62 @@ test("AI usage settlement keeps cost uncertainty explicit and binds tokens to th
   assert.equal(settlement.inputTokens + settlement.outputTokens, 7);
   assert.equal(settlement.estimatedCost.source, "UNAVAILABLE");
   assert.throws(() => aiUsageSettlementSchema.parse({ ...settlement, discrepancy: { ...settlement.discrepancy, deltaMicros: 1.5 } }));
+});
+
+test("login response discriminates a completed session from a pending MFA challenge", () => {
+  const user = { id: randomUUID(), displayName: "Synthetic User", email: "user@example.test", status: "ACTIVE" };
+  const context = { organization: { id: randomUUID(), name: "Org", slug: "org" }, unit: { id: randomUUID(), name: "Unit", code: "U1" }, workspace: { id: randomUUID(), name: "Workspace", purpose: "clinical" }, roles: ["admin"] };
+  const session = loginResponseSchema.parse({ user, contexts: [context], csrfToken: "synthetic-csrf" });
+  assert.equal("mfaRequired" in session, false);
+  const challenge = loginResponseSchema.parse({ mfaRequired: true, challengeId: "a".repeat(32), expiresAt: new Date().toISOString() });
+  assert.equal(challenge.mfaRequired, true);
+  assert.throws(() => loginResponseSchema.parse({ mfaRequired: true, user, contexts: [context] }));
+  assert.throws(() => loginResponseSchema.parse({ user, contexts: [context], mfaRequired: false }));
+  assert.throws(() => loginResponseSchema.parse({ user: { ...user, id: "not-an-id" }, contexts: [context] }));
+});
+
+test("web client payload validation fails closed inside a valid envelope", async () => {
+  const { validatePayload } = await import("../../apps/web/src/api/validation.ts");
+  const user = { id: randomUUID(), displayName: "Synthetic User", email: "user@example.test", status: "ACTIVE" };
+  const context = { organization: { id: randomUUID(), name: "Org", slug: "org" }, unit: { id: randomUUID(), name: "Unit", code: "U1" }, workspace: { id: randomUUID(), name: "Workspace", purpose: "clinical" }, roles: ["admin"] };
+  const session = validatePayload("POST", "/auth/login", { user, contexts: [context], csrfToken: "synthetic-csrf" });
+  assert.equal(session.status, "validated");
+  const challenge = validatePayload("POST", "/auth/login", { mfaRequired: true, challengeId: "b".repeat(32), expiresAt: new Date().toISOString() });
+  assert.equal(challenge.status, "validated");
+  const invalidLogin = validatePayload("POST", "/auth/login", { contexts: [] });
+  assert.equal(invalidLogin.status, "invalid");
+  const invalidFinance = validatePayload("GET", "/finance/charges", { items: "not-an-array", balance: null });
+  assert.equal(invalidFinance.status, "invalid");
+  if (invalidFinance.status === "invalid") assert.match(invalidFinance.issues, /items/);
+  const migrated = validatePayload("GET", "/patients", { items: [] });
+  assert.equal(migrated.status, "passthrough");
+});
+
+test("partial envelopes and command receipts stay discriminated inside the contract", async () => {
+  const { apiPartialEnvelopeSchema, apiSuccessEnvelopeSchema, commandReceiptSchema, FIRST_JOURNEY_CONTRACT_EXAMPLES, receiptReferenceSchema } = await import("@cvg/contracts");
+  const partial = apiPartialEnvelopeSchema.parse(FIRST_JOURNEY_CONTRACT_EXAMPLES.partial);
+  assert.equal(partial.status, "PARTIAL");
+  assert.equal(partial.pending[0]?.reason, "POLICY_UNRESOLVED");
+  assert.equal(partial.pending[0]?.retryable, false);
+  assert.equal(apiPartialEnvelopeSchema.safeParse({ ...FIRST_JOURNEY_CONTRACT_EXAMPLES.partial, pending: [] }).success, false);
+  const success = apiSuccessEnvelopeSchema.parse(FIRST_JOURNEY_CONTRACT_EXAMPLES.success);
+  assert.equal("pending" in success, false);
+  const receipt = commandReceiptSchema.parse({
+    id: randomUUID(),
+    organizationId: randomUUID(),
+    actorId: randomUUID(),
+    unitId: randomUUID(),
+    workspaceId: null,
+    auditRecordId: null,
+    operation: "finance.charge",
+    idempotencyLookup: "synthetic-lookup",
+    bodyDigest: "d".repeat(64),
+    status: "SUCCEEDED",
+    result: { chargeId: randomUUID() },
+    createdAt: new Date().toISOString(),
+    completedAt: new Date().toISOString()
+  });
+  const reference = receiptReferenceSchema.parse({ receiptId: receipt.id, status: "SUCCEEDED", replayed: true });
+  assert.equal(reference.receiptId, receipt.id);
+  assert.equal(commandReceiptSchema.safeParse({ ...receipt, status: "IN_FLIGHT", completedAt: new Date().toISOString() }).success, false);
 });

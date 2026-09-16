@@ -1,0 +1,2296 @@
+{
+  "schema_version": 1,
+  "kind": "planning_contract_delta",
+  "created_date": "2026-09-13",
+  "source_report": "docs/auditoria-2026-09-13.md",
+  "source_report_sha256": "3a03f1d37c3bb482ba7291a3abbfc4919d39f1e3c4c62fac2dbb1c7b3ccd37ff",
+  "baseline_head": "1c22c5dc79c52151f4c7c94c4402dfdc86812cbc",
+  "baseline_worktree": "MODIFIED; relatório vinculado ao snapshot anterior, revalidar antes de execução",
+  "quality_bar": ".gauntlet/bar-v4.json",
+  "quality_bar_sha256": "2093461a8d6103641a555ad45371dde4649e5f144c32260b80244e219fa70697",
+  "legacy_catalog": "docs/plano-aaa-2026-09-12/backlog.json",
+  "canonical_execution_backlog": ".agent/backlog.json",
+  "status_policy": "Contratos planejados sem status de execução; AUD13-01 associa aos IDs legados e acrescenta critérios uma vez. Não duplicar tarefas/estado, não marcar DONE por planejamento.",
+  "tasks": [
+    {
+      "id": "AUD13-01",
+      "title": "Reconciliar planos, estado e evidência atual",
+      "wave": "M0",
+      "priority": "P1",
+      "legacy_tasks": [
+        "AAA-000",
+        "DOC-01"
+      ],
+      "findings": [
+        "H07",
+        "M06"
+      ],
+      "depends_on": [],
+      "owner_role": "Lead",
+      "allowed_paths": [
+        ".agent/",
+        "docs/README.md",
+        "docs/12-estado-da-implementacao.md",
+        "docs/08-rastreabilidade-e-decisoes.md"
+      ],
+      "exclusive_resources": [
+        "control-plane",
+        "docs-index"
+      ],
+      "acceptance": [
+        "Verificar HEAD, bytes e trabalho concorrente antes de iniciar",
+        "Mapear cada AUD13 para tarefa legada, acrescentando critérios sem duplicar execução",
+        "Reabrir apenas o aceite afetado por evidência atual e conservar histórico",
+        "Ponteiro, ExecPlan e next_action concordam; nenhuma correção ganha DONE por planejamento"
+      ],
+      "validation": [
+        "git status --short",
+        "git rev-parse HEAD",
+        "Revisar DAG e mapa de migração; ativação repetida não duplica IDs"
+      ],
+      "external_prerequisites": [],
+      "size": "M",
+      "risk": "R2",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "source_contracts": [
+        "docs/01-prd-cvg.md",
+        "docs/03-dominio-dados-contratos.md",
+        "docs/plano-melhorias-2026-09-13/qualidade-e-execucao.md"
+      ],
+      "next_action": "Ler AUD13-01, validar dependências e reproduzir o comportamento atual antes de reservar arquivos exatos.",
+      "evidence_required": [
+        "Identidade HEAD + hash de worktree/contrato",
+        "Comando/procedimento, ambiente sintético, início/fim, exit e output sanitizado",
+        "Caso bom e negativo no boundary relevante; log/receipt/screenshot e SHA256",
+        "Crítico independente e reteste da regressão pertinente; limitações NOT_RUN explícitas"
+      ],
+      "recovery": "Preservar trabalho alheio; registrar efeitos e recursos antes de parar. Reverter só mudança própria não integrada; migration aplicada usa forward-fix. OUTCOME_UNKNOWN exige consulta/reconciliação, nunca retry cego."
+    },
+    {
+      "id": "AUD13-02",
+      "title": "Instalação e isolamento reproduzíveis",
+      "wave": "M0",
+      "priority": "P1",
+      "legacy_tasks": [
+        "SUP-01",
+        "QUA-03"
+      ],
+      "findings": [
+        "H14"
+      ],
+      "depends_on": [
+        "AUD13-01"
+      ],
+      "owner_role": "Build/qualidade",
+      "allowed_paths": [
+        "package.json",
+        "package-lock.json",
+        "apps/web/package.json",
+        "playwright.config.ts",
+        "tests/",
+        "scripts/"
+      ],
+      "exclusive_resources": [
+        "dependencies",
+        "test-harness"
+      ],
+      "acceptance": [
+        "npm ci e npm ls usam versões do lockfile, sem atualizar versões sem causa",
+        "Testes usam banco/porta/origem/output próprios e encerram recursos",
+        "Build, E2E e SBOM usam a mesma árvore resolvida"
+      ],
+      "validation": [
+        "npm ci --ignore-scripts",
+        "npm ls --depth=0",
+        "npm run build",
+        "Executar dois runners isolados sem colisão"
+      ],
+      "external_prerequisites": [],
+      "size": "M",
+      "risk": "R2",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "source_contracts": [
+        "docs/01-prd-cvg.md",
+        "docs/03-dominio-dados-contratos.md",
+        "docs/plano-melhorias-2026-09-13/qualidade-e-execucao.md"
+      ],
+      "next_action": "Ler AUD13-02, validar dependências e reproduzir o comportamento atual antes de reservar arquivos exatos.",
+      "evidence_required": [
+        "Identidade HEAD + hash de worktree/contrato",
+        "Comando/procedimento, ambiente sintético, início/fim, exit e output sanitizado",
+        "Caso bom e negativo no boundary relevante; log/receipt/screenshot e SHA256",
+        "Crítico independente e reteste da regressão pertinente; limitações NOT_RUN explícitas"
+      ],
+      "recovery": "Preservar trabalho alheio; registrar efeitos e recursos antes de parar. Reverter só mudança própria não integrada; migration aplicada usa forward-fix. OUTCOME_UNKNOWN exige consulta/reconciliação, nunca retry cego."
+    },
+    {
+      "id": "AUD13-03",
+      "title": "Tornar fixture de evidências determinística e portátil",
+      "wave": "M0",
+      "priority": "P1",
+      "legacy_tasks": [
+        "QUA-01",
+        "QUA-02"
+      ],
+      "findings": [
+        "H07"
+      ],
+      "depends_on": [
+        "AUD13-01"
+      ],
+      "owner_role": "Qualidade",
+      "allowed_paths": [
+        "tests/unit/evidence-snapshot.test.ts",
+        "scripts/verify-evidence-snapshot.ts"
+      ],
+      "exclusive_resources": [
+        "evidence-harness"
+      ],
+      "acceptance": [
+        "Mesmos testes passam em checkout limpo e modificado",
+        "Bytes/SHA/inventário/tempo adulterados são rejeitados",
+        "Cópia de bytes idênticos não falha apenas por mtime",
+        "Prova exige execução real no sujeito; nunca recapturar sucesso histórico"
+      ],
+      "validation": [
+        "node --import tsx --test tests/unit/evidence-snapshot.test.ts",
+        "Executar fixture conhecida boa/ruim em cópias limpa/dirty com clock e mtimes controlados"
+      ],
+      "external_prerequisites": [],
+      "size": "M",
+      "risk": "R2",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "source_contracts": [
+        "docs/01-prd-cvg.md",
+        "docs/03-dominio-dados-contratos.md",
+        "docs/plano-melhorias-2026-09-13/qualidade-e-execucao.md"
+      ],
+      "next_action": "Ler AUD13-03, validar dependências e reproduzir o comportamento atual antes de reservar arquivos exatos.",
+      "evidence_required": [
+        "Identidade HEAD + hash de worktree/contrato",
+        "Comando/procedimento, ambiente sintético, início/fim, exit e output sanitizado",
+        "Caso bom e negativo no boundary relevante; log/receipt/screenshot e SHA256",
+        "Crítico independente e reteste da regressão pertinente; limitações NOT_RUN explícitas"
+      ],
+      "recovery": "Preservar trabalho alheio; registrar efeitos e recursos antes de parar. Reverter só mudança própria não integrada; migration aplicada usa forward-fix. OUTCOME_UNKNOWN exige consulta/reconciliação, nunca retry cego."
+    },
+    {
+      "id": "AUD13-04",
+      "title": "Conectar validação semântica de respostas",
+      "wave": "M1",
+      "priority": "P1",
+      "legacy_tasks": [
+        "CON-01",
+        "CON-02"
+      ],
+      "findings": [
+        "H02",
+        "H03",
+        "H07"
+      ],
+      "depends_on": [
+        "AUD13-01"
+      ],
+      "owner_role": "Contratos",
+      "allowed_paths": [
+        "apps/web/src/api/",
+        "packages/contracts/src/",
+        "tests/unit/contracts.test.ts"
+      ],
+      "exclusive_resources": [
+        "contracts",
+        "web-client"
+      ],
+      "acceptance": [
+        "Revalidar schemas de ADR030 já existentes sem refazê-los",
+        "Payload inválido dentro de envelope válido não chega ao estado da UI",
+        "Login normal/MFA, logout, saldo, partial/receipt são discriminados e preservam correlationId",
+        "Compatibilidade explícita durante migração de endpoints"
+      ],
+      "validation": [
+        "npm run test:contract",
+        "npm run typecheck",
+        "Interceptar resposta inválida por recurso e testar consumidor válido/legado permitido"
+      ],
+      "external_prerequisites": [],
+      "size": "M",
+      "risk": "R2",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "source_contracts": [
+        "docs/01-prd-cvg.md",
+        "docs/03-dominio-dados-contratos.md",
+        "docs/plano-melhorias-2026-09-13/qualidade-e-execucao.md"
+      ],
+      "next_action": "Ler AUD13-04, validar dependências e reproduzir o comportamento atual antes de reservar arquivos exatos.",
+      "evidence_required": [
+        "Identidade HEAD + hash de worktree/contrato",
+        "Comando/procedimento, ambiente sintético, início/fim, exit e output sanitizado",
+        "Caso bom e negativo no boundary relevante; log/receipt/screenshot e SHA256",
+        "Crítico independente e reteste da regressão pertinente; limitações NOT_RUN explícitas"
+      ],
+      "recovery": "Preservar trabalho alheio; registrar efeitos e recursos antes de parar. Reverter só mudança própria não integrada; migration aplicada usa forward-fix. OUTCOME_UNKNOWN exige consulta/reconciliação, nunca retry cego."
+    },
+    {
+      "id": "AUD13-05",
+      "title": "Logout honesto sob falha e reconexão",
+      "wave": "M1",
+      "priority": "P1",
+      "legacy_tasks": [
+        "SEC-01",
+        "UX-01"
+      ],
+      "findings": [
+        "H01"
+      ],
+      "depends_on": [
+        "AUD13-04"
+      ],
+      "owner_role": "Sessão/web",
+      "allowed_paths": [
+        "apps/web/src/hooks/use-session.ts",
+        "apps/web/src/app-shell/",
+        "apps/web/src/state/",
+        "apps/api/src/app.ts",
+        "tests/e2e/"
+      ],
+      "exclusive_resources": [
+        "web-session",
+        "api-root",
+        "e2e-session"
+      ],
+      "acceptance": [
+        "Revogação confirmada exige observação server-side conforme ADR030",
+        "Offline/timeout/5xx mostram saída local e revogação pendente sem sucesso falso",
+        "Online permite tentativa explícita de revogar; recarga não apaga a informação de risco por engano",
+        "Buffer sensível é purgado sem persistir credencial/draft; nenhuma Promise fica rejeitada sem tratamento"
+      ],
+      "validation": [
+        "npm run test:security",
+        "npm run typecheck",
+        "E2E sucesso, offline, abort, 5xx, recarga e reconexão; exigir comportamento corrigido"
+      ],
+      "external_prerequisites": [],
+      "size": "M",
+      "risk": "R2",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "source_contracts": [
+        "docs/01-prd-cvg.md",
+        "docs/03-dominio-dados-contratos.md",
+        "docs/plano-melhorias-2026-09-13/qualidade-e-execucao.md"
+      ],
+      "next_action": "Ler AUD13-05, validar dependências e reproduzir o comportamento atual antes de reservar arquivos exatos.",
+      "evidence_required": [
+        "Identidade HEAD + hash de worktree/contrato",
+        "Comando/procedimento, ambiente sintético, início/fim, exit e output sanitizado",
+        "Caso bom e negativo no boundary relevante; log/receipt/screenshot e SHA256",
+        "Crítico independente e reteste da regressão pertinente; limitações NOT_RUN explícitas"
+      ],
+      "recovery": "Preservar trabalho alheio; registrar efeitos e recursos antes de parar. Reverter só mudança própria não integrada; migration aplicada usa forward-fix. OUTCOME_UNKNOWN exige consulta/reconciliação, nunca retry cego."
+    },
+    {
+      "id": "AUD13-06",
+      "title": "Completar login com challenge MFA",
+      "wave": "M1",
+      "priority": "P1",
+      "legacy_tasks": [
+        "SEC-01",
+        "SEC-03",
+        "CON-02"
+      ],
+      "findings": [
+        "H02"
+      ],
+      "depends_on": [
+        "AUD13-04"
+      ],
+      "owner_role": "Auth/web",
+      "allowed_paths": [
+        "apps/web/src/components/Login.tsx",
+        "apps/web/src/hooks/use-session.ts",
+        "apps/web/src/api/",
+        "apps/api/src/app.ts",
+        "tests/e2e/",
+        "tests/unit/auth.test.ts"
+      ],
+      "exclusive_resources": [
+        "web-session",
+        "api-root",
+        "web-client"
+      ],
+      "acceptance": [
+        "HTTP202 abre etapa TOTP sem tentar contexts[0]",
+        "Challenge expira, tentativas limitadas e cancelamento permitem recuperação",
+        "OTP errado/replay/revogado negam; sucesso obtém contexto e sessão corretos",
+        "Erro não exibe TypeError interno e foco/anúncio acompanham etapa"
+      ],
+      "validation": [
+        "npm run test:security",
+        "E2E challenge canônico, OTP válido/inválido, expiração, replay e fator revogado"
+      ],
+      "external_prerequisites": [],
+      "size": "M",
+      "risk": "R2",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "source_contracts": [
+        "docs/01-prd-cvg.md",
+        "docs/03-dominio-dados-contratos.md",
+        "docs/plano-melhorias-2026-09-13/qualidade-e-execucao.md"
+      ],
+      "next_action": "Ler AUD13-06, validar dependências e reproduzir o comportamento atual antes de reservar arquivos exatos.",
+      "evidence_required": [
+        "Identidade HEAD + hash de worktree/contrato",
+        "Comando/procedimento, ambiente sintético, início/fim, exit e output sanitizado",
+        "Caso bom e negativo no boundary relevante; log/receipt/screenshot e SHA256",
+        "Crítico independente e reteste da regressão pertinente; limitações NOT_RUN explícitas"
+      ],
+      "recovery": "Preservar trabalho alheio; registrar efeitos e recursos antes de parar. Reverter só mudança própria não integrada; migration aplicada usa forward-fix. OUTCOME_UNKNOWN exige consulta/reconciliação, nunca retry cego."
+    },
+    {
+      "id": "AUD13-07",
+      "title": "Corrigir toast e estados de feedback",
+      "wave": "M1",
+      "priority": "P1",
+      "legacy_tasks": [
+        "UX-02",
+        "A11Y-01"
+      ],
+      "findings": [
+        "H04"
+      ],
+      "depends_on": [
+        "AUD13-01"
+      ],
+      "owner_role": "Frontend",
+      "allowed_paths": [
+        "apps/web/src/app-shell/Shell.tsx",
+        "apps/web/src/styles.css",
+        "tests/e2e/"
+      ],
+      "exclusive_resources": [
+        "shared-ui",
+        "e2e-visual"
+      ],
+      "acceptance": [
+        "Toast não participa do encolhimento da área principal",
+        "Main mantém largura útil em375/768/1440 após aviso curto/longo/repetido",
+        "Teclado, status/live region, reduced-motion e dismiss sem perda de foco",
+        "Medir geometria e captura após interação; scrollWidth sozinho não aceita"
+      ],
+      "validation": [
+        "npm run typecheck",
+        "E2E Notificações e avisos com largura de main positiva, conteúdo/controles íntegros",
+        "npm run audit:contrast"
+      ],
+      "external_prerequisites": [],
+      "size": "M",
+      "risk": "R2",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "source_contracts": [
+        "docs/01-prd-cvg.md",
+        "docs/03-dominio-dados-contratos.md",
+        "docs/plano-melhorias-2026-09-13/qualidade-e-execucao.md"
+      ],
+      "next_action": "Ler AUD13-07, validar dependências e reproduzir o comportamento atual antes de reservar arquivos exatos.",
+      "evidence_required": [
+        "Identidade HEAD + hash de worktree/contrato",
+        "Comando/procedimento, ambiente sintético, início/fim, exit e output sanitizado",
+        "Caso bom e negativo no boundary relevante; log/receipt/screenshot e SHA256",
+        "Crítico independente e reteste da regressão pertinente; limitações NOT_RUN explícitas"
+      ],
+      "recovery": "Preservar trabalho alheio; registrar efeitos e recursos antes de parar. Reverter só mudança própria não integrada; migration aplicada usa forward-fix. OUTCOME_UNKNOWN exige consulta/reconciliação, nunca retry cego."
+    },
+    {
+      "id": "AUD13-08",
+      "title": "Corrigir contexto, datas e indicadores reais",
+      "wave": "M1",
+      "priority": "P2",
+      "legacy_tasks": [
+        "UX-02",
+        "FUN-01"
+      ],
+      "findings": [
+        "M01"
+      ],
+      "depends_on": [
+        "AUD13-07"
+      ],
+      "owner_role": "Frontend/dados",
+      "allowed_paths": [
+        "apps/web/src/features/agenda/",
+        "apps/web/src/features/overview/",
+        "apps/web/src/features/copilot/",
+        "apps/web/src/app-shell/",
+        "tests/e2e/"
+      ],
+      "exclusive_resources": [
+        "shared-ui",
+        "web-features"
+      ],
+      "acceptance": [
+        "Agenda deriva dia/período/unidade do contexto efetivo e timezone",
+        "Badge/contagens e gráficos usam dados reais ou rótulo persistente de ilustração",
+        "Provenance visual deriva resposta: modelo/versão/fontes/timestamp/revisão; sem rótulo stub fixo sobre runtime real",
+        "Centro/Sul, dataset vazio, virada de dia e erro são testados"
+      ],
+      "validation": [
+        "E2E contextoSul e relógio fixado",
+        "Testar contagens/gráficos contra respostas controladas e erro de fetch"
+      ],
+      "external_prerequisites": [],
+      "size": "M",
+      "risk": "R2",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "source_contracts": [
+        "docs/01-prd-cvg.md",
+        "docs/03-dominio-dados-contratos.md",
+        "docs/plano-melhorias-2026-09-13/qualidade-e-execucao.md"
+      ],
+      "next_action": "Ler AUD13-08, validar dependências e reproduzir o comportamento atual antes de reservar arquivos exatos.",
+      "evidence_required": [
+        "Identidade HEAD + hash de worktree/contrato",
+        "Comando/procedimento, ambiente sintético, início/fim, exit e output sanitizado",
+        "Caso bom e negativo no boundary relevante; log/receipt/screenshot e SHA256",
+        "Crítico independente e reteste da regressão pertinente; limitações NOT_RUN explícitas"
+      ],
+      "recovery": "Preservar trabalho alheio; registrar efeitos e recursos antes de parar. Reverter só mudança própria não integrada; migration aplicada usa forward-fix. OUTCOME_UNKNOWN exige consulta/reconciliação, nunca retry cego."
+    },
+    {
+      "id": "AUD13-09",
+      "title": "Corrigir saldo aberto sem inventar estorno",
+      "wave": "M1",
+      "priority": "P1",
+      "legacy_tasks": [
+        "FIN-01",
+        "FIN-02",
+        "CON-02"
+      ],
+      "findings": [
+        "H03"
+      ],
+      "depends_on": [
+        "AUD13-04"
+      ],
+      "owner_role": "Financeiro",
+      "allowed_paths": [
+        "apps/web/src/features/finance/",
+        "apps/api/src/application/read-services.ts",
+        "apps/api/src/app.ts",
+        "packages/domain/src/",
+        "tests/"
+      ],
+      "exclusive_resources": [
+        "finance",
+        "api-root",
+        "domain-core"
+      ],
+      "acceptance": [
+        "PAID de10000 resulta em zero aberto",
+        "Parcial mostra remanescente em centavos; sem double count",
+        "REFUNDED tem estado explícito; regra ainda desconhecida produz UNKNOWN/REQUIRES_POLICY",
+        "API e UI usam contrato de saldo comum, não soma de cobranças brutas"
+      ],
+      "validation": [
+        "npm run test:contract",
+        "npm run test:database",
+        "E2E OPEN, PAID, parcial, estorno indeterminado e falha de leitura"
+      ],
+      "external_prerequisites": [],
+      "size": "M",
+      "risk": "R2",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "source_contracts": [
+        "docs/01-prd-cvg.md",
+        "docs/03-dominio-dados-contratos.md",
+        "docs/plano-melhorias-2026-09-13/qualidade-e-execucao.md"
+      ],
+      "next_action": "Ler AUD13-09, validar dependências e reproduzir o comportamento atual antes de reservar arquivos exatos.",
+      "evidence_required": [
+        "Identidade HEAD + hash de worktree/contrato",
+        "Comando/procedimento, ambiente sintético, início/fim, exit e output sanitizado",
+        "Caso bom e negativo no boundary relevante; log/receipt/screenshot e SHA256",
+        "Crítico independente e reteste da regressão pertinente; limitações NOT_RUN explícitas"
+      ],
+      "recovery": "Preservar trabalho alheio; registrar efeitos e recursos antes de parar. Reverter só mudança própria não integrada; migration aplicada usa forward-fix. OUTCOME_UNKNOWN exige consulta/reconciliação, nunca retry cego."
+    },
+    {
+      "id": "AUD13-10",
+      "title": "Reconciliar hashing, limites e anti-enumeração",
+      "wave": "M1",
+      "priority": "P1",
+      "legacy_tasks": [
+        "SEC-02",
+        "PER-02"
+      ],
+      "findings": [
+        "H06"
+      ],
+      "depends_on": [
+        "AUD13-02"
+      ],
+      "owner_role": "Segurança",
+      "allowed_paths": [
+        "packages/domain/src/index.ts",
+        "packages/auth/",
+        "packages/config/",
+        "apps/api/src/app.ts",
+        "tests/unit/auth.test.ts",
+        "tests/integration/"
+      ],
+      "exclusive_resources": [
+        "auth-core",
+        "api-root",
+        "domain-core"
+      ],
+      "acceptance": [
+        "Registrar contrato vigente de docs05§14 versus implementação; não reduzir custo para obter verde",
+        "Hash assíncrono parametrizado/formatado, fila limitada e no máximo concorrência acordada",
+        "Migrar hashes existentes sem invalidar contas silenciosamente",
+        "Usuário inexistente realiza derivação equivalente; limites ID/IP independentes e respostas uniformes",
+        "Medir memória/event-loop sob logins válidos, inválidos e sobrecarga"
+      ],
+      "validation": [
+        "npm run test:security",
+        "Testes compatibilidade hash antigo/novo e migração após login",
+        "Benchmark login concurrente com atraso event-loop/RSS, sem usar senha real"
+      ],
+      "external_prerequisites": [],
+      "size": "M",
+      "risk": "R2",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "source_contracts": [
+        "docs/01-prd-cvg.md",
+        "docs/03-dominio-dados-contratos.md",
+        "docs/plano-melhorias-2026-09-13/qualidade-e-execucao.md"
+      ],
+      "next_action": "Ler AUD13-10, validar dependências e reproduzir o comportamento atual antes de reservar arquivos exatos.",
+      "evidence_required": [
+        "Identidade HEAD + hash de worktree/contrato",
+        "Comando/procedimento, ambiente sintético, início/fim, exit e output sanitizado",
+        "Caso bom e negativo no boundary relevante; log/receipt/screenshot e SHA256",
+        "Crítico independente e reteste da regressão pertinente; limitações NOT_RUN explícitas"
+      ],
+      "recovery": "Preservar trabalho alheio; registrar efeitos e recursos antes de parar. Reverter só mudança própria não integrada; migration aplicada usa forward-fix. OUTCOME_UNKNOWN exige consulta/reconciliação, nunca retry cego."
+    },
+    {
+      "id": "AUD13-11",
+      "title": "Inventariar e fechar contratos das jornadas",
+      "wave": "M0",
+      "priority": "P1",
+      "legacy_tasks": [
+        "FUN-01",
+        "FIN-01"
+      ],
+      "findings": [
+        "H05",
+        "H11"
+      ],
+      "depends_on": [
+        "AUD13-01"
+      ],
+      "owner_role": "Produto/domínio",
+      "allowed_paths": [
+        "docs/01-prd-cvg.md",
+        "docs/adr/",
+        "docs/03-dominio-dados-contratos.md"
+      ],
+      "exclusive_resources": [
+        "product-contracts"
+      ],
+      "acceptance": [
+        "Mapear todos FR01–22, UC01–07 e CTA para UI/API/policy/commit/receipt",
+        "Separar implementado, bloqueio legítimo e ausente, sem excluir módulo para encerrar plano",
+        "Registrar perguntas clínicas/financeiras com dono; implementar apenas regras já definidas",
+        "Congelar exemplos sucesso/negação/recuperação por jornada"
+      ],
+      "validation": [
+        "Inspeção conectada por CTA e teste de consulta",
+        "Revisão de contratos clínicos/financeiros existentes e decisões residuais"
+      ],
+      "external_prerequisites": [],
+      "size": "M",
+      "risk": "R2",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "source_contracts": [
+        "docs/01-prd-cvg.md",
+        "docs/03-dominio-dados-contratos.md",
+        "docs/plano-melhorias-2026-09-13/qualidade-e-execucao.md"
+      ],
+      "next_action": "Ler AUD13-11, validar dependências e reproduzir o comportamento atual antes de reservar arquivos exatos.",
+      "evidence_required": [
+        "Identidade HEAD + hash de worktree/contrato",
+        "Comando/procedimento, ambiente sintético, início/fim, exit e output sanitizado",
+        "Caso bom e negativo no boundary relevante; log/receipt/screenshot e SHA256",
+        "Crítico independente e reteste da regressão pertinente; limitações NOT_RUN explícitas"
+      ],
+      "recovery": "Preservar trabalho alheio; registrar efeitos e recursos antes de parar. Reverter só mudança própria não integrada; migration aplicada usa forward-fix. OUTCOME_UNKNOWN exige consulta/reconciliação, nunca retry cego."
+    },
+    {
+      "id": "AUD13-12",
+      "title": "Tutores e pacientes completos",
+      "wave": "M2",
+      "priority": "P1",
+      "legacy_tasks": [
+        "FUN-03"
+      ],
+      "findings": [
+        "H05"
+      ],
+      "depends_on": [
+        "AUD13-11",
+        "AUD13-04",
+        "AUD13-05"
+      ],
+      "owner_role": "Produto/cadastro",
+      "allowed_paths": [
+        "apps/web/src/features/patients/",
+        "apps/web/src/routes/",
+        "apps/api/src/application/",
+        "packages/domain/src/",
+        "tests/"
+      ],
+      "exclusive_resources": [
+        "patient-feature",
+        "domain-core"
+      ],
+      "acceptance": [
+        "Cadastrar/pesquisar tutor/paciente e gerenciar vínculo pelo servidor",
+        "Abrir ficha, desativar e mesclar com aprovação preservando histórico",
+        "Cross-scope/duplicidade/retry/conflito negam sem parcialidade",
+        "UI exibe receipt, erro recuperável e confirmação de ação destrutiva lógica"
+      ],
+      "validation": [
+        "npm run test:database",
+        "npm run verify:pdp",
+        "E2E cadastro→busca→ficha→merge/desativação e negativos"
+      ],
+      "external_prerequisites": [],
+      "size": "L",
+      "risk": "R2",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "source_contracts": [
+        "docs/01-prd-cvg.md",
+        "docs/03-dominio-dados-contratos.md",
+        "docs/plano-melhorias-2026-09-13/qualidade-e-execucao.md"
+      ],
+      "next_action": "Ler AUD13-12, validar dependências e reproduzir o comportamento atual antes de reservar arquivos exatos.",
+      "evidence_required": [
+        "Identidade HEAD + hash de worktree/contrato",
+        "Comando/procedimento, ambiente sintético, início/fim, exit e output sanitizado",
+        "Caso bom e negativo no boundary relevante; log/receipt/screenshot e SHA256",
+        "Crítico independente e reteste da regressão pertinente; limitações NOT_RUN explícitas"
+      ],
+      "recovery": "Preservar trabalho alheio; registrar efeitos e recursos antes de parar. Reverter só mudança própria não integrada; migration aplicada usa forward-fix. OUTCOME_UNKNOWN exige consulta/reconciliação, nunca retry cego."
+    },
+    {
+      "id": "AUD13-13",
+      "title": "Agenda, check-in, triagem e handoff",
+      "wave": "M2",
+      "priority": "P1",
+      "legacy_tasks": [
+        "FUN-03"
+      ],
+      "findings": [
+        "H05",
+        "M01"
+      ],
+      "depends_on": [
+        "AUD13-12",
+        "AUD13-08"
+      ],
+      "owner_role": "Produto/recepção",
+      "allowed_paths": [
+        "apps/web/src/features/agenda/",
+        "apps/web/src/features/clinical/",
+        "apps/api/src/application/",
+        "packages/domain/src/",
+        "tests/"
+      ],
+      "exclusive_resources": [
+        "agenda-feature",
+        "clinical-feature",
+        "domain-core"
+      ],
+      "acceptance": [
+        "Criar/reagendar/cancelar/confirmar sem dupla reserva",
+        "Check-in→fila→triagem→atribuição→handoff com autoria/estado",
+        "Duas confirmações concorrentes geram uma reserva e conflito claro",
+        "Sem CTA substituído apenas por aviso genérico"
+      ],
+      "validation": [
+        "npm run test:database",
+        "E2E reserva→check-in→handoff",
+        "Concorrência duas sessões e replay após resposta perdida"
+      ],
+      "external_prerequisites": [],
+      "size": "L",
+      "risk": "R2",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "source_contracts": [
+        "docs/01-prd-cvg.md",
+        "docs/03-dominio-dados-contratos.md",
+        "docs/plano-melhorias-2026-09-13/qualidade-e-execucao.md"
+      ],
+      "next_action": "Ler AUD13-13, validar dependências e reproduzir o comportamento atual antes de reservar arquivos exatos.",
+      "evidence_required": [
+        "Identidade HEAD + hash de worktree/contrato",
+        "Comando/procedimento, ambiente sintético, início/fim, exit e output sanitizado",
+        "Caso bom e negativo no boundary relevante; log/receipt/screenshot e SHA256",
+        "Crítico independente e reteste da regressão pertinente; limitações NOT_RUN explícitas"
+      ],
+      "recovery": "Preservar trabalho alheio; registrar efeitos e recursos antes de parar. Reverter só mudança própria não integrada; migration aplicada usa forward-fix. OUTCOME_UNKNOWN exige consulta/reconciliação, nunca retry cego."
+    },
+    {
+      "id": "AUD13-14",
+      "title": "Prontuário, anexos, assinatura e adendo",
+      "wave": "M2",
+      "priority": "P1",
+      "legacy_tasks": [
+        "FUN-03"
+      ],
+      "findings": [
+        "H05",
+        "H11"
+      ],
+      "depends_on": [
+        "AUD13-13",
+        "AUD13-04"
+      ],
+      "owner_role": "Produto/clínica",
+      "allowed_paths": [
+        "apps/web/src/features/clinical/",
+        "apps/api/src/application/",
+        "packages/domain/src/",
+        "packages/persistence/",
+        "tests/"
+      ],
+      "exclusive_resources": [
+        "clinical-feature",
+        "domain-core",
+        "persistence-core"
+      ],
+      "acceptance": [
+        "Editor/timeline/anexos com escopo e estados persistidos",
+        "Draft IA nunca vira fato assinado sem revisão e ator autorizado",
+        "Assinatura imutável; correção via adendo, conflito de versão explícito",
+        "Com IA indisponível, registro manual continua concluível"
+      ],
+      "validation": [
+        "npm run test:database",
+        "npm run verify:authoritative-writes",
+        "E2E editar→revisar→assinar→adendo e upload/ACL/falha",
+        "Decisões clínicas faltantes devem ser registradas antes dos atos afetados"
+      ],
+      "external_prerequisites": [],
+      "size": "L",
+      "risk": "R2",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "source_contracts": [
+        "docs/01-prd-cvg.md",
+        "docs/03-dominio-dados-contratos.md",
+        "docs/plano-melhorias-2026-09-13/qualidade-e-execucao.md"
+      ],
+      "next_action": "Ler AUD13-14, validar dependências e reproduzir o comportamento atual antes de reservar arquivos exatos.",
+      "evidence_required": [
+        "Identidade HEAD + hash de worktree/contrato",
+        "Comando/procedimento, ambiente sintético, início/fim, exit e output sanitizado",
+        "Caso bom e negativo no boundary relevante; log/receipt/screenshot e SHA256",
+        "Crítico independente e reteste da regressão pertinente; limitações NOT_RUN explícitas"
+      ],
+      "recovery": "Preservar trabalho alheio; registrar efeitos e recursos antes de parar. Reverter só mudança própria não integrada; migration aplicada usa forward-fix. OUTCOME_UNKNOWN exige consulta/reconciliação, nunca retry cego."
+    },
+    {
+      "id": "AUD13-15",
+      "title": "Exames: pedido, amostra, resultado e revisão",
+      "wave": "M2",
+      "priority": "P1",
+      "legacy_tasks": [
+        "FUN-03"
+      ],
+      "findings": [
+        "H05",
+        "H11"
+      ],
+      "depends_on": [
+        "AUD13-14"
+      ],
+      "owner_role": "Produto/diagnóstico",
+      "allowed_paths": [
+        "apps/web/src/features/",
+        "apps/web/src/routes/",
+        "apps/api/src/application/diagnostic-service.ts",
+        "packages/domain/src/",
+        "tests/"
+      ],
+      "exclusive_resources": [
+        "diagnostic-feature",
+        "domain-core"
+      ],
+      "acceptance": [
+        "UI percorre pedido→amostra→resultado→revisão com vínculo paciente/autor",
+        "Out-of-order, unidade incompatível, parent errado e duplicidade vão para erro/quarentena",
+        "Resultados aprovados visíveis só no escopo; origem e versão preservadas"
+      ],
+      "validation": [
+        "npm run test:database",
+        "E2E cadeia diagnóstica e publicação negada de resultado inválido"
+      ],
+      "external_prerequisites": [],
+      "size": "L",
+      "risk": "R2",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "source_contracts": [
+        "docs/01-prd-cvg.md",
+        "docs/03-dominio-dados-contratos.md",
+        "docs/plano-melhorias-2026-09-13/qualidade-e-execucao.md"
+      ],
+      "next_action": "Ler AUD13-15, validar dependências e reproduzir o comportamento atual antes de reservar arquivos exatos.",
+      "evidence_required": [
+        "Identidade HEAD + hash de worktree/contrato",
+        "Comando/procedimento, ambiente sintético, início/fim, exit e output sanitizado",
+        "Caso bom e negativo no boundary relevante; log/receipt/screenshot e SHA256",
+        "Crítico independente e reteste da regressão pertinente; limitações NOT_RUN explícitas"
+      ],
+      "recovery": "Preservar trabalho alheio; registrar efeitos e recursos antes de parar. Reverter só mudança própria não integrada; migration aplicada usa forward-fix. OUTCOME_UNKNOWN exige consulta/reconciliação, nunca retry cego."
+    },
+    {
+      "id": "AUD13-16",
+      "title": "Internação, medicação, procedimento e alta",
+      "wave": "M2",
+      "priority": "P1",
+      "legacy_tasks": [
+        "FUN-03"
+      ],
+      "findings": [
+        "H05",
+        "H11"
+      ],
+      "depends_on": [
+        "AUD13-14"
+      ],
+      "owner_role": "Produto/internação",
+      "allowed_paths": [
+        "apps/web/src/features/",
+        "apps/web/src/routes/",
+        "apps/api/src/application/",
+        "packages/domain/src/",
+        "tests/"
+      ],
+      "exclusive_resources": [
+        "hospital-feature",
+        "clinical-feature",
+        "domain-core"
+      ],
+      "acceptance": [
+        "Leito/episódio/checklist/consentimento e handoff operacionais",
+        "Prescrição, dispensação e administração são fatos distintos com lote/horário/autoria",
+        "Dose/ordem/lote inválido, dupla administração e alta com pendência são negados",
+        "Alta assinada e plano de retorno concluem somente com regras documentadas"
+      ],
+      "validation": [
+        "npm run test:database",
+        "E2E admissão→ordem→administração→handoff→alta, crash/retry e pendências"
+      ],
+      "external_prerequisites": [],
+      "size": "L",
+      "risk": "R2",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "source_contracts": [
+        "docs/01-prd-cvg.md",
+        "docs/03-dominio-dados-contratos.md",
+        "docs/plano-melhorias-2026-09-13/qualidade-e-execucao.md"
+      ],
+      "next_action": "Ler AUD13-16, validar dependências e reproduzir o comportamento atual antes de reservar arquivos exatos.",
+      "evidence_required": [
+        "Identidade HEAD + hash de worktree/contrato",
+        "Comando/procedimento, ambiente sintético, início/fim, exit e output sanitizado",
+        "Caso bom e negativo no boundary relevante; log/receipt/screenshot e SHA256",
+        "Crítico independente e reteste da regressão pertinente; limitações NOT_RUN explícitas"
+      ],
+      "recovery": "Preservar trabalho alheio; registrar efeitos e recursos antes de parar. Reverter só mudança própria não integrada; migration aplicada usa forward-fix. OUTCOME_UNKNOWN exige consulta/reconciliação, nunca retry cego."
+    },
+    {
+      "id": "AUD13-17",
+      "title": "Estoque e inventário completos",
+      "wave": "M2",
+      "priority": "P1",
+      "legacy_tasks": [
+        "FUN-02"
+      ],
+      "findings": [
+        "H05"
+      ],
+      "depends_on": [
+        "AUD13-11",
+        "AUD13-04"
+      ],
+      "owner_role": "Produto/estoque",
+      "allowed_paths": [
+        "apps/web/src/features/stock/",
+        "apps/api/src/application/",
+        "packages/domain/src/",
+        "packages/persistence/",
+        "tests/"
+      ],
+      "exclusive_resources": [
+        "stock-feature",
+        "domain-core",
+        "persistence-core"
+      ],
+      "acceptance": [
+        "Entrada com fornecedor/lote/validade/quantidade/custo persiste uma vez",
+        "Reserva/dispensa/consumo/devolução/perda/transferência e inventário são movimentos auditáveis",
+        "Saldo negativo/lote expirado/sem autorização negam atomicamente",
+        "Divergência física vira ajuste compensatório com motivo e alçada"
+      ],
+      "validation": [
+        "npm run test:database",
+        "E2E entrada→reserva→consumo→devolução→inventário",
+        "Corrida de saldo insuficiente e replay"
+      ],
+      "external_prerequisites": [],
+      "size": "L",
+      "risk": "R2",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "source_contracts": [
+        "docs/01-prd-cvg.md",
+        "docs/03-dominio-dados-contratos.md",
+        "docs/plano-melhorias-2026-09-13/qualidade-e-execucao.md"
+      ],
+      "next_action": "Ler AUD13-17, validar dependências e reproduzir o comportamento atual antes de reservar arquivos exatos.",
+      "evidence_required": [
+        "Identidade HEAD + hash de worktree/contrato",
+        "Comando/procedimento, ambiente sintético, início/fim, exit e output sanitizado",
+        "Caso bom e negativo no boundary relevante; log/receipt/screenshot e SHA256",
+        "Crítico independente e reteste da regressão pertinente; limitações NOT_RUN explícitas"
+      ],
+      "recovery": "Preservar trabalho alheio; registrar efeitos e recursos antes de parar. Reverter só mudança própria não integrada; migration aplicada usa forward-fix. OUTCOME_UNKNOWN exige consulta/reconciliação, nunca retry cego."
+    },
+    {
+      "id": "AUD13-18",
+      "title": "Jornada financeira e decisão de estornos",
+      "wave": "M2",
+      "priority": "P1",
+      "legacy_tasks": [
+        "FIN-02",
+        "FIN-04",
+        "FIN-03"
+      ],
+      "findings": [
+        "H03",
+        "H05"
+      ],
+      "depends_on": [
+        "AUD13-09",
+        "AUD13-11",
+        "AUD13-17"
+      ],
+      "owner_role": "Produto/financeiro",
+      "allowed_paths": [
+        "apps/web/src/features/finance/",
+        "apps/api/src/application/",
+        "packages/domain/src/",
+        "packages/persistence/",
+        "docs/adr/",
+        "tests/"
+      ],
+      "exclusive_resources": [
+        "finance",
+        "domain-core",
+        "persistence-core"
+      ],
+      "acceptance": [
+        "Orçamento→aprovação→cobrança→pagamento→conciliação com origem/versão/moeda",
+        "Regra de estorno/crédito/reabertura e alçadas pendentes decididas por responsável financeiro",
+        "Compensação append-only sem apagar ledger; dupla submissão não duplica liquidação",
+        "API/UI/ledger/export concordam em sequências aleatórias de pagamentos/estornos"
+      ],
+      "validation": [
+        "npm run test:database",
+        "Testes de propriedades com seed, concorrência e callback duplicado",
+        "E2E jornada financeira e reconciliação"
+      ],
+      "external_prerequisites": [
+        "Decisão financeira apenas para semântica hoje não especificada; correção PAID de AUD13-09 independe dela"
+      ],
+      "size": "L",
+      "risk": "R3",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "source_contracts": [
+        "docs/01-prd-cvg.md",
+        "docs/03-dominio-dados-contratos.md",
+        "docs/plano-melhorias-2026-09-13/qualidade-e-execucao.md"
+      ],
+      "next_action": "Ler AUD13-18, validar dependências e reproduzir o comportamento atual antes de reservar arquivos exatos.",
+      "evidence_required": [
+        "Identidade HEAD + hash de worktree/contrato",
+        "Comando/procedimento, ambiente sintético, início/fim, exit e output sanitizado",
+        "Caso bom e negativo no boundary relevante; log/receipt/screenshot e SHA256",
+        "Crítico independente e reteste da regressão pertinente; limitações NOT_RUN explícitas"
+      ],
+      "recovery": "Preservar trabalho alheio; registrar efeitos e recursos antes de parar. Reverter só mudança própria não integrada; migration aplicada usa forward-fix. OUTCOME_UNKNOWN exige consulta/reconciliação, nunca retry cego."
+    },
+    {
+      "id": "AUD13-19",
+      "title": "Histórico e operação do copiloto",
+      "wave": "M2",
+      "priority": "P1",
+      "legacy_tasks": [
+        "FUN-03",
+        "AIG-01"
+      ],
+      "findings": [
+        "H05",
+        "H09"
+      ],
+      "depends_on": [
+        "AUD13-14",
+        "AUD13-04",
+        "AUD13-08"
+      ],
+      "owner_role": "IA/frontend",
+      "allowed_paths": [
+        "apps/web/src/features/copilot/",
+        "apps/api/src/application/agent-service.ts",
+        "tests/"
+      ],
+      "exclusive_resources": [
+        "copilot-feature",
+        "ai-application"
+      ],
+      "acceptance": [
+        "Reutilizar sessão autorizada e vincular paciente/atendimento/contexto",
+        "Histórico/replay, referências/modelo/versão/revisão visíveis",
+        "Aprovação/negação/cancelamento e retomada não duplicam turno/efeito",
+        "Composer oculta dados sensíveis offline, purga em perda de contexto e nunca autoenvia"
+      ],
+      "validation": [
+        "npm run test:security",
+        "E2E múltiplos turnos, mudança contexto, offline/reconexão, aprovação e replay"
+      ],
+      "external_prerequisites": [],
+      "size": "L",
+      "risk": "R2",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "source_contracts": [
+        "docs/01-prd-cvg.md",
+        "docs/03-dominio-dados-contratos.md",
+        "docs/plano-melhorias-2026-09-13/qualidade-e-execucao.md"
+      ],
+      "next_action": "Ler AUD13-19, validar dependências e reproduzir o comportamento atual antes de reservar arquivos exatos.",
+      "evidence_required": [
+        "Identidade HEAD + hash de worktree/contrato",
+        "Comando/procedimento, ambiente sintético, início/fim, exit e output sanitizado",
+        "Caso bom e negativo no boundary relevante; log/receipt/screenshot e SHA256",
+        "Crítico independente e reteste da regressão pertinente; limitações NOT_RUN explícitas"
+      ],
+      "recovery": "Preservar trabalho alheio; registrar efeitos e recursos antes de parar. Reverter só mudança própria não integrada; migration aplicada usa forward-fix. OUTCOME_UNKNOWN exige consulta/reconciliação, nunca retry cego."
+    },
+    {
+      "id": "AUD13-20",
+      "title": "Conhecimento, catálogo e admissão de artefatos",
+      "wave": "M2",
+      "priority": "P1",
+      "legacy_tasks": [
+        "AIG-01",
+        "AIG-03",
+        "FUN-03"
+      ],
+      "findings": [
+        "H09",
+        "H05"
+      ],
+      "depends_on": [
+        "AUD13-11",
+        "AUD13-04"
+      ],
+      "owner_role": "IA/conhecimento",
+      "allowed_paths": [
+        "packages/harness/",
+        "packages/agent-policy/",
+        "packages/agent-tools/",
+        "packages/persistence/",
+        "apps/web/src/features/",
+        "docs/adr/",
+        "tests/"
+      ],
+      "exclusive_resources": [
+        "ai-registry",
+        "knowledge",
+        "persistence-core"
+      ],
+      "acceptance": [
+        "Registro versiona modelos/prompts/tools/skills/MCP e seus escopos/digests/aprovação",
+        "Revogação, expiração, rollback e kill switch impedem admissão",
+        "Ingestão→classificação→aprovação→indexação→retrieval com origem/chunks/checksum",
+        "ACL é aplicada antes/depois de retrieval e remoção invalida projeções",
+        "UI permite gerir conhecimento sem promover conteúdo não aprovado"
+      ],
+      "validation": [
+        "npm run test:security",
+        "Testes cross-scope, poisoning, versão revogada e índice stale",
+        "E2E ingestão→aprovação→busca→revogação"
+      ],
+      "external_prerequisites": [],
+      "size": "L",
+      "risk": "R2",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "source_contracts": [
+        "docs/01-prd-cvg.md",
+        "docs/03-dominio-dados-contratos.md",
+        "docs/plano-melhorias-2026-09-13/qualidade-e-execucao.md"
+      ],
+      "next_action": "Ler AUD13-20, validar dependências e reproduzir o comportamento atual antes de reservar arquivos exatos.",
+      "evidence_required": [
+        "Identidade HEAD + hash de worktree/contrato",
+        "Comando/procedimento, ambiente sintético, início/fim, exit e output sanitizado",
+        "Caso bom e negativo no boundary relevante; log/receipt/screenshot e SHA256",
+        "Crítico independente e reteste da regressão pertinente; limitações NOT_RUN explícitas"
+      ],
+      "recovery": "Preservar trabalho alheio; registrar efeitos e recursos antes de parar. Reverter só mudança própria não integrada; migration aplicada usa forward-fix. OUTCOME_UNKNOWN exige consulta/reconciliação, nunca retry cego."
+    },
+    {
+      "id": "AUD13-21",
+      "title": "Budget atômico e settlement multidimensional",
+      "wave": "M2",
+      "priority": "P1",
+      "legacy_tasks": [
+        "AIG-01",
+        "AIG-03"
+      ],
+      "findings": [
+        "H09"
+      ],
+      "depends_on": [
+        "AUD13-04",
+        "AUD13-11"
+      ],
+      "owner_role": "IA/dados",
+      "allowed_paths": [
+        "packages/harness/",
+        "packages/agent-runtime/",
+        "packages/agent-tools/",
+        "apps/api/src/application/agent-service.ts",
+        "packages/persistence/",
+        "tests/"
+      ],
+      "exclusive_resources": [
+        "usage-ledger",
+        "persistence-core",
+        "ai-runtime"
+      ],
+      "acceptance": [
+        "Reservar antes do dispatch por organização/workspace/ator/sessão e modalidades",
+        "Sub-reservas nested/retry não ampliam teto; concorrência atômica",
+        "Usage tardio/duplicado/fora de ordem reconcilia; desconhecido não vira custo zero",
+        "Reserva não usada expira/libera sem permitir duplo gasto"
+      ],
+      "validation": [
+        "npm run test:database",
+        "Testes paralelos orçamento insuficiente, late usage, cancelamento e crash",
+        "Propriedades de reserva+consumo+saldo com seed"
+      ],
+      "external_prerequisites": [],
+      "size": "L",
+      "risk": "R2",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "source_contracts": [
+        "docs/01-prd-cvg.md",
+        "docs/03-dominio-dados-contratos.md",
+        "docs/plano-melhorias-2026-09-13/qualidade-e-execucao.md"
+      ],
+      "next_action": "Ler AUD13-21, validar dependências e reproduzir o comportamento atual antes de reservar arquivos exatos.",
+      "evidence_required": [
+        "Identidade HEAD + hash de worktree/contrato",
+        "Comando/procedimento, ambiente sintético, início/fim, exit e output sanitizado",
+        "Caso bom e negativo no boundary relevante; log/receipt/screenshot e SHA256",
+        "Crítico independente e reteste da regressão pertinente; limitações NOT_RUN explícitas"
+      ],
+      "recovery": "Preservar trabalho alheio; registrar efeitos e recursos antes de parar. Reverter só mudança própria não integrada; migration aplicada usa forward-fix. OUTCOME_UNKNOWN exige consulta/reconciliação, nunca retry cego."
+    },
+    {
+      "id": "AUD13-22",
+      "title": "Identidade idempotente e claims abandonados",
+      "wave": "M2",
+      "priority": "P1",
+      "legacy_tasks": [
+        "DAT-02"
+      ],
+      "findings": [
+        "H10"
+      ],
+      "depends_on": [
+        "AUD13-02",
+        "AUD13-11"
+      ],
+      "owner_role": "Dados/idempotência",
+      "allowed_paths": [
+        "apps/api/src/application/idempotency-service.ts",
+        "packages/domain/src/",
+        "packages/persistence/",
+        "db/migrations/",
+        "docs/adr/",
+        "tests/"
+      ],
+      "exclusive_resources": [
+        "idempotency",
+        "domain-core",
+        "persistence-core",
+        "db-schema"
+      ],
+      "acceptance": [
+        "Resolver conflito docs04/ADR019 sobre sessionId com decisão explícita",
+        "Migração de lookup preserva receipts e replay autorizado sem ampliar escopo",
+        "Claim expirado invalida fence e finaliza PRE_DISPATCH quando ausência de intent é comprovada",
+        "Intent/envio incerto permanece OUTCOME_UNKNOWN, sem retry automático",
+        "Dois processos e escopos opcionais ausentes provam unicidade e takeover"
+      ],
+      "validation": [
+        "npm run test:database",
+        "npm run verify:postgres:concurrency",
+        "Injetar crash imediatamente após claim e após intent; re-login e replay de chave"
+      ],
+      "external_prerequisites": [],
+      "size": "L",
+      "risk": "R2",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "source_contracts": [
+        "docs/01-prd-cvg.md",
+        "docs/03-dominio-dados-contratos.md",
+        "docs/plano-melhorias-2026-09-13/qualidade-e-execucao.md"
+      ],
+      "next_action": "Ler AUD13-22, validar dependências e reproduzir o comportamento atual antes de reservar arquivos exatos.",
+      "evidence_required": [
+        "Identidade HEAD + hash de worktree/contrato",
+        "Comando/procedimento, ambiente sintético, início/fim, exit e output sanitizado",
+        "Caso bom e negativo no boundary relevante; log/receipt/screenshot e SHA256",
+        "Crítico independente e reteste da regressão pertinente; limitações NOT_RUN explícitas"
+      ],
+      "recovery": "Preservar trabalho alheio; registrar efeitos e recursos antes de parar. Reverter só mudança própria não integrada; migration aplicada usa forward-fix. OUTCOME_UNKNOWN exige consulta/reconciliação, nunca retry cego."
+    },
+    {
+      "id": "AUD13-23",
+      "title": "Escritas autoritativas por domínio e banco real",
+      "wave": "M2",
+      "priority": "P1",
+      "legacy_tasks": [
+        "DAT-01",
+        "DAT-02"
+      ],
+      "findings": [
+        "H11"
+      ],
+      "depends_on": [
+        "AUD13-02",
+        "AUD13-22"
+      ],
+      "owner_role": "Dados",
+      "allowed_paths": [
+        "packages/persistence/",
+        "apps/api/src/application/",
+        "apps/api/src/app.ts",
+        "db/migrations/",
+        "scripts/verify-authoritative-writes.ts",
+        "tests/"
+      ],
+      "exclusive_resources": [
+        "persistence-core",
+        "api-root",
+        "db-schema"
+      ],
+      "acceptance": [
+        "Inventário por comando liga tabela/owner/invariantes, não só coleção",
+        "Eliminar dependência operacional primária de snapshot nas entidades faltantes preservando journal/recovery",
+        "Commit inclui estado/audit/receipt/outbox de forma atômica",
+        "PostgreSQL efêmero aplica migrations imutáveis, FORCE RLS e role runtime mínima",
+        "Testar FK poisoning, CAS, mixed-version e crash"
+      ],
+      "validation": [
+        "npm run verify:postgres",
+        "npm run verify:postgres:concurrency",
+        "npm run verify:authoritative-writes",
+        "npm run test:database"
+      ],
+      "external_prerequisites": [],
+      "size": "L",
+      "risk": "R2",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "source_contracts": [
+        "docs/01-prd-cvg.md",
+        "docs/03-dominio-dados-contratos.md",
+        "docs/plano-melhorias-2026-09-13/qualidade-e-execucao.md"
+      ],
+      "next_action": "Ler AUD13-23, validar dependências e reproduzir o comportamento atual antes de reservar arquivos exatos.",
+      "evidence_required": [
+        "Identidade HEAD + hash de worktree/contrato",
+        "Comando/procedimento, ambiente sintético, início/fim, exit e output sanitizado",
+        "Caso bom e negativo no boundary relevante; log/receipt/screenshot e SHA256",
+        "Crítico independente e reteste da regressão pertinente; limitações NOT_RUN explícitas"
+      ],
+      "recovery": "Preservar trabalho alheio; registrar efeitos e recursos antes de parar. Reverter só mudança própria não integrada; migration aplicada usa forward-fix. OUTCOME_UNKNOWN exige consulta/reconciliação, nunca retry cego."
+    },
+    {
+      "id": "AUD13-24",
+      "title": "Lifecycle de dados e retorno reconciliado do restore",
+      "wave": "M3",
+      "priority": "P1",
+      "legacy_tasks": [
+        "DAT-03",
+        "DAT-04",
+        "OPS-02",
+        "OPS-03"
+      ],
+      "findings": [
+        "H11",
+        "M05"
+      ],
+      "depends_on": [
+        "AUD13-23",
+        "AUD13-20"
+      ],
+      "owner_role": "Dados/recuperação",
+      "allowed_paths": [
+        "packages/persistence/",
+        "apps/api/src/application/export-service.ts",
+        "apps/worker/src/",
+        "scripts/verify-postgres-restore.ts",
+        "docs/runbooks/",
+        "db/migrations/",
+        "tests/"
+      ],
+      "exclusive_resources": [
+        "recovery",
+        "persistence-core",
+        "db-schema"
+      ],
+      "acceptance": [
+        "Backup→restrição/revogação/exclusão→restore reaplica decisões posteriores por autoridade independente",
+        "Cobrir DB/object/vector/session/cache/provider/telemetry/backup/export, ou bloquear store não integrado",
+        "Chave errada/tamper/stale/partial/migration mismatch negam e origem intacta",
+        "Quarentena permanece até reconciliação comprovada; então retorno seguro a READY é exercitado",
+        "Export tem purpose/TTL/escopo/cifra e recuperação sem reenvio cego"
+      ],
+      "validation": [
+        "npm run test:restore",
+        "npm run verify:postgres:restore",
+        "Drill com perda do store local de decisão e replay pós-watermark"
+      ],
+      "external_prerequisites": [
+        "Política de retenção/residência e autoridade de reconciliação dos stores reais antes do drill externo; preparar e provar contrato sintético primeiro"
+      ],
+      "size": "L",
+      "risk": "R3",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "source_contracts": [
+        "docs/01-prd-cvg.md",
+        "docs/03-dominio-dados-contratos.md",
+        "docs/plano-melhorias-2026-09-13/qualidade-e-execucao.md"
+      ],
+      "next_action": "Ler AUD13-24, validar dependências e reproduzir o comportamento atual antes de reservar arquivos exatos.",
+      "evidence_required": [
+        "Identidade HEAD + hash de worktree/contrato",
+        "Comando/procedimento, ambiente sintético, início/fim, exit e output sanitizado",
+        "Caso bom e negativo no boundary relevante; log/receipt/screenshot e SHA256",
+        "Crítico independente e reteste da regressão pertinente; limitações NOT_RUN explícitas"
+      ],
+      "recovery": "Preservar trabalho alheio; registrar efeitos e recursos antes de parar. Reverter só mudança própria não integrada; migration aplicada usa forward-fix. OUTCOME_UNKNOWN exige consulta/reconciliação, nunca retry cego."
+    },
+    {
+      "id": "AUD13-25",
+      "title": "Workers, automações e comunicação operacionais",
+      "wave": "M3",
+      "priority": "P1",
+      "legacy_tasks": [
+        "WRK-01",
+        "WRK-02",
+        "FUN-03"
+      ],
+      "findings": [
+        "H05",
+        "H15"
+      ],
+      "depends_on": [
+        "AUD13-23",
+        "AUD13-21"
+      ],
+      "owner_role": "Worker/produto",
+      "allowed_paths": [
+        "apps/worker/",
+        "packages/persistence/",
+        "apps/web/src/features/",
+        "apps/web/src/routes/",
+        "tests/"
+      ],
+      "exclusive_resources": [
+        "worker",
+        "persistence-core",
+        "automation-feature"
+      ],
+      "acceptance": [
+        "Cinco handlers e outbox executam trabalho governado com escopo mínimo",
+        "Dois workers provam lease/fencing/takeover/shutdown/restart sem duplicação",
+        "Fila cheia, poison, timeout e pool saturado degradam antes do claim/dispatch",
+        "UI agenda/janela/cancela automação e mostra execução/falha/receipt",
+        "Comunicação permite preparar/revisar/aprovar/consultar mensagem sem envio direto por rota"
+      ],
+      "validation": [
+        "npm run verify:worker-runtime",
+        "npm run verify:postgres:concurrency",
+        "E2E automação/comunicação e teste multiprocesso com kill controlado"
+      ],
+      "external_prerequisites": [],
+      "size": "L",
+      "risk": "R2",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "source_contracts": [
+        "docs/01-prd-cvg.md",
+        "docs/03-dominio-dados-contratos.md",
+        "docs/plano-melhorias-2026-09-13/qualidade-e-execucao.md"
+      ],
+      "next_action": "Ler AUD13-25, validar dependências e reproduzir o comportamento atual antes de reservar arquivos exatos.",
+      "evidence_required": [
+        "Identidade HEAD + hash de worktree/contrato",
+        "Comando/procedimento, ambiente sintético, início/fim, exit e output sanitizado",
+        "Caso bom e negativo no boundary relevante; log/receipt/screenshot e SHA256",
+        "Crítico independente e reteste da regressão pertinente; limitações NOT_RUN explícitas"
+      ],
+      "recovery": "Preservar trabalho alheio; registrar efeitos e recursos antes de parar. Reverter só mudança própria não integrada; migration aplicada usa forward-fix. OUTCOME_UNKNOWN exige consulta/reconciliação, nunca retry cego."
+    },
+    {
+      "id": "AUD13-26",
+      "title": "Preparar recursos e autoridade de teste externa",
+      "wave": "M0",
+      "priority": "P1",
+      "legacy_tasks": [
+        "DEV-02"
+      ],
+      "findings": [
+        "H08",
+        "H13",
+        "H15"
+      ],
+      "depends_on": [
+        "AUD13-01"
+      ],
+      "owner_role": "Infraestrutura",
+      "allowed_paths": [
+        "docs/staging.md",
+        "docs/adr/",
+        "docker/.env.example"
+      ],
+      "exclusive_resources": [
+        "environment-contracts"
+      ],
+      "acceptance": [
+        "Inventariar endpoints, versões, owners e referências sem expor segredos",
+        "Definir dados/destinatários sintéticos, limites de custo/carga e isolamento",
+        "Preparação técnica é entregável; falta de acesso bloqueia somente execução dependente",
+        "Revalidar autoridade já concedida na sessão antes de perguntar novamente"
+      ],
+      "validation": [
+        "Inspecionar manifestos/scripts e preencher matriz recurso→responsável→disponibilidade→gate"
+      ],
+      "external_prerequisites": [
+        "Provisionamento de staging/TLS/DB/secret authority/modelo/provider/sink e orçamento de teste pelos responsáveis"
+      ],
+      "size": "M",
+      "risk": "R3",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "source_contracts": [
+        "docs/01-prd-cvg.md",
+        "docs/03-dominio-dados-contratos.md",
+        "docs/plano-melhorias-2026-09-13/qualidade-e-execucao.md"
+      ],
+      "next_action": "Ler AUD13-26, validar dependências e reproduzir o comportamento atual antes de reservar arquivos exatos.",
+      "evidence_required": [
+        "Identidade HEAD + hash de worktree/contrato",
+        "Comando/procedimento, ambiente sintético, início/fim, exit e output sanitizado",
+        "Caso bom e negativo no boundary relevante; log/receipt/screenshot e SHA256",
+        "Crítico independente e reteste da regressão pertinente; limitações NOT_RUN explícitas"
+      ],
+      "recovery": "Preservar trabalho alheio; registrar efeitos e recursos antes de parar. Reverter só mudança própria não integrada; migration aplicada usa forward-fix. OUTCOME_UNKNOWN exige consulta/reconciliação, nunca retry cego."
+    },
+    {
+      "id": "AUD13-27",
+      "title": "Governance durável do ACP e vertical DeepSeek",
+      "wave": "M3",
+      "priority": "P1",
+      "legacy_tasks": [
+        "AIG-02",
+        "AIG-03"
+      ],
+      "findings": [
+        "H08"
+      ],
+      "depends_on": [
+        "AUD13-20",
+        "AUD13-21",
+        "AUD13-23",
+        "AUD13-26"
+      ],
+      "owner_role": "IA/runtime",
+      "allowed_paths": [
+        "packages/deepseek-bridge/",
+        "packages/harness-adapters/",
+        "packages/agent-runtime/",
+        "apps/deepseek-bridge/",
+        "tests/",
+        "docs/deepseek-real-proof.md"
+      ],
+      "exclusive_resources": [
+        "deepseek",
+        "ai-runtime",
+        "external-ai"
+      ],
+      "acceptance": [
+        "Implementar e injetar DeepSeekAcpGovernance durável no entrypoint",
+        "Modelo/tool/approval/replay/usage/provenance ligados ao candidato e perfil",
+        "Provar restart, cancelamento, timeout, JSON inválido, manifest/HMAC incorretos e usage ausente",
+        "Sem fallback para mock em ambiente real; prova externa separada de fixtures"
+      ],
+      "validation": [
+        "npm run verify:deepseek-acp",
+        "npm run verify:deepseek-real",
+        "Matriz completa docs prompt final F3/F4 com logs e receipts"
+      ],
+      "external_prerequisites": [
+        "Runtime/modelo/segredos e teto de custo de teste autorizados"
+      ],
+      "size": "L",
+      "risk": "R3",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "source_contracts": [
+        "docs/01-prd-cvg.md",
+        "docs/03-dominio-dados-contratos.md",
+        "docs/plano-melhorias-2026-09-13/qualidade-e-execucao.md"
+      ],
+      "next_action": "Ler AUD13-27, validar dependências e reproduzir o comportamento atual antes de reservar arquivos exatos.",
+      "evidence_required": [
+        "Identidade HEAD + hash de worktree/contrato",
+        "Comando/procedimento, ambiente sintético, início/fim, exit e output sanitizado",
+        "Caso bom e negativo no boundary relevante; log/receipt/screenshot e SHA256",
+        "Crítico independente e reteste da regressão pertinente; limitações NOT_RUN explícitas"
+      ],
+      "recovery": "Preservar trabalho alheio; registrar efeitos e recursos antes de parar. Reverter só mudança própria não integrada; migration aplicada usa forward-fix. OUTCOME_UNKNOWN exige consulta/reconciliação, nunca retry cego."
+    },
+    {
+      "id": "AUD13-28",
+      "title": "Provider real, secrets e MFA forte",
+      "wave": "M3",
+      "priority": "P1",
+      "legacy_tasks": [
+        "WRK-03",
+        "SEC-03",
+        "SEC-04"
+      ],
+      "findings": [
+        "H15",
+        "H08"
+      ],
+      "depends_on": [
+        "AUD13-06",
+        "AUD13-10",
+        "AUD13-25",
+        "AUD13-26"
+      ],
+      "owner_role": "Integrações/segurança",
+      "allowed_paths": [
+        "packages/integrations/",
+        "packages/auth/",
+        "packages/config/",
+        "apps/api/src/application/break-glass-service.ts",
+        "apps/worker/",
+        "tests/"
+      ],
+      "exclusive_resources": [
+        "integrations",
+        "auth-core",
+        "external-provider"
+      ],
+      "acceptance": [
+        "Secret authority configurada exerce falta/rotação/revogação/versão incorreta sem vazar chaves",
+        "WebAuthn registro/assertion/replay/rpId/origin e break-glass têm aprovador independente e revisão",
+        "Mensagem aprovada percorre outbox→provider→receipt/callback→inbox→effect→reconciliação",
+        "Perda de resposta, duplicata,429/500 e callback inválido não causam retry cego",
+        "Provider de pagamento/laboratório exigido pelo contrato é identificado, implementado ou permanece bloqueio explícito da jornada correspondente"
+      ],
+      "validation": [
+        "npm run test:security",
+        "npm run verify:provider-sandbox",
+        "npm run verify:provider-real",
+        "Matriz de faults e receipt externo com dados sintéticos"
+      ],
+      "external_prerequisites": [
+        "Destinatário/canal/provider e identidade WebAuthn de teste autorizados; sem enviar mensagens a terceiros sem autorização explícita"
+      ],
+      "size": "L",
+      "risk": "R3",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "source_contracts": [
+        "docs/01-prd-cvg.md",
+        "docs/03-dominio-dados-contratos.md",
+        "docs/plano-melhorias-2026-09-13/qualidade-e-execucao.md"
+      ],
+      "next_action": "Ler AUD13-28, validar dependências e reproduzir o comportamento atual antes de reservar arquivos exatos.",
+      "evidence_required": [
+        "Identidade HEAD + hash de worktree/contrato",
+        "Comando/procedimento, ambiente sintético, início/fim, exit e output sanitizado",
+        "Caso bom e negativo no boundary relevante; log/receipt/screenshot e SHA256",
+        "Crítico independente e reteste da regressão pertinente; limitações NOT_RUN explícitas"
+      ],
+      "recovery": "Preservar trabalho alheio; registrar efeitos e recursos antes de parar. Reverter só mudança própria não integrada; migration aplicada usa forward-fix. OUTCOME_UNKNOWN exige consulta/reconciliação, nunca retry cego."
+    },
+    {
+      "id": "AUD13-29",
+      "title": "Telemetria limitada, causalidade e relatórios",
+      "wave": "M1",
+      "priority": "P1",
+      "legacy_tasks": [
+        "OPS-01",
+        "PER-02",
+        "FUN-03"
+      ],
+      "findings": [
+        "H12",
+        "H05"
+      ],
+      "depends_on": [
+        "AUD13-02",
+        "AUD13-11"
+      ],
+      "owner_role": "Observabilidade",
+      "allowed_paths": [
+        "packages/ops/",
+        "apps/api/src/application/operational-metrics-service.ts",
+        "apps/web/src/features/",
+        "tests/unit/ops.test.ts"
+      ],
+      "exclusive_resources": [
+        "telemetry",
+        "reports-feature"
+      ],
+      "acceptance": [
+        "Logs/latências têm retenção/capacidade limitada e descarte observável",
+        "Percentis por janela/histograma sem ordenar histórico vitalício",
+        "Propagar trace/correlação HTTP→domínio→outbox→worker→provider sem payload sensível",
+        "Relatórios operação/qualidade/custo/auditoria/incidentes têm filtros e fonte real",
+        "Falha/duplicação collector não altera domínio"
+      ],
+      "validation": [
+        "node --import tsx --test tests/unit/ops.test.ts",
+        "Probe10000 eventos e soak verifica memória limitada",
+        "Teste collector local com contexto pai/filho e redaction",
+        "E2E filtros/relatório sem gráficos fixos"
+      ],
+      "external_prerequisites": [],
+      "size": "M",
+      "risk": "R2",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "source_contracts": [
+        "docs/01-prd-cvg.md",
+        "docs/03-dominio-dados-contratos.md",
+        "docs/plano-melhorias-2026-09-13/qualidade-e-execucao.md"
+      ],
+      "next_action": "Ler AUD13-29, validar dependências e reproduzir o comportamento atual antes de reservar arquivos exatos.",
+      "evidence_required": [
+        "Identidade HEAD + hash de worktree/contrato",
+        "Comando/procedimento, ambiente sintético, início/fim, exit e output sanitizado",
+        "Caso bom e negativo no boundary relevante; log/receipt/screenshot e SHA256",
+        "Crítico independente e reteste da regressão pertinente; limitações NOT_RUN explícitas"
+      ],
+      "recovery": "Preservar trabalho alheio; registrar efeitos e recursos antes de parar. Reverter só mudança própria não integrada; migration aplicada usa forward-fix. OUTCOME_UNKNOWN exige consulta/reconciliação, nunca retry cego."
+    },
+    {
+      "id": "AUD13-30",
+      "title": "Readiness por capacidade e degradação manual",
+      "wave": "M1",
+      "priority": "P1",
+      "legacy_tasks": [
+        "OPS-01",
+        "FUN-03"
+      ],
+      "findings": [
+        "M04"
+      ],
+      "depends_on": [
+        "AUD13-02"
+      ],
+      "owner_role": "Operação/API",
+      "allowed_paths": [
+        "apps/api/src/routes/health.ts",
+        "apps/api/src/app.ts",
+        "packages/config/",
+        "docker/",
+        "tests/"
+      ],
+      "exclusive_resources": [
+        "api-root",
+        "readiness"
+      ],
+      "acceptance": [
+        "Probes medem status corrente de segredos/policy/audit/fila e DB",
+        "Diferenciar liveness, readiness global e capacidade IA sem retirar caminho manual válido",
+        "Falha DB/audit obrigatória nega operações dependentes",
+        "Revogação depois do startup e recuperação são observáveis; sem READY constante enganoso"
+      ],
+      "validation": [
+        "npm run test:integration",
+        "Teste transição READY→revogado→recuperado e IA indisponível com escrita manual autorizada"
+      ],
+      "external_prerequisites": [],
+      "size": "M",
+      "risk": "R2",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "source_contracts": [
+        "docs/01-prd-cvg.md",
+        "docs/03-dominio-dados-contratos.md",
+        "docs/plano-melhorias-2026-09-13/qualidade-e-execucao.md"
+      ],
+      "next_action": "Ler AUD13-30, validar dependências e reproduzir o comportamento atual antes de reservar arquivos exatos.",
+      "evidence_required": [
+        "Identidade HEAD + hash de worktree/contrato",
+        "Comando/procedimento, ambiente sintético, início/fim, exit e output sanitizado",
+        "Caso bom e negativo no boundary relevante; log/receipt/screenshot e SHA256",
+        "Crítico independente e reteste da regressão pertinente; limitações NOT_RUN explícitas"
+      ],
+      "recovery": "Preservar trabalho alheio; registrar efeitos e recursos antes de parar. Reverter só mudança própria não integrada; migration aplicada usa forward-fix. OUTCOME_UNKNOWN exige consulta/reconciliação, nunca retry cego."
+    },
+    {
+      "id": "AUD13-31",
+      "title": "Renderizar Alertmanager e provar entrega",
+      "wave": "M3",
+      "priority": "P1",
+      "legacy_tasks": [
+        "OPS-01"
+      ],
+      "findings": [
+        "H13"
+      ],
+      "depends_on": [
+        "AUD13-26",
+        "AUD13-29",
+        "AUD13-30"
+      ],
+      "owner_role": "SRE",
+      "allowed_paths": [
+        "docker/observability/",
+        "docker-compose.observability.yml",
+        "scripts/verify-production.ts",
+        "tests/",
+        "docs/runbooks/"
+      ],
+      "exclusive_resources": [
+        "observability-stack"
+      ],
+      "acceptance": [
+        "Arquivo de configuração efetivo contém URL válida do sink, não placeholder literal",
+        "Ausência de autoridade bloqueia explicitamente startup/configuração",
+        "Validar config do Alertmanager e receber/resolver alerta real de teste",
+        "API/DB/worker/backlog/provider/DeepSeek apontam runbooks e têm evidência de entrega"
+      ],
+      "validation": [
+        "Validar arquivo renderizado com ferramenta da imagem fixada",
+        "Teste known-bad URL ausente e known-good sink local",
+        "Alerta chega e resolve no sink controlado"
+      ],
+      "external_prerequisites": [
+        "Sink e execução do stack de teste autorizados; nunca usar canais pessoais por inferência"
+      ],
+      "size": "L",
+      "risk": "R3",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "source_contracts": [
+        "docs/01-prd-cvg.md",
+        "docs/03-dominio-dados-contratos.md",
+        "docs/plano-melhorias-2026-09-13/qualidade-e-execucao.md"
+      ],
+      "next_action": "Ler AUD13-31, validar dependências e reproduzir o comportamento atual antes de reservar arquivos exatos.",
+      "evidence_required": [
+        "Identidade HEAD + hash de worktree/contrato",
+        "Comando/procedimento, ambiente sintético, início/fim, exit e output sanitizado",
+        "Caso bom e negativo no boundary relevante; log/receipt/screenshot e SHA256",
+        "Crítico independente e reteste da regressão pertinente; limitações NOT_RUN explícitas"
+      ],
+      "recovery": "Preservar trabalho alheio; registrar efeitos e recursos antes de parar. Reverter só mudança própria não integrada; migration aplicada usa forward-fix. OUTCOME_UNKNOWN exige consulta/reconciliação, nunca retry cego."
+    },
+    {
+      "id": "AUD13-32",
+      "title": "Gates de runbooks e carga que discriminem runtime",
+      "wave": "M1",
+      "priority": "P1",
+      "legacy_tasks": [
+        "QUA-03",
+        "PER-01",
+        "OPS-03"
+      ],
+      "findings": [
+        "M02",
+        "M03"
+      ],
+      "depends_on": [
+        "AUD13-03",
+        "AUD13-02"
+      ],
+      "owner_role": "Qualidade/SRE",
+      "allowed_paths": [
+        "scripts/verify-runbook-execution.ts",
+        "scripts/verify-load.ts",
+        "tests/load/",
+        "tests/unit/runbook-gate.test.ts",
+        "tests/unit/load-gate.test.ts"
+      ],
+      "exclusive_resources": [
+        "evidence-harness",
+        "load-harness"
+      ],
+      "acceptance": [
+        "Separar checagem textual de cenário executado, sem EXECUTED_LOCAL para strings",
+        "Cada cenário aciona boundary e verifica efeito bloqueado/recuperado",
+        "Carga inclui clinical read/write,turno,envio,receipt e backlog além de GET",
+        "Workload ausente ou semântica inválida falha mesmo com HTTP200",
+        "Thresholds por operação/cenário/check e p50/p95/p99; limites aprovados sem adaptações para passar"
+      ],
+      "validation": [
+        "node --import tsx --test tests/unit/runbook-gate.test.ts tests/unit/load-gate.test.ts",
+        "Mutação conhecida ruim passa HTTP200 mas falha contrato",
+        "Executar cenários locais com medição real de estado"
+      ],
+      "external_prerequisites": [],
+      "size": "M",
+      "risk": "R2",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "source_contracts": [
+        "docs/01-prd-cvg.md",
+        "docs/03-dominio-dados-contratos.md",
+        "docs/plano-melhorias-2026-09-13/qualidade-e-execucao.md"
+      ],
+      "next_action": "Ler AUD13-32, validar dependências e reproduzir o comportamento atual antes de reservar arquivos exatos.",
+      "evidence_required": [
+        "Identidade HEAD + hash de worktree/contrato",
+        "Comando/procedimento, ambiente sintético, início/fim, exit e output sanitizado",
+        "Caso bom e negativo no boundary relevante; log/receipt/screenshot e SHA256",
+        "Crítico independente e reteste da regressão pertinente; limitações NOT_RUN explícitas"
+      ],
+      "recovery": "Preservar trabalho alheio; registrar efeitos e recursos antes de parar. Reverter só mudança própria não integrada; migration aplicada usa forward-fix. OUTCOME_UNKNOWN exige consulta/reconciliação, nunca retry cego."
+    },
+    {
+      "id": "AUD13-33",
+      "title": "Extrações arquiteturais e otimização medidas",
+      "wave": "M3",
+      "priority": "P2",
+      "legacy_tasks": [
+        "ARC-02",
+        "ARC-03",
+        "PER-01",
+        "PER-02"
+      ],
+      "findings": [
+        "H11",
+        "H12"
+      ],
+      "depends_on": [
+        "AUD13-23",
+        "AUD13-25",
+        "AUD13-29",
+        "AUD13-32"
+      ],
+      "owner_role": "Arquitetura/performance",
+      "allowed_paths": [
+        "apps/api/src/",
+        "packages/domain/",
+        "packages/persistence/",
+        "scripts/benchmark-local.ts",
+        "docs/adr/",
+        "tests/"
+      ],
+      "exclusive_resources": [
+        "api-root",
+        "domain-core",
+        "persistence-core",
+        "benchmark"
+      ],
+      "acceptance": [
+        "Perfilar snapshot/locks/hash/queries/RLS/pool antes de otimizar",
+        "Congelar workload/dataset/hardware/seed/cold-warm/concorrência/caudas",
+        "Extrair composição e persistência por ownership mantendo transação e API",
+        "Ganho medido sem reduzir isolamento, custo do hash, auditoria ou correção",
+        "Não extrair apenas por quantidade de linhas"
+      ],
+      "validation": [
+        "npm run benchmark:local",
+        "npm run verify:authoritative-writes",
+        "npm run verify:pdp",
+        "npm run test:database",
+        "Comparar perfil antes/depois no mesmo equipamento e carga"
+      ],
+      "external_prerequisites": [],
+      "size": "L",
+      "risk": "R2",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "source_contracts": [
+        "docs/01-prd-cvg.md",
+        "docs/03-dominio-dados-contratos.md",
+        "docs/plano-melhorias-2026-09-13/qualidade-e-execucao.md"
+      ],
+      "next_action": "Ler AUD13-33, validar dependências e reproduzir o comportamento atual antes de reservar arquivos exatos.",
+      "evidence_required": [
+        "Identidade HEAD + hash de worktree/contrato",
+        "Comando/procedimento, ambiente sintético, início/fim, exit e output sanitizado",
+        "Caso bom e negativo no boundary relevante; log/receipt/screenshot e SHA256",
+        "Crítico independente e reteste da regressão pertinente; limitações NOT_RUN explícitas"
+      ],
+      "recovery": "Preservar trabalho alheio; registrar efeitos e recursos antes de parar. Reverter só mudança própria não integrada; migration aplicada usa forward-fix. OUTCOME_UNKNOWN exige consulta/reconciliação, nunca retry cego."
+    },
+    {
+      "id": "AUD13-34",
+      "title": "CI do candidato, imagens e staging imutável",
+      "wave": "M3",
+      "priority": "P1",
+      "legacy_tasks": [
+        "DEV-01",
+        "DEV-03",
+        "SUP-02",
+        "SUP-03"
+      ],
+      "findings": [
+        "H07",
+        "H14",
+        "H15"
+      ],
+      "depends_on": [
+        "AUD13-03",
+        "AUD13-02",
+        "AUD13-26",
+        "AUD13-30"
+      ],
+      "owner_role": "Release",
+      "allowed_paths": [
+        "scripts/verify-production.ts",
+        "scripts/verify-release-provenance.ts",
+        "scripts/verify-promotion-invariant.ts",
+        ".github/",
+        "docker/",
+        "docker-compose.production.yml",
+        "Dockerfile.api",
+        "Dockerfile.web"
+      ],
+      "exclusive_resources": [
+        "ci",
+        "containers",
+        "staging-deploy"
+      ],
+      "acceptance": [
+        "CI do mesmo SHA executa instalação/typecheck/testes/build/Postgres/restore/browser/scans",
+        "SBOM e digests vinculam imagens reais; tags mutáveis revisadas/fixadas conforme política",
+        "Nenhum rebuild entre staging aprovado e promoção",
+        "Config insegura/demo/mock/segredo ausente falha; smoke inclui login/escrita/worker/outbox/shutdown/restart/headers TLS",
+        "Não atualizar evidência sem executar candidato"
+      ],
+      "validation": [
+        "npm run verify:static",
+        "npm run verify:production",
+        "npm run verify:release-provenance",
+        "npm run verify:container-smoke",
+        "npm run verify:promotion-invariant"
+      ],
+      "external_prerequisites": [
+        "CI remoto, Docker e staging disponíveis/autorizados; não publicar ou promover produção nesta tarefa"
+      ],
+      "size": "L",
+      "risk": "R3",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "source_contracts": [
+        "docs/01-prd-cvg.md",
+        "docs/03-dominio-dados-contratos.md",
+        "docs/plano-melhorias-2026-09-13/qualidade-e-execucao.md"
+      ],
+      "next_action": "Ler AUD13-34, validar dependências e reproduzir o comportamento atual antes de reservar arquivos exatos.",
+      "evidence_required": [
+        "Identidade HEAD + hash de worktree/contrato",
+        "Comando/procedimento, ambiente sintético, início/fim, exit e output sanitizado",
+        "Caso bom e negativo no boundary relevante; log/receipt/screenshot e SHA256",
+        "Crítico independente e reteste da regressão pertinente; limitações NOT_RUN explícitas"
+      ],
+      "recovery": "Preservar trabalho alheio; registrar efeitos e recursos antes de parar. Reverter só mudança própria não integrada; migration aplicada usa forward-fix. OUTCOME_UNKNOWN exige consulta/reconciliação, nunca retry cego."
+    },
+    {
+      "id": "AUD13-35",
+      "title": "Acessibilidade e usabilidade das jornadas completas",
+      "wave": "M4",
+      "priority": "P1",
+      "legacy_tasks": [
+        "A11Y-01",
+        "A11Y-02",
+        "A11Y-03",
+        "UX-03"
+      ],
+      "findings": [
+        "H04",
+        "H05"
+      ],
+      "depends_on": [
+        "AUD13-05",
+        "AUD13-06",
+        "AUD13-07",
+        "AUD13-08",
+        "AUD13-12",
+        "AUD13-13",
+        "AUD13-14",
+        "AUD13-15",
+        "AUD13-16",
+        "AUD13-17",
+        "AUD13-18",
+        "AUD13-19",
+        "AUD13-20",
+        "AUD13-25",
+        "AUD13-29",
+        "AUD13-34"
+      ],
+      "owner_role": "UX/qualidade",
+      "allowed_paths": [
+        "tests/e2e/",
+        "playwright.config.ts",
+        "apps/web/src/",
+        "docs/visual-qa-vNext.md",
+        "docs/accessibility-proof.md"
+      ],
+      "exclusive_resources": [
+        "e2e-visual",
+        "shared-ui",
+        "assistive-review"
+      ],
+      "acceptance": [
+        "Matriz Chromium/Firefox/WebKit desktop/tablet/mobile e estados críticos",
+        "Teclado/dialog/foco/live-region/erro/tabela/contraste e zoom nativo200/400% utilizáveis",
+        "Leitor de tela/toque/dispositivo real têm operador e evidência explícitos",
+        "Usuários representativos concluem recepção/clínica/financeiro; medir conclusão/erros",
+        "Corrigir maior falha e repetir cenário; duas críticas visuais independentes sem baseline ajustado para ocultar bug"
+      ],
+      "validation": [
+        "npm run test:e2e:full",
+        "npm run audit:contrast",
+        "npm run audit:tokens",
+        "Roteiro assistivo/usuários com registro anonimizado"
+      ],
+      "external_prerequisites": [
+        "Operador assistivo, dispositivos e participantes autorizados; ausência não vira PASS"
+      ],
+      "size": "L",
+      "risk": "R3",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "source_contracts": [
+        "docs/01-prd-cvg.md",
+        "docs/03-dominio-dados-contratos.md",
+        "docs/plano-melhorias-2026-09-13/qualidade-e-execucao.md"
+      ],
+      "next_action": "Ler AUD13-35, validar dependências e reproduzir o comportamento atual antes de reservar arquivos exatos.",
+      "evidence_required": [
+        "Identidade HEAD + hash de worktree/contrato",
+        "Comando/procedimento, ambiente sintético, início/fim, exit e output sanitizado",
+        "Caso bom e negativo no boundary relevante; log/receipt/screenshot e SHA256",
+        "Crítico independente e reteste da regressão pertinente; limitações NOT_RUN explícitas"
+      ],
+      "recovery": "Preservar trabalho alheio; registrar efeitos e recursos antes de parar. Reverter só mudança própria não integrada; migration aplicada usa forward-fix. OUTCOME_UNKNOWN exige consulta/reconciliação, nunca retry cego."
+    },
+    {
+      "id": "AUD13-36",
+      "title": "Carga, caos, segurança e recovery operacionais",
+      "wave": "M4",
+      "priority": "P1",
+      "legacy_tasks": [
+        "PER-03",
+        "SEC-04",
+        "OPS-02",
+        "OPS-03",
+        "FIN-03"
+      ],
+      "findings": [
+        "H06",
+        "H10",
+        "H11",
+        "H12",
+        "H15",
+        "M02",
+        "M03",
+        "M05"
+      ],
+      "depends_on": [
+        "AUD13-24",
+        "AUD13-27",
+        "AUD13-28",
+        "AUD13-31",
+        "AUD13-32",
+        "AUD13-33",
+        "AUD13-34"
+      ],
+      "owner_role": "SRE/segurança",
+      "allowed_paths": [
+        "tests/load/",
+        "tests/integration/",
+        "scripts/",
+        "docs/runbooks/",
+        "docs/load-proof.md",
+        "docs/chaos-proof.md",
+        "docs/recovery-proof-final.md"
+      ],
+      "exclusive_resources": [
+        "staging-db",
+        "load-environment",
+        "recovery",
+        "red-team"
+      ],
+      "acceptance": [
+        "W-A…W-H,50/100 usuários e burst com hardware/dados/duração/caudas brutas",
+        "CPU/memória/pool/FD/filas degradam e recuperam sem corrupção",
+        "Kill API/worker,DB restart,network/provider/secret/model failure sem efeito duplicado",
+        "Backup periódico cifrado/retido/rotacionado exercitado com retorno seguro",
+        "Operador independente executa runbooks de outage/restore/rotação/break-glass e mede RTO/RPO",
+        "Red-team F23/F24 com role runtime mínima e zero High/Critical aberto"
+      ],
+      "validation": [
+        "npm run verify:load",
+        "npm run verify:resource-pressure",
+        "npm run verify:runbook-execution",
+        "npm run verify:security-red-team",
+        "npm run verify:postgres:restore"
+      ],
+      "external_prerequisites": [
+        "Ambiente isolado, escopo de ataque, teto de custo/carga e targets SLO/RTO/RPO acordados; não deduzir disponibilidade mensal de teste curto"
+      ],
+      "size": "L",
+      "risk": "R3",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "source_contracts": [
+        "docs/01-prd-cvg.md",
+        "docs/03-dominio-dados-contratos.md",
+        "docs/plano-melhorias-2026-09-13/qualidade-e-execucao.md"
+      ],
+      "next_action": "Ler AUD13-36, validar dependências e reproduzir o comportamento atual antes de reservar arquivos exatos.",
+      "evidence_required": [
+        "Identidade HEAD + hash de worktree/contrato",
+        "Comando/procedimento, ambiente sintético, início/fim, exit e output sanitizado",
+        "Caso bom e negativo no boundary relevante; log/receipt/screenshot e SHA256",
+        "Crítico independente e reteste da regressão pertinente; limitações NOT_RUN explícitas"
+      ],
+      "recovery": "Preservar trabalho alheio; registrar efeitos e recursos antes de parar. Reverter só mudança própria não integrada; migration aplicada usa forward-fix. OUTCOME_UNKNOWN exige consulta/reconciliação, nunca retry cego."
+    },
+    {
+      "id": "AUD13-37",
+      "title": "Dossiê integrado, reavaliação e crítica final",
+      "wave": "M5",
+      "priority": "P1",
+      "legacy_tasks": [
+        "DEV-04",
+        "DOC-02",
+        "DOC-03",
+        "CON-03"
+      ],
+      "findings": [
+        "H07",
+        "H15",
+        "M06"
+      ],
+      "depends_on": [
+        "AUD13-35",
+        "AUD13-36"
+      ],
+      "owner_role": "Lead/críticos",
+      "allowed_paths": [
+        "docs/",
+        "README.md",
+        ".agent/",
+        ".gauntlet/"
+      ],
+      "exclusive_resources": [
+        "release-candidate",
+        "docs-index",
+        "control-plane"
+      ],
+      "acceptance": [
+        "Todos achados H01–H15/M01–M06 e FR/NFR têm evidência, candidato e resolução",
+        "Revalidar catálogo/compatibilidade após todas integrações",
+        "39 fases/25 gates/22 dimensões canônicas têm evidência exigida; crítica em15 especialidades conforme barra",
+        "Notas atribuídas por análise independente, nunca meta automaticamente",
+        "Reparo altera candidato e invalida prova afetada; nenhum High/Critical técnico aberto",
+        "Histórico preservado, comandos/estado atual sem contradição"
+      ],
+      "validation": [
+        "npm run verify:pdp",
+        "npm run test:contract",
+        "npm run verify:triplo-aaa",
+        "Conferir hashes/receipts e parecer independente; F38 pode permanecer pendente de AUD13-38"
+      ],
+      "external_prerequisites": [],
+      "size": "M",
+      "risk": "R2",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "source_contracts": [
+        "docs/01-prd-cvg.md",
+        "docs/03-dominio-dados-contratos.md",
+        "docs/plano-melhorias-2026-09-13/qualidade-e-execucao.md"
+      ],
+      "next_action": "Ler AUD13-37, validar dependências e reproduzir o comportamento atual antes de reservar arquivos exatos.",
+      "evidence_required": [
+        "Identidade HEAD + hash de worktree/contrato",
+        "Comando/procedimento, ambiente sintético, início/fim, exit e output sanitizado",
+        "Caso bom e negativo no boundary relevante; log/receipt/screenshot e SHA256",
+        "Crítico independente e reteste da regressão pertinente; limitações NOT_RUN explícitas"
+      ],
+      "recovery": "Preservar trabalho alheio; registrar efeitos e recursos antes de parar. Reverter só mudança própria não integrada; migration aplicada usa forward-fix. OUTCOME_UNKNOWN exige consulta/reconciliação, nunca retry cego."
+    },
+    {
+      "id": "AUD13-38",
+      "title": "Decisão humana e promoção do artefato aprovado",
+      "wave": "M5",
+      "priority": "P1",
+      "legacy_tasks": [
+        "DEV-05"
+      ],
+      "findings": [
+        "H15"
+      ],
+      "depends_on": [
+        "AUD13-37"
+      ],
+      "owner_role": "Decisor/release",
+      "allowed_paths": [
+        "docs/11-transicao-para-producao.md",
+        ".agent/",
+        "artifacts/"
+      ],
+      "exclusive_resources": [
+        "human-approval",
+        "promotion"
+      ],
+      "acceptance": [
+        "Apresentar candidato concreto, riscos residuais e rollback; decisão humana genuína ligada ao digest",
+        "F38,retenção,dados reais,alçadas e metas têm autoridade registrada",
+        "verify:triplo-aaa só passa com todos gates efetivamente atendidos",
+        "Produção apenas se explicitamente autorizada para o candidato, sem rebuild; rejeição não vira PASS"
+      ],
+      "validation": [
+        "npm run verify:triplo-aaa",
+        "npm run verify:promotion-invariant",
+        "Conferir identidade/escopo/validade da decisão e sujeito"
+      ],
+      "external_prerequisites": [
+        "Aceite humano e autorização explícita de produção; planejamento não os concede"
+      ],
+      "size": "M",
+      "risk": "R3",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "source_contracts": [
+        "docs/01-prd-cvg.md",
+        "docs/03-dominio-dados-contratos.md",
+        "docs/plano-melhorias-2026-09-13/qualidade-e-execucao.md"
+      ],
+      "next_action": "Ler AUD13-38, validar dependências e reproduzir o comportamento atual antes de reservar arquivos exatos.",
+      "evidence_required": [
+        "Identidade HEAD + hash de worktree/contrato",
+        "Comando/procedimento, ambiente sintético, início/fim, exit e output sanitizado",
+        "Caso bom e negativo no boundary relevante; log/receipt/screenshot e SHA256",
+        "Crítico independente e reteste da regressão pertinente; limitações NOT_RUN explícitas"
+      ],
+      "recovery": "Preservar trabalho alheio; registrar efeitos e recursos antes de parar. Reverter só mudança própria não integrada; migration aplicada usa forward-fix. OUTCOME_UNKNOWN exige consulta/reconciliação, nunca retry cego."
+    }
+  ]
+}

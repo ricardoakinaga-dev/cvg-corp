@@ -1,12 +1,13 @@
 import { isWriteAllowed, type RuntimeState } from "../state/runtime-state";
 import type { ContextOption } from "../state/types";
+import { validatePayload } from "./validation";
 
 type ApiErrorPayload = { code: string; message: string; details?: Record<string, unknown> };
 type ApiEnvelope<T> = { schemaVersion: number; data?: T; error?: ApiErrorPayload; correlationId: string };
 
 const API = import.meta.env?.VITE_API_URL ?? "";
 const WRITE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
-const PUBLIC_AUTH_WRITES = new Set(["/auth/login", "/auth/demo"]);
+const PUBLIC_AUTH_WRITES = new Set(["/auth/login", "/auth/demo", "/auth/mfa/verify"]);
 
 export class ApiError extends Error {
   readonly status: number;
@@ -52,7 +53,7 @@ export function isContextRevalidationError(error: unknown): boolean {
 }
 
 export function isStaleDataError(error: unknown): boolean {
-  return error instanceof ApiError && (error.code === "CONFLICT" || error.code === "REVISION_CONFLICT" || error.code === "POLICY_STALE" || error.status === 409);
+  return error instanceof ApiError && (error.code === "REVISION_CONFLICT" || error.code === "POLICY_STALE");
 }
 
 export function isDegradedRequestError(error: unknown): boolean {
@@ -123,12 +124,23 @@ export function createApiClient(getRuntimeState: () => RuntimeState, onFailure?:
           correlationId: payload?.correlationId ?? null,
           details: payload?.error?.details ?? null
         });
-        if (!PUBLIC_AUTH_WRITES.has(path) && !(path === "/me" && isAuthenticationError(error))) onFailure?.(error);
+        if (!PUBLIC_AUTH_WRITES.has(path) && path !== "/auth/logout" && !(path === "/me" && isAuthenticationError(error))) onFailure?.(error);
         throw error;
       }
-      return payload?.data as T;
+      const validated = validatePayload(method, path, payload?.data);
+      if (validated.status === "invalid") {
+        const error = new ApiError("A API retornou dados incompatíveis com o contrato deste recurso.", {
+          status: response.status,
+          code: "API_COMPATIBILITY_UNAVAILABLE",
+          correlationId: payload?.correlationId ?? null,
+          details: { path, issues: validated.issues }
+        });
+        if (!PUBLIC_AUTH_WRITES.has(path) && path !== "/auth/logout" && !(path === "/me" && isAuthenticationError(error))) onFailure?.(error);
+        throw error;
+      }
+      return validated.data as T;
     } catch (error) {
-      if (!(error instanceof ApiError) && !PUBLIC_AUTH_WRITES.has(path)) onFailure?.(error);
+      if (!(error instanceof ApiError) && !PUBLIC_AUTH_WRITES.has(path) && path !== "/auth/logout") onFailure?.(error);
       throw error;
     }
   };

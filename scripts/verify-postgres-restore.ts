@@ -4,9 +4,10 @@ import { join } from "node:path";
 import pg, { type Client as PgClient } from "pg";
 import { CvgStore, digest } from "@cvg/domain";
 import { createRuntime } from "@cvg/api";
-import { decryptRecoveryBundle, encryptRecoveryBundle, PersistenceCorruptionError, PostgresPersistence, validateRecoveryBundle } from "@cvg/persistence";
+import { decryptRecoveryBundle, encryptRecoveryBundle, PersistenceCorruptionError, PostgresPersistence, validateRecoveryBundle, validateRecoveryStoreCoverage } from "@cvg/persistence";
 
 const { Client } = pg;
+validateRecoveryStoreCoverage();
 const sourceUrl = process.env.DATABASE_URL;
 if (!sourceUrl) {
   process.stderr.write("POSTGRES_RESTORE_BLOCKED_EXTERNAL DATABASE_URL is required; use an explicitly identified synthetic source database\n");

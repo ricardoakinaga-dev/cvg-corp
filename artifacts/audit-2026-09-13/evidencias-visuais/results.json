@@ -1,0 +1,238 @@
+[
+  {
+    "width": 1440,
+    "route": "overview",
+    "dimensions": {
+      "width": 1440,
+      "scroll": 1440
+    },
+    "violations": [],
+    "text": "DOMINGO · 13 DE SETEMBRO\nBom dia, Ricardo.\n\nAqui está o pulso da Unidade Centro.\n\nNovo atendimento\nLEITURA DO MOMENTO\n1 paciente aguardando atenção\nPróximo atendimento\n10:30\nVer fila\nHoje na agenda\n01\nAgendamentos no contexto\nNa fila agora\n01\nFila ativa\nAtenção no estoque\n00\nSem alertas ativos\nCobranças em aberto\n01\nFinanceiro · quantidade no contexto\nFLUXO DE HOJE\nPróximos atendimentos\nAbrir agenda\n10:30\npróximo\nL\nLuna\nRetorno pós-operatório · Dra. Ana Martins\nConfirmado\nCVG COPILOTO\nClareza para o próximo passo.\n\nResuma a fila, organize um rascunho ou encontre uma fonte aprovada — sempre com revisão humana.\n\nAbrir copiloto\nprovider local sintético\nsem envio externo\nPACIENTES RECENTES\nRelações em cuidado\nVer todos\nL\nLuna\nCanina · Golden retriever\nMarina Souza\nPROFILE DO COPILOTO\nsintético\nAtividade recente\núltimas 8 interações\n6\ntools governadas no profile\nVer sinais"
+  },
+  {
+    "width": 1440,
+    "route": "agenda",
+    "dimensions": {
+      "width": 1440,
+      "scroll": 1440
+    },
+    "violations": [],
+    "text": "CAPACIDADE & FLUXO\nAgenda\n\nO que precisa acontecer, na hora certa e no lugar certo.\n\nNovo horário\nHoje\nPróximos 7 dias\nVisão de fila\nAtualizar\n08 SET · UNIDADE CENTRO\nTerça-feira\n1 janelas\nAtendimentos agendados\nHORÁRIO\tPACIENTE\tMOTIVO\tRESPONSÁVEL\tSTATUS\t\nAÇÃO\n\n\n13 set., 10:30\naté 11:15\n\t\nL\nLuna\n\tRetorno pós-operatório\tDra. Ana Martins\t\nConfirmado\t"
+  },
+  {
+    "width": 1440,
+    "route": "patients",
+    "dimensions": {
+      "width": 1440,
+      "scroll": 1440
+    },
+    "violations": [],
+    "text": "RELAÇÕES EM CUIDADO\nPacientes\n\nHistórico vivo de pacientes, responsáveis e vínculos de cuidado.\n\nNovo paciente\n1 encontrados\nREGISTRO ATIVO\nTodos os pacientes\nExportar\nL\nLuna\nCanina · Golden retriever\nResponsável\nMarina Souza\nContato\n+55 11 98888-1200\nAtivo"
+  },
+  {
+    "width": 1440,
+    "route": "clinical",
+    "dimensions": {
+      "width": 1440,
+      "scroll": 1440
+    },
+    "violations": [],
+    "text": "CUIDADO CLÍNICO\nAtendimento\n\nDa triagem à assinatura, cada fato tem autoria e contexto.\n\nAbrir atendimento\nCAMINHO MANUAL DISPONÍVEL\nO copiloto sugere.\nO veterinário decide.\n\nRascunhos de IA nunca entram no prontuário sem revisão e assinatura explícitas.\n\nVer protocolo\nD3\nSENSÍVEL\nEPISÓDIOS ABERTOS\nAtendimentos em andamento\nrevisão humana\nNenhum atendimento aberto\n\nA fila clínica está limpa neste workspace."
+  },
+  {
+    "width": 1440,
+    "route": "stock",
+    "dimensions": {
+      "width": 1440,
+      "scroll": 1440
+    },
+    "violations": [],
+    "text": "SUPRIMENTOS & FARMÁCIA\nEstoque\n\nLotes, validade e movimentos sem saldo negativo.\n\nRegistrar entrada\nEstoque dentro do ponto de reposição\nNenhuma exceção aberta no contexto atual.\nAbrir inventário\nSALDO POR LOTE\nVisão da farmácia\n1 lotes\nDisponível\nAmoxicilina 50 mg\nLote AMX-25-08 · vence 30/08/2027\n128\ncomprimido\nFarmácia — Centro"
+  },
+  {
+    "width": 1440,
+    "route": "finance",
+    "dimensions": {
+      "width": 1440,
+      "scroll": 1440
+    },
+    "violations": [],
+    "text": "LEDGER & CONCILIAÇÃO\nFinanceiro\n\nCada cobrança tem um movimento. Cada movimento deixa rastro.\n\nNova cobrança\nEM ABERTO · VISÃO LOCAL\nR$ 220,00\nLedger append-only lógico · 1 lançamentos\nMOVIMENTOS RECENTES\nContas em aberto\nExportar\nConsulta clínica\n13 set., 09:48 · movimento CHARGE\nR$ 220,00\nEm aberto"
+  },
+  {
+    "width": 1440,
+    "route": "copilot",
+    "dimensions": {
+      "width": 1440,
+      "scroll": 1440
+    },
+    "violations": [],
+    "text": "INTELIGÊNCIA GOVERNADA\nCopiloto\n\nContexto mínimo, resposta rastreável e nenhuma ação silenciosa.\n\nCVG LOCAL STUB\nQual é o próximo foco?\nsem egress\nFinalidade\nResumo operacional\nRascunho clínico\nBuscar fonte aprovada\nPróximo passo operacional\nPedido\nBuffer volátil · não persiste rascunho local\nProcessar turno\nGUARDRAILS ATIVOS\nO que fica protegido\nProvider local\nNenhum conteúdo sai desta máquina.\nRascunho ≠ fato\nO veterinário assina antes de publicar.\nApproval contextual\nEscritas de impacto pedem confirmação.\nReplay verificável\nEngine, profile e referências ficam registrados.\nDeepSeek Harness real não está conectado nesta etapa."
+  },
+  {
+    "width": 1440,
+    "route": "admin",
+    "dimensions": {
+      "width": 1440,
+      "scroll": 1440
+    },
+    "violations": [],
+    "text": "CONTROLE & EVIDÊNCIA\nAdministração\n\nIdentidade, capacidades e trilha de auditoria no mesmo contexto.\n\nConceder acesso\nPESSOAS COM ACESSO\nEquipe da organização\n6 pessoas\nRA\nRicardo Akinaga\nadmin@cvg.local\nadmin\nadmin\nDA\nDra. Ana Martins\nana.vet@cvg.local\nveterinario\nRevogar\nBC\nBia Costa\nbia.recepcao@cvg.local\nrecepcao\nRevogar\nLR\nLeo Ramos\nleo.estoque@cvg.local\nestoque\nMA\nMari Alves\nmari.financeiro@cvg.local\nfinanceiro\nOC\nOperação CVG\nops@cvg.local\noperador\nCAPABILITY MAP\nO que está disponível\nIdentidade, contexto e permissões\n6 perfis elegíveis\nAtivo\nTutores e pacientes\n3 perfis elegíveis\nAtivo\nAgenda, fila e check-in\n3 perfis elegíveis\nAtivo\nProntuário e assinatura\n1 perfis elegíveis\nAtivo\nEstoque por lote\n2 perfis elegíveis\nAtivo\nLedger financeiro\n2 perfis elegíveis\nAtivo\nCopiloto governado\n3 perfis elegíveis\nAtivo\nProviders externos reais\nBloqueado por autoridade/ambiente\nBloqueado\nDados reais / produção\nBloqueado por autoridade/ambiente\nBloqueado\nBreak-glass\nBloqueado por autoridade/ambiente\nBloqueado\nTRILHA RECENTE\nAuditoria de negócio\nPolicy revision 1\n✓\nappointments.read\nAppointment · Workspace · 13 set., 09:48\noperação concluída\ncorr. 17f52047-9b2…\n✓\nappointments.read\nAppointment · Workspace · 13 set., 09:49\noperação concluída\ncorr. eee0890c-220…\n✓\nappointments.read\nAppointment · Workspace · 13 set., 09:49\noperação concluída\ncorr. 20ad2e4b-cd8…\n✓\nauth.demo_session\nSession · Organização · 13 set., 09:49\nlocal synthetic demo only\ncorr. 9630859a-4b2…\n✓\nappointments.read\nAppointment · Workspace · 13 set., 09:49\noperação concluída\ncorr. a57d303b-408…\n✓\nidentity.read\nUser · Workspace · 13 set., 09:49\noperação concluída\ncorr. db3bc4d4-44a…\n✓\noperations.summary\nDashboard · Workspace · 13 set., 09:49\noperação concluída\ncorr. e807feb9-065…\n✓\ncontexts.read\nContext · Workspace · 13 set., 09:49\noperação concluída\ncorr. 2c4d02d0-844…"
+  },
+  {
+    "width": 1440,
+    "errors": []
+  },
+  {
+    "width": 768,
+    "route": "overview",
+    "dimensions": {
+      "width": 768,
+      "scroll": 768
+    },
+    "violations": []
+  },
+  {
+    "width": 768,
+    "route": "agenda",
+    "dimensions": {
+      "width": 768,
+      "scroll": 768
+    },
+    "violations": []
+  },
+  {
+    "width": 768,
+    "route": "patients",
+    "dimensions": {
+      "width": 768,
+      "scroll": 768
+    },
+    "violations": []
+  },
+  {
+    "width": 768,
+    "route": "clinical",
+    "dimensions": {
+      "width": 768,
+      "scroll": 768
+    },
+    "violations": []
+  },
+  {
+    "width": 768,
+    "route": "stock",
+    "dimensions": {
+      "width": 768,
+      "scroll": 768
+    },
+    "violations": []
+  },
+  {
+    "width": 768,
+    "route": "finance",
+    "dimensions": {
+      "width": 768,
+      "scroll": 768
+    },
+    "violations": []
+  },
+  {
+    "width": 768,
+    "route": "copilot",
+    "dimensions": {
+      "width": 768,
+      "scroll": 768
+    },
+    "violations": []
+  },
+  {
+    "width": 768,
+    "route": "admin",
+    "dimensions": {
+      "width": 768,
+      "scroll": 768
+    },
+    "violations": []
+  },
+  {
+    "width": 768,
+    "errors": []
+  },
+  {
+    "width": 375,
+    "route": "overview",
+    "dimensions": {
+      "width": 375,
+      "scroll": 375
+    },
+    "violations": []
+  },
+  {
+    "width": 375,
+    "route": "agenda",
+    "dimensions": {
+      "width": 375,
+      "scroll": 375
+    },
+    "violations": []
+  },
+  {
+    "width": 375,
+    "route": "patients",
+    "dimensions": {
+      "width": 375,
+      "scroll": 375
+    },
+    "violations": []
+  },
+  {
+    "width": 375,
+    "route": "clinical",
+    "dimensions": {
+      "width": 375,
+      "scroll": 375
+    },
+    "violations": []
+  },
+  {
+    "width": 375,
+    "route": "stock",
+    "dimensions": {
+      "width": 375,
+      "scroll": 375
+    },
+    "violations": []
+  },
+  {
+    "width": 375,
+    "route": "finance",
+    "dimensions": {
+      "width": 375,
+      "scroll": 375
+    },
+    "violations": []
+  },
+  {
+    "width": 375,
+    "route": "copilot",
+    "dimensions": {
+      "width": 375,
+      "scroll": 375
+    },
+    "violations": []
+  },
+  {
+    "width": 375,
+    "route": "admin",
+    "dimensions": {
+      "width": 375,
+      "scroll": 375
+    },
+    "violations": []
+  },
+  {
+    "width": 375,
+    "errors": []
+  }
+]

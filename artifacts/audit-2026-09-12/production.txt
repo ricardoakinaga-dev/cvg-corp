@@ -1,0 +1,7 @@
+
+> cvg-corp@0.1.0 verify:production
+> tsx scripts/verify-production.ts --structural
+
+FAIL unit/integration tests: failed
+FAIL static verification: failed (FAIL evidence snapshot: artifacts/operational-proof/security-red-team-local.json mtime differs from the snapshot | FAIL evidence snapshot: artifacts/operational-proof/resource-pressure-local.json mtime differs from the snapshot | FAIL evidence snapshot: artifacts/operational-proof/runbook-execution-local.json mtime differs from the snapshot)
+FAIL CycloneDX SBOM: failed (npm error invalid: @vitejs/plugin-react@5.2.0, ^6.1.1 required by web@npm:@cvg/web@0.1.0 | npm error invalid: vite@7.3.6, ^8.2.2 required by web@npm:@cvg/web@0.1.0 | npm error A complete log of this run can be found in: /home/ricardo/.npm/_logs/2026-09-13T02_35_56_653Z-debug-0.log)

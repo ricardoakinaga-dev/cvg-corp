@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "gate_id": "GATE-CVG-AUD13-19",
+  "task_id": "AUD13-19",
+  "status": "PASS",
+  "decision": "PASS",
+  "score": 8.0,
+  "critic_artifact": null,
+  "subject": {
+    "head_sha": "1c22c5dc79c52151f4c7c94c4402dfdc86812cbc",
+    "worktree": "MODIFIED",
+    "task_owned_paths": [
+      "apps/web/src/features/copilot/",
+      "apps/api/src/application/agent-service.ts",
+      "tests/"
+    ],
+    "exclusive_resources": [
+      "copilot-feature",
+      "ai-application"
+    ]
+  },
+  "bar": {
+    "path": ".gauntlet/bar-v4.json",
+    "sha256": "2093461a8d6103641a555ad45371dde4649e5f144c32260b80244e219fa70697"
+  },
+  "checks": [
+    {
+      "command": "npx playwright test app.spec.ts (375/768/1440)",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "106 passed, 8 skipped"
+    },
+    {
+      "command": "npm test",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "363 testes: 362 pass, 1 skip, 0 fail"
+    },
+    {
+      "command": "npm run test:database",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "61 testes"
+    },
+    {
+      "command": "npm run verify:pdp",
+      "exit_code": 0,
+      "result": "PASS"
+    },
+    {
+      "command": "npm run typecheck",
+      "exit_code": 0,
+      "result": "PASS"
+    },
+    {
+      "command": "npm run lint",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "173 arquivos"
+    }
+  ],
+  "residuals": [
+    "sem comando de cancelamento de turno (negacao de approval cobre)",
+    "runtime DeepSeek real/governance durável (AUD13-27); budget multidimensional (AUD13-21)"
+  ],
+  "verification_refs": [
+    "VER-CVG-AUD13-19-001"
+  ],
+  "artifact_digests": {
+    "apps/web/src/features/copilot/Copilot.tsx": "bde7ae6d43d4656fbb4be725c61872e01f5cb1ff41fe4de13135f1158fa49017",
+    "tests/e2e/app.spec.ts": "d925534cb08cb5d87cf0386922022b23a3a8d30e45afdcd07f1c5bb4d79f4174"
+  },
+  "recorded_at": "2026-09-13T13:34:49-03:00"
+}

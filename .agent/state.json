@@ -16,10 +16,10 @@
   "risk_level": "CRITICAL",
   "blast_radius": "SYSTEM",
   "status": "IN_PROGRESS",
-  "active_execplan": ".agent/plans/2026-09-08-cvg-state-of-art-vnext.md",
-  "active_task": "CVG-FULL-STATE-OF-THE-ART",
-  "verification_state": "PASS_WITH_LIMITATIONS",
-  "repository_state": "HEAD e43b3b0032aafb9d17563b1fce00fbae88ee0d51; worktree modified. PostgreSQL 16.15 local migrations 001-036, concurrency and restore pass; durable reconciliation/outbox/audit-chain/recovery authentication-shape, temporal and ledger-digest hardening pass; 330 tests (329 pass, 1 skip, 0 fail); static 149/171; lint 169; verify:triplo-aaa exit 2 AAA_NOT_PROVEN; external/human gates absent.",
+  "active_execplan": ".agent/plans/2026-09-13-aaa2.md",
+  "active_task": "AUD13-16",
+  "verification_state": "READY",
+  "repository_state": "HEAD 1c22c5dc79c52151f4c7c94c4402dfdc86812cbc; worktree modified by AUD13 waves (15 DONE, AUD13-01 DONE local, AUD13-16 IN_PROGRESS, AUD13-02/14/15/17/18/19/20/21/22/23/24/25/27/29 PARTIAL, AUD13-28/30-38 PLANNED, filhos 14A/16A/17A/18A/20A/25A PLANNED) plus pre-existing overlay; npm test 387=386 pass+1 skip+0 fail; test:database 66/66; typecheck/lint/static/build limpos; external evidence BLOCKED_EXTERNAL",
   "instruction_scope_refs": [
     "docs/prompt-state-of-the-art-triplo-aaa.md",
     "docs/prompt-state-of-the-art-triplo-aaa-2026-09-09-v2.txt",
@@ -42,13 +42,17 @@
     "/home/ricardo/deepseek-harness/docs/architecture.md",
     "docs/prompt-final-operational-proof-2026-09-10.txt",
     "docs/final-operational-proof-audit.md",
-    ".gauntlet/bar-v4.json"
+    ".gauntlet/bar-v4.json",
+    "docs/plano-triplo-aaa-pos-entrega-2026-09-13/backlog.json",
+    "docs/plano-triplo-aaa-pos-entrega-2026-09-13/rastreabilidade.md",
+    "docs/plano-triplo-aaa-pos-entrega-2026-09-13/qualidade-e-execucao.md",
+    ".agent/plans/2026-09-13-aaa2.md"
   ],
-  "last_gate_record": "VER-CVG-268",
-  "last_event_id": "EVT-CVG-20260911-VERIFY-330",
-  "state_revision": 295,
-  "latest_evidence_note": "VER-CVG-268: PostgreSQL 16.15 local ephemeral migrations 001-036, verify/postgres concurrency/restore PASS; worker reconciliation/outbox/audit-chain, strict raw recovery authentication validation and immutable durable-ledger digest validation pass; 330 tests (329 pass, 1 skip, 0 fail); snapshot 76518144d894beed7821e79789531bbe101c80db1ada5883303d161647c71ea4; verify:triplo-aaa exit 2 AAA_NOT_PROVEN; external gates absent.",
-  "current_checkpoint": {
+  "last_gate_record": null,
+  "last_event_id": "EVT-CVG-20260913-AAA2-02-CLOSE-036",
+  "state_revision": 352,
+  "latest_evidence_note": "AAA2-02/E01 DONE_WITH_LIMITATION no escopo local apos critica I1 aprovada; AUD13-16 permanece IN_PROGRESS por AUD13-16A/D-02. AAA2-01 permanece DONE local com limitacao; Triplo AAA global e promocao permanecem bloqueados; AAA_NOT_PROVEN.",
+  "historical_checkpoint": {
     "commit": "e43b3b0032aafb9d17563b1fce00fbae88ee0d51",
     "worktree": "modified",
     "scope": "recovery-boundary raw authentication-shape, temporal and durable-ledger digest validation with final local regression and fresh 15-category gauntlet",
@@ -64,7 +68,22 @@
     "localArtifactSha256": "bc0807b388a59ab906e35a1a66a7acec208433451a81d03cadad18d599748034",
     "tripleArtifactSha256": "a20b88c3ca8a827ba0210b792a807072fe1d5f49e1f952167b85827a0cb35818"
   },
-  "current_evidence_note": "VER-CVG-268: PostgreSQL 16.15 local ephemeral migrations 001-036, verify/postgres concurrency/restore PASS; worker reconciliation/outbox/audit-chain, strict raw recovery authentication validation and immutable durable-ledger digest validation pass; 330 tests (329 pass, 1 skip, 0 fail); snapshot 76518144d894beed7821e79789531bbe101c80db1ada5883303d161647c71ea4; verify:triplo-aaa exit 2 AAA_NOT_PROVEN; external gates absent.",
+  "current_checkpoint": {
+    "task": "AUD13-16",
+    "action": "AUD13-16:AAA2-02-E01",
+    "sourceSha": "1c22c5dc79c52151f4c7c94c4402dfdc86812cbc",
+    "worktree": "modified",
+    "result": "DONE_WITH_LIMITATION",
+    "evidence": "VER-CVG-AAA2-02-005",
+    "critic": "CRIT-AAA2-02-E01-FINAL-20260913-7F3A",
+    "globalVerdict": "AAA_NOT_PROVEN",
+    "limitations": [
+      "PostgreSQL multi-process medication concurrency not proven",
+      "AUD13-16A blocked by D-02",
+      "external gates and human approval absent"
+    ]
+  },
+  "current_evidence_note": "AAA2-02/E01: correcao vertical e validacao local aprovadas com ressalvas; AUD13-16 segue IN_PROGRESS aguardando D-02/AUD13-16A. AAA2-01 permanece fechamento local aceito com limitacao; promocao/Triplo AAA global continuam AAA_NOT_PROVEN.",
   "post_observation_checkpoint": {
     "commit": "5d09f25a224faecdd75631fdd7070e3fc8b14fda",
     "scope": "durable-command-idempotency-post-ci-observation",
@@ -99,7 +118,7 @@
   "human_approval_required": [
     "production release, real data, real provider, credential handling, break-glass, retention/residency, RTO/RPO/SLO and residual high/critical risk"
   ],
-  "updated_at": "2026-09-11T17:30:54.372Z",
+  "updated_at": "2026-09-13T22:09:07-03:00",
   "latest_remote_observation": {
     "run": "34503647191",
     "sha": "539d34e48e4b94d83d161797219bbc95fb43fec4",
@@ -114,23 +133,37 @@
     "limitations": "Remote CI is not staging or external provider/DeepSeek/secret authority. Operational Collector/SLO, production-like load/chaos/recovery, staging browser/assistive-tech/real-zoom matrix and human acceptance remain absent",
     "observed_at": "2026-09-10T13:50:43-03:00"
   },
-  "next_gate": "CVG-FULL-STATE-OF-THE-ART:EXTERNAL-EVIDENCE-AND-HUMAN-ACCEPTANCE",
-  "active_action_id": "CVG-FULL-STATE-OF-THE-ART:EXTERNAL-EVIDENCE-AND-HUMAN-ACCEPTANCE",
+  "next_gate": "AUD13-16:AAA2-02-E01-WAIT-D02",
+  "active_action_id": "AUD13-16:AAA2-02-E01-WAIT-D02",
+  "active_checkpoint": {
+    "task": "AUD13-16",
+    "action": "AUD13-16:AAA2-02-E01-WAIT-D02",
+    "sourceSha": "1c22c5dc79c52151f4c7c94c4402dfdc86812cbc",
+    "worktree": "modified",
+    "ownedPaths": [
+      "packages/domain/src/",
+      "apps/api/src/",
+      "tests/"
+    ],
+    "reason": "E01 foi corrigido e aprovado localmente com ressalvas; aguardar D-02 para AUD13-16A, sem efeitos externos ou promocao do item pai."
+  },
   "latest_audit_addendum": {
-    "record": "VER-CVG-268",
-    "observedAt": "2026-09-11T17:30:54.372Z",
-    "priorRecord": "VER-CVG-267",
-    "critic": ".gauntlet/critique-final-gauntlet-20260911-VER268.md",
-    "status": "FAIL",
+    "record": "VER-CVG-AAA2-02-005",
+    "observedAt": "2026-09-13T22:17:02-03:00",
+    "priorRecord": "VER-CVG-AAA2-02-004",
+    "critic": ".gauntlet/critique-aaa2-02-e01-final-20260913.md",
+    "status": "DONE_WITH_LIMITATION",
     "evidenceAdmission": "LOCAL_SNAPSHOT_GUARD",
-    "scope": "recovery rejects incomplete raw authentication state before normalization, reconstructs audit chain and binds durable ledgers to immutable content; PostgreSQL migrations 001-036 and fresh 15-category review",
-    "sourceSha": "e43b3b0032aafb9d17563b1fce00fbae88ee0d51",
-    "promptSha256": "39dfbb610267b61854b972bf8513f6562b0ee374aa308f7a79b38d21f2cdeae3",
-    "snapshotRunId": "76518144d894beed7821e79789531bbe101c80db1ada5883303d161647c71ea4",
-    "snapshotSha256": "23c302c622488335e2152212d81e26862854a4b5f1ca5ee807e53ce501ffcd50",
-    "localArtifactSha256": "bc0807b388a59ab906e35a1a66a7acec208433451a81d03cadad18d599748034",
-    "tripleArtifactSha256": "a20b88c3ca8a827ba0210b792a807072fe1d5f49e1f952167b85827a0cb35818",
-    "result": "VER-CVG-268: recovery rejects incomplete raw authentication state, rehashed audit tampering and durable ledger content divergence; local regression pass; external gates and human approval absent",
+    "scope": "AAA2-02/E01: terminal medication-order protection, direct/indirect dispensing, stock-reference integrity, focused/full regression and fresh I1 critique",
+    "sourceSha": "1c22c5dc79c52151f4c7c94c4402dfdc86812cbc",
+    "criticId": "CRIT-AAA2-02-E01-FINAL-20260913-7F3A",
+    "verificationRefs": [
+      "VER-CVG-AAA2-02-002",
+      "VER-CVG-AAA2-02-003",
+      "VER-CVG-AAA2-02-004",
+      "VER-CVG-AAA2-02-005"
+    ],
+    "result": "VER-CVG-AAA2-02-004: E01 aprovado no escopo local com ressalvas; suite e gates locais passam; PostgreSQL multi-processo, AUD13-16A, gates externos e aprovacao humana permanecem ausentes",
     "globalVerdict": "AAA_NOT_PROVEN"
   }
 }

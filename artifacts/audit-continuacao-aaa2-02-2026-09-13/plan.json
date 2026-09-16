@@ -1,0 +1,8 @@
+{
+  "command": [
+    "python3",
+    "docs/plano-triplo-aaa-pos-entrega-2026-09-13/validar-plano.py"
+  ],
+  "exit": 0,
+  "seconds": 0.11
+}

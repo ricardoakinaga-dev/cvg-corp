@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { API_SCHEMA_VERSION } from "./version.js";
+import { API_SCHEMA_VERSION, API_VERSION, SESSION_FORMAT_VERSION } from "./version.js";
 
 export { API_SCHEMA_VERSION, API_VERSION, SESSION_FORMAT_VERSION } from "./version.js";
 
@@ -63,7 +63,8 @@ export const errorCodes = [
   "DUPLICATE_DELIVERY",
   "INVALID_STATE",
   "CAPABILITY_DISABLED",
-  "INTERNAL_ERROR"
+  "INTERNAL_ERROR",
+  "API_COMPATIBILITY_UNAVAILABLE"
 ] as const;
 export type ErrorCode = (typeof errorCodes)[number];
 
@@ -295,7 +296,7 @@ export const stockMovementInputSchema = z.object({
   lotId: idSchema,
   locationId: idSchema,
   quantity: z.number().int().positive().max(1_000_000),
-  movementType: z.enum(["RECEIPT", "DISPENSE", "TRANSFER_IN", "TRANSFER_OUT", "RETURN", "ADJUSTMENT"]),
+  movementType: z.enum(["RECEIPT", "DISPENSE", "TRANSFER_IN", "TRANSFER_OUT", "RETURN", "ADJUSTMENT", "ADJUSTMENT_IN", "ADJUSTMENT_OUT"]),
   reason: z.string().trim().min(3).max(240),
   referenceId: idSchema.nullable().default(null)
 }).strict();
@@ -671,6 +672,14 @@ export interface CommandReceipt {
   result: unknown;
   createdAt: string;
   completedAt: string | null;
+  /** Fencing token for the durable claim; a takeover increments it. */
+  claimEpoch?: number;
+  /** Lease deadline while the claim is in flight; null once settled. */
+  claimExpiresAt?: string | null;
+  /** Whether the original attempt ever crossed the dispatch boundary. */
+  dispatchState?: "NOT_STARTED" | "DISPATCHED";
+  /** Set when a reconciled claim is finalized before any dispatch. */
+  failurePhase?: "PRE_DISPATCH" | "POST_DISPATCH" | null;
 }
 
 export interface Guardian {
@@ -952,7 +961,7 @@ export interface Charge {
   description: string;
   amountCents: number;
   currency: string;
-  status: "OPEN" | "PARTIALLY_PAID" | "PAID" | "REFUNDED";
+  status: ChargeStatus;
   createdAt: string;
 }
 
@@ -963,7 +972,7 @@ export interface Payment {
   amountCents: number;
   method: z.infer<typeof paymentInputSchema>["method"];
   externalReference: string | null;
-  status: "PENDING" | "SETTLED" | "UNKNOWN" | "REFUNDED";
+  status: PaymentStatus;
   createdAt: string;
 }
 
@@ -1164,21 +1173,773 @@ export interface ApiErrorBody {
   correlationId: string;
 }
 
-export type ApiResponse<T> = ApiSuccess<T> | ApiErrorBody;
+export interface ApiPartial<T> {
+  schemaVersion: typeof API_SCHEMA_VERSION;
+  status: "PARTIAL";
+  data: T;
+  pending: PendingOperation[];
+  correlationId: string;
+}
+
+export type ApiResponse<T> = ApiSuccess<T> | ApiPartial<T> | ApiErrorBody;
 
 export function success<T>(data: T, correlationId: string): ApiSuccess<T> {
   return { schemaVersion: API_SCHEMA_VERSION, data, correlationId };
 }
 
 export function failure(code: ErrorCode, message: string, correlationId: string, details?: Record<string, unknown>): ApiErrorBody {
-  const error: ApiErrorBody["error"] = { code, message };
-  if (details) error.details = details;
-  return { schemaVersion: API_SCHEMA_VERSION, error, correlationId };
+  const boundedCode: ErrorCode = typeof code === "string" && (errorCodes as readonly string[]).includes(code) ? code : "INTERNAL_ERROR";
+  const boundedMessage = (typeof message === "string" ? message : "").trim().slice(0, 2_000) || "Request failed";
+  const boundedCorrelationId = correlationSchema.safeParse(correlationId).success ? correlationId : "unknown";
+  const error = Object.create(null) as ApiErrorBody["error"];
+  error.code = boundedCode;
+  error.message = boundedMessage;
+  if (details !== undefined) {
+    try {
+      const parsedDetails = errorDetailsSchema.safeParse(details);
+      if (parsedDetails.success) {
+        const safeDetails = structuredClone(parsedDetails.data);
+        stripSerializationPrototypes(safeDetails, new WeakSet<object>());
+        error.details = safeDetails;
+      } else {
+        error.details = Object.assign(Object.create(null), { detailsUnavailable: true });
+      }
+    } catch {
+      error.details = Object.assign(Object.create(null), { detailsUnavailable: true });
+    }
+  }
+  return Object.assign(Object.create(null), { schemaVersion: API_SCHEMA_VERSION, error, correlationId: boundedCorrelationId });
 }
 
 export function isApiError(value: unknown): value is ApiErrorBody {
   return typeof value === "object" && value !== null && "error" in value;
 }
+
+export function partial<T>(data: T, pending: PendingOperation[], correlationId: string): ApiPartial<T> {
+  return { schemaVersion: API_SCHEMA_VERSION, status: "PARTIAL", data, pending, correlationId };
+}
+
+export function isApiPartial(value: unknown): value is ApiPartial<unknown> {
+  return typeof value === "object" && value !== null && "status" in value && value.status === "PARTIAL";
+}
+
+const timestampSchema = z.string().datetime({ offset: true });
+const nonNegativeCentsSchema = z.number().int().nonnegative();
+
+const apiSuccessEnvelopeShape = z.object({
+  schemaVersion: z.literal(API_SCHEMA_VERSION),
+  data: z.unknown(),
+  correlationId: correlationSchema
+}).strict();
+
+function hasBoundedErrorDetails(value: unknown, depth: number, seen: WeakSet<object>, budget: { nodes: number }): boolean {
+  if (budget.nodes >= 128 || depth > 4) return false;
+  budget.nodes += 1;
+  if (value === null || typeof value === "boolean") return true;
+  if (typeof value === "number") return Number.isFinite(value);
+  if (typeof value === "string") return value.length <= 500;
+  if (typeof value !== "object") return false;
+  if (seen.has(value)) return false;
+  seen.add(value);
+  const valid = (() => {
+    const prototype = Object.getPrototypeOf(value);
+    if (hasPrototypeProperty(value, "toJSON")) return false;
+    if (Array.isArray(value)) {
+      if (prototype !== Array.prototype && prototype !== null) return false;
+      const lengthDescriptor = Object.getOwnPropertyDescriptor(value, "length");
+      if (!lengthDescriptor || !("value" in lengthDescriptor) || !Number.isInteger(lengthDescriptor.value) || lengthDescriptor.value < 0 || lengthDescriptor.value > 32) return false;
+      for (let index = 0; index < lengthDescriptor.value; index += 1) {
+        const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+        if (!descriptor?.enumerable || !("value" in descriptor) || !hasBoundedErrorDetails(descriptor.value, depth + 1, seen, budget)) return false;
+      }
+      for (const key of Reflect.ownKeys(value)) {
+        if (key === "length") continue;
+        if (typeof key !== "string" || !/^(0|[1-9]\d*)$/.test(key) || Number(key) >= lengthDescriptor.value) return false;
+        const descriptor = Object.getOwnPropertyDescriptor(value, key);
+        if (!descriptor?.enumerable || !("value" in descriptor)) return false;
+      }
+      return true;
+    }
+    if (prototype !== Object.prototype && prototype !== null) return false;
+    const keys = Reflect.ownKeys(value);
+    if (keys.length > 32 || keys.some((key) => typeof key !== "string")) return false;
+    return keys.every((key) => {
+      if (typeof key !== "string" || !/^[A-Za-z0-9._:-]{1,80}$/.test(key)) return false;
+      const descriptor = Object.getOwnPropertyDescriptor(value, key);
+      return Boolean(descriptor?.enumerable && "value" in descriptor && hasBoundedErrorDetails(descriptor.value, depth + 1, seen, budget));
+    });
+  })();
+  seen.delete(value);
+  return valid;
+}
+
+const errorDetailsSchema = z.custom<Record<string, unknown>>((value) => {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
+  try {
+    if (!hasBoundedErrorDetails(value, 0, new WeakSet<object>(), { nodes: 0 })) return false;
+    structuredClone(value);
+    return true;
+  } catch {
+    return false;
+  }
+}, { message: "error details exceed the bounded diagnostic contract" });
+
+const apiErrorEnvelopeShape = z.object({
+  schemaVersion: z.literal(API_SCHEMA_VERSION),
+  error: z.object({
+    code: z.enum(errorCodes),
+    message: z.string().trim().min(1).max(2_000),
+    details: errorDetailsSchema.optional()
+  }).strict(),
+  correlationId: correlationSchema
+}).strict();
+
+const errorEnvelopeKeys = ["schemaVersion", "error", "correlationId"] as const;
+
+function hasExactEnumerableDataKeys(value: object, required: readonly string[], optional: readonly string[] = []): boolean {
+  const allowed = [...required, ...optional];
+  const keys = Reflect.ownKeys(value);
+  if (keys.length < required.length || keys.length > allowed.length || !required.every((key) => keys.includes(key))) return false;
+  return keys.every((key) => {
+    if (typeof key !== "string" || !allowed.includes(key)) return false;
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    return Boolean(descriptor?.enumerable && "value" in descriptor);
+  });
+}
+
+function isApiErrorEnvelopeDataOnly(value: unknown): boolean {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
+  try {
+    const prototype = Object.getPrototypeOf(value);
+    if ((prototype !== Object.prototype && prototype !== null) || hasPrototypeProperty(value, "toJSON") || !hasExactEnumerableDataKeys(value, errorEnvelopeKeys)) return false;
+    const errorDescriptor = Object.getOwnPropertyDescriptor(value, "error");
+    const error = errorDescriptor?.value;
+    if (typeof error !== "object" || error === null || Array.isArray(error)) return false;
+    const errorPrototype = Object.getPrototypeOf(error);
+    if ((errorPrototype !== Object.prototype && errorPrototype !== null) || hasPrototypeProperty(error, "toJSON") || !hasExactEnumerableDataKeys(error, ["code", "message"], ["details"])) return false;
+    const detailsDescriptor = Object.getOwnPropertyDescriptor(error, "details");
+    if (detailsDescriptor && detailsDescriptor.value !== undefined && (!hasBoundedErrorDetails(detailsDescriptor.value, 0, new WeakSet<object>(), { nodes: 0 }) || (() => {
+      try {
+        structuredClone(detailsDescriptor.value);
+        return false;
+      } catch {
+        return true;
+      }
+    })())) return false;
+    structuredClone(value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function invalidContractSchema<T>(message: string): z.ZodError<T> {
+  return new z.ZodError([{ code: "custom", path: [], message }]) as z.ZodError<T>;
+}
+
+function safeParseApiErrorEnvelope(value: unknown): ReturnType<typeof apiErrorEnvelopeShape.safeParse> {
+  if (!isApiErrorEnvelopeDataOnly(value)) return { success: false, error: invalidContractSchema<z.infer<typeof apiErrorEnvelopeShape>>("error envelope contains invalid or unsafe properties") };
+  try {
+    return apiErrorEnvelopeShape.safeParse(value);
+  } catch {
+    return { success: false, error: invalidContractSchema<z.infer<typeof apiErrorEnvelopeShape>>("error envelope could not be validated safely") };
+  }
+}
+
+function parseApiErrorEnvelope(value: unknown): ReturnType<typeof apiErrorEnvelopeShape.parse> {
+  const result = safeParseApiErrorEnvelope(value);
+  if (!result.success) throw result.error;
+  return result.data;
+}
+
+async function safeParseApiErrorEnvelopeAsync(value: unknown): Promise<ReturnType<typeof apiErrorEnvelopeShape.safeParse>> {
+  return safeParseApiErrorEnvelope(value);
+}
+
+async function parseApiErrorEnvelopeAsync(value: unknown): Promise<ReturnType<typeof apiErrorEnvelopeShape.parse>> {
+  return parseApiErrorEnvelope(value);
+}
+
+function hasPrototypeProperty(value: object, property: string): boolean {
+  if (Object.prototype.hasOwnProperty.call(value, property)) return true;
+  let prototype = Object.getPrototypeOf(value);
+  const seen = new WeakSet<object>();
+  for (let depth = 0; prototype !== null; depth += 1) {
+    if (depth >= 16 || seen.has(prototype)) return true;
+    seen.add(prototype);
+    if (Object.prototype.hasOwnProperty.call(prototype, property)) return true;
+    prototype = Object.getPrototypeOf(prototype);
+  }
+  return false;
+}
+
+function stripSerializationPrototypes(value: unknown, seen: WeakSet<object>): void {
+  if (typeof value !== "object" || value === null || seen.has(value)) return;
+  seen.add(value);
+  for (const key of Reflect.ownKeys(value)) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    if (descriptor && "value" in descriptor) stripSerializationPrototypes(descriptor.value, seen);
+  }
+  Object.setPrototypeOf(value, null);
+  seen.delete(value);
+}
+
+const ENVELOPE_GRAPH_MAX_DEPTH = 32;
+const ENVELOPE_GRAPH_MAX_NODES = 65_536;
+const ENVELOPE_GRAPH_MAX_KEYS = 16_384;
+const ENVELOPE_GRAPH_MAX_ARRAY_LENGTH = 16_384;
+const ENVELOPE_GRAPH_MAX_STRING_LENGTH = 1_000_000;
+
+function isSerializableContractGraph(value: unknown, seen: WeakSet<object>, depth = 0, budget = { nodes: 0 }): boolean {
+  if (value === null || typeof value === "boolean") return true;
+  if (typeof value === "number") return Number.isFinite(value);
+  if (typeof value === "string") return value.length <= ENVELOPE_GRAPH_MAX_STRING_LENGTH;
+  if (typeof value !== "object" || seen.has(value)) return false;
+  if (depth > ENVELOPE_GRAPH_MAX_DEPTH || budget.nodes >= ENVELOPE_GRAPH_MAX_NODES) return false;
+  budget.nodes += 1;
+  seen.add(value);
+  try {
+    const prototype = Object.getPrototypeOf(value);
+    if (hasPrototypeProperty(value, "toJSON")) return false;
+    const keys = Reflect.ownKeys(value);
+    if (Array.isArray(value)) {
+      if (prototype !== Array.prototype && prototype !== null) return false;
+      const lengthDescriptor = Object.getOwnPropertyDescriptor(value, "length");
+      if (!lengthDescriptor || !("value" in lengthDescriptor) || !Number.isInteger(lengthDescriptor.value) || lengthDescriptor.value < 0 || lengthDescriptor.value > ENVELOPE_GRAPH_MAX_ARRAY_LENGTH || keys.length > ENVELOPE_GRAPH_MAX_KEYS || keys.length !== lengthDescriptor.value + 1) return false;
+      for (let index = 0; index < lengthDescriptor.value; index += 1) {
+        const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+        if (!descriptor?.enumerable || !("value" in descriptor) || !isSerializableContractGraph(descriptor.value, seen, depth + 1, budget)) return false;
+      }
+      return keys.every((key) => key === "length" || (typeof key === "string" && /^(0|[1-9]\d*)$/.test(key) && Number(key) < lengthDescriptor.value && Boolean(Object.getOwnPropertyDescriptor(value, key)?.enumerable)));
+    }
+    if (prototype !== Object.prototype && prototype !== null) return false;
+    if (keys.length > ENVELOPE_GRAPH_MAX_KEYS) return false;
+    return keys.every((key) => {
+      if (typeof key !== "string") return false;
+      const descriptor = Object.getOwnPropertyDescriptor(value, key);
+      return Boolean(descriptor && descriptor.enumerable && "value" in descriptor && isSerializableContractGraph(descriptor.value, seen, depth + 1, budget));
+    });
+  } catch {
+    return false;
+  } finally {
+    seen.delete(value);
+  }
+}
+
+function isPlainContractObject(value: unknown, required: readonly string[], optional: readonly string[] = []): value is Record<string, unknown> {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
+  try {
+    const prototype = Object.getPrototypeOf(value);
+    return (prototype === Object.prototype || prototype === null)
+      && !hasPrototypeProperty(value, "toJSON")
+      && hasExactEnumerableDataKeys(value, required, optional);
+  } catch {
+    return false;
+  }
+}
+
+function isApiSuccessEnvelopeDataOnly(value: unknown): boolean {
+  if (!isPlainContractObject(value, ["schemaVersion", "data", "correlationId"])) return false;
+  try {
+    if (!isSerializableContractGraph(value, new WeakSet<object>())) return false;
+    structuredClone(value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function safeParseApiSuccessEnvelope(value: unknown): ReturnType<typeof apiSuccessEnvelopeShape.safeParse> {
+  if (!isApiSuccessEnvelopeDataOnly(value)) return { success: false, error: invalidContractSchema<z.infer<typeof apiSuccessEnvelopeShape>>("success envelope contains invalid or unsafe properties") };
+  try {
+    return apiSuccessEnvelopeShape.safeParse(value);
+  } catch {
+    return { success: false, error: invalidContractSchema<z.infer<typeof apiSuccessEnvelopeShape>>("success envelope could not be validated safely") };
+  }
+}
+
+function parseApiSuccessEnvelope(value: unknown): ReturnType<typeof apiSuccessEnvelopeShape.parse> {
+  const result = safeParseApiSuccessEnvelope(value);
+  if (!result.success) throw result.error;
+  return result.data;
+}
+
+async function safeParseApiSuccessEnvelopeAsync(value: unknown): Promise<ReturnType<typeof apiSuccessEnvelopeShape.safeParse>> {
+  return safeParseApiSuccessEnvelope(value);
+}
+
+async function parseApiSuccessEnvelopeAsync(value: unknown): Promise<ReturnType<typeof apiSuccessEnvelopeShape.parse>> {
+  return parseApiSuccessEnvelope(value);
+}
+
+export const apiSuccessEnvelopeSchema = new Proxy(apiSuccessEnvelopeShape, {
+  get(target, property, receiver) {
+    if (property === "safeParse") return safeParseApiSuccessEnvelope;
+    if (property === "parse") return parseApiSuccessEnvelope;
+    if (property === "safeParseAsync" || property === "spa") return safeParseApiSuccessEnvelopeAsync;
+    if (property === "parseAsync") return parseApiSuccessEnvelopeAsync;
+    return Reflect.get(target, property, receiver);
+  }
+});
+
+export const apiErrorEnvelopeSchema = new Proxy(apiErrorEnvelopeShape, {
+  get(target, property, receiver) {
+    if (property === "safeParse") return safeParseApiErrorEnvelope;
+    if (property === "parse") return parseApiErrorEnvelope;
+    if (property === "safeParseAsync" || property === "spa") return safeParseApiErrorEnvelopeAsync;
+    if (property === "parseAsync") return parseApiErrorEnvelopeAsync;
+    return Reflect.get(target, property, receiver);
+  }
+});
+
+export const pendingOperationReasonSchema = z.enum([
+  "IN_FLIGHT",
+  "OUTCOME_UNKNOWN",
+  "DEPENDENCY_UNAVAILABLE",
+  "POLICY_UNRESOLVED"
+]);
+export type PendingOperationReason = z.infer<typeof pendingOperationReasonSchema>;
+
+const pendingOperationShape = z.object({
+  operation: z.string().trim().min(1).max(160),
+  receiptId: idSchema.nullable(),
+  reason: pendingOperationReasonSchema,
+  retryable: z.boolean()
+}).strict();
+
+function isDenseContractArray(value: unknown, minimum: number, maximum: number, itemGuard?: (item: unknown) => boolean): boolean {
+  if (!Array.isArray(value)) return false;
+  try {
+    const prototype = Object.getPrototypeOf(value);
+    const lengthDescriptor = Object.getOwnPropertyDescriptor(value, "length");
+    const length = lengthDescriptor?.value;
+    if ((prototype !== Array.prototype && prototype !== null) || hasPrototypeProperty(value, "toJSON") || !lengthDescriptor || !("value" in lengthDescriptor) || !Number.isInteger(length) || length < minimum || length > maximum) return false;
+    const keys = Reflect.ownKeys(value);
+    if (keys.length !== length + 1) return false;
+    for (let index = 0; index < length; index += 1) {
+      const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+      if (!descriptor?.enumerable || !("value" in descriptor) || (itemGuard && !itemGuard(descriptor.value))) return false;
+    }
+    const validKeys = keys.every((key) => key === "length" || (typeof key === "string" && /^(0|[1-9]\d*)$/.test(key) && Number(key) < length && Boolean(Object.getOwnPropertyDescriptor(value, key)?.enumerable)));
+    if (!validKeys) return false;
+    structuredClone(value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function isPendingOperationDataOnly(value: unknown): boolean {
+  if (!isPlainContractObject(value, ["operation", "receiptId", "reason", "retryable"])) return false;
+  try {
+    structuredClone(value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function safeParsePendingOperation(value: unknown): ReturnType<typeof pendingOperationShape.safeParse> {
+  if (!isPendingOperationDataOnly(value)) return { success: false, error: invalidContractSchema<z.infer<typeof pendingOperationShape>>("pending operation contains invalid or unsafe properties") };
+  try {
+    return pendingOperationShape.safeParse(value);
+  } catch {
+    return { success: false, error: invalidContractSchema<z.infer<typeof pendingOperationShape>>("pending operation could not be validated safely") };
+  }
+}
+
+function parsePendingOperation(value: unknown): ReturnType<typeof pendingOperationShape.parse> {
+  const result = safeParsePendingOperation(value);
+  if (!result.success) throw result.error;
+  return result.data;
+}
+
+async function safeParsePendingOperationAsync(value: unknown): Promise<ReturnType<typeof pendingOperationShape.safeParse>> {
+  return safeParsePendingOperation(value);
+}
+
+async function parsePendingOperationAsync(value: unknown): Promise<ReturnType<typeof pendingOperationShape.parse>> {
+  return parsePendingOperation(value);
+}
+
+export const pendingOperationSchema = new Proxy(pendingOperationShape, {
+  get(target, property, receiver) {
+    if (property === "safeParse") return safeParsePendingOperation;
+    if (property === "parse") return parsePendingOperation;
+    if (property === "safeParseAsync" || property === "spa") return safeParsePendingOperationAsync;
+    if (property === "parseAsync") return parsePendingOperationAsync;
+    return Reflect.get(target, property, receiver);
+  }
+});
+export type PendingOperation = z.infer<typeof pendingOperationSchema>;
+
+const apiPartialEnvelopeShape = z.object({
+  schemaVersion: z.literal(API_SCHEMA_VERSION),
+  status: z.literal("PARTIAL"),
+  data: z.unknown(),
+  pending: z.array(pendingOperationShape).min(1).max(32),
+  correlationId: correlationSchema
+}).strict();
+
+function isApiPartialEnvelopeDataOnly(value: unknown): boolean {
+  try {
+    if (!isPlainContractObject(value, ["schemaVersion", "status", "data", "pending", "correlationId"])) return false;
+    const pending = Object.getOwnPropertyDescriptor(value, "pending")?.value;
+    if (!isDenseContractArray(pending, 1, 32, isPendingOperationDataOnly)) return false;
+    if (!isSerializableContractGraph(value, new WeakSet<object>())) return false;
+    structuredClone(value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function safeParseApiPartialEnvelope(value: unknown): ReturnType<typeof apiPartialEnvelopeShape.safeParse> {
+  if (!isApiPartialEnvelopeDataOnly(value)) return { success: false, error: invalidContractSchema<z.infer<typeof apiPartialEnvelopeShape>>("partial envelope contains invalid or unsafe properties") };
+  try {
+    return apiPartialEnvelopeShape.safeParse(value);
+  } catch {
+    return { success: false, error: invalidContractSchema<z.infer<typeof apiPartialEnvelopeShape>>("partial envelope could not be validated safely") };
+  }
+}
+
+function parseApiPartialEnvelope(value: unknown): ReturnType<typeof apiPartialEnvelopeShape.parse> {
+  const result = safeParseApiPartialEnvelope(value);
+  if (!result.success) throw result.error;
+  return result.data;
+}
+
+async function safeParseApiPartialEnvelopeAsync(value: unknown): Promise<ReturnType<typeof apiPartialEnvelopeShape.safeParse>> {
+  return safeParseApiPartialEnvelope(value);
+}
+
+async function parseApiPartialEnvelopeAsync(value: unknown): Promise<ReturnType<typeof apiPartialEnvelopeShape.parse>> {
+  return parseApiPartialEnvelope(value);
+}
+
+export const apiPartialEnvelopeSchema = new Proxy(apiPartialEnvelopeShape, {
+  get(target, property, receiver) {
+    if (property === "safeParse") return safeParseApiPartialEnvelope;
+    if (property === "parse") return parseApiPartialEnvelope;
+    if (property === "safeParseAsync" || property === "spa") return safeParseApiPartialEnvelopeAsync;
+    if (property === "parseAsync") return parseApiPartialEnvelopeAsync;
+    return Reflect.get(target, property, receiver);
+  }
+});
+
+export const commandReceiptStatusSchema = z.enum([
+  "IN_FLIGHT",
+  "SUCCEEDED",
+  "FAILED",
+  "OUTCOME_UNKNOWN"
+]);
+export type CommandReceiptStatus = z.infer<typeof commandReceiptStatusSchema>;
+
+export const commandReceiptSchema = z.object({
+  id: idSchema,
+  organizationId: idSchema,
+  actorId: idSchema,
+  unitId: idSchema.nullable(),
+  workspaceId: idSchema.nullable(),
+  auditRecordId: idSchema.nullable(),
+  operation: z.string().trim().min(1).max(160),
+  idempotencyLookup: z.string().trim().min(1).max(256),
+  bodyDigest: digestSchema,
+  status: commandReceiptStatusSchema,
+  result: z.unknown(),
+  createdAt: timestampSchema,
+  completedAt: timestampSchema.nullable()
+}).strict().superRefine((value, ctx) => {
+  if (value.status === "IN_FLIGHT" && (value.result !== null || value.completedAt !== null)) {
+    ctx.addIssue({ code: "custom", path: ["status"], message: "in-flight receipts cannot expose a result or completion time" });
+  }
+  if (value.status !== "IN_FLIGHT" && value.completedAt === null) {
+    ctx.addIssue({ code: "custom", path: ["completedAt"], message: "terminal receipts require a completion time" });
+  }
+  if (value.status !== "SUCCEEDED" && value.result !== null) {
+    ctx.addIssue({ code: "custom", path: ["result"], message: "non-success receipts cannot expose a result" });
+  }
+});
+export type CommandReceiptWire = z.infer<typeof commandReceiptSchema>;
+
+export const receiptReferenceSchema = z.object({
+  receiptId: idSchema,
+  status: commandReceiptStatusSchema,
+  replayed: z.boolean()
+}).strict().superRefine((value, ctx) => {
+  if (value.replayed && value.status !== "SUCCEEDED") {
+    ctx.addIssue({ code: "custom", path: ["replayed"], message: "only a successful receipt can be replayed" });
+  }
+});
+export type ReceiptReference = z.infer<typeof receiptReferenceSchema>;
+
+export const sessionLifecycleStateSchema = z.enum([
+  "ACTIVE",
+  "EXPIRED",
+  "REVOKED",
+  "SIGN_OUT_PENDING",
+  "UNKNOWN"
+]);
+export type SessionLifecycleState = z.infer<typeof sessionLifecycleStateSchema>;
+
+export const sessionLifecycleSchema = z.object({
+  sessionId: idSchema,
+  state: sessionLifecycleStateSchema,
+  observedBy: z.enum(["SERVER", "LOCAL"]),
+  observedAt: timestampSchema
+}).strict().superRefine((value, ctx) => {
+  if (value.state === "REVOKED" && value.observedBy !== "SERVER") {
+    ctx.addIssue({ code: "custom", path: ["observedBy"], message: "revocation requires a server observation" });
+  }
+});
+export type SessionLifecycle = z.infer<typeof sessionLifecycleSchema>;
+
+export const logoutLocalStateSchema = z.enum(["AUTHENTICATED", "SIGN_OUT_PENDING", "SIGNED_OUT"]);
+export const serverRevocationSchema = z.enum(["CONFIRMED", "PENDING", "NOT_REVOKED", "NOT_OBSERVED", "UNKNOWN"]);
+
+export const logoutServerObservationSchema = z.object({
+  status: z.enum(["REVOKED", "PENDING", "NOT_REVOKED"]),
+  observedAt: timestampSchema
+}).strict();
+
+/** Local sign-out and server revocation are separate facts; one never implies the other. */
+export const logoutResponseSchema = z.object({
+  sessionId: idSchema,
+  localState: logoutLocalStateSchema,
+  serverRevocation: serverRevocationSchema,
+  serverAttempted: z.boolean(),
+  serverObservation: logoutServerObservationSchema.nullable(),
+  retryable: z.boolean(),
+  correlationId: correlationSchema
+}).strict().superRefine((value, ctx) => {
+  if (!value.serverAttempted && value.serverRevocation !== "NOT_OBSERVED") {
+    ctx.addIssue({ code: "custom", path: ["serverRevocation"], message: "an unattempted logout cannot claim a server result" });
+  }
+  if (value.serverRevocation === "NOT_OBSERVED" && value.serverAttempted) {
+    ctx.addIssue({ code: "custom", path: ["serverAttempted"], message: "not-observed logout must not claim a server attempt" });
+  }
+  if (value.serverRevocation === "UNKNOWN" && (!value.serverAttempted || value.serverObservation !== null)) {
+    ctx.addIssue({ code: "custom", path: ["serverObservation"], message: "unknown revocation requires an attempted request with no observed response" });
+  }
+  if (value.serverRevocation === "CONFIRMED" && (!value.serverObservation || value.serverObservation.status !== "REVOKED")) {
+    ctx.addIssue({ code: "custom", path: ["serverObservation"], message: "confirmed revocation requires a server observation of revoked" });
+  }
+  if (value.serverRevocation === "PENDING" && (!value.serverObservation || value.serverObservation.status !== "PENDING")) {
+    ctx.addIssue({ code: "custom", path: ["serverObservation"], message: "pending revocation requires a server observation of pending" });
+  }
+  if (value.serverRevocation === "NOT_REVOKED" && (!value.serverObservation || value.serverObservation.status !== "NOT_REVOKED")) {
+    ctx.addIssue({ code: "custom", path: ["serverObservation"], message: "not-revoked status requires a server observation" });
+  }
+  if (value.serverRevocation === "NOT_OBSERVED" && value.serverObservation !== null) {
+    ctx.addIssue({ code: "custom", path: ["serverObservation"], message: "not-observed logout cannot carry a server observation" });
+  }
+});
+export type LogoutResponse = z.infer<typeof logoutResponseSchema>;
+
+export const currencyCodeSchema = z.string().regex(/^[A-Z]{3}$/, "currency must be an uppercase ISO-4217 code");
+export const chargeStatusSchema = z.enum(["OPEN", "PARTIALLY_PAID", "PAID", "REFUNDED"]);
+export type ChargeStatus = z.infer<typeof chargeStatusSchema>;
+export const paymentStatusSchema = z.enum(["PENDING", "SETTLED", "UNKNOWN", "REFUNDED"]);
+export type PaymentStatus = z.infer<typeof paymentStatusSchema>;
+
+export const financialBalanceStateSchema = z.enum([
+  "OPEN",
+  "PARTIALLY_PAID",
+  "PAID",
+  "REFUNDED",
+  "REQUIRES_POLICY",
+  "UNKNOWN"
+]);
+export type FinancialBalanceState = z.infer<typeof financialBalanceStateSchema>;
+
+export const refundAssessmentSchema = z.object({
+  status: z.enum(["NOT_APPLICABLE", "OBSERVED", "UNRESOLVED"]),
+  amountCents: nonNegativeCentsSchema.nullable()
+}).strict().superRefine((value, ctx) => {
+  if (value.status === "OBSERVED" && value.amountCents === null) {
+    ctx.addIssue({ code: "custom", path: ["amountCents"], message: "observed refunds require an amount" });
+  }
+  if (value.status !== "OBSERVED" && value.amountCents !== null) {
+    ctx.addIssue({ code: "custom", path: ["amountCents"], message: "unobserved refunds cannot carry an amount" });
+  }
+});
+export type RefundAssessment = z.infer<typeof refundAssessmentSchema>;
+
+export const financialBalanceSchema = z.object({
+  currency: currencyCodeSchema,
+  chargedCents: nonNegativeCentsSchema,
+  settledPaymentCents: nonNegativeCentsSchema,
+  pendingCents: nonNegativeCentsSchema.nullable(),
+  state: financialBalanceStateSchema,
+  refunds: refundAssessmentSchema,
+  observedAt: timestampSchema
+}).strict().superRefine((value, ctx) => {
+  if (value.settledPaymentCents > value.chargedCents) {
+    ctx.addIssue({ code: "custom", path: ["settledPaymentCents"], message: "settled payments cannot exceed the charged amount" });
+  }
+  if (value.pendingCents !== null && value.pendingCents > value.chargedCents) {
+    ctx.addIssue({ code: "custom", path: ["pendingCents"], message: "pending balance cannot exceed the charged amount" });
+  }
+  if (value.pendingCents === null && !["REQUIRES_POLICY", "UNKNOWN"].includes(value.state)) {
+    ctx.addIssue({ code: "custom", path: ["state"], message: "unknown pending balance requires an explicit uncertain state" });
+  }
+  if (value.state === "OPEN" && (value.settledPaymentCents !== 0 || value.pendingCents !== value.chargedCents)) {
+    ctx.addIssue({ code: "custom", path: ["state"], message: "open balances cannot include settled payments" });
+  }
+  if (value.state === "PARTIALLY_PAID" && (value.settledPaymentCents === 0 || value.pendingCents === null || value.pendingCents === 0 || value.settledPaymentCents + value.pendingCents !== value.chargedCents)) {
+    ctx.addIssue({ code: "custom", path: ["state"], message: "partially paid balances require settled and pending amounts" });
+  }
+  if (value.state === "PAID" && (value.pendingCents !== 0 || value.settledPaymentCents !== value.chargedCents)) {
+    ctx.addIssue({ code: "custom", path: ["state"], message: "paid balances require zero pending amount" });
+  }
+  if (value.state === "REFUNDED" && value.refunds.status !== "OBSERVED") {
+    ctx.addIssue({ code: "custom", path: ["state"], message: "refunded balances require an observed refund" });
+  }
+  if (value.refunds.status === "UNRESOLVED" && value.state !== "REQUIRES_POLICY" && value.state !== "UNKNOWN") {
+    ctx.addIssue({ code: "custom", path: ["state"], message: "unresolved refund policy cannot produce a settled financial state" });
+  }
+});
+export type FinancialBalance = z.infer<typeof financialBalanceSchema>;
+
+export const FIRST_JOURNEY_CONTRACT_EXAMPLES = Object.freeze({
+  success: {
+    schemaVersion: API_SCHEMA_VERSION,
+    data: { receiptId: "00000000-0000-4000-8000-000000000001", status: "SUCCEEDED" },
+    correlationId: "con-01-success"
+  },
+  error: {
+    schemaVersion: API_SCHEMA_VERSION,
+    error: { code: "DEPENDENCY_UNAVAILABLE", message: "dependency is not available", details: { retryable: true } },
+    correlationId: "con-01-error"
+  },
+  partial: {
+    schemaVersion: API_SCHEMA_VERSION,
+    status: "PARTIAL",
+    data: { items: [] },
+    pending: [{ operation: "finance.balance", receiptId: null, reason: "POLICY_UNRESOLVED", retryable: false }],
+    correlationId: "con-01-partial"
+  }
+} as const);
+
+export const FIRST_JOURNEY_DOMAIN_EXAMPLES = Object.freeze({
+  logout: {
+    sessionId: "00000000-0000-4000-8000-000000000002",
+    localState: "SIGNED_OUT",
+    serverRevocation: "UNKNOWN",
+    serverAttempted: true,
+    serverObservation: null,
+    retryable: true,
+    correlationId: "con-01-logout"
+  },
+  session: {
+    sessionId: "00000000-0000-4000-8000-000000000002",
+    state: "ACTIVE",
+    observedBy: "SERVER",
+    observedAt: "2026-09-13T00:00:00.000Z"
+  },
+  financialBalance: {
+    currency: "BRL",
+    chargedCents: 10000,
+    settledPaymentCents: 4000,
+    pendingCents: 6000,
+    state: "PARTIALLY_PAID",
+    refunds: { status: "NOT_APPLICABLE", amountCents: null },
+    observedAt: "2026-09-13T00:00:00.000Z"
+  }
+} as const);
+
+/** Payloads observed by the web client when a session/context is established. */
+export const userSummarySchema = z.looseObject({
+  id: idSchema,
+  displayName: z.string().min(1),
+  email: z.string().min(1),
+  status: z.string().min(1)
+});
+export type UserSummary = z.infer<typeof userSummarySchema>;
+
+export const contextOptionSchema = z.looseObject({
+  organization: z.looseObject({ id: idSchema, name: z.string().min(1), slug: z.string().min(1) }),
+  unit: z.looseObject({ id: idSchema, name: z.string().min(1), code: z.string().min(1) }),
+  workspace: z.looseObject({ id: idSchema, name: z.string().min(1), purpose: z.string().min(1) }),
+  roles: z.array(z.string().min(1))
+});
+export type ContextOptionPayload = z.infer<typeof contextOptionSchema>;
+
+export const authenticatedSessionPayloadSchema = z.looseObject({
+  user: userSummarySchema,
+  contexts: z.array(contextOptionSchema),
+  csrfToken: z.string().min(1).optional()
+}).superRefine((value, ctx) => {
+  if (Object.prototype.hasOwnProperty.call(value, "mfaRequired")) {
+    ctx.addIssue({ code: "custom", path: ["mfaRequired"], message: "a completed session must not carry the MFA challenge flag" });
+  }
+});
+export type AuthenticatedSessionPayload = z.infer<typeof authenticatedSessionPayloadSchema>;
+
+export const mfaChallengePayloadSchema = z.strictObject({
+  mfaRequired: z.literal(true),
+  challengeId: challengeTokenSchema,
+  expiresAt: timestampSchema
+});
+export type MfaChallengePayload = z.infer<typeof mfaChallengePayloadSchema>;
+
+/** A login is either a completed session or a pending MFA challenge, never both. */
+export const loginResponseSchema = z.union([mfaChallengePayloadSchema, authenticatedSessionPayloadSchema]);
+export type LoginResponsePayload = z.infer<typeof loginResponseSchema>;
+
+export const meResponseSchema = z.looseObject({
+  user: userSummarySchema,
+  context: z.looseObject({
+    organizationId: idSchema,
+    unit: z.looseObject({ id: idSchema, name: z.string().min(1), code: z.string().min(1) }).nullable(),
+    workspace: z.looseObject({ id: idSchema, name: z.string().min(1), purpose: z.string().min(1) }).nullable()
+  })
+});
+export type MeResponsePayload = z.infer<typeof meResponseSchema>;
+
+export const chargeSummarySchema = z.looseObject({
+  id: idSchema,
+  description: z.string().min(1),
+  amountCents: nonNegativeCentsSchema,
+  currency: currencyCodeSchema,
+  status: chargeStatusSchema,
+  createdAt: timestampSchema
+});
+export type ChargeSummary = z.infer<typeof chargeSummarySchema>;
+
+export const financeChargesResponseSchema = z.looseObject({
+  items: z.array(chargeSummarySchema),
+  balance: financialBalanceSchema
+});
+export type FinanceChargesResponse = z.infer<typeof financeChargesResponseSchema>;
+
+export const FIRST_JOURNEY_CONTRACT_REGISTRY = Object.freeze({
+  ApiSuccess: apiSuccessEnvelopeSchema,
+  ApiError: apiErrorEnvelopeSchema,
+  ApiPartial: apiPartialEnvelopeSchema,
+  CommandReceipt: commandReceiptSchema,
+  ReceiptReference: receiptReferenceSchema,
+  SessionLifecycle: sessionLifecycleSchema,
+  LogoutResponse: logoutResponseSchema,
+  FinancialBalance: financialBalanceSchema,
+  UserSummary: userSummarySchema,
+  ContextOption: contextOptionSchema,
+  AuthenticatedSession: authenticatedSessionPayloadSchema,
+  MfaChallenge: mfaChallengePayloadSchema,
+  LoginResponse: loginResponseSchema,
+  MeResponse: meResponseSchema,
+  ChargeSummary: chargeSummarySchema,
+  FinanceChargesResponse: financeChargesResponseSchema
+} as const);
+
+export const FIRST_JOURNEY_CONTRACT_MANIFEST = Object.freeze({
+  apiVersion: API_VERSION,
+  schemaVersion: API_SCHEMA_VERSION,
+  sessionFormatVersion: SESSION_FORMAT_VERSION,
+  compatibility: "V1_CURRENT_ONLY_FAIL_CLOSED",
+  envelopeExamples: ["success", "error", "partial"],
+  schemas: Object.keys(FIRST_JOURNEY_CONTRACT_REGISTRY)
+} as const);
 
 /**
  * Canonical ownership for every business collection in StoreSnapshot.  The

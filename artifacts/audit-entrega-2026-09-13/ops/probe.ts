@@ -1,0 +1,13 @@
+import Fastify from 'fastify';
+import { registerHealthRoutes } from './apps/api/src/routes/health.ts';
+import { executeScenarioFixtures } from './scripts/verify-runbook-execution.ts';
+const app=Fastify();
+let runtimeStatus='READY';
+const deps:any={store:{healthStatus:'READY'},persistence:{check:async()=>{}},agentRuntime:{health:async()=>({status:runtimeStatus})},secretProviderStatus:'READY',authMfaStatus:'READY',deepseekBearerTokenStatus:'READY',deepseekContextSignatureStatus:'READY',secretProviderRequired:true,config:{demoMode:false,storageMode:'postgres'}};
+await registerHealthRoutes(app,deps);
+let r=await app.inject({method:'GET',url:'/api/v1/ready'});
+console.log(JSON.stringify({case:'ready_with_outbox_not_configured',http:r.statusCode,data:r.json().data}));
+runtimeStatus='UNAVAILABLE';r=await app.inject({method:'GET',url:'/api/v1/ready'});
+console.log(JSON.stringify({case:'ai_down_database_ready',http:r.statusCode,data:r.json().data}));
+console.log(JSON.stringify({case:'runbook_without_operational_runtime',results:executeScenarioFixtures().map(x=>({scenario:x.scenario,status:x.status,executionStatus:x.executionStatus}))}));
+await app.close();

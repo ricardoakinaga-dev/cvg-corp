@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "gate_id": "GATE-CVG-AUD13-25",
+  "task_id": "AUD13-25",
+  "status": "PASS_COM_RESSALVAS",
+  "decision": "PARTIAL_PASS",
+  "score": 7.5,
+  "critic_artifact": null,
+  "subject": {
+    "head_sha": "1c22c5dc79c52151f4c7c94c4402dfdc86812cbc",
+    "worktree": "MODIFIED",
+    "task_owned_paths": [
+      "apps/worker/",
+      "packages/persistence/",
+      "apps/web/src/features/",
+      "apps/web/src/routes/",
+      "tests/"
+    ],
+    "blocked_slices": [
+      "UI de automacoes (API surface fora dos allowed_paths) -> AUD13-25A",
+      "takeover multiprocesso PostgreSQL"
+    ]
+  },
+  "bar": {
+    "path": ".gauntlet/bar-v4.json",
+    "sha256": "2093461a8d6103641a555ad45371dde4649e5f144c32260b80244e219fa70697"
+  },
+  "checks": [
+    {
+      "command": "npx playwright test app.spec.ts (375/768/1440)",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "112 passed, 8 skipped"
+    },
+    {
+      "command": "npm run verify:worker-runtime",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "policies=6 focusedTests=35 queueing=REJECT"
+    },
+    {
+      "command": "npm test",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "379 testes: 378 pass, 1 skip, 0 fail"
+    },
+    {
+      "command": "npm run test:database",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "66 testes"
+    },
+    {
+      "command": "npm run verify:pdp",
+      "exit_code": 0,
+      "result": "PASS"
+    },
+    {
+      "command": "npm run lint",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "176 arquivos"
+    }
+  ],
+  "residuals": [
+    "UI de automacao com agenda/janela/cancelamento -> AUD13-25A (API + PG)",
+    "takeover multiprocesso/kill controlado BLOCKED_EXTERNAL (PostgreSQL)"
+  ],
+  "verification_refs": [
+    "VER-CVG-AUD13-25-001"
+  ],
+  "artifact_digests": {
+    "apps/web/src/features/communications/Communications.tsx": "8b383b79dd8516a41392432f966f5ff672a656b1cbe9535437faa7a4c581c59e",
+    "apps/web/src/features/clinical/Clinical.tsx": "e4fab67a203d9501c0e45fd688527bd9c54120165c57171f317148fcbca4a871",
+    "tests/e2e/app.spec.ts": "1daca26fef125f15758588871c8d1372e44b48b48ac8de3f71b0f51cc2ed5605"
+  },
+  "recorded_at": "2026-09-13T15:05:18-03:00"
+}

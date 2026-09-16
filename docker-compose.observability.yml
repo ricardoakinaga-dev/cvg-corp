@@ -61,7 +61,9 @@ services:
     image: ${ALERTMANAGER_IMAGE:-prom/alertmanager:v0.28.1}
     command: ["--config.file=/etc/alertmanager/alertmanager.yml", "--storage.path=/alertmanager"]
     volumes:
-      - ./docker/observability/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      # The deployer must render this file with the external alert authority;
+      # mounting the repository template directly is deliberately rejected.
+      - ${CVG_ALERTMANAGER_CONFIG_FILE:?CVG_ALERTMANAGER_CONFIG_FILE must point to a rendered Alertmanager config}:/etc/alertmanager/alertmanager.yml:ro
       - cvg_alertmanager_data:/alertmanager
     expose: ["9093"]
     restart: unless-stopped

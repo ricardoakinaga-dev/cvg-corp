@@ -1,0 +1,83 @@
+{
+  "schema_version": 1,
+  "gate_id": "GATE-CVG-AUD13-13",
+  "task_id": "AUD13-13",
+  "status": "PASS",
+  "decision": "PASS",
+  "score": 8.5,
+  "critic_artifact": null,
+  "subject": {
+    "head_sha": "1c22c5dc79c52151f4c7c94c4402dfdc86812cbc",
+    "worktree": "MODIFIED",
+    "task_owned_paths": [
+      "apps/web/src/features/agenda/",
+      "apps/api/src/application/",
+      "packages/domain/src/",
+      "tests/"
+    ],
+    "registered_surface_extensions": [
+      "packages/agent-policy/src/index.ts",
+      "packages/contracts/src/api-catalog.ts",
+      "apps/api/src/app.ts",
+      "apps/web/src/api/client.ts"
+    ]
+  },
+  "bar": {
+    "path": ".gauntlet/bar-v4.json",
+    "sha256": "2093461a8d6103641a555ad45371dde4649e5f144c32260b80244e219fa70697"
+  },
+  "checks": [
+    {
+      "command": "npm test",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "353 testes: 352 pass, 1 skip, 0 fail"
+    },
+    {
+      "command": "npm run test:database",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "61 testes"
+    },
+    {
+      "command": "npm run verify:pdp",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "catalogo+inventario e 26 runtime"
+    },
+    {
+      "command": "npx playwright test app.spec.ts (375/768/1440)",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "87 passed, 6 skipped"
+    },
+    {
+      "command": "npm run typecheck",
+      "exit_code": 0,
+      "result": "PASS"
+    },
+    {
+      "command": "npm run lint",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "171 arquivos"
+    }
+  ],
+  "surface_extension_justification": "Conflito claro (409) exigia isStaleDataError sem CONFLICT generico; rotas novas exigem catalogo e policy registrados; capabilities novas exigem CAPABILITY_ROLES. Sem escritores paralelos; registrado pelo integrador.",
+  "residuals": [
+    "Concorrencia multi-processo PostgreSQL pendente (AUD13-23/36)",
+    "Flake unico do teste pre-existente de MFA sob carga paralela; nao bloqueador e sem alteracao de produto",
+    "Atribuicao nominal de profissional sem campo dedicado em QueueEntry/Encounter por contrato atual"
+  ],
+  "verification_refs": [
+    "VER-CVG-AUD13-13-001"
+  ],
+  "artifact_digests": {
+    "apps/web/src/features/agenda/Agenda.tsx": "ec1cff05478fd5407312ff5e87c64819e385257ce805853da0ec27a5a99ad5a3",
+    "packages/domain/src/index.ts": "c587f8c2be74d9e1c8fb94f6e1c0deddc1128ba951c4c0ef05bde07db0f74539",
+    "apps/api/src/app.ts": "e572ed9f6a13c37e5baa3e5d4214e9a03c39fef7c63553a5540db21f600d48e7",
+    "tests/e2e/app.spec.ts": "afb44aba4ac627e718206454715e9376592c8d5b126872a26980a97e014095ed",
+    "tests/integration/api.test.ts": "e369030900787cf7663e2f0fe60213f4b389cb38950e493b67e11878f4faf493"
+  },
+  "recorded_at": "2026-09-13T12:04:04-03:00"
+}

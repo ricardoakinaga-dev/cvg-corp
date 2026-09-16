@@ -16,8 +16,19 @@ export function inspectLoadScript(source: string): string[] {
     "CVG_LOAD_BASE_URL",
     "CVG_LOAD_BEARER_TOKEN",
     "deepseek_turn",
-    "provider_ack",
+    "provider_send",
+    "provider_receipt",
+    "clinical_read",
+    "clinical_write",
     "worker_backlog",
+    "CVG_LOAD_CLINICAL_READ_PATH",
+    "CVG_LOAD_CLINICAL_WRITE_PATH",
+    "CVG_LOAD_PROVIDER_SEND_PATH",
+    "CVG_LOAD_RECEIPT_PATH",
+    "CVG_LOAD_CLINICAL_WRITE_BODY",
+    "CVG_LOAD_AI_BODY",
+    "CVG_LOAD_PROVIDER_SEND_BODY",
+    "semanticEnvelope",
     "doubleDuration",
     "startTime: doubleDuration(duration)"
   ];
@@ -31,8 +42,8 @@ if (invokedAsScript) {
   if (missing.length) {
     process.stderr.write(`LOAD_CONTRACT_INVALID missing=${missing.join(",")}\n`);
     process.exitCode = 1;
-  } else if (!process.env.CVG_LOAD_BASE_URL || !process.env.CVG_LOAD_BEARER_TOKEN || !process.env.CVG_LOAD_P95_MS) {
-    process.stdout.write("LOAD_EVIDENCE_BLOCKED_EXTERNAL explicit staging URL, secret-authority token and approved observed p95 are required\n");
+  } else if (!process.env.CVG_LOAD_BASE_URL || !process.env.CVG_LOAD_BEARER_TOKEN || !process.env.CVG_LOAD_P95_MS || !process.env.CVG_LOAD_CLINICAL_READ_PATH || !process.env.CVG_LOAD_CLINICAL_WRITE_PATH || !process.env.CVG_LOAD_AI_PATH || !process.env.CVG_LOAD_PROVIDER_SEND_PATH || !process.env.CVG_LOAD_RECEIPT_PATH || !process.env.CVG_LOAD_WORKER_METRICS_PATH || !process.env.CVG_LOAD_CLINICAL_WRITE_BODY || !process.env.CVG_LOAD_AI_BODY || !process.env.CVG_LOAD_PROVIDER_SEND_BODY) {
+    process.stdout.write("LOAD_EVIDENCE_BLOCKED_EXTERNAL explicit staging URL, secret-authority token, approved observed p95 and complete clinical/AI/provider/receipt/worker workload inputs are required\n");
     process.exitCode = 2;
   } else {
     const result = spawnSync("k6", ["run", LOAD_SCRIPT_PATH], { cwd: root, stdio: "inherit", env: process.env });

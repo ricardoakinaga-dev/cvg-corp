@@ -4,6 +4,7 @@ import { isAuthenticationError } from "../api/client";
 import { fetchSessionAndContexts } from "../api/session";
 import { RUNTIME_STATES, type RuntimeEvent, type RuntimeState } from "../state/runtime-state";
 import { ContextInvalidError, emptySession, selectContext, sameContext, type SessionSnapshot } from "../state/session-state";
+import { clearSignOutRecord, pendingRevocationRecord, readSignOutRecord, revocationRisk, writeSignOutRecord, type SignOutRecord } from "../state/sign-out";
 import type { ContextOption, User } from "../state/types";
 
 type SessionRuntime = { state: RuntimeState; reconnectVersion: number; transition: (event: RuntimeEvent) => void };
@@ -12,13 +13,17 @@ export type SessionController = SessionSnapshot & {
   signIn: (user: User, contexts: ContextOption[]) => void;
   changeContext: (context: ContextOption) => void;
   signOut: () => Promise<void>;
+  retrySignOut: () => Promise<void>;
+  signOutRecord: SignOutRecord | null;
   reset: () => void;
 };
 
 export function useSession(client: ApiClient, runtime: SessionRuntime): SessionController {
   const { state, reconnectVersion, transition } = runtime;
   const [snapshot, setSnapshot] = useState<SessionSnapshot>(() => emptySession("loading"));
+  const [signOutRecord, setSignOutRecord] = useState<SignOutRecord | null>(() => readSignOutRecord());
   const snapshotRef = useRef(snapshot);
+  const signOutRecordRef = useRef(signOutRecord);
   const initialValidationStarted = useRef(false);
   const handledReconnectVersion = useRef(0);
   const validationSequence = useRef(0);
@@ -28,9 +33,20 @@ export function useSession(client: ApiClient, runtime: SessionRuntime): SessionC
     setSnapshot(next);
   }, []);
 
+  const applySignOutRecord = useCallback((next: SignOutRecord | null) => {
+    signOutRecordRef.current = next;
+    setSignOutRecord(next);
+    if (next === null) clearSignOutRecord();
+    else writeSignOutRecord(next);
+  }, []);
+
   const validate = useCallback(async (mode: "initial" | "reconnect", requestedContext: SessionSnapshot["context"] = null) => {
     const sequence = ++validationSequence.current;
     const previous = snapshotRef.current;
+    if (mode === "initial" && revocationRisk(signOutRecordRef.current)) {
+      updateSnapshot(emptySession());
+      return;
+    }
     const currentContext = mode === "reconnect" ? requestedContext ?? previous.context : null;
     let me: Awaited<ReturnType<typeof fetchSessionAndContexts>>["me"] | null = null;
     try {
@@ -79,9 +95,12 @@ export function useSession(client: ApiClient, runtime: SessionRuntime): SessionC
     if (reconnectVersion === 0 || handledReconnectVersion.current === reconnectVersion) return;
     handledReconnectVersion.current = reconnectVersion;
     const current = snapshotRef.current;
-    if (current.status !== "ready" || !current.user || !current.context) return;
+    if (current.status !== "ready" || !current.user || !current.context) {
+      transition({ type: "SIGNED_OUT" });
+      return;
+    }
     void validate("reconnect");
-  }, [reconnectVersion, validate]);
+  }, [reconnectVersion, transition, validate]);
 
   const signIn = useCallback((user: User, contexts: ContextOption[]) => {
     validationSequence.current += 1;
@@ -103,15 +122,33 @@ export function useSession(client: ApiClient, runtime: SessionRuntime): SessionC
     transition({ type: "SIGNED_OUT" });
   }, [transition, updateSnapshot]);
 
+  const revokeOnServer = useCallback(async (): Promise<boolean> => {
+    try {
+      const result = await client.request<{ serverRevocation?: string }>("/auth/logout", { method: "POST" });
+      return result?.serverRevocation === "CONFIRMED";
+    } catch (error) {
+      return isAuthenticationError(error);
+    }
+  }, [client]);
+
   const signOut = useCallback(async () => {
     const current = snapshotRef.current;
-    try {
-      if (current.context && state === RUNTIME_STATES.ONLINE) await client.request("/auth/logout", { method: "POST" }, current.context);
-    } finally {
-      updateSnapshot(emptySession());
-      transition({ type: "SIGNED_OUT" });
-    }
-  }, [client, state, transition, updateSnapshot]);
+    const canAttempt = Boolean(current.context) && state === RUNTIME_STATES.ONLINE;
+    applySignOutRecord(pendingRevocationRecord(canAttempt));
+    updateSnapshot(emptySession());
+    transition({ type: "SIGNED_OUT" });
+    if (!canAttempt) return;
+    if (await revokeOnServer()) applySignOutRecord(null);
+  }, [applySignOutRecord, revokeOnServer, state, transition, updateSnapshot]);
 
-  return { ...snapshot, signIn, changeContext, signOut, reset };
+  const retrySignOut = useCallback(async () => {
+    if (state !== RUNTIME_STATES.ONLINE) {
+      applySignOutRecord(pendingRevocationRecord(false));
+      return;
+    }
+    applySignOutRecord(pendingRevocationRecord(true));
+    if (await revokeOnServer()) applySignOutRecord(null);
+  }, [applySignOutRecord, revokeOnServer, state]);
+
+  return { ...snapshot, signIn, changeContext, signOut, retrySignOut, signOutRecord, reset };
 }

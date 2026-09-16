@@ -1,0 +1,985 @@
+{
+  "schema_version": 1,
+  "kind": "focused_round_with_full_inherited_program",
+  "source_report": "docs/auditoria-continuacao-aaa2-02-2026-09-13.md",
+  "source_report_sha256": "6c187488d064f4b197e7f2c3f9e181496e4d60dc5e34d99674a58a9a47375d47",
+  "inherited_catalog": "docs/plano-triplo-aaa-pos-entrega-2026-09-13/backlog.json",
+  "inherited_catalog_sha256": "abc39ce6af71729def6dfb251cb7b4097a58e8c8508a0255f80e69a6e9da083a",
+  "quality_bar": ".gauntlet/bar-v4.json",
+  "quality_bar_sha256": "2093461a8d6103641a555ad45371dde4649e5f144c32260b80244e219fa70697",
+  "canonical_execution_backlog": ".agent/backlog.json",
+  "status_policy": "Catálogo sem status de execução. AAA3 associa critérios aos itens canônicos existentes; nenhuma duplicação de implementação/status. Disposition é avaliação documental desta baseline.",
+  "tasks": [
+    {
+      "id": "AAA3-01",
+      "title": "Reparar retomada e limitar bloqueios à fatia dependente",
+      "depends_on": [],
+      "inherits": [
+        "AAA2-01"
+      ],
+      "findings": [
+        "C01",
+        "C02",
+        "C03"
+      ],
+      "owner": "Lead",
+      "allowed_paths": [
+        ".agent/",
+        "docs/"
+      ],
+      "acceptance": [
+        "Primeiro passo executável coincide com ação ativa; histórico fica em Progress",
+        "Parent/child não gera espera circular de conclusão",
+        "D-02 bloqueia somente aceites clínicos dependentes; selecionar tarefa local pronta por risco",
+        "Não reabrir aceite temporal histórico nem promover AUD13-16 por reparar estado"
+      ],
+      "validation": [
+        "Probe C01–C03 deve passar após correção",
+        "Fixture scheduler com pai parcial e decisão ausente/presente",
+        "git diff --check"
+      ],
+      "external_prerequisites": [],
+      "priority": "P1",
+      "estimate": "Refinar em fatias verticais; 1–3 sessões por fatia, sem promessa de duração total",
+      "exclusive_resources": [
+        "Reservar arquivos, migration, DB, portas e artefatos exatos antes de RUNNING; um integrador para domínio/API/persistência compartilhados"
+      ],
+      "evidence_required": [
+        "Comando/procedimento, ambiente/seed, início/fim e exit",
+        "Candidato mais delta do worktree, hash de contrato e log bruto sanitizado",
+        "Caso bom/ruim e regressão pertinente; crítica independente e limitações"
+      ],
+      "recovery": "Preservar trabalho alheio; corrigir estado por registro datado sem apagar história; reverter somente delta próprio não aplicado; migrations aplicadas usam forward-fix; efeitos incertos exigem reconciliação.",
+      "next_action": "Confirmar evidência atual, herança e disponibilidade dos pré-requisitos da fatia; reservar recursos e reproduzir o comportamento antes de implementar."
+    },
+    {
+      "id": "AAA3-02",
+      "title": "Validar estado semântico além do catálogo",
+      "depends_on": [
+        "AAA3-01"
+      ],
+      "inherits": [
+        "AAA2-10"
+      ],
+      "findings": [
+        "C01",
+        "C02",
+        "C03"
+      ],
+      "owner": "Lead",
+      "allowed_paths": [
+        "scripts/",
+        "tests/",
+        "docs/"
+      ],
+      "acceptance": [
+        "Verificador diferencia catálogo/execução/histórico",
+        "Detectar primeiro passo stale mesmo com comentário correto",
+        "Detectar ciclo de conclusão pai-filho e WAIT indevido quando existe tarefa pronta",
+        "Um check não gera verificação recursiva interminável de seu próprio append"
+      ],
+      "validation": [
+        "Casos negativos: marker correto/step errado; filho exige pai que depende do filho; tarefa independente pronta",
+        "Caso bom com decisão legítima bloqueando só um filho"
+      ],
+      "external_prerequisites": [],
+      "priority": "P1",
+      "estimate": "Refinar em fatias verticais; 1–3 sessões por fatia, sem promessa de duração total",
+      "exclusive_resources": [
+        "Reservar arquivos, migration, DB, portas e artefatos exatos antes de RUNNING; um integrador para domínio/API/persistência compartilhados"
+      ],
+      "evidence_required": [
+        "Comando/procedimento, ambiente/seed, início/fim e exit",
+        "Candidato mais delta do worktree, hash de contrato e log bruto sanitizado",
+        "Caso bom/ruim e regressão pertinente; crítica independente e limitações"
+      ],
+      "recovery": "Preservar trabalho alheio; corrigir estado por registro datado sem apagar história; reverter somente delta próprio não aplicado; migrations aplicadas usam forward-fix; efeitos incertos exigem reconciliação.",
+      "next_action": "Confirmar evidência atual, herança e disponibilidade dos pré-requisitos da fatia; reservar recursos e reproduzir o comportamento antes de implementar."
+    },
+    {
+      "id": "AAA3-03",
+      "title": "Corrigir uso real e hold de orçamento",
+      "depends_on": [
+        "AAA3-01"
+      ],
+      "inherits": [
+        "AAA2-03"
+      ],
+      "findings": [
+        "C05"
+      ],
+      "owner": "Builder especializado; integração pelo Lead",
+      "allowed_paths": [
+        "packages/domain/",
+        "packages/persistence/",
+        "packages/harness/",
+        "tests/"
+      ],
+      "acceptance": [
+        "Herdar integralmente AAA2-03",
+        "Uso900 não vira100; excedente/late/unknown impedem nova despesa indevida",
+        "Caps sintéticos explícitos permitem correção local sem inventar D-04",
+        "Concorrência e settlement têm ledger e reconciliação verificáveis"
+      ],
+      "validation": [
+        "Reproduzir probe IA e inverter assertions",
+        "npm test",
+        "Teste PostgreSQL efêmero na fatia persistente"
+      ],
+      "external_prerequisites": [],
+      "priority": "P1",
+      "estimate": "Refinar em fatias verticais; 1–3 sessões por fatia, sem promessa de duração total",
+      "exclusive_resources": [
+        "Reservar arquivos, migration, DB, portas e artefatos exatos antes de RUNNING; um integrador para domínio/API/persistência compartilhados"
+      ],
+      "evidence_required": [
+        "Comando/procedimento, ambiente/seed, início/fim e exit",
+        "Candidato mais delta do worktree, hash de contrato e log bruto sanitizado",
+        "Caso bom/ruim e regressão pertinente; crítica independente e limitações"
+      ],
+      "recovery": "Preservar trabalho alheio; corrigir estado por registro datado sem apagar história; reverter somente delta próprio não aplicado; migrations aplicadas usam forward-fix; efeitos incertos exigem reconciliação.",
+      "next_action": "Confirmar evidência atual, herança e disponibilidade dos pré-requisitos da fatia; reservar recursos e reproduzir o comportamento antes de implementar."
+    },
+    {
+      "id": "AAA3-04",
+      "title": "Isolar prontuário e carregar histórico completo",
+      "depends_on": [
+        "AAA3-01"
+      ],
+      "inherits": [
+        "AAA2-06"
+      ],
+      "findings": [
+        "E05",
+        "E06"
+      ],
+      "owner": "Builder especializado; integração pelo Lead",
+      "allowed_paths": [
+        "apps/web/src/features/clinical/",
+        "apps/web/src/api/",
+        "tests/e2e/"
+      ],
+      "acceptance": [
+        "Herdar AAA2-06",
+        "Troca A/B e resposta fora de ordem nunca mostram adendo de outro paciente",
+        "Todos documentos corrigidos aparecem após reload; erro não vira vazio silencioso"
+      ],
+      "validation": [
+        "Browser do componente e UI→API com dois pacientes/dois documentos",
+        "Regressão de erro/loading/troca de contexto"
+      ],
+      "external_prerequisites": [],
+      "priority": "P1",
+      "estimate": "Refinar em fatias verticais; 1–3 sessões por fatia, sem promessa de duração total",
+      "exclusive_resources": [
+        "Reservar arquivos, migration, DB, portas e artefatos exatos antes de RUNNING; um integrador para domínio/API/persistência compartilhados"
+      ],
+      "evidence_required": [
+        "Comando/procedimento, ambiente/seed, início/fim e exit",
+        "Candidato mais delta do worktree, hash de contrato e log bruto sanitizado",
+        "Caso bom/ruim e regressão pertinente; crítica independente e limitações"
+      ],
+      "recovery": "Preservar trabalho alheio; corrigir estado por registro datado sem apagar história; reverter somente delta próprio não aplicado; migrations aplicadas usam forward-fix; efeitos incertos exigem reconciliação.",
+      "next_action": "Confirmar evidência atual, herança e disponibilidade dos pré-requisitos da fatia; reservar recursos e reproduzir o comportamento antes de implementar."
+    },
+    {
+      "id": "AAA3-05",
+      "title": "Revalidar autoridade ao concluir IA",
+      "depends_on": [
+        "AAA3-01"
+      ],
+      "inherits": [
+        "AAA2-05"
+      ],
+      "findings": [
+        "C05"
+      ],
+      "owner": "Builder especializado; integração pelo Lead",
+      "allowed_paths": [
+        "packages/harness-adapters/",
+        "apps/api/src/application/",
+        "packages/agent-policy/",
+        "tests/"
+      ],
+      "acceptance": [
+        "Herdar AAA2-05",
+        "Revogação impede COMPLETED autorizado/draft/disclosure e preserva uso",
+        "Sessão/revisão de policy/recurso atuais verificados antes do efeito e retorno"
+      ],
+      "validation": [
+        "Probe residual com revogação durante await",
+        "Teste negativo na aplicação e regressão de aprovação válida"
+      ],
+      "external_prerequisites": [],
+      "priority": "P1",
+      "estimate": "Refinar em fatias verticais; 1–3 sessões por fatia, sem promessa de duração total",
+      "exclusive_resources": [
+        "Reservar arquivos, migration, DB, portas e artefatos exatos antes de RUNNING; um integrador para domínio/API/persistência compartilhados"
+      ],
+      "evidence_required": [
+        "Comando/procedimento, ambiente/seed, início/fim e exit",
+        "Candidato mais delta do worktree, hash de contrato e log bruto sanitizado",
+        "Caso bom/ruim e regressão pertinente; crítica independente e limitações"
+      ],
+      "recovery": "Preservar trabalho alheio; corrigir estado por registro datado sem apagar história; reverter somente delta próprio não aplicado; migrations aplicadas usam forward-fix; efeitos incertos exigem reconciliação.",
+      "next_action": "Confirmar evidência atual, herança e disponibilidade dos pré-requisitos da fatia; reservar recursos e reproduzir o comportamento antes de implementar."
+    },
+    {
+      "id": "AAA3-06",
+      "title": "Durabilizar budget obrigatório do ACP",
+      "depends_on": [
+        "AAA3-03",
+        "AAA3-05"
+      ],
+      "inherits": [
+        "AAA2-04"
+      ],
+      "findings": [
+        "C05"
+      ],
+      "owner": "Builder especializado; integração pelo Lead",
+      "allowed_paths": [
+        "packages/harness-adapters/",
+        "packages/deepseek-bridge/",
+        "packages/persistence/",
+        "apps/deepseek-bridge/",
+        "tests/"
+      ],
+      "acceptance": [
+        "Herdar AAA2-04",
+        "Sem budget não admite dispatch",
+        "Recriação/restart não perde vínculo de reserva e não marca SETTLED sem settle",
+        "Reserva/efeito/usage/receipt têm identidade estável e recovery"
+      ],
+      "validation": [
+        "Probe sem budget e após recriação",
+        "Falhas entre reserva, dispatch e commit; multiprocesso na fatia persistente"
+      ],
+      "external_prerequisites": [],
+      "priority": "P1",
+      "estimate": "Refinar em fatias verticais; 1–3 sessões por fatia, sem promessa de duração total",
+      "exclusive_resources": [
+        "Reservar arquivos, migration, DB, portas e artefatos exatos antes de RUNNING; um integrador para domínio/API/persistência compartilhados"
+      ],
+      "evidence_required": [
+        "Comando/procedimento, ambiente/seed, início/fim e exit",
+        "Candidato mais delta do worktree, hash de contrato e log bruto sanitizado",
+        "Caso bom/ruim e regressão pertinente; crítica independente e limitações"
+      ],
+      "recovery": "Preservar trabalho alheio; corrigir estado por registro datado sem apagar história; reverter somente delta próprio não aplicado; migrations aplicadas usam forward-fix; efeitos incertos exigem reconciliação.",
+      "next_action": "Confirmar evidência atual, herança e disponibilidade dos pré-requisitos da fatia; reservar recursos e reproduzir o comportamento antes de implementar."
+    },
+    {
+      "id": "AAA3-07",
+      "title": "Concluir dispensação acessível ao perfil estoque",
+      "depends_on": [
+        "AAA3-01"
+      ],
+      "inherits": [
+        "AAA2-07"
+      ],
+      "findings": [
+        "E07"
+      ],
+      "owner": "Builder especializado; integração pelo Lead",
+      "allowed_paths": [
+        "apps/web/src/features/stock/",
+        "apps/web/src/features/hospital/",
+        "apps/api/src/application/",
+        "tests/"
+      ],
+      "acceptance": [
+        "Herdar AAA2-07 e preservar E01 corrigido",
+        "Farmácia dispensa sem buscar prontuários/leitos proibidos",
+        "Receipt e negativa sem ampliar permissão clínica"
+      ],
+      "validation": [
+        "Browser autenticado como estoque; API local",
+        "Ativa versus terminal; conflito, replay e saldo"
+      ],
+      "external_prerequisites": [],
+      "priority": "P1",
+      "estimate": "Refinar em fatias verticais; 1–3 sessões por fatia, sem promessa de duração total",
+      "exclusive_resources": [
+        "Reservar arquivos, migration, DB, portas e artefatos exatos antes de RUNNING; um integrador para domínio/API/persistência compartilhados"
+      ],
+      "evidence_required": [
+        "Comando/procedimento, ambiente/seed, início/fim e exit",
+        "Candidato mais delta do worktree, hash de contrato e log bruto sanitizado",
+        "Caso bom/ruim e regressão pertinente; crítica independente e limitações"
+      ],
+      "recovery": "Preservar trabalho alheio; corrigir estado por registro datado sem apagar história; reverter somente delta próprio não aplicado; migrations aplicadas usam forward-fix; efeitos incertos exigem reconciliação.",
+      "next_action": "Confirmar evidência atual, herança e disponibilidade dos pré-requisitos da fatia; reservar recursos e reproduzir o comportamento antes de implementar."
+    },
+    {
+      "id": "AAA3-08",
+      "title": "Concluir atribuição de leito de episódio planejado",
+      "depends_on": [
+        "AAA3-01"
+      ],
+      "inherits": [
+        "AAA2-08"
+      ],
+      "findings": [
+        "E08"
+      ],
+      "owner": "Builder especializado; integração pelo Lead",
+      "allowed_paths": [
+        "apps/web/src/features/hospital/",
+        "apps/api/",
+        "packages/domain/",
+        "packages/persistence/",
+        "tests/"
+      ],
+      "acceptance": [
+        "Herdar AAA2-08",
+        "Episódio sem leito retoma mantendo identidade/histórico",
+        "Concorrência pelo leito nega segundo ator atomicamente",
+        "Preparar fluxo técnico sem inventar regra D-02; aceite clínico dependente permanece explícito"
+      ],
+      "validation": [
+        "PLANNED→atribuição→ADMITTED no mesmo episódio",
+        "Conflito/retry e teste do gate clínico configurado"
+      ],
+      "external_prerequisites": [
+        "Somente regras clínicas ainda indefinidas dependem de D-02; a fatia técnica já especificada pode avançar"
+      ],
+      "priority": "P1",
+      "estimate": "Refinar em fatias verticais; 1–3 sessões por fatia, sem promessa de duração total",
+      "exclusive_resources": [
+        "Reservar arquivos, migration, DB, portas e artefatos exatos antes de RUNNING; um integrador para domínio/API/persistência compartilhados"
+      ],
+      "evidence_required": [
+        "Comando/procedimento, ambiente/seed, início/fim e exit",
+        "Candidato mais delta do worktree, hash de contrato e log bruto sanitizado",
+        "Caso bom/ruim e regressão pertinente; crítica independente e limitações"
+      ],
+      "recovery": "Preservar trabalho alheio; corrigir estado por registro datado sem apagar história; reverter somente delta próprio não aplicado; migrations aplicadas usam forward-fix; efeitos incertos exigem reconciliação.",
+      "next_action": "Confirmar evidência atual, herança e disponibilidade dos pré-requisitos da fatia; reservar recursos e reproduzir o comportamento antes de implementar."
+    },
+    {
+      "id": "AAA3-09",
+      "title": "Comprovar medicação e claims em PostgreSQL multiprocesso",
+      "depends_on": [
+        "AAA3-01"
+      ],
+      "inherits": [
+        "AAA2-02",
+        "AAA2-11"
+      ],
+      "findings": [
+        "E01_LIMIT"
+      ],
+      "owner": "Builder especializado; integração pelo Lead",
+      "allowed_paths": [
+        "packages/persistence/",
+        "apps/api/src/application/",
+        "db/migrations/",
+        "tests/",
+        "scripts/"
+      ],
+      "acceptance": [
+        "Preservar E01 local; encerrar somente a lacuna de prova persistente quando executada",
+        "Duas instâncias disputam dispensação/status/estoque com uma ordem linearizável",
+        "Replay após commit e perda de resposta não duplica movimento/receipt",
+        "Não copiar limitação como nova falha do domínio"
+      ],
+      "validation": [
+        "Preparar banco efêmero isolado e migrations001–037",
+        "Corrida de duas chaves, mesma chave, status terminal e crash/restart",
+        "Conferir tabelas/receipts após reinício"
+      ],
+      "external_prerequisites": [
+        "Disponibilidade de PostgreSQL local isolado; preparar harness se runtime indisponível"
+      ],
+      "priority": "P1",
+      "estimate": "Refinar em fatias verticais; 1–3 sessões por fatia, sem promessa de duração total",
+      "exclusive_resources": [
+        "Reservar arquivos, migration, DB, portas e artefatos exatos antes de RUNNING; um integrador para domínio/API/persistência compartilhados"
+      ],
+      "evidence_required": [
+        "Comando/procedimento, ambiente/seed, início/fim e exit",
+        "Candidato mais delta do worktree, hash de contrato e log bruto sanitizado",
+        "Caso bom/ruim e regressão pertinente; crítica independente e limitações"
+      ],
+      "recovery": "Preservar trabalho alheio; corrigir estado por registro datado sem apagar história; reverter somente delta próprio não aplicado; migrations aplicadas usam forward-fix; efeitos incertos exigem reconciliação.",
+      "next_action": "Confirmar evidência atual, herança e disponibilidade dos pré-requisitos da fatia; reservar recursos e reproduzir o comportamento antes de implementar."
+    },
+    {
+      "id": "AAA3-10",
+      "title": "Preparar decisão D-02 para aceite clínico",
+      "depends_on": [
+        "AAA3-01"
+      ],
+      "inherits": [
+        "AAA2-14"
+      ],
+      "findings": [
+        "C02",
+        "C03"
+      ],
+      "owner": "Lead",
+      "allowed_paths": [
+        "docs/adr/",
+        "docs/rodada-aaa3-2026-09-13/"
+      ],
+      "acceptance": [
+        "Preparar pacote com campos/regra pendente, alternativas e consequências",
+        "Separar contrato técnico conhecido de decisão clínica não feita",
+        "Dono clínico recebe material concreto; registrar resposta somente quando ocorrer",
+        "Preparação concluída não significa D-02 aprovada nem filho implementado"
+      ],
+      "validation": [
+        "Revisão contra PRD/ADR031 e matriz de impacto",
+        "Vincular decisão aos critérios exatos de16A/14"
+      ],
+      "external_prerequisites": [
+        "Decisão clínica real é necessária para o aceite dependente, não para preparar o pacote"
+      ],
+      "priority": "P1",
+      "estimate": "Refinar em fatias verticais; 1–3 sessões por fatia, sem promessa de duração total",
+      "exclusive_resources": [
+        "Reservar arquivos, migration, DB, portas e artefatos exatos antes de RUNNING; um integrador para domínio/API/persistência compartilhados"
+      ],
+      "evidence_required": [
+        "Comando/procedimento, ambiente/seed, início/fim e exit",
+        "Candidato mais delta do worktree, hash de contrato e log bruto sanitizado",
+        "Caso bom/ruim e regressão pertinente; crítica independente e limitações"
+      ],
+      "recovery": "Preservar trabalho alheio; corrigir estado por registro datado sem apagar história; reverter somente delta próprio não aplicado; migrations aplicadas usam forward-fix; efeitos incertos exigem reconciliação.",
+      "next_action": "Confirmar evidência atual, herança e disponibilidade dos pré-requisitos da fatia; reservar recursos e reproduzir o comportamento antes de implementar."
+    },
+    {
+      "id": "AAA3-11",
+      "title": "Vincular logs brutos ao candidato e ao julgamento",
+      "depends_on": [
+        "AAA3-02"
+      ],
+      "inherits": [
+        "AAA2-10",
+        "AAA2-31"
+      ],
+      "findings": [
+        "C04"
+      ],
+      "owner": "Lead",
+      "allowed_paths": [
+        "scripts/",
+        "docs/",
+        "artifacts/",
+        ".agent/"
+      ],
+      "acceptance": [
+        "Logs sanitizados por comando com exit/tempo/candidato/contrato",
+        "Separar inspeção I1 de execução independente e não inventar evidência histórica",
+        "Preservar limites aceitos; bundle externo só quando exigido para promoção",
+        "Testes sem mutação seguem log verificável; hashes sozinhos não provam resultado"
+      ],
+      "validation": [
+        "Mutação de log/candidato invalida admissão",
+        "Consultar receipts sem depender de /tmp de sessão antiga"
+      ],
+      "external_prerequisites": [],
+      "priority": "P2",
+      "estimate": "Refinar em fatias verticais; 1–3 sessões por fatia, sem promessa de duração total",
+      "exclusive_resources": [
+        "Reservar arquivos, migration, DB, portas e artefatos exatos antes de RUNNING; um integrador para domínio/API/persistência compartilhados"
+      ],
+      "evidence_required": [
+        "Comando/procedimento, ambiente/seed, início/fim e exit",
+        "Candidato mais delta do worktree, hash de contrato e log bruto sanitizado",
+        "Caso bom/ruim e regressão pertinente; crítica independente e limitações"
+      ],
+      "recovery": "Preservar trabalho alheio; corrigir estado por registro datado sem apagar história; reverter somente delta próprio não aplicado; migrations aplicadas usam forward-fix; efeitos incertos exigem reconciliação.",
+      "next_action": "Confirmar evidência atual, herança e disponibilidade dos pré-requisitos da fatia; reservar recursos e reproduzir o comportamento antes de implementar."
+    },
+    {
+      "id": "AAA3-12",
+      "title": "Fechar rodada local e seguir todo o programa residual",
+      "depends_on": [
+        "AAA3-01",
+        "AAA3-02",
+        "AAA3-03",
+        "AAA3-04",
+        "AAA3-05",
+        "AAA3-06",
+        "AAA3-07",
+        "AAA3-08",
+        "AAA3-09",
+        "AAA3-10",
+        "AAA3-11"
+      ],
+      "inherits": [
+        "AAA2-31"
+      ],
+      "findings": [
+        "C01",
+        "C02",
+        "C03",
+        "C04",
+        "C05"
+      ],
+      "owner": "Lead",
+      "allowed_paths": [
+        "docs/",
+        ".agent/",
+        "artifacts/"
+      ],
+      "acceptance": [
+        "Todos critérios locais da rodada satisfeitos ou impedimento concreto registrado sem PASS indevido",
+        "Produzir matriz dos33 contratos AAA2 preservando cada requisito e próximo gate",
+        "Selecionar próxima tarefa executável; não parar globalmente por um bloqueio isolado",
+        "Não executar AAA2-32 nem declarar AAA sem todos requisitos e autoridade"
+      ],
+      "validation": [
+        "Validação de contratos, fontes, evidências e estado",
+        "Crítico fresco do candidato imóvel",
+        "Regressão pertinente e passagem para remanescentes"
+      ],
+      "external_prerequisites": [],
+      "priority": "P1",
+      "estimate": "Refinar em fatias verticais; 1–3 sessões por fatia, sem promessa de duração total",
+      "exclusive_resources": [
+        "Reservar arquivos, migration, DB, portas e artefatos exatos antes de RUNNING; um integrador para domínio/API/persistência compartilhados"
+      ],
+      "evidence_required": [
+        "Comando/procedimento, ambiente/seed, início/fim e exit",
+        "Candidato mais delta do worktree, hash de contrato e log bruto sanitizado",
+        "Caso bom/ruim e regressão pertinente; crítica independente e limitações"
+      ],
+      "recovery": "Preservar trabalho alheio; corrigir estado por registro datado sem apagar história; reverter somente delta próprio não aplicado; migrations aplicadas usam forward-fix; efeitos incertos exigem reconciliação.",
+      "next_action": "Confirmar evidência atual, herança e disponibilidade dos pré-requisitos da fatia; reservar recursos e reproduzir o comportamento antes de implementar."
+    }
+  ],
+  "aaa2_continuation": [
+    {
+      "aaa2_id": "AAA2-01",
+      "title": "Reconciliar aceite, estado e trabalho residual",
+      "disposition": "LOCAL_ACCEPTANCE_PRESERVED",
+      "round_tasks": [
+        "AAA3-01"
+      ],
+      "continuation": "Executar critérios e dependências originais ainda não comprovados; nenhuma herança marca DONE",
+      "original_depends_on": []
+    },
+    {
+      "aaa2_id": "AAA2-02",
+      "title": "Proteger prescrição terminal e dispensação",
+      "disposition": "LOCAL_ACCEPTANCE_PRESERVED_DB_PENDING",
+      "round_tasks": [
+        "AAA3-09"
+      ],
+      "continuation": "Executar critérios e dependências originais ainda não comprovados; nenhuma herança marca DONE",
+      "original_depends_on": [
+        "AAA2-01"
+      ]
+    },
+    {
+      "aaa2_id": "AAA2-03",
+      "title": "Contabilizar uso real e reter orçamento em disputa",
+      "disposition": "REMAINING_REQUIREMENT",
+      "round_tasks": [
+        "AAA3-03"
+      ],
+      "continuation": "Executar critérios e dependências originais ainda não comprovados; nenhuma herança marca DONE",
+      "original_depends_on": [
+        "AAA2-01"
+      ]
+    },
+    {
+      "aaa2_id": "AAA2-04",
+      "title": "Tornar reserva e settlement ACP obrigatórios e duráveis",
+      "disposition": "REMAINING_REQUIREMENT",
+      "round_tasks": [
+        "AAA3-06"
+      ],
+      "continuation": "Executar critérios e dependências originais ainda não comprovados; nenhuma herança marca DONE",
+      "original_depends_on": [
+        "AAA2-03"
+      ]
+    },
+    {
+      "aaa2_id": "AAA2-05",
+      "title": "Revalidar autoridade na conclusão e divulgação da IA",
+      "disposition": "REMAINING_REQUIREMENT",
+      "round_tasks": [
+        "AAA3-05"
+      ],
+      "continuation": "Executar critérios e dependências originais ainda não comprovados; nenhuma herança marca DONE",
+      "original_depends_on": [
+        "AAA2-01"
+      ]
+    },
+    {
+      "aaa2_id": "AAA2-06",
+      "title": "Isolar prontuários e carregar todos os adendos",
+      "disposition": "REMAINING_REQUIREMENT",
+      "round_tasks": [
+        "AAA3-04"
+      ],
+      "continuation": "Executar critérios e dependências originais ainda não comprovados; nenhuma herança marca DONE",
+      "original_depends_on": [
+        "AAA2-01"
+      ]
+    },
+    {
+      "aaa2_id": "AAA2-07",
+      "title": "Entregar dispensação acessível ao perfil de farmácia",
+      "disposition": "REMAINING_REQUIREMENT",
+      "round_tasks": [
+        "AAA3-07"
+      ],
+      "continuation": "Executar critérios e dependências originais ainda não comprovados; nenhuma herança marca DONE",
+      "original_depends_on": [
+        "AAA2-02"
+      ]
+    },
+    {
+      "aaa2_id": "AAA2-08",
+      "title": "Completar admissão de internação planejada",
+      "disposition": "REMAINING_REQUIREMENT",
+      "round_tasks": [
+        "AAA3-08"
+      ],
+      "continuation": "Executar critérios e dependências originais ainda não comprovados; nenhuma herança marca DONE",
+      "original_depends_on": [
+        "AAA2-01"
+      ]
+    },
+    {
+      "aaa2_id": "AAA2-09",
+      "title": "Corrigir foco e leitura de documentos assinados",
+      "disposition": "REMAINING_REQUIREMENT",
+      "round_tasks": [],
+      "continuation": "Executar critérios e dependências originais ainda não comprovados; nenhuma herança marca DONE",
+      "original_depends_on": [
+        "AAA2-06"
+      ]
+    },
+    {
+      "aaa2_id": "AAA2-10",
+      "title": "Reconstruir proveniência e gates do candidato",
+      "disposition": "REMAINING_REQUIREMENT",
+      "round_tasks": [
+        "AAA3-02",
+        "AAA3-11"
+      ],
+      "continuation": "Executar critérios e dependências originais ainda não comprovados; nenhuma herança marca DONE",
+      "original_depends_on": [
+        "AAA2-01"
+      ]
+    },
+    {
+      "aaa2_id": "AAA2-11",
+      "title": "Provar idempotência e retomada de claims em banco",
+      "disposition": "REMAINING_REQUIREMENT",
+      "round_tasks": [
+        "AAA3-09"
+      ],
+      "continuation": "Executar critérios e dependências originais ainda não comprovados; nenhuma herança marca DONE",
+      "original_depends_on": [
+        "AAA2-01",
+        "AAA2-02"
+      ]
+    },
+    {
+      "aaa2_id": "AAA2-12",
+      "title": "Migrar escritas primárias residuais com invariantes",
+      "disposition": "REMAINING_REQUIREMENT",
+      "round_tasks": [],
+      "continuation": "Executar critérios e dependências originais ainda não comprovados; nenhuma herança marca DONE",
+      "original_depends_on": [
+        "AAA2-11"
+      ]
+    },
+    {
+      "aaa2_id": "AAA2-13",
+      "title": "Completar anexos clínicos governados",
+      "disposition": "REMAINING_REQUIREMENT",
+      "round_tasks": [],
+      "continuation": "Executar critérios e dependências originais ainda não comprovados; nenhuma herança marca DONE",
+      "original_depends_on": [
+        "AAA2-06",
+        "AAA2-12"
+      ]
+    },
+    {
+      "aaa2_id": "AAA2-14",
+      "title": "Completar checklist e consentimento de admissão",
+      "disposition": "REMAINING_REQUIREMENT",
+      "round_tasks": [
+        "AAA3-10"
+      ],
+      "continuation": "Executar critérios e dependências originais ainda não comprovados; nenhuma herança marca DONE",
+      "original_depends_on": [
+        "AAA2-08",
+        "AAA2-12"
+      ]
+    },
+    {
+      "aaa2_id": "AAA2-15",
+      "title": "Completar fornecedor e custo de estoque",
+      "disposition": "REMAINING_REQUIREMENT",
+      "round_tasks": [],
+      "continuation": "Executar critérios e dependências originais ainda não comprovados; nenhuma herança marca DONE",
+      "original_depends_on": [
+        "AAA2-07",
+        "AAA2-12"
+      ]
+    },
+    {
+      "aaa2_id": "AAA2-16",
+      "title": "Completar orçamento, aprovação e conciliação financeira",
+      "disposition": "REMAINING_REQUIREMENT",
+      "round_tasks": [],
+      "continuation": "Executar critérios e dependências originais ainda não comprovados; nenhuma herança marca DONE",
+      "original_depends_on": [
+        "AAA2-12",
+        "AAA2-15"
+      ]
+    },
+    {
+      "aaa2_id": "AAA2-17",
+      "title": "Completar conhecimento e registry governado",
+      "disposition": "REMAINING_REQUIREMENT",
+      "round_tasks": [],
+      "continuation": "Executar critérios e dependências originais ainda não comprovados; nenhuma herança marca DONE",
+      "original_depends_on": [
+        "AAA2-04",
+        "AAA2-12"
+      ]
+    },
+    {
+      "aaa2_id": "AAA2-18",
+      "title": "Completar automações, workers e comunicação",
+      "disposition": "REMAINING_REQUIREMENT",
+      "round_tasks": [],
+      "continuation": "Executar critérios e dependências originais ainda não comprovados; nenhuma herança marca DONE",
+      "original_depends_on": [
+        "AAA2-11",
+        "AAA2-12"
+      ]
+    },
+    {
+      "aaa2_id": "AAA2-19",
+      "title": "Readiness atual por capacidade e operação manual",
+      "disposition": "REMAINING_REQUIREMENT",
+      "round_tasks": [],
+      "continuation": "Executar critérios e dependências originais ainda não comprovados; nenhuma herança marca DONE",
+      "original_depends_on": [
+        "AAA2-01"
+      ]
+    },
+    {
+      "aaa2_id": "AAA2-20",
+      "title": "Completar métricas, causalidade e relatórios reais",
+      "disposition": "REMAINING_REQUIREMENT",
+      "round_tasks": [],
+      "continuation": "Executar critérios e dependências originais ainda não comprovados; nenhuma herança marca DONE",
+      "original_depends_on": [
+        "AAA2-01",
+        "AAA2-19"
+      ]
+    },
+    {
+      "aaa2_id": "AAA2-21",
+      "title": "Renderizar alertas e provar entrega",
+      "disposition": "REMAINING_REQUIREMENT",
+      "round_tasks": [],
+      "continuation": "Executar critérios e dependências originais ainda não comprovados; nenhuma herança marca DONE",
+      "original_depends_on": [
+        "AAA2-19",
+        "AAA2-20",
+        "AAA2-25"
+      ]
+    },
+    {
+      "aaa2_id": "AAA2-22",
+      "title": "Substituir prova textual de runbook por execução",
+      "disposition": "REMAINING_REQUIREMENT",
+      "round_tasks": [],
+      "continuation": "Executar critérios e dependências originais ainda não comprovados; nenhuma herança marca DONE",
+      "original_depends_on": [
+        "AAA2-10",
+        "AAA2-19"
+      ]
+    },
+    {
+      "aaa2_id": "AAA2-23",
+      "title": "Criar workloads completos e thresholds por jornada",
+      "disposition": "REMAINING_REQUIREMENT",
+      "round_tasks": [],
+      "continuation": "Executar critérios e dependências originais ainda não comprovados; nenhuma herança marca DONE",
+      "original_depends_on": [
+        "AAA2-10",
+        "AAA2-11"
+      ]
+    },
+    {
+      "aaa2_id": "AAA2-24",
+      "title": "Lifecycle e restore útil com reconciliação",
+      "disposition": "REMAINING_REQUIREMENT",
+      "round_tasks": [],
+      "continuation": "Executar critérios e dependências originais ainda não comprovados; nenhuma herança marca DONE",
+      "original_depends_on": [
+        "AAA2-12",
+        "AAA2-18"
+      ]
+    },
+    {
+      "aaa2_id": "AAA2-25",
+      "title": "Preparar e integrar provider, secrets e MFA forte",
+      "disposition": "REMAINING_REQUIREMENT",
+      "round_tasks": [],
+      "continuation": "Executar critérios e dependências originais ainda não comprovados; nenhuma herança marca DONE",
+      "original_depends_on": [
+        "AAA2-01",
+        "AAA2-05",
+        "AAA2-18"
+      ]
+    },
+    {
+      "aaa2_id": "AAA2-26",
+      "title": "Comprovar vertical DeepSeek governada real",
+      "disposition": "REMAINING_REQUIREMENT",
+      "round_tasks": [],
+      "continuation": "Executar critérios e dependências originais ainda não comprovados; nenhuma herança marca DONE",
+      "original_depends_on": [
+        "AAA2-04",
+        "AAA2-05",
+        "AAA2-17",
+        "AAA2-25"
+      ]
+    },
+    {
+      "aaa2_id": "AAA2-27",
+      "title": "Publicar candidato verificável em CI e staging autorizado",
+      "disposition": "REMAINING_REQUIREMENT",
+      "round_tasks": [],
+      "continuation": "Executar critérios e dependências originais ainda não comprovados; nenhuma herança marca DONE",
+      "original_depends_on": [
+        "AAA2-10",
+        "AAA2-12",
+        "AAA2-19",
+        "AAA2-25"
+      ]
+    },
+    {
+      "aaa2_id": "AAA2-28",
+      "title": "Refatorar e otimizar por perfil observado",
+      "disposition": "REMAINING_REQUIREMENT",
+      "round_tasks": [],
+      "continuation": "Executar critérios e dependências originais ainda não comprovados; nenhuma herança marca DONE",
+      "original_depends_on": [
+        "AAA2-12",
+        "AAA2-18",
+        "AAA2-20",
+        "AAA2-23"
+      ]
+    },
+    {
+      "aaa2_id": "AAA2-29",
+      "title": "Provar jornadas por persona, browser e tecnologia assistiva",
+      "disposition": "REMAINING_REQUIREMENT",
+      "round_tasks": [],
+      "continuation": "Executar critérios e dependências originais ainda não comprovados; nenhuma herança marca DONE",
+      "original_depends_on": [
+        "AAA2-02",
+        "AAA2-06",
+        "AAA2-07",
+        "AAA2-08",
+        "AAA2-09",
+        "AAA2-13",
+        "AAA2-14",
+        "AAA2-15",
+        "AAA2-16",
+        "AAA2-17",
+        "AAA2-18",
+        "AAA2-20",
+        "AAA2-27",
+        "AAA2-28",
+        "AAA2-33"
+      ]
+    },
+    {
+      "aaa2_id": "AAA2-30",
+      "title": "Provar operação adversa e recuperação no candidato",
+      "disposition": "REMAINING_REQUIREMENT",
+      "round_tasks": [],
+      "continuation": "Executar critérios e dependências originais ainda não comprovados; nenhuma herança marca DONE",
+      "original_depends_on": [
+        "AAA2-21",
+        "AAA2-22",
+        "AAA2-23",
+        "AAA2-24",
+        "AAA2-25",
+        "AAA2-26",
+        "AAA2-27",
+        "AAA2-28"
+      ]
+    },
+    {
+      "aaa2_id": "AAA2-31",
+      "title": "Consolidar dossiê e Gauntlet final fresco",
+      "disposition": "REMAINING_REQUIREMENT",
+      "round_tasks": [
+        "AAA3-11",
+        "AAA3-12"
+      ],
+      "continuation": "Executar critérios e dependências originais ainda não comprovados; nenhuma herança marca DONE",
+      "original_depends_on": [
+        "AAA2-01",
+        "AAA2-02",
+        "AAA2-03",
+        "AAA2-04",
+        "AAA2-05",
+        "AAA2-06",
+        "AAA2-07",
+        "AAA2-08",
+        "AAA2-09",
+        "AAA2-10",
+        "AAA2-11",
+        "AAA2-12",
+        "AAA2-13",
+        "AAA2-14",
+        "AAA2-15",
+        "AAA2-16",
+        "AAA2-17",
+        "AAA2-18",
+        "AAA2-19",
+        "AAA2-20",
+        "AAA2-21",
+        "AAA2-22",
+        "AAA2-23",
+        "AAA2-24",
+        "AAA2-25",
+        "AAA2-26",
+        "AAA2-27",
+        "AAA2-28",
+        "AAA2-29",
+        "AAA2-30",
+        "AAA2-33"
+      ]
+    },
+    {
+      "aaa2_id": "AAA2-32",
+      "title": "Obter decisão humana e promover somente artefato aprovado",
+      "disposition": "REMAINING_REQUIREMENT",
+      "round_tasks": [],
+      "continuation": "Executar critérios e dependências originais ainda não comprovados; nenhuma herança marca DONE",
+      "original_depends_on": [
+        "AAA2-31"
+      ]
+    },
+    {
+      "aaa2_id": "AAA2-33",
+      "title": "Completar semântica clínica dos exames",
+      "disposition": "REMAINING_REQUIREMENT",
+      "round_tasks": [],
+      "continuation": "Executar critérios e dependências originais ainda não comprovados; nenhuma herança marca DONE",
+      "original_depends_on": [
+        "AAA2-12"
+      ]
+    }
+  ]
+}

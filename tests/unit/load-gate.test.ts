@@ -11,7 +11,7 @@ test("load contract declares the required production-like scenarios and fail-clo
 
 test("load contract rejects a fixture that omits the burst or worker scenario", () => {
   const missing = inspectLoadScript("users_50 users_100 http_req_duration http_req_failed CVG_LOAD_BASE_URL CVG_LOAD_BEARER_TOKEN deepseek_turn provider_ack");
-  assert.deepEqual(missing, ["burst", "worker_backlog", "doubleDuration", "startTime: doubleDuration(duration)"]);
+  assert.deepEqual(missing, ["burst", "provider_send", "provider_receipt", "clinical_read", "clinical_write", "worker_backlog", "CVG_LOAD_CLINICAL_READ_PATH", "CVG_LOAD_CLINICAL_WRITE_PATH", "CVG_LOAD_PROVIDER_SEND_PATH", "CVG_LOAD_RECEIPT_PATH", "CVG_LOAD_CLINICAL_WRITE_BODY", "CVG_LOAD_AI_BODY", "CVG_LOAD_PROVIDER_SEND_BODY", "semanticEnvelope", "doubleDuration", "startTime: doubleDuration(duration)"]);
 });
 
 test("load burst starts after two complete user phases", () => {

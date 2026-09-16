@@ -2,6 +2,1483 @@
   "schema_version": 2,
   "items": [
     {
+      "id": "AAA-000",
+      "title": "Ativar o plano e reconciliar o estado existente",
+      "stage": "BUILD",
+      "milestone": "M0",
+      "priority": "P1",
+      "size": "S",
+      "status": "DONE",
+      "origin": "docs/plano-aaa-2026-09-12/backlog.json",
+      "dependencies": [],
+      "owner": "lead",
+      "acceptance_summary": "Preparar execucao retomavel sem apagar os dois itens historicos ou registrar melhoria inexistente.",
+      "source_refs": [
+        "docs/auditoria-2026-09-12.md",
+        ".gauntlet/bar-v4.json",
+        ".agent/state.json",
+        ".agent/execution-log.jsonl",
+        ".agent/verification.jsonl"
+      ],
+      "owned_paths": [
+        ".agent/state.json",
+        ".agent/backlog.json",
+        ".agent/plans/",
+        ".agent/execution-log.jsonl",
+        ".agent/verification.jsonl"
+      ],
+      "next_action": {
+        "id": "ARC-01:ARCHITECTURE-MAP",
+        "kind": "START",
+        "summary": "Iniciar ARC-01 apos aprovacao independente de AAA-000."
+      },
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-CVG-AAA000-001",
+        ".gauntlet/critique-AAA000-final.md"
+      ],
+      "review": "Critico de contexto novo, somente leitura; integrador decide aceite.",
+      "aud13_refs": [
+        "AUD13-01"
+      ],
+      "reconciliation_note": "AUD13-01: o escopo deste item e executado/estendido pelas tarefas filhas AUD13; manter o pai aberto ate todas as fatias integrarem."
+    },
+    {
+      "id": "ARC-01",
+      "title": "Mapear fronteiras e reservar arquivos compartilhados",
+      "stage": "BUILD",
+      "milestone": "M0",
+      "priority": "P2",
+      "size": "S",
+      "status": "DONE",
+      "origin": "docs/plano-aaa-2026-09-12/backlog.json",
+      "dependencies": [
+        "AAA-000"
+      ],
+      "owner": "lead",
+      "base_sha": "1c22c5dc79c52151f4c7c94c4402dfdc86812cbc",
+      "owned_paths": [
+        "docs/adr/029-architecture-boundaries-and-ownership.md",
+        "docs/architecture-audit-vNext.md"
+      ],
+      "reserved_files": [
+        "docs/adr/029-architecture-boundaries-and-ownership.md",
+        "docs/architecture-audit-vNext.md"
+      ],
+      "exclusive_resources": [
+        "architecture-docs"
+      ],
+      "contract_ref": "docs/plano-aaa-2026-09-12/backlog.json#ARC-01",
+      "contract_digest": "e28cd95e967cf705ec787b9ca68be46e210b96c420ddca204a1dbdef07214936",
+      "artifact_digests": {
+        "docs/adr/029-architecture-boundaries-and-ownership.md": "644085a05011bc06b589be0c87cb20f6708e26618c45ed2a39d71989d2998503",
+        "docs/architecture-audit-vNext.md": "2b329a9dc0fb9fa82812d65ea5a507cbb13c7c5d928316d64b480e64615fe82f",
+        ".gauntlet/bar-v4.json": "2093461a8d6103641a555ad45371dde4649e5f144c32260b80244e219fa70697"
+      },
+      "acceptance_summary": "Inventariar callers, rotas e testes reais; documentar compatibilidade observavel; nao extrair apenas por tamanho.",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-CVG-ARC01-001",
+        ".agent/verification.jsonl#VER-CVG-ARC01-002",
+        ".agent/verification.jsonl#VER-CVG-ARC01-003",
+        ".agent/verification.jsonl#VER-CVG-ARC01-005",
+        ".agent/gates/arc-01.json",
+        ".gauntlet/critique-arc-01-final.md"
+      ],
+      "next_action": {
+        "id": "CON-01:IMPLEMENT",
+        "kind": "START",
+        "summary": "Iniciar CON-01, mantendo ARC-01 fechado e o mapa como referencia."
+      }
+    },
+    {
+      "id": "ARC-02",
+      "title": "Extrair composição da API e serviços por domínio",
+      "stage": "BUILD",
+      "milestone": "M2",
+      "priority": "P2",
+      "size": "L",
+      "status": "PLANNED",
+      "origin": "docs/plano-aaa-2026-09-12/backlog.json",
+      "dependencies": [
+        "ARC-01",
+        "SEC-01",
+        "FIN-02",
+        "FUN-02",
+        "FUN-03"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Implementar e verificar o contrato catalogado; nao marcar como DONE por planejamento.",
+      "next_action": {
+        "id": "ARC-02:IMPLEMENT",
+        "kind": "IMPLEMENT",
+        "summary": "Ler contrato, reproduzir comportamento e implementar com evidencias."
+      },
+      "aud13_refs": [
+        "AUD13-33"
+      ],
+      "reconciliation_note": "AUD13-01: o escopo deste item e executado/estendido pelas tarefas filhas AUD13; manter o pai aberto ate todas as fatias integrarem."
+    },
+    {
+      "id": "ARC-03",
+      "title": "Separar persistência por responsabilidade",
+      "stage": "BUILD",
+      "milestone": "M2",
+      "priority": "P2",
+      "size": "L",
+      "status": "PLANNED",
+      "origin": "docs/plano-aaa-2026-09-12/backlog.json",
+      "dependencies": [
+        "ARC-01",
+        "DAT-03",
+        "WRK-02"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Implementar e verificar o contrato catalogado; nao marcar como DONE por planejamento.",
+      "next_action": {
+        "id": "ARC-03:IMPLEMENT",
+        "kind": "IMPLEMENT",
+        "summary": "Ler contrato, reproduzir comportamento e implementar com evidencias."
+      },
+      "aud13_refs": [
+        "AUD13-33"
+      ],
+      "reconciliation_note": "AUD13-01: o escopo deste item e executado/estendido pelas tarefas filhas AUD13; manter o pai aberto ate todas as fatias integrarem."
+    },
+    {
+      "id": "CON-01",
+      "title": "Congelar contratos necessários às primeiras jornadas",
+      "stage": "BUILD",
+      "milestone": "M0",
+      "priority": "P1",
+      "size": "S",
+      "status": "DONE",
+      "origin": "docs/plano-aaa-2026-09-12/backlog.json",
+      "dependencies": [
+        "AAA-000"
+      ],
+      "owner": "lead",
+      "base_sha": "1c22c5dc79c52151f4c7c94c4402dfdc86812cbc",
+      "owned_paths": [
+        "docs/adr/030-contracts-session-finance-compatibility.md",
+        "packages/contracts/src/index.ts",
+        "packages/contracts/src/api-catalog.ts"
+      ],
+      "reserved_files": [
+        "docs/adr/030-contracts-session-finance-compatibility.md",
+        "packages/contracts/src/index.ts",
+        "packages/contracts/src/api-catalog.ts"
+      ],
+      "exclusive_resources": [
+        "contracts"
+      ],
+      "contract_ref": "docs/plano-aaa-2026-09-12/areas/02-con.md#CON-01",
+      "contract_digest": "d24aeb9bede5f58361ce8765ac391111098a15ccf1abfccab725b37803762399",
+      "artifact_digests": {
+        "docs/adr/030-contracts-session-finance-compatibility.md": "2974306776dac09398dc3d2206a45a19eda24665261bd6e14bde15e58d73de41",
+        "packages/contracts/src/index.ts": "8e2e747efd78ad09178b0026ca94c58047996b2f8f53422ed4ee1cbd110338de",
+        "packages/contracts/src/api-catalog.ts": "a0539c4843658dc2c44195ec818860199f6044c8741e8fcfa50c640200c8a1b7",
+        ".gauntlet/bar-v4.json": "2093461a8d6103641a555ad45371dde4649e5f144c32260b80244e219fa70697"
+      },
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-CVG-CON01-003",
+        ".agent/gates/con-01.json",
+        ".gauntlet/critique-con-01-final.md",
+        ".agent/verification.jsonl#VER-CVG-CON01-002",
+        ".agent/verification.jsonl#VER-CVG-CON01-001",
+        ".gauntlet/critique-con-01-round-1.md"
+      ],
+      "acceptance_summary": "Registrar versao e exemplos de sucesso/erro/parcial; impedir promessa de revogacao sem servidor; tipar saldo pendente e estados financeiros sem inventar regra de estorno.",
+      "next_action": {
+        "id": "CON-02:IMPLEMENT",
+        "kind": "START",
+        "summary": "Iniciar CON-02 quando a validacao de payloads no cliente for autorizada.",
+        "target": "Validacao de payloads no cliente",
+        "completion_signal": "CON-02 iniciar com plano e reserva de arquivos aprovados."
+      },
+      "aud13_refs": [
+        "AUD13-04"
+      ],
+      "reconciliation_note": "AUD13-01: o escopo deste item e executado/estendido pelas tarefas filhas AUD13; manter o pai aberto ate todas as fatias integrarem."
+    },
+    {
+      "id": "CON-02",
+      "title": "Validar payloads também no cliente",
+      "stage": "BUILD",
+      "milestone": "M1",
+      "priority": "P2",
+      "size": "M",
+      "status": "PLANNED",
+      "origin": "docs/plano-aaa-2026-09-12/backlog.json",
+      "dependencies": [
+        "CON-01",
+        "SEC-01",
+        "FIN-01"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Implementar e verificar o contrato catalogado; nao marcar como DONE por planejamento.",
+      "next_action": {
+        "id": "CON-02:IMPLEMENT",
+        "kind": "IMPLEMENT",
+        "summary": "Ler contrato, reproduzir comportamento e implementar com evidencias."
+      },
+      "aud13_refs": [
+        "AUD13-04",
+        "AUD13-06",
+        "AUD13-09"
+      ],
+      "reconciliation_note": "AUD13-01: o escopo deste item e executado/estendido pelas tarefas filhas AUD13; manter o pai aberto ate todas as fatias integrarem."
+    },
+    {
+      "id": "CON-03",
+      "title": "Provar compatibilidade e catálogo após integração",
+      "stage": "BUILD",
+      "milestone": "M2",
+      "priority": "P2",
+      "size": "M",
+      "status": "PLANNED",
+      "origin": "docs/plano-aaa-2026-09-12/backlog.json",
+      "dependencies": [
+        "CON-02",
+        "ARC-02",
+        "ARC-03"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Implementar e verificar o contrato catalogado; nao marcar como DONE por planejamento.",
+      "next_action": {
+        "id": "CON-03:IMPLEMENT",
+        "kind": "IMPLEMENT",
+        "summary": "Ler contrato, reproduzir comportamento e implementar com evidencias."
+      },
+      "aud13_refs": [
+        "AUD13-37"
+      ],
+      "reconciliation_note": "AUD13-01: o escopo deste item e executado/estendido pelas tarefas filhas AUD13; manter o pai aberto ate todas as fatias integrarem."
+    },
+    {
+      "id": "SEC-01",
+      "title": "Corrigir logout sob falha e reconexão",
+      "stage": "BUILD",
+      "milestone": "M1",
+      "priority": "P1",
+      "size": "M",
+      "status": "PLANNED",
+      "origin": "docs/plano-aaa-2026-09-12/backlog.json",
+      "dependencies": [
+        "CON-01"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Implementar e verificar o contrato catalogado; nao marcar como DONE por planejamento.",
+      "next_action": {
+        "id": "SEC-01:IMPLEMENT",
+        "kind": "IMPLEMENT",
+        "summary": "Ler contrato, reproduzir comportamento e implementar com evidencias."
+      },
+      "aud13_refs": [
+        "AUD13-05",
+        "AUD13-06"
+      ],
+      "reconciliation_note": "AUD13-01: o escopo deste item e executado/estendido pelas tarefas filhas AUD13; manter o pai aberto ate todas as fatias integrarem."
+    },
+    {
+      "id": "SEC-02",
+      "title": "Provar matriz de autorização e revogação",
+      "stage": "BUILD",
+      "milestone": "M2",
+      "priority": "P1",
+      "size": "M",
+      "status": "PLANNED",
+      "origin": "docs/plano-aaa-2026-09-12/backlog.json",
+      "dependencies": [
+        "SEC-01",
+        "DAT-01"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Implementar e verificar o contrato catalogado; nao marcar como DONE por planejamento.",
+      "next_action": {
+        "id": "SEC-02:IMPLEMENT",
+        "kind": "IMPLEMENT",
+        "summary": "Ler contrato, reproduzir comportamento e implementar com evidencias."
+      },
+      "aud13_refs": [
+        "AUD13-10"
+      ],
+      "reconciliation_note": "AUD13-01: o escopo deste item e executado/estendido pelas tarefas filhas AUD13; manter o pai aberto ate todas as fatias integrarem."
+    },
+    {
+      "id": "SEC-03",
+      "title": "Integrar autoridade de segredo e WebAuthn reais",
+      "stage": "BUILD",
+      "milestone": "M3",
+      "priority": "P1",
+      "size": "L",
+      "status": "PLANNED",
+      "origin": "docs/plano-aaa-2026-09-12/backlog.json",
+      "dependencies": [
+        "SEC-02",
+        "DEV-02"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Implementar e verificar o contrato catalogado; nao marcar como DONE por planejamento.",
+      "next_action": {
+        "id": "SEC-03:IMPLEMENT",
+        "kind": "IMPLEMENT",
+        "summary": "Ler contrato, reproduzir comportamento e implementar com evidencias."
+      },
+      "aud13_refs": [
+        "AUD13-06",
+        "AUD13-28"
+      ],
+      "reconciliation_note": "AUD13-01: o escopo deste item e executado/estendido pelas tarefas filhas AUD13; manter o pai aberto ate todas as fatias integrarem."
+    },
+    {
+      "id": "SEC-04",
+      "title": "Executar red-team da aplicação e do banco",
+      "stage": "BUILD",
+      "milestone": "M4",
+      "priority": "P1",
+      "size": "L",
+      "status": "PLANNED",
+      "origin": "docs/plano-aaa-2026-09-12/backlog.json",
+      "dependencies": [
+        "SEC-03",
+        "DAT-04",
+        "AIG-03",
+        "DEV-03"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Implementar e verificar o contrato catalogado; nao marcar como DONE por planejamento.",
+      "next_action": {
+        "id": "SEC-04:IMPLEMENT",
+        "kind": "IMPLEMENT",
+        "summary": "Ler contrato, reproduzir comportamento e implementar com evidencias."
+      },
+      "aud13_refs": [
+        "AUD13-28",
+        "AUD13-36"
+      ],
+      "reconciliation_note": "AUD13-01: o escopo deste item e executado/estendido pelas tarefas filhas AUD13; manter o pai aberto ate todas as fatias integrarem."
+    },
+    {
+      "id": "AIG-01",
+      "title": "Fechar PDP, tools, budgets e efeitos locais",
+      "stage": "BUILD",
+      "milestone": "M1",
+      "priority": "P1",
+      "size": "M",
+      "status": "PLANNED",
+      "origin": "docs/plano-aaa-2026-09-12/backlog.json",
+      "dependencies": [
+        "CON-01"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Implementar e verificar o contrato catalogado; nao marcar como DONE por planejamento.",
+      "next_action": {
+        "id": "AIG-01:IMPLEMENT",
+        "kind": "IMPLEMENT",
+        "summary": "Ler contrato, reproduzir comportamento e implementar com evidencias."
+      },
+      "aud13_refs": [
+        "AUD13-19",
+        "AUD13-20",
+        "AUD13-21"
+      ],
+      "reconciliation_note": "AUD13-01: o escopo deste item e executado/estendido pelas tarefas filhas AUD13; manter o pai aberto ate todas as fatias integrarem."
+    },
+    {
+      "id": "AIG-02",
+      "title": "Executar vertical DeepSeek real",
+      "stage": "BUILD",
+      "milestone": "M3",
+      "priority": "P1",
+      "size": "L",
+      "status": "PLANNED",
+      "origin": "docs/plano-aaa-2026-09-12/backlog.json",
+      "dependencies": [
+        "AIG-01",
+        "SEC-03",
+        "DEV-02"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Implementar e verificar o contrato catalogado; nao marcar como DONE por planejamento.",
+      "next_action": {
+        "id": "AIG-02:IMPLEMENT",
+        "kind": "IMPLEMENT",
+        "summary": "Ler contrato, reproduzir comportamento e implementar com evidencias."
+      },
+      "aud13_refs": [
+        "AUD13-27"
+      ],
+      "reconciliation_note": "AUD13-01: o escopo deste item e executado/estendido pelas tarefas filhas AUD13; manter o pai aberto ate todas as fatias integrarem."
+    },
+    {
+      "id": "AIG-03",
+      "title": "Provar falhas do motor e settlement de uso",
+      "stage": "BUILD",
+      "milestone": "M4",
+      "priority": "P1",
+      "size": "L",
+      "status": "PLANNED",
+      "origin": "docs/plano-aaa-2026-09-12/backlog.json",
+      "dependencies": [
+        "AIG-02",
+        "WRK-03"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Implementar e verificar o contrato catalogado; nao marcar como DONE por planejamento.",
+      "next_action": {
+        "id": "AIG-03:IMPLEMENT",
+        "kind": "IMPLEMENT",
+        "summary": "Ler contrato, reproduzir comportamento e implementar com evidencias."
+      },
+      "aud13_refs": [
+        "AUD13-20",
+        "AUD13-21",
+        "AUD13-27"
+      ],
+      "reconciliation_note": "AUD13-01: o escopo deste item e executado/estendido pelas tarefas filhas AUD13; manter o pai aberto ate todas as fatias integrarem."
+    },
+    {
+      "id": "DAT-01",
+      "title": "Revalidar migrations e RLS em PostgreSQL efêmero",
+      "stage": "BUILD",
+      "milestone": "M1",
+      "priority": "P1",
+      "size": "M",
+      "status": "PLANNED",
+      "origin": "docs/plano-aaa-2026-09-12/backlog.json",
+      "dependencies": [
+        "SUP-01"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Implementar e verificar o contrato catalogado; nao marcar como DONE por planejamento.",
+      "next_action": {
+        "id": "DAT-01:IMPLEMENT",
+        "kind": "IMPLEMENT",
+        "summary": "Ler contrato, reproduzir comportamento e implementar com evidencias."
+      },
+      "aud13_refs": [
+        "AUD13-23"
+      ],
+      "reconciliation_note": "AUD13-01: o escopo deste item e executado/estendido pelas tarefas filhas AUD13; manter o pai aberto ate todas as fatias integrarem."
+    },
+    {
+      "id": "DAT-02",
+      "title": "Fechar fonte authoritative e concorrência multiprocesso",
+      "stage": "BUILD",
+      "milestone": "M2",
+      "priority": "P1",
+      "size": "L",
+      "status": "PLANNED",
+      "origin": "docs/plano-aaa-2026-09-12/backlog.json",
+      "dependencies": [
+        "DAT-01",
+        "FIN-01"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Implementar e verificar o contrato catalogado; nao marcar como DONE por planejamento.",
+      "next_action": {
+        "id": "DAT-02:IMPLEMENT",
+        "kind": "IMPLEMENT",
+        "summary": "Ler contrato, reproduzir comportamento e implementar com evidencias."
+      },
+      "aud13_refs": [
+        "AUD13-22",
+        "AUD13-23"
+      ],
+      "reconciliation_note": "AUD13-01: o escopo deste item e executado/estendido pelas tarefas filhas AUD13; manter o pai aberto ate todas as fatias integrarem."
+    },
+    {
+      "id": "DAT-03",
+      "title": "Endurecer auditoria imutável e exportação",
+      "stage": "BUILD",
+      "milestone": "M2",
+      "priority": "P1",
+      "size": "M",
+      "status": "PLANNED",
+      "origin": "docs/plano-aaa-2026-09-12/backlog.json",
+      "dependencies": [
+        "DAT-02",
+        "SEC-02"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Implementar e verificar o contrato catalogado; nao marcar como DONE por planejamento.",
+      "next_action": {
+        "id": "DAT-03:IMPLEMENT",
+        "kind": "IMPLEMENT",
+        "summary": "Ler contrato, reproduzir comportamento e implementar com evidencias."
+      },
+      "aud13_refs": [
+        "AUD13-24"
+      ],
+      "reconciliation_note": "AUD13-01: o escopo deste item e executado/estendido pelas tarefas filhas AUD13; manter o pai aberto ate todas as fatias integrarem."
+    },
+    {
+      "id": "DAT-04",
+      "title": "Provar restore sem ressuscitar dados ou privilégios",
+      "stage": "BUILD",
+      "milestone": "M3",
+      "priority": "P1",
+      "size": "L",
+      "status": "PLANNED",
+      "origin": "docs/plano-aaa-2026-09-12/backlog.json",
+      "dependencies": [
+        "DAT-03",
+        "OPS-02",
+        "ARC-03"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Implementar e verificar o contrato catalogado; nao marcar como DONE por planejamento.",
+      "next_action": {
+        "id": "DAT-04:IMPLEMENT",
+        "kind": "IMPLEMENT",
+        "summary": "Ler contrato, reproduzir comportamento e implementar com evidencias."
+      },
+      "aud13_refs": [
+        "AUD13-24"
+      ],
+      "reconciliation_note": "AUD13-01: o escopo deste item e executado/estendido pelas tarefas filhas AUD13; manter o pai aberto ate todas as fatias integrarem."
+    },
+    {
+      "id": "WRK-01",
+      "title": "Exercitar handlers reais e admissão",
+      "stage": "BUILD",
+      "milestone": "M2",
+      "priority": "P1",
+      "size": "M",
+      "status": "PLANNED",
+      "origin": "docs/plano-aaa-2026-09-12/backlog.json",
+      "dependencies": [
+        "DAT-02",
+        "AIG-01"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Implementar e verificar o contrato catalogado; nao marcar como DONE por planejamento.",
+      "next_action": {
+        "id": "WRK-01:IMPLEMENT",
+        "kind": "IMPLEMENT",
+        "summary": "Ler contrato, reproduzir comportamento e implementar com evidencias."
+      },
+      "aud13_refs": [
+        "AUD13-25"
+      ],
+      "reconciliation_note": "AUD13-01: o escopo deste item e executado/estendido pelas tarefas filhas AUD13; manter o pai aberto ate todas as fatias integrarem."
+    },
+    {
+      "id": "WRK-02",
+      "title": "Provar lease, retry, fencing e shutdown",
+      "stage": "BUILD",
+      "milestone": "M2",
+      "priority": "P1",
+      "size": "M",
+      "status": "PLANNED",
+      "origin": "docs/plano-aaa-2026-09-12/backlog.json",
+      "dependencies": [
+        "WRK-01"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Implementar e verificar o contrato catalogado; nao marcar como DONE por planejamento.",
+      "next_action": {
+        "id": "WRK-02:IMPLEMENT",
+        "kind": "IMPLEMENT",
+        "summary": "Ler contrato, reproduzir comportamento e implementar com evidencias."
+      },
+      "aud13_refs": [
+        "AUD13-25"
+      ],
+      "reconciliation_note": "AUD13-01: o escopo deste item e executado/estendido pelas tarefas filhas AUD13; manter o pai aberto ate todas as fatias integrarem."
+    },
+    {
+      "id": "WRK-03",
+      "title": "Concluir provider externo, receipt e reconciliação",
+      "stage": "BUILD",
+      "milestone": "M3",
+      "priority": "P1",
+      "size": "L",
+      "status": "PLANNED",
+      "origin": "docs/plano-aaa-2026-09-12/backlog.json",
+      "dependencies": [
+        "WRK-02",
+        "SEC-03",
+        "DEV-02"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Implementar e verificar o contrato catalogado; nao marcar como DONE por planejamento.",
+      "next_action": {
+        "id": "WRK-03:IMPLEMENT",
+        "kind": "IMPLEMENT",
+        "summary": "Ler contrato, reproduzir comportamento e implementar com evidencias."
+      },
+      "aud13_refs": [
+        "AUD13-28"
+      ],
+      "reconciliation_note": "AUD13-01: o escopo deste item e executado/estendido pelas tarefas filhas AUD13; manter o pai aberto ate todas as fatias integrarem."
+    },
+    {
+      "id": "FUN-01",
+      "title": "Fechar inventário de jornadas e ações incompletas",
+      "stage": "BUILD",
+      "milestone": "M0",
+      "priority": "P1",
+      "size": "S",
+      "status": "PLANNED",
+      "origin": "docs/plano-aaa-2026-09-12/backlog.json",
+      "dependencies": [
+        "AAA-000"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Implementar e verificar o contrato catalogado; nao marcar como DONE por planejamento.",
+      "next_action": {
+        "id": "FUN-01:IMPLEMENT",
+        "kind": "IMPLEMENT",
+        "summary": "Ler contrato, reproduzir comportamento e implementar com evidencias."
+      },
+      "aud13_refs": [
+        "AUD13-08",
+        "AUD13-11"
+      ],
+      "reconciliation_note": "AUD13-01: o escopo deste item e executado/estendido pelas tarefas filhas AUD13; manter o pai aberto ate todas as fatias integrarem."
+    },
+    {
+      "id": "FUN-02",
+      "title": "Completar entrada de estoque e inventário",
+      "stage": "BUILD",
+      "milestone": "M2",
+      "priority": "P1",
+      "size": "L",
+      "status": "PLANNED",
+      "origin": "docs/plano-aaa-2026-09-12/backlog.json",
+      "dependencies": [
+        "FUN-01",
+        "CON-02",
+        "DAT-01"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Implementar e verificar o contrato catalogado; nao marcar como DONE por planejamento.",
+      "next_action": {
+        "id": "FUN-02:IMPLEMENT",
+        "kind": "IMPLEMENT",
+        "summary": "Ler contrato, reproduzir comportamento e implementar com evidencias."
+      },
+      "aud13_refs": [
+        "AUD13-17"
+      ],
+      "reconciliation_note": "AUD13-01: o escopo deste item e executado/estendido pelas tarefas filhas AUD13; manter o pai aberto ate todas as fatias integrarem."
+    },
+    {
+      "id": "FUN-03",
+      "title": "Completar jornadas clínicas e operacionais essenciais",
+      "stage": "BUILD",
+      "milestone": "M2",
+      "priority": "P1",
+      "size": "L",
+      "status": "PLANNED",
+      "origin": "docs/plano-aaa-2026-09-12/backlog.json",
+      "dependencies": [
+        "FUN-01",
+        "CON-02",
+        "FIN-02",
+        "DAT-01"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Implementar e verificar o contrato catalogado; nao marcar como DONE por planejamento.",
+      "next_action": {
+        "id": "FUN-03:IMPLEMENT",
+        "kind": "IMPLEMENT",
+        "summary": "Ler contrato, reproduzir comportamento e implementar com evidencias."
+      },
+      "aud13_refs": [
+        "AUD13-12",
+        "AUD13-13",
+        "AUD13-14",
+        "AUD13-15",
+        "AUD13-16",
+        "AUD13-19",
+        "AUD13-20",
+        "AUD13-25",
+        "AUD13-29",
+        "AUD13-30"
+      ],
+      "reconciliation_note": "AUD13-01: o escopo deste item e executado/estendido pelas tarefas filhas AUD13; manter o pai aberto ate todas as fatias integrarem."
+    },
+    {
+      "id": "FIN-01",
+      "title": "Definir saldo e mapear semântica financeira existente",
+      "stage": "BUILD",
+      "milestone": "M0",
+      "priority": "P1",
+      "size": "S",
+      "status": "PLANNED",
+      "origin": "docs/plano-aaa-2026-09-12/backlog.json",
+      "dependencies": [
+        "CON-01",
+        "FUN-01"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Implementar e verificar o contrato catalogado; nao marcar como DONE por planejamento.",
+      "next_action": {
+        "id": "FIN-01:IMPLEMENT",
+        "kind": "IMPLEMENT",
+        "summary": "Ler contrato, reproduzir comportamento e implementar com evidencias."
+      },
+      "aud13_refs": [
+        "AUD13-09",
+        "AUD13-11"
+      ],
+      "reconciliation_note": "AUD13-01: o escopo deste item e executado/estendido pelas tarefas filhas AUD13; manter o pai aberto ate todas as fatias integrarem."
+    },
+    {
+      "id": "FIN-02",
+      "title": "Corrigir resumo e completar cobrança",
+      "stage": "BUILD",
+      "milestone": "M1",
+      "priority": "P1",
+      "size": "M",
+      "status": "PLANNED",
+      "origin": "docs/plano-aaa-2026-09-12/backlog.json",
+      "dependencies": [
+        "FIN-01"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Implementar e verificar o contrato catalogado; nao marcar como DONE por planejamento.",
+      "next_action": {
+        "id": "FIN-02:IMPLEMENT",
+        "kind": "IMPLEMENT",
+        "summary": "Ler contrato, reproduzir comportamento e implementar com evidencias."
+      },
+      "aud13_refs": [
+        "AUD13-09",
+        "AUD13-18"
+      ],
+      "reconciliation_note": "AUD13-01: o escopo deste item e executado/estendido pelas tarefas filhas AUD13; manter o pai aberto ate todas as fatias integrarem."
+    },
+    {
+      "id": "FIN-03",
+      "title": "Provar invariantes financeiras e reconciliação",
+      "stage": "BUILD",
+      "milestone": "M4",
+      "priority": "P1",
+      "size": "M",
+      "status": "PLANNED",
+      "origin": "docs/plano-aaa-2026-09-12/backlog.json",
+      "dependencies": [
+        "FIN-02",
+        "FIN-04",
+        "DAT-02",
+        "WRK-03"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Implementar e verificar o contrato catalogado; nao marcar como DONE por planejamento.",
+      "next_action": {
+        "id": "FIN-03:IMPLEMENT",
+        "kind": "IMPLEMENT",
+        "summary": "Ler contrato, reproduzir comportamento e implementar com evidencias."
+      },
+      "aud13_refs": [
+        "AUD13-18",
+        "AUD13-36"
+      ],
+      "reconciliation_note": "AUD13-01: o escopo deste item e executado/estendido pelas tarefas filhas AUD13; manter o pai aberto ate todas as fatias integrarem."
+    },
+    {
+      "id": "FIN-04",
+      "title": "Resolver e implementar regras ambíguas de estorno",
+      "stage": "BUILD",
+      "milestone": "M2",
+      "priority": "P1",
+      "size": "M",
+      "status": "PLANNED",
+      "origin": "docs/plano-aaa-2026-09-12/backlog.json",
+      "dependencies": [
+        "FIN-01",
+        "FIN-02"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Implementar e verificar o contrato catalogado; nao marcar como DONE por planejamento.",
+      "next_action": {
+        "id": "FIN-04:IMPLEMENT",
+        "kind": "IMPLEMENT",
+        "summary": "Ler contrato, reproduzir comportamento e implementar com evidencias."
+      },
+      "aud13_refs": [
+        "AUD13-18"
+      ],
+      "reconciliation_note": "AUD13-01: o escopo deste item e executado/estendido pelas tarefas filhas AUD13; manter o pai aberto ate todas as fatias integrarem."
+    },
+    {
+      "id": "UX-01",
+      "title": "Unificar estados e feedback da sessão",
+      "stage": "BUILD",
+      "milestone": "M1",
+      "priority": "P2",
+      "size": "M",
+      "status": "PLANNED",
+      "origin": "docs/plano-aaa-2026-09-12/backlog.json",
+      "dependencies": [
+        "SEC-01",
+        "CON-02"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Implementar e verificar o contrato catalogado; nao marcar como DONE por planejamento.",
+      "next_action": {
+        "id": "UX-01:IMPLEMENT",
+        "kind": "IMPLEMENT",
+        "summary": "Ler contrato, reproduzir comportamento e implementar com evidencias."
+      },
+      "aud13_refs": [
+        "AUD13-05"
+      ],
+      "reconciliation_note": "AUD13-01: o escopo deste item e executado/estendido pelas tarefas filhas AUD13; manter o pai aberto ate todas as fatias integrarem."
+    },
+    {
+      "id": "UX-02",
+      "title": "Consolidar componentes e tokens por uso",
+      "stage": "BUILD",
+      "milestone": "M2",
+      "priority": "P3",
+      "size": "M",
+      "status": "PLANNED",
+      "origin": "docs/plano-aaa-2026-09-12/backlog.json",
+      "dependencies": [
+        "UX-01",
+        "FUN-02",
+        "FUN-03"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Implementar e verificar o contrato catalogado; nao marcar como DONE por planejamento.",
+      "next_action": {
+        "id": "UX-02:IMPLEMENT",
+        "kind": "IMPLEMENT",
+        "summary": "Ler contrato, reproduzir comportamento e implementar com evidencias."
+      },
+      "aud13_refs": [
+        "AUD13-07",
+        "AUD13-08"
+      ],
+      "reconciliation_note": "AUD13-01: o escopo deste item e executado/estendido pelas tarefas filhas AUD13; manter o pai aberto ate todas as fatias integrarem."
+    },
+    {
+      "id": "UX-03",
+      "title": "Validar jornadas com usuários representativos",
+      "stage": "BUILD",
+      "milestone": "M4",
+      "priority": "P2",
+      "size": "M",
+      "status": "PLANNED",
+      "origin": "docs/plano-aaa-2026-09-12/backlog.json",
+      "dependencies": [
+        "UX-02",
+        "A11Y-02"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Implementar e verificar o contrato catalogado; nao marcar como DONE por planejamento.",
+      "next_action": {
+        "id": "UX-03:IMPLEMENT",
+        "kind": "IMPLEMENT",
+        "summary": "Ler contrato, reproduzir comportamento e implementar com evidencias."
+      },
+      "aud13_refs": [
+        "AUD13-35"
+      ],
+      "reconciliation_note": "AUD13-01: o escopo deste item e executado/estendido pelas tarefas filhas AUD13; manter o pai aberto ate todas as fatias integrarem."
+    },
+    {
+      "id": "A11Y-01",
+      "title": "Fechar matriz automatizada de acessibilidade",
+      "stage": "BUILD",
+      "milestone": "M2",
+      "priority": "P2",
+      "size": "M",
+      "status": "PLANNED",
+      "origin": "docs/plano-aaa-2026-09-12/backlog.json",
+      "dependencies": [
+        "UX-01",
+        "QUA-03"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Implementar e verificar o contrato catalogado; nao marcar como DONE por planejamento.",
+      "next_action": {
+        "id": "A11Y-01:IMPLEMENT",
+        "kind": "IMPLEMENT",
+        "summary": "Ler contrato, reproduzir comportamento e implementar com evidencias."
+      },
+      "aud13_refs": [
+        "AUD13-07",
+        "AUD13-35"
+      ],
+      "reconciliation_note": "AUD13-01: o escopo deste item e executado/estendido pelas tarefas filhas AUD13; manter o pai aberto ate todas as fatias integrarem."
+    },
+    {
+      "id": "A11Y-02",
+      "title": "Executar tecnologia assistiva e zoom real",
+      "stage": "BUILD",
+      "milestone": "M4",
+      "priority": "P2",
+      "size": "M",
+      "status": "PLANNED",
+      "origin": "docs/plano-aaa-2026-09-12/backlog.json",
+      "dependencies": [
+        "A11Y-01",
+        "UX-02"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Implementar e verificar o contrato catalogado; nao marcar como DONE por planejamento.",
+      "next_action": {
+        "id": "A11Y-02:IMPLEMENT",
+        "kind": "IMPLEMENT",
+        "summary": "Ler contrato, reproduzir comportamento e implementar com evidencias."
+      },
+      "aud13_refs": [
+        "AUD13-35"
+      ],
+      "reconciliation_note": "AUD13-01: o escopo deste item e executado/estendido pelas tarefas filhas AUD13; manter o pai aberto ate todas as fatias integrarem."
+    },
+    {
+      "id": "A11Y-03",
+      "title": "Fixar regressões e prova visual independente",
+      "stage": "BUILD",
+      "milestone": "M4",
+      "priority": "P2",
+      "size": "M",
+      "status": "PLANNED",
+      "origin": "docs/plano-aaa-2026-09-12/backlog.json",
+      "dependencies": [
+        "A11Y-02",
+        "UX-03"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Implementar e verificar o contrato catalogado; nao marcar como DONE por planejamento.",
+      "next_action": {
+        "id": "A11Y-03:IMPLEMENT",
+        "kind": "IMPLEMENT",
+        "summary": "Ler contrato, reproduzir comportamento e implementar com evidencias."
+      },
+      "aud13_refs": [
+        "AUD13-35"
+      ],
+      "reconciliation_note": "AUD13-01: o escopo deste item e executado/estendido pelas tarefas filhas AUD13; manter o pai aberto ate todas as fatias integrarem."
+    },
+    {
+      "id": "QUA-01",
+      "title": "Tornar teste de snapshot determinístico",
+      "stage": "BUILD",
+      "milestone": "M0",
+      "priority": "P1",
+      "size": "S",
+      "status": "PLANNED",
+      "origin": "docs/plano-aaa-2026-09-12/backlog.json",
+      "dependencies": [
+        "AAA-000"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Implementar e verificar o contrato catalogado; nao marcar como DONE por planejamento.",
+      "next_action": {
+        "id": "QUA-01:IMPLEMENT",
+        "kind": "IMPLEMENT",
+        "summary": "Ler contrato, reproduzir comportamento e implementar com evidencias."
+      },
+      "aud13_refs": [
+        "AUD13-03"
+      ],
+      "reconciliation_note": "AUD13-01: o escopo deste item e executado/estendido pelas tarefas filhas AUD13; manter o pai aberto ate todas as fatias integrarem."
+    },
+    {
+      "id": "QUA-02",
+      "title": "Produzir evidência portátil do candidato",
+      "stage": "BUILD",
+      "milestone": "M0",
+      "priority": "P1",
+      "size": "M",
+      "status": "PLANNED",
+      "origin": "docs/plano-aaa-2026-09-12/backlog.json",
+      "dependencies": [
+        "QUA-01",
+        "SUP-01"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Implementar e verificar o contrato catalogado; nao marcar como DONE por planejamento.",
+      "next_action": {
+        "id": "QUA-02:IMPLEMENT",
+        "kind": "IMPLEMENT",
+        "summary": "Ler contrato, reproduzir comportamento e implementar com evidencias."
+      },
+      "aud13_refs": [
+        "AUD13-03"
+      ],
+      "reconciliation_note": "AUD13-01: o escopo deste item e executado/estendido pelas tarefas filhas AUD13; manter o pai aberto ate todas as fatias integrarem."
+    },
+    {
+      "id": "QUA-03",
+      "title": "Isolar suites e complementar lint semântico",
+      "stage": "BUILD",
+      "milestone": "M1",
+      "priority": "P2",
+      "size": "M",
+      "status": "PLANNED",
+      "origin": "docs/plano-aaa-2026-09-12/backlog.json",
+      "dependencies": [
+        "QUA-02",
+        "SUP-01"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Implementar e verificar o contrato catalogado; nao marcar como DONE por planejamento.",
+      "next_action": {
+        "id": "QUA-03:IMPLEMENT",
+        "kind": "IMPLEMENT",
+        "summary": "Ler contrato, reproduzir comportamento e implementar com evidencias."
+      },
+      "aud13_refs": [
+        "AUD13-02",
+        "AUD13-32"
+      ],
+      "reconciliation_note": "AUD13-01: o escopo deste item e executado/estendido pelas tarefas filhas AUD13; manter o pai aberto ate todas as fatias integrarem."
+    },
+    {
+      "id": "PER-01",
+      "title": "Congelar workload, capacidade e targets medidos",
+      "stage": "BUILD",
+      "milestone": "M1",
+      "priority": "P1",
+      "size": "M",
+      "status": "PLANNED",
+      "origin": "docs/plano-aaa-2026-09-12/backlog.json",
+      "dependencies": [
+        "SUP-01",
+        "DAT-01"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Implementar e verificar o contrato catalogado; nao marcar como DONE por planejamento.",
+      "next_action": {
+        "id": "PER-01:IMPLEMENT",
+        "kind": "IMPLEMENT",
+        "summary": "Ler contrato, reproduzir comportamento e implementar com evidencias."
+      },
+      "aud13_refs": [
+        "AUD13-32",
+        "AUD13-33"
+      ],
+      "reconciliation_note": "AUD13-01: o escopo deste item e executado/estendido pelas tarefas filhas AUD13; manter o pai aberto ate todas as fatias integrarem."
+    },
+    {
+      "id": "PER-02",
+      "title": "Reduzir gargalos demonstrados",
+      "stage": "BUILD",
+      "milestone": "M3",
+      "priority": "P2",
+      "size": "L",
+      "status": "PLANNED",
+      "origin": "docs/plano-aaa-2026-09-12/backlog.json",
+      "dependencies": [
+        "PER-01",
+        "ARC-02",
+        "ARC-03"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Implementar e verificar o contrato catalogado; nao marcar como DONE por planejamento.",
+      "next_action": {
+        "id": "PER-02:IMPLEMENT",
+        "kind": "IMPLEMENT",
+        "summary": "Ler contrato, reproduzir comportamento e implementar com evidencias."
+      },
+      "aud13_refs": [
+        "AUD13-10",
+        "AUD13-29",
+        "AUD13-33"
+      ],
+      "reconciliation_note": "AUD13-01: o escopo deste item e executado/estendido pelas tarefas filhas AUD13; manter o pai aberto ate todas as fatias integrarem."
+    },
+    {
+      "id": "PER-03",
+      "title": "Provar carga, pressão e chaos em staging",
+      "stage": "BUILD",
+      "milestone": "M4",
+      "priority": "P1",
+      "size": "L",
+      "status": "PLANNED",
+      "origin": "docs/plano-aaa-2026-09-12/backlog.json",
+      "dependencies": [
+        "PER-02",
+        "DEV-03",
+        "WRK-03",
+        "OPS-01"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Implementar e verificar o contrato catalogado; nao marcar como DONE por planejamento.",
+      "next_action": {
+        "id": "PER-03:IMPLEMENT",
+        "kind": "IMPLEMENT",
+        "summary": "Ler contrato, reproduzir comportamento e implementar com evidencias."
+      },
+      "aud13_refs": [
+        "AUD13-36"
+      ],
+      "reconciliation_note": "AUD13-01: o escopo deste item e executado/estendido pelas tarefas filhas AUD13; manter o pai aberto ate todas as fatias integrarem."
+    },
+    {
+      "id": "OPS-01",
+      "title": "Provar traces, métricas e entrega de alertas",
+      "stage": "BUILD",
+      "milestone": "M3",
+      "priority": "P1",
+      "size": "M",
+      "status": "PLANNED",
+      "origin": "docs/plano-aaa-2026-09-12/backlog.json",
+      "dependencies": [
+        "DEV-02",
+        "WRK-01"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Implementar e verificar o contrato catalogado; nao marcar como DONE por planejamento.",
+      "next_action": {
+        "id": "OPS-01:IMPLEMENT",
+        "kind": "IMPLEMENT",
+        "summary": "Ler contrato, reproduzir comportamento e implementar com evidencias."
+      },
+      "aud13_refs": [
+        "AUD13-29",
+        "AUD13-30",
+        "AUD13-31"
+      ],
+      "reconciliation_note": "AUD13-01: o escopo deste item e executado/estendido pelas tarefas filhas AUD13; manter o pai aberto ate todas as fatias integrarem."
+    },
+    {
+      "id": "OPS-02",
+      "title": "Operar backup criptografado e retenção",
+      "stage": "BUILD",
+      "milestone": "M3",
+      "priority": "P1",
+      "size": "M",
+      "status": "PLANNED",
+      "origin": "docs/plano-aaa-2026-09-12/backlog.json",
+      "dependencies": [
+        "DAT-02",
+        "DEV-02",
+        "SEC-03"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Implementar e verificar o contrato catalogado; nao marcar como DONE por planejamento.",
+      "next_action": {
+        "id": "OPS-02:IMPLEMENT",
+        "kind": "IMPLEMENT",
+        "summary": "Ler contrato, reproduzir comportamento e implementar com evidencias."
+      },
+      "aud13_refs": [
+        "AUD13-24",
+        "AUD13-36"
+      ],
+      "reconciliation_note": "AUD13-01: o escopo deste item e executado/estendido pelas tarefas filhas AUD13; manter o pai aberto ate todas as fatias integrarem."
+    },
+    {
+      "id": "OPS-03",
+      "title": "Medir RTO/RPO e executar runbooks",
+      "stage": "BUILD",
+      "milestone": "M4",
+      "priority": "P1",
+      "size": "L",
+      "status": "PLANNED",
+      "origin": "docs/plano-aaa-2026-09-12/backlog.json",
+      "dependencies": [
+        "OPS-01",
+        "OPS-02",
+        "DAT-04",
+        "DEV-03"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Implementar e verificar o contrato catalogado; nao marcar como DONE por planejamento.",
+      "next_action": {
+        "id": "OPS-03:IMPLEMENT",
+        "kind": "IMPLEMENT",
+        "summary": "Ler contrato, reproduzir comportamento e implementar com evidencias."
+      },
+      "aud13_refs": [
+        "AUD13-24",
+        "AUD13-32",
+        "AUD13-36"
+      ],
+      "reconciliation_note": "AUD13-01: o escopo deste item e executado/estendido pelas tarefas filhas AUD13; manter o pai aberto ate todas as fatias integrarem."
+    },
+    {
+      "id": "SUP-01",
+      "title": "Padronizar instalação limpa e inventário",
+      "stage": "BUILD",
+      "milestone": "M0",
+      "priority": "P1",
+      "size": "S",
+      "status": "PLANNED",
+      "origin": "docs/plano-aaa-2026-09-12/backlog.json",
+      "dependencies": [
+        "AAA-000"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Implementar e verificar o contrato catalogado; nao marcar como DONE por planejamento.",
+      "next_action": {
+        "id": "SUP-01:IMPLEMENT",
+        "kind": "IMPLEMENT",
+        "summary": "Ler contrato, reproduzir comportamento e implementar com evidencias."
+      },
+      "aud13_refs": [
+        "AUD13-02"
+      ],
+      "reconciliation_note": "AUD13-01: o escopo deste item e executado/estendido pelas tarefas filhas AUD13; manter o pai aberto ate todas as fatias integrarem."
+    },
+    {
+      "id": "SUP-02",
+      "title": "Gerar SBOM e escanear artefatos construídos",
+      "stage": "BUILD",
+      "milestone": "M2",
+      "priority": "P1",
+      "size": "M",
+      "status": "PLANNED",
+      "origin": "docs/plano-aaa-2026-09-12/backlog.json",
+      "dependencies": [
+        "SUP-01",
+        "QUA-03"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Implementar e verificar o contrato catalogado; nao marcar como DONE por planejamento.",
+      "next_action": {
+        "id": "SUP-02:IMPLEMENT",
+        "kind": "IMPLEMENT",
+        "summary": "Ler contrato, reproduzir comportamento e implementar com evidencias."
+      },
+      "aud13_refs": [
+        "AUD13-34"
+      ],
+      "reconciliation_note": "AUD13-01: o escopo deste item e executado/estendido pelas tarefas filhas AUD13; manter o pai aberto ate todas as fatias integrarem."
+    },
+    {
+      "id": "SUP-03",
+      "title": "Verificar proveniência e adulteração da promoção",
+      "stage": "BUILD",
+      "milestone": "M5",
+      "priority": "P1",
+      "size": "M",
+      "status": "PLANNED",
+      "origin": "docs/plano-aaa-2026-09-12/backlog.json",
+      "dependencies": [
+        "SUP-02",
+        "DEV-01",
+        "DEV-03"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Implementar e verificar o contrato catalogado; nao marcar como DONE por planejamento.",
+      "next_action": {
+        "id": "SUP-03:IMPLEMENT",
+        "kind": "IMPLEMENT",
+        "summary": "Ler contrato, reproduzir comportamento e implementar com evidencias."
+      },
+      "aud13_refs": [
+        "AUD13-34"
+      ],
+      "reconciliation_note": "AUD13-01: o escopo deste item e executado/estendido pelas tarefas filhas AUD13; manter o pai aberto ate todas as fatias integrarem."
+    },
+    {
+      "id": "DEV-01",
+      "title": "Restaurar CI verde e gate local reproduzível",
+      "stage": "BUILD",
+      "milestone": "M1",
+      "priority": "P1",
+      "size": "M",
+      "status": "PLANNED",
+      "origin": "docs/plano-aaa-2026-09-12/backlog.json",
+      "dependencies": [
+        "QUA-02",
+        "SUP-01"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Implementar e verificar o contrato catalogado; nao marcar como DONE por planejamento.",
+      "next_action": {
+        "id": "DEV-01:IMPLEMENT",
+        "kind": "IMPLEMENT",
+        "summary": "Ler contrato, reproduzir comportamento e implementar com evidencias."
+      },
+      "aud13_refs": [
+        "AUD13-34"
+      ],
+      "reconciliation_note": "AUD13-01: o escopo deste item e executado/estendido pelas tarefas filhas AUD13; manter o pai aberto ate todas as fatias integrarem."
+    },
+    {
+      "id": "DEV-02",
+      "title": "Preparar ambiente alvo e contratos operacionais",
+      "stage": "BUILD",
+      "milestone": "M0",
+      "priority": "P1",
+      "size": "M",
+      "status": "PLANNED",
+      "origin": "docs/plano-aaa-2026-09-12/backlog.json",
+      "dependencies": [
+        "AAA-000"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Implementar e verificar o contrato catalogado; nao marcar como DONE por planejamento.",
+      "next_action": {
+        "id": "DEV-02:IMPLEMENT",
+        "kind": "IMPLEMENT",
+        "summary": "Ler contrato, reproduzir comportamento e implementar com evidencias."
+      },
+      "aud13_refs": [
+        "AUD13-26"
+      ],
+      "reconciliation_note": "AUD13-01: o escopo deste item e executado/estendido pelas tarefas filhas AUD13; manter o pai aberto ate todas as fatias integrarem."
+    },
+    {
+      "id": "DEV-03",
+      "title": "Executar staging e container smoke integral",
+      "stage": "BUILD",
+      "milestone": "M3",
+      "priority": "P1",
+      "size": "L",
+      "status": "PLANNED",
+      "origin": "docs/plano-aaa-2026-09-12/backlog.json",
+      "dependencies": [
+        "DEV-01",
+        "DEV-02",
+        "SUP-02",
+        "ARC-02",
+        "ARC-03"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Implementar e verificar o contrato catalogado; nao marcar como DONE por planejamento.",
+      "next_action": {
+        "id": "DEV-03:IMPLEMENT",
+        "kind": "IMPLEMENT",
+        "summary": "Ler contrato, reproduzir comportamento e implementar com evidencias."
+      },
+      "aud13_refs": [
+        "AUD13-34"
+      ],
+      "reconciliation_note": "AUD13-01: o escopo deste item e executado/estendido pelas tarefas filhas AUD13; manter o pai aberto ate todas as fatias integrarem."
+    },
+    {
+      "id": "DEV-04",
+      "title": "Congelar candidato e obter Gauntlet final",
+      "stage": "BUILD",
+      "milestone": "M5",
+      "priority": "P1",
+      "size": "L",
+      "status": "PLANNED",
+      "origin": "docs/plano-aaa-2026-09-12/backlog.json",
+      "dependencies": [
+        "CON-03",
+        "FIN-03",
+        "A11Y-03",
+        "SEC-04",
+        "PER-03",
+        "OPS-03",
+        "SUP-03",
+        "DOC-03"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Implementar e verificar o contrato catalogado; nao marcar como DONE por planejamento.",
+      "next_action": {
+        "id": "DEV-04:IMPLEMENT",
+        "kind": "IMPLEMENT",
+        "summary": "Ler contrato, reproduzir comportamento e implementar com evidencias."
+      },
+      "aud13_refs": [
+        "AUD13-37"
+      ],
+      "reconciliation_note": "AUD13-01: o escopo deste item e executado/estendido pelas tarefas filhas AUD13; manter o pai aberto ate todas as fatias integrarem."
+    },
+    {
+      "id": "DEV-05",
+      "title": "Decisão humana e promoção controlada",
+      "stage": "BUILD",
+      "milestone": "M5",
+      "priority": "P1",
+      "size": "S",
+      "status": "PLANNED",
+      "origin": "docs/plano-aaa-2026-09-12/backlog.json",
+      "dependencies": [
+        "DEV-04"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Implementar e verificar o contrato catalogado; nao marcar como DONE por planejamento.",
+      "next_action": {
+        "id": "DEV-05:IMPLEMENT",
+        "kind": "IMPLEMENT",
+        "summary": "Ler contrato, reproduzir comportamento e implementar com evidencias."
+      },
+      "aud13_refs": [
+        "AUD13-38"
+      ],
+      "reconciliation_note": "AUD13-01: o escopo deste item e executado/estendido pelas tarefas filhas AUD13; manter o pai aberto ate todas as fatias integrarem."
+    },
+    {
+      "id": "DOC-01",
+      "title": "Conciliar catálogo novo com histórico e fontes",
+      "stage": "BUILD",
+      "milestone": "M0",
+      "priority": "P1",
+      "size": "S",
+      "status": "PLANNED",
+      "origin": "docs/plano-aaa-2026-09-12/backlog.json",
+      "dependencies": [
+        "AAA-000"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Implementar e verificar o contrato catalogado; nao marcar como DONE por planejamento.",
+      "next_action": {
+        "id": "DOC-01:IMPLEMENT",
+        "kind": "IMPLEMENT",
+        "summary": "Ler contrato, reproduzir comportamento e implementar com evidencias."
+      },
+      "aud13_refs": [
+        "AUD13-01"
+      ],
+      "reconciliation_note": "AUD13-01: o escopo deste item e executado/estendido pelas tarefas filhas AUD13; manter o pai aberto ate todas as fatias integrarem."
+    },
+    {
+      "id": "DOC-02",
+      "title": "Manter decisões e manual de operação por tarefa",
+      "stage": "BUILD",
+      "milestone": "M2",
+      "priority": "P2",
+      "size": "M",
+      "status": "PLANNED",
+      "origin": "docs/plano-aaa-2026-09-12/backlog.json",
+      "dependencies": [
+        "DOC-01",
+        "FUN-01",
+        "CON-01"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Implementar e verificar o contrato catalogado; nao marcar como DONE por planejamento.",
+      "next_action": {
+        "id": "DOC-02:IMPLEMENT",
+        "kind": "IMPLEMENT",
+        "summary": "Ler contrato, reproduzir comportamento e implementar com evidencias."
+      },
+      "aud13_refs": [
+        "AUD13-37"
+      ],
+      "reconciliation_note": "AUD13-01: o escopo deste item e executado/estendido pelas tarefas filhas AUD13; manter o pai aberto ate todas as fatias integrarem."
+    },
+    {
+      "id": "DOC-03",
+      "title": "Auditar evidência final e eliminar contradições",
+      "stage": "BUILD",
+      "milestone": "M5",
+      "priority": "P1",
+      "size": "M",
+      "status": "PLANNED",
+      "origin": "docs/plano-aaa-2026-09-12/backlog.json",
+      "dependencies": [
+        "DOC-02",
+        "QUA-03",
+        "DEV-03"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Implementar e verificar o contrato catalogado; nao marcar como DONE por planejamento.",
+      "next_action": {
+        "id": "DOC-03:IMPLEMENT",
+        "kind": "IMPLEMENT",
+        "summary": "Ler contrato, reproduzir comportamento e implementar com evidencias."
+      },
+      "aud13_refs": [
+        "AUD13-37"
+      ],
+      "reconciliation_note": "AUD13-01: o escopo deste item e executado/estendido pelas tarefas filhas AUD13; manter o pai aberto ate todas as fatias integrarem."
+    },
+    {
       "id": "CVG-FULL-IMPLEMENTATION",
       "title": "Implementação integral local-first do CVG-Corp",
       "stage": "BUILD",
@@ -33,7 +1510,8 @@
       "title": "CVG-Corp State of the Art / Triplo AAA vNext",
       "stage": "BUILD",
       "priority": "P0",
-      "status": "PASS_WITH_LIMITATIONS local regression; VER-CVG-268 recovery raw authentication-shape, audit-chain and durable-ledger digest validation; external and human gates absent",
+      "status": "PARTIAL",
+      "status_note": "Historico preservado: PASS_WITH_LIMITATIONS local regression; VER-CVG-268 recovery raw authentication-shape, audit-chain and durable-ledger digest validation; external and human gates absent.",
       "origin": "docs/prompt-state-of-the-art-triplo-aaa.md; docs/prompt-state-of-the-art-triplo-aaa-2026-09-09-v2.txt; docs/final-closure-audit.md; docs/architecture-audit-vNext.md; .gauntlet/bar-v3.json; .gauntlet/bar-v4.json; docs/prompt-final-operational-proof-2026-09-10.txt",
       "dependencies": [],
       "owner": "lead",
@@ -432,19 +1910,2940 @@
         "artifacts/operational-proof/evidence-snapshot.json#76518144d894beed7821e79789531bbe101c80db1ada5883303d161647c71ea4",
         ".gauntlet/critique-final-gauntlet-20260911-VER268.md"
       ],
-      "current_evidence": "VER-CVG-268: PostgreSQL 16.15 local ephemeral migrations 001-036, verify/postgres concurrency/restore PASS; worker reconciliation/outbox/audit-chain, strict raw recovery authentication validation and immutable durable-ledger digest validation pass; 330 tests (329 pass, 1 skip, 0 fail); snapshot 76518144d894beed7821e79789531bbe101c80db1ada5883303d161647c71ea4; verify:triplo-aaa exit 2 AAA_NOT_PROVEN; external gates absent. fresh 15-category review FAIL/review-only; verify:triplo-aaa exit 2 AAA_NOT_PROVEN; external gates and human approval remain absent.",
+      "current_evidence": "HISTORICAL_ANTECEDENT_ONLY: VER-CVG-268: PostgreSQL 16.15 local ephemeral migrations 001-036, verify/postgres concurrency/restore PASS; worker reconciliation/outbox/audit-chain, strict raw recovery authentication validation and immutable durable-ledger digest validation pass; 330 tests (329 pass, 1 skip, 0 fail); snapshot 76518144d894beed7821e79789531bbe101c80db1ada5883303d161647c71ea4; verify:triplo-aaa exit 2 AAA_NOT_PROVEN; external gates absent. fresh 15-category review FAIL/review-only; verify:triplo-aaa exit 2 AAA_NOT_PROVEN; external gates and human approval remain absent.",
       "next_action": {
         "id": "CVG-FULL-STATE-OF-THE-ART:EXTERNAL-EVIDENCE-AND-HUMAN-ACCEPTANCE",
         "kind": "VERIFY",
         "summary": "Executar apenas as provas externas autorizadas que ainda faltam: DeepSeek/provider/secret authority, PostgreSQL multi-instância em staging, observabilidade/SLO, carga/chaos/recovery, assistive tech/zoom real, CI same-SHA, críticos independentes e promoção humana.",
         "target": "docs/final-operational-proof-audit.md; docs/triple-aaa-final-scorecard.md; scripts/verify-triplo-aaa.ts",
         "completion_signal": "Todos os gates obrigatórios têm evidência production-like no mesmo SHA limpo, críticos independentes aprovam e há aceite humano explícito; até lá manter FAIL_WITH_LIMITATIONS/AAA_NOT_PROVEN.",
-        "last_revalidation": "VER-CVG-268"
+        "last_revalidation": "HISTORICAL:VER-CVG-268"
       },
       "latest_control_updates": "VER-CVG-268 recovery raw authentication-shape, audit-chain and immutable durable-ledger digest validation, full local regression and fresh 15-category review FAIL/review-only at 2026-09-11T17:30:54.372Z; no external gate outcome changed.",
-      "evidence_tail": "VER-CVG-268",
-      "last_revalidation": "VER-CVG-268"
+      "evidence_tail": "HISTORICAL:VER-CVG-268",
+      "last_revalidation": "HISTORICAL:VER-CVG-268"
+    },
+    {
+      "id": "AUD13-01",
+      "title": "Reconciliar planos, estado e evidência atual",
+      "stage": "BUILD",
+      "milestone": "M0",
+      "priority": "P1",
+      "size": "M",
+      "risk": "R2",
+      "status": "DONE",
+      "origin": "docs/plano-melhorias-2026-09-13/backlog.json",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "contract_digest": "1b6fc4e05b9a9f2c612021f2f6376da17372931d8a78df94e85f6aded67fa0ba",
+      "quality_bar_digest": "2093461a8d6103641a555ad45371dde4649e5f144c32260b80244e219fa70697",
+      "parent_legacy_tasks": [
+        "AAA-000",
+        "DOC-01"
+      ],
+      "findings": [
+        "H07",
+        "M06"
+      ],
+      "dependencies": [],
+      "owner": "Lead",
+      "exclusive_resources": [
+        "control-plane",
+        "docs-index"
+      ],
+      "allowed_paths": [
+        ".agent/",
+        "docs/README.md",
+        "docs/12-estado-da-implementacao.md",
+        "docs/08-rastreabilidade-e-decisoes.md"
+      ],
+      "acceptance_criteria": [
+        "Verificar HEAD, bytes e trabalho concorrente antes de iniciar",
+        "Mapear cada AUD13 para tarefa legada, acrescentando critérios sem duplicar execução",
+        "Reabrir apenas o aceite afetado por evidência atual e conservar histórico",
+        "Ponteiro, ExecPlan e next_action concordam; nenhuma correção ganha DONE por planejamento"
+      ],
+      "validation": [
+        "git status --short",
+        "git rev-parse HEAD",
+        "Revisar DAG e mapa de migração; ativação repetida não duplica IDs"
+      ],
+      "external_prerequisites": [],
+      "acceptance_summary": "Verificar HEAD, bytes e trabalho concorrente antes de iniciar",
+      "reconciled_at": "2026-09-13T20:32:25-03:00",
+      "reconciliation": "AAA2-01: reconciliation owner for the 33-contract planning delta; canonical status remains on this existing task and no parallel AAA2 status is created. The dated independent audit record links the baseline to the pre-recovery audit. Critique 005's orphan reference was repaired; VER-009 explicitly reconciles VER-008's pre-integration as-of state. Critique 008 gave a conditional local pass 9/10, VER-013 confirmed same-SHA/static/control-plane integration, the user accepted the documented temporal limitation for local closure, and VER-015/016 revalidated the terminal local state. Global AAA gates remain separate.",
+      "aaa2_contract_refs": [
+        "AAA2-01"
+      ],
+      "next_action": {
+        "id": "AUD13-01:DONE",
+        "kind": "VERIFY",
+        "summary": "Concluido no escopo local com limitacao temporal explicitamente aceita pelo usuario; sem promocao global.",
+        "completion_signal": "Reconciliacao local, evidencia same-SHA, critica independente e aceite da limitacao estao registrados; AAA_NOT_PROVEN global permanece."
+      },
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-CVG-AUD13-01-001",
+        ".agent/verification.jsonl#VER-CVG-AUD13-01-002",
+        ".agent/verification.jsonl#VER-CVG-AAA2-01-001",
+        ".agent/verification.jsonl#VER-CVG-AAA2-01-CRITIQUE-001",
+        ".agent/verification.jsonl#VER-CVG-AAA2-01-002",
+        ".agent/verification.jsonl#VER-CVG-AAA2-01-CRITIQUE-002",
+        ".agent/verification.jsonl#VER-CVG-AAA2-01-003",
+        ".agent/verification.jsonl#VER-CVG-AAA2-01-CRITIQUE-003",
+        ".agent/verification.jsonl#VER-CVG-AAA2-01-004",
+        ".agent/verification.jsonl#VER-CVG-AAA2-01-CRITIQUE-004",
+        ".agent/verification.jsonl#VER-CVG-AAA2-01-005",
+        ".agent/verification.jsonl#VER-CVG-AAA2-01-006",
+        ".agent/verification.jsonl#VER-CVG-AAA2-01-007",
+        ".agent/verification.jsonl#VER-CVG-AAA2-01-CRITIQUE-005",
+        ".agent/verification.jsonl#VER-CVG-AAA2-01-008",
+        ".agent/verification.jsonl#VER-CVG-AAA2-01-CRITIQUE-006",
+        ".agent/verification.jsonl#VER-CVG-AAA2-01-009",
+        ".agent/verification.jsonl#VER-CVG-AAA2-01-CRITIQUE-007",
+        ".agent/verification.jsonl#VER-CVG-AAA2-01-010",
+        ".agent/verification.jsonl#VER-CVG-AAA2-01-011",
+        ".agent/verification.jsonl#VER-CVG-AAA2-01-012",
+        ".agent/verification.jsonl#VER-CVG-AAA2-01-CRITIQUE-008",
+        ".agent/verification.jsonl#VER-CVG-AAA2-01-013",
+        ".agent/verification.jsonl#VER-CVG-AAA2-01-014",
+        ".agent/verification.jsonl#VER-CVG-AAA2-01-015",
+        ".agent/verification.jsonl#VER-CVG-AAA2-01-016",
+        ".agent/gates/aud13-wave-1.json",
+        ".gauntlet/critique-aud13-wave-1.md"
+      ],
+      "gate_ref": ".agent/gates/aud13-wave-1.json",
+      "completed_at": "2026-09-13T20:26:56-03:00"
+    },
+    {
+      "id": "AUD13-02",
+      "title": "Instalação e isolamento reproduzíveis",
+      "stage": "BUILD",
+      "milestone": "M0",
+      "priority": "P1",
+      "size": "M",
+      "risk": "R2",
+      "status": "PARTIAL",
+      "origin": "docs/plano-melhorias-2026-09-13/backlog.json",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "contract_digest": "1b6fc4e05b9a9f2c612021f2f6376da17372931d8a78df94e85f6aded67fa0ba",
+      "quality_bar_digest": "2093461a8d6103641a555ad45371dde4649e5f144c32260b80244e219fa70697",
+      "parent_legacy_tasks": [
+        "SUP-01",
+        "QUA-03"
+      ],
+      "findings": [
+        "H14"
+      ],
+      "dependencies": [
+        "AUD13-01"
+      ],
+      "owner": "Build/qualidade",
+      "exclusive_resources": [
+        "dependencies",
+        "test-harness"
+      ],
+      "allowed_paths": [
+        "package.json",
+        "package-lock.json",
+        "apps/web/package.json",
+        "playwright.config.ts",
+        "tests/",
+        "scripts/"
+      ],
+      "acceptance_criteria": [
+        "npm ci e npm ls usam versões do lockfile, sem atualizar versões sem causa",
+        "Testes usam banco/porta/origem/output próprios e encerram recursos",
+        "Build, E2E e SBOM usam a mesma árvore resolvida"
+      ],
+      "validation": [
+        "npm ci --ignore-scripts",
+        "npm ls --depth=0",
+        "npm run build",
+        "Executar dois runners isolados sem colisão"
+      ],
+      "external_prerequisites": [],
+      "acceptance_summary": "npm ci e npm ls usam versões do lockfile, sem atualizar versões sem causa",
+      "reconciled_at": "2026-09-13T17:39:57-03:00",
+      "reconciliation": "AAA2-01: canonical status remains PARTIAL; the source matrix declares DONE but no append-only downgrade event was found, so the drift is preserved and must be revalidated before closure.",
+      "aaa2_contract_refs": [
+        "AAA2-29",
+        "AAA2-31"
+      ],
+      "status_drift": {
+        "source_declared_status": "DONE",
+        "canonical_observed_status": "PARTIAL",
+        "reason": "The existing canonical backlog and repository state predate this reconciliation; no per-task transition explains the downgrade.",
+        "disposition": "RECONCILE_BEFORE_DONE"
+      },
+      "next_action": {
+        "id": "AUD13-02:AAA2-29-REVALIDATE",
+        "kind": "VERIFY",
+        "summary": "Revalidar instalação, isolamento e runners no mesmo candidato antes de recuperar o status terminal.",
+        "target": "package.json; package-lock.json; apps/web/package.json; playwright.config.ts; tests/; scripts/",
+        "completion_signal": "npm ci/npm ls/build e dois runners isolados passam na mesma árvore, com saída e recursos separados."
+      },
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-CVG-AUD13-02-001",
+        ".agent/gates/aud13-wave-1.json"
+      ],
+      "gate_ref": ".agent/gates/aud13-wave-1.json"
+    },
+    {
+      "id": "AUD13-03",
+      "title": "Tornar fixture de evidências determinística e portátil",
+      "stage": "BUILD",
+      "milestone": "M0",
+      "priority": "P1",
+      "size": "M",
+      "risk": "R2",
+      "status": "DONE",
+      "origin": "docs/plano-melhorias-2026-09-13/backlog.json",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "contract_digest": "1b6fc4e05b9a9f2c612021f2f6376da17372931d8a78df94e85f6aded67fa0ba",
+      "quality_bar_digest": "2093461a8d6103641a555ad45371dde4649e5f144c32260b80244e219fa70697",
+      "parent_legacy_tasks": [
+        "QUA-01",
+        "QUA-02"
+      ],
+      "findings": [
+        "H07"
+      ],
+      "dependencies": [
+        "AUD13-01"
+      ],
+      "owner": "Qualidade",
+      "exclusive_resources": [
+        "evidence-harness"
+      ],
+      "allowed_paths": [
+        "tests/unit/evidence-snapshot.test.ts",
+        "scripts/verify-evidence-snapshot.ts"
+      ],
+      "acceptance_criteria": [
+        "Mesmos testes passam em checkout limpo e modificado",
+        "Bytes/SHA/inventário/tempo adulterados são rejeitados",
+        "Cópia de bytes idênticos não falha apenas por mtime",
+        "Prova exige execução real no sujeito; nunca recapturar sucesso histórico"
+      ],
+      "validation": [
+        "node --import tsx --test tests/unit/evidence-snapshot.test.ts",
+        "Executar fixture conhecida boa/ruim em cópias limpa/dirty com clock e mtimes controlados"
+      ],
+      "external_prerequisites": [],
+      "acceptance_summary": "Mesmos testes passam em checkout limpo e modificado",
+      "reconciled_at": "2026-09-13T20:38:00-03:00",
+      "reconciliation": "AUD13-01: contracted from the 2026-09-13 audit plan; legacy parents referenced, never duplicated as dependencies.",
+      "next_action": {
+        "id": "AUD13-03:DONE",
+        "kind": "VERIFY",
+        "summary": "Concluido com evidencia; sem proxima acao."
+      },
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-CVG-AUD13-03-001",
+        ".agent/gates/aud13-wave-1.json"
+      ],
+      "gate_ref": ".agent/gates/aud13-wave-1.json"
+    },
+    {
+      "id": "AUD13-04",
+      "title": "Conectar validação semântica de respostas",
+      "stage": "BUILD",
+      "milestone": "M1",
+      "priority": "P1",
+      "size": "M",
+      "risk": "R2",
+      "status": "DONE",
+      "origin": "docs/plano-melhorias-2026-09-13/backlog.json",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "contract_digest": "1b6fc4e05b9a9f2c612021f2f6376da17372931d8a78df94e85f6aded67fa0ba",
+      "quality_bar_digest": "2093461a8d6103641a555ad45371dde4649e5f144c32260b80244e219fa70697",
+      "parent_legacy_tasks": [
+        "CON-01",
+        "CON-02"
+      ],
+      "findings": [
+        "H02",
+        "H03",
+        "H07"
+      ],
+      "dependencies": [
+        "AUD13-01"
+      ],
+      "owner": "Contratos",
+      "exclusive_resources": [
+        "contracts",
+        "web-client"
+      ],
+      "allowed_paths": [
+        "apps/web/src/api/",
+        "packages/contracts/src/",
+        "tests/unit/contracts.test.ts"
+      ],
+      "acceptance_criteria": [
+        "Revalidar schemas de ADR030 já existentes sem refazê-los",
+        "Payload inválido dentro de envelope válido não chega ao estado da UI",
+        "Login normal/MFA, logout, saldo, partial/receipt são discriminados e preservam correlationId",
+        "Compatibilidade explícita durante migração de endpoints"
+      ],
+      "validation": [
+        "npm run test:contract",
+        "npm run typecheck",
+        "Interceptar resposta inválida por recurso e testar consumidor válido/legado permitido"
+      ],
+      "external_prerequisites": [],
+      "acceptance_summary": "Revalidar schemas de ADR030 já existentes sem refazê-los",
+      "reconciled_at": "2026-09-13T10:26:58-03:00",
+      "reconciliation": "AUD13-01: contracted from the 2026-09-13 audit plan; legacy parents referenced, never duplicated as dependencies.",
+      "next_action": {
+        "id": "AUD13-04:DONE",
+        "kind": "VERIFY",
+        "summary": "Concluido com evidencia; sem proxima acao."
+      },
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-CVG-AUD13-04-001",
+        ".agent/gates/aud13-wave-1.json"
+      ],
+      "gate_ref": ".agent/gates/aud13-wave-1.json"
+    },
+    {
+      "id": "AUD13-05",
+      "title": "Logout honesto sob falha e reconexão",
+      "stage": "BUILD",
+      "milestone": "M1",
+      "priority": "P1",
+      "size": "M",
+      "risk": "R2",
+      "status": "DONE",
+      "origin": "docs/plano-melhorias-2026-09-13/backlog.json",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "contract_digest": "1b6fc4e05b9a9f2c612021f2f6376da17372931d8a78df94e85f6aded67fa0ba",
+      "quality_bar_digest": "2093461a8d6103641a555ad45371dde4649e5f144c32260b80244e219fa70697",
+      "parent_legacy_tasks": [
+        "SEC-01",
+        "UX-01"
+      ],
+      "findings": [
+        "H01"
+      ],
+      "dependencies": [
+        "AUD13-04"
+      ],
+      "owner": "Sessão/web",
+      "exclusive_resources": [
+        "web-session",
+        "api-root",
+        "e2e-session"
+      ],
+      "allowed_paths": [
+        "apps/web/src/hooks/use-session.ts",
+        "apps/web/src/app-shell/",
+        "apps/web/src/state/",
+        "apps/api/src/app.ts",
+        "tests/e2e/"
+      ],
+      "acceptance_criteria": [
+        "Revogação confirmada exige observação server-side conforme ADR030",
+        "Offline/timeout/5xx mostram saída local e revogação pendente sem sucesso falso",
+        "Online permite tentativa explícita de revogar; recarga não apaga a informação de risco por engano",
+        "Buffer sensível é purgado sem persistir credencial/draft; nenhuma Promise fica rejeitada sem tratamento"
+      ],
+      "validation": [
+        "npm run test:security",
+        "npm run typecheck",
+        "E2E sucesso, offline, abort, 5xx, recarga e reconexão; exigir comportamento corrigido"
+      ],
+      "external_prerequisites": [],
+      "acceptance_summary": "Revogação confirmada exige observação server-side conforme ADR030",
+      "reconciled_at": "2026-09-13T10:26:58-03:00",
+      "reconciliation": "AUD13-01: contracted from the 2026-09-13 audit plan; legacy parents referenced, never duplicated as dependencies.",
+      "next_action": {
+        "id": "AUD13-05:DONE",
+        "kind": "VERIFY",
+        "summary": "Concluido com evidencia; sem proxima acao."
+      },
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-CVG-AUD13-05-001",
+        ".agent/gates/aud13-wave-1.json"
+      ],
+      "gate_ref": ".agent/gates/aud13-wave-1.json"
+    },
+    {
+      "id": "AUD13-06",
+      "title": "Completar login com challenge MFA",
+      "stage": "BUILD",
+      "milestone": "M1",
+      "priority": "P1",
+      "size": "M",
+      "risk": "R2",
+      "status": "DONE",
+      "origin": "docs/plano-melhorias-2026-09-13/backlog.json",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "contract_digest": "1b6fc4e05b9a9f2c612021f2f6376da17372931d8a78df94e85f6aded67fa0ba",
+      "quality_bar_digest": "2093461a8d6103641a555ad45371dde4649e5f144c32260b80244e219fa70697",
+      "parent_legacy_tasks": [
+        "SEC-01",
+        "SEC-03",
+        "CON-02"
+      ],
+      "findings": [
+        "H02"
+      ],
+      "dependencies": [
+        "AUD13-04"
+      ],
+      "owner": "Auth/web",
+      "exclusive_resources": [
+        "web-session",
+        "api-root",
+        "web-client"
+      ],
+      "allowed_paths": [
+        "apps/web/src/components/Login.tsx",
+        "apps/web/src/hooks/use-session.ts",
+        "apps/web/src/api/",
+        "apps/api/src/app.ts",
+        "tests/e2e/",
+        "tests/unit/auth.test.ts"
+      ],
+      "acceptance_criteria": [
+        "HTTP202 abre etapa TOTP sem tentar contexts[0]",
+        "Challenge expira, tentativas limitadas e cancelamento permitem recuperação",
+        "OTP errado/replay/revogado negam; sucesso obtém contexto e sessão corretos",
+        "Erro não exibe TypeError interno e foco/anúncio acompanham etapa"
+      ],
+      "validation": [
+        "npm run test:security",
+        "E2E challenge canônico, OTP válido/inválido, expiração, replay e fator revogado"
+      ],
+      "external_prerequisites": [],
+      "acceptance_summary": "HTTP202 abre etapa TOTP sem tentar contexts[0]",
+      "reconciled_at": "2026-09-13T10:26:58-03:00",
+      "reconciliation": "AUD13-01: contracted from the 2026-09-13 audit plan; legacy parents referenced, never duplicated as dependencies.",
+      "next_action": {
+        "id": "AUD13-06:DONE",
+        "kind": "VERIFY",
+        "summary": "Concluido com evidencia; sem proxima acao."
+      },
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-CVG-AUD13-06-001",
+        ".agent/gates/aud13-wave-1.json"
+      ],
+      "gate_ref": ".agent/gates/aud13-wave-1.json"
+    },
+    {
+      "id": "AUD13-07",
+      "title": "Corrigir toast e estados de feedback",
+      "stage": "BUILD",
+      "milestone": "M1",
+      "priority": "P1",
+      "size": "M",
+      "risk": "R2",
+      "status": "DONE",
+      "origin": "docs/plano-melhorias-2026-09-13/backlog.json",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "contract_digest": "1b6fc4e05b9a9f2c612021f2f6376da17372931d8a78df94e85f6aded67fa0ba",
+      "quality_bar_digest": "2093461a8d6103641a555ad45371dde4649e5f144c32260b80244e219fa70697",
+      "parent_legacy_tasks": [
+        "UX-02",
+        "A11Y-01"
+      ],
+      "findings": [
+        "H04"
+      ],
+      "dependencies": [
+        "AUD13-01"
+      ],
+      "owner": "Frontend",
+      "exclusive_resources": [
+        "shared-ui",
+        "e2e-visual"
+      ],
+      "allowed_paths": [
+        "apps/web/src/app-shell/Shell.tsx",
+        "apps/web/src/styles.css",
+        "tests/e2e/"
+      ],
+      "acceptance_criteria": [
+        "Toast não participa do encolhimento da área principal",
+        "Main mantém largura útil em375/768/1440 após aviso curto/longo/repetido",
+        "Teclado, status/live region, reduced-motion e dismiss sem perda de foco",
+        "Medir geometria e captura após interação; scrollWidth sozinho não aceita"
+      ],
+      "validation": [
+        "npm run typecheck",
+        "E2E Notificações e avisos com largura de main positiva, conteúdo/controles íntegros",
+        "npm run audit:contrast"
+      ],
+      "external_prerequisites": [],
+      "acceptance_summary": "Toast não participa do encolhimento da área principal",
+      "reconciled_at": "2026-09-13T10:26:58-03:00",
+      "reconciliation": "AUD13-01: contracted from the 2026-09-13 audit plan; legacy parents referenced, never duplicated as dependencies.",
+      "next_action": {
+        "id": "AUD13-07:DONE",
+        "kind": "VERIFY",
+        "summary": "Concluido com evidencia; sem proxima acao."
+      },
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-CVG-AUD13-07-001",
+        ".agent/gates/aud13-wave-1.json"
+      ],
+      "gate_ref": ".agent/gates/aud13-wave-1.json"
+    },
+    {
+      "id": "AUD13-08",
+      "title": "Corrigir contexto, datas e indicadores reais",
+      "stage": "BUILD",
+      "milestone": "M1",
+      "priority": "P2",
+      "size": "M",
+      "risk": "R2",
+      "status": "DONE",
+      "origin": "docs/plano-melhorias-2026-09-13/backlog.json",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "contract_digest": "1b6fc4e05b9a9f2c612021f2f6376da17372931d8a78df94e85f6aded67fa0ba",
+      "quality_bar_digest": "2093461a8d6103641a555ad45371dde4649e5f144c32260b80244e219fa70697",
+      "parent_legacy_tasks": [
+        "UX-02",
+        "FUN-01"
+      ],
+      "findings": [
+        "M01"
+      ],
+      "dependencies": [
+        "AUD13-07"
+      ],
+      "owner": "Frontend/dados",
+      "exclusive_resources": [
+        "shared-ui",
+        "web-features"
+      ],
+      "allowed_paths": [
+        "apps/web/src/features/agenda/",
+        "apps/web/src/features/overview/",
+        "apps/web/src/features/copilot/",
+        "apps/web/src/app-shell/",
+        "tests/e2e/"
+      ],
+      "acceptance_criteria": [
+        "Agenda deriva dia/período/unidade do contexto efetivo e timezone",
+        "Badge/contagens e gráficos usam dados reais ou rótulo persistente de ilustração",
+        "Provenance visual deriva resposta: modelo/versão/fontes/timestamp/revisão; sem rótulo stub fixo sobre runtime real",
+        "Centro/Sul, dataset vazio, virada de dia e erro são testados"
+      ],
+      "validation": [
+        "E2E contextoSul e relógio fixado",
+        "Testar contagens/gráficos contra respostas controladas e erro de fetch"
+      ],
+      "external_prerequisites": [],
+      "acceptance_summary": "Agenda deriva dia/período/unidade do contexto efetivo e timezone",
+      "reconciled_at": "2026-09-13T10:26:58-03:00",
+      "reconciliation": "AUD13-01: contracted from the 2026-09-13 audit plan; legacy parents referenced, never duplicated as dependencies.",
+      "next_action": {
+        "id": "AUD13-08:DONE",
+        "kind": "VERIFY",
+        "summary": "Agenda/proveniencia/ilustracao provados no browser em 3 larguras."
+      },
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-CVG-AUD13-08-001",
+        ".agent/gates/aud13-wave-2.json"
+      ],
+      "gate_ref": ".agent/gates/aud13-wave-2.json",
+      "completed_at": "2026-09-13T11:12:30-03:00"
+    },
+    {
+      "id": "AUD13-09",
+      "title": "Corrigir saldo aberto sem inventar estorno",
+      "stage": "BUILD",
+      "milestone": "M1",
+      "priority": "P1",
+      "size": "M",
+      "risk": "R2",
+      "status": "DONE",
+      "origin": "docs/plano-melhorias-2026-09-13/backlog.json",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "contract_digest": "1b6fc4e05b9a9f2c612021f2f6376da17372931d8a78df94e85f6aded67fa0ba",
+      "quality_bar_digest": "2093461a8d6103641a555ad45371dde4649e5f144c32260b80244e219fa70697",
+      "parent_legacy_tasks": [
+        "FIN-01",
+        "FIN-02",
+        "CON-02"
+      ],
+      "findings": [
+        "H03"
+      ],
+      "dependencies": [
+        "AUD13-04"
+      ],
+      "owner": "Financeiro",
+      "exclusive_resources": [
+        "finance",
+        "api-root",
+        "domain-core"
+      ],
+      "allowed_paths": [
+        "apps/web/src/features/finance/",
+        "apps/api/src/application/read-services.ts",
+        "apps/api/src/app.ts",
+        "packages/domain/src/",
+        "tests/"
+      ],
+      "acceptance_criteria": [
+        "PAID de10000 resulta em zero aberto",
+        "Parcial mostra remanescente em centavos; sem double count",
+        "REFUNDED tem estado explícito; regra ainda desconhecida produz UNKNOWN/REQUIRES_POLICY",
+        "API e UI usam contrato de saldo comum, não soma de cobranças brutas"
+      ],
+      "validation": [
+        "npm run test:contract",
+        "npm run test:database",
+        "E2E OPEN, PAID, parcial, estorno indeterminado e falha de leitura"
+      ],
+      "external_prerequisites": [],
+      "acceptance_summary": "PAID de10000 resulta em zero aberto",
+      "reconciled_at": "2026-09-13T10:26:58-03:00",
+      "reconciliation": "AUD13-01: contracted from the 2026-09-13 audit plan; legacy parents referenced, never duplicated as dependencies.",
+      "next_action": {
+        "id": "AUD13-09:DONE",
+        "kind": "VERIFY",
+        "summary": "Concluido com evidencia; sem proxima acao."
+      },
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-CVG-AUD13-09-001",
+        ".agent/gates/aud13-wave-1.json"
+      ],
+      "gate_ref": ".agent/gates/aud13-wave-1.json"
+    },
+    {
+      "id": "AUD13-10",
+      "title": "Reconciliar hashing, limites e anti-enumeração",
+      "stage": "BUILD",
+      "milestone": "M1",
+      "priority": "P1",
+      "size": "M",
+      "risk": "R2",
+      "status": "DONE",
+      "origin": "docs/plano-melhorias-2026-09-13/backlog.json",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "contract_digest": "1b6fc4e05b9a9f2c612021f2f6376da17372931d8a78df94e85f6aded67fa0ba",
+      "quality_bar_digest": "2093461a8d6103641a555ad45371dde4649e5f144c32260b80244e219fa70697",
+      "parent_legacy_tasks": [
+        "SEC-02",
+        "PER-02"
+      ],
+      "findings": [
+        "H06"
+      ],
+      "dependencies": [
+        "AUD13-02"
+      ],
+      "owner": "Segurança",
+      "exclusive_resources": [
+        "auth-core",
+        "api-root",
+        "domain-core"
+      ],
+      "allowed_paths": [
+        "packages/domain/src/index.ts",
+        "packages/auth/",
+        "packages/config/",
+        "apps/api/src/app.ts",
+        "tests/unit/auth.test.ts",
+        "tests/integration/"
+      ],
+      "acceptance_criteria": [
+        "Registrar contrato vigente de docs05§14 versus implementação; não reduzir custo para obter verde",
+        "Hash assíncrono parametrizado/formatado, fila limitada e no máximo concorrência acordada",
+        "Migrar hashes existentes sem invalidar contas silenciosamente",
+        "Usuário inexistente realiza derivação equivalente; limites ID/IP independentes e respostas uniformes",
+        "Medir memória/event-loop sob logins válidos, inválidos e sobrecarga"
+      ],
+      "validation": [
+        "npm run test:security",
+        "Testes compatibilidade hash antigo/novo e migração após login",
+        "Benchmark login concurrente com atraso event-loop/RSS, sem usar senha real"
+      ],
+      "external_prerequisites": [],
+      "acceptance_summary": "Registrar contrato vigente de docs05§14 versus implementação; não reduzir custo para obter verde",
+      "reconciled_at": "2026-09-13T10:26:58-03:00",
+      "reconciliation": "AUD13-01: contracted from the 2026-09-13 audit plan; legacy parents referenced, never duplicated as dependencies.",
+      "next_action": {
+        "id": "AUD13-10:DONE",
+        "kind": "VERIFY",
+        "summary": "Concluido com evidencia; sem proxima acao."
+      },
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-CVG-AUD13-10-001",
+        ".agent/gates/aud13-wave-1.json"
+      ],
+      "gate_ref": ".agent/gates/aud13-wave-1.json"
+    },
+    {
+      "id": "AUD13-11",
+      "title": "Inventariar e fechar contratos das jornadas",
+      "stage": "BUILD",
+      "milestone": "M0",
+      "priority": "P1",
+      "size": "M",
+      "risk": "R2",
+      "status": "DONE",
+      "origin": "docs/plano-melhorias-2026-09-13/backlog.json",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "contract_digest": "1b6fc4e05b9a9f2c612021f2f6376da17372931d8a78df94e85f6aded67fa0ba",
+      "quality_bar_digest": "2093461a8d6103641a555ad45371dde4649e5f144c32260b80244e219fa70697",
+      "parent_legacy_tasks": [
+        "FUN-01",
+        "FIN-01"
+      ],
+      "findings": [
+        "H05",
+        "H11"
+      ],
+      "dependencies": [
+        "AUD13-01"
+      ],
+      "owner": "Produto/domínio",
+      "exclusive_resources": [
+        "product-contracts"
+      ],
+      "allowed_paths": [
+        "docs/01-prd-cvg.md",
+        "docs/adr/",
+        "docs/03-dominio-dados-contratos.md"
+      ],
+      "acceptance_criteria": [
+        "Mapear todos FR01–22, UC01–07 e CTA para UI/API/policy/commit/receipt",
+        "Separar implementado, bloqueio legítimo e ausente, sem excluir módulo para encerrar plano",
+        "Registrar perguntas clínicas/financeiras com dono; implementar apenas regras já definidas",
+        "Congelar exemplos sucesso/negação/recuperação por jornada"
+      ],
+      "validation": [
+        "Inspeção conectada por CTA e teste de consulta",
+        "Revisão de contratos clínicos/financeiros existentes e decisões residuais"
+      ],
+      "external_prerequisites": [],
+      "acceptance_summary": "Mapear todos FR01–22, UC01–07 e CTA para UI/API/policy/commit/receipt",
+      "reconciled_at": "2026-09-13T10:26:58-03:00",
+      "reconciliation": "AUD13-01: contracted from the 2026-09-13 audit plan; legacy parents referenced, never duplicated as dependencies.",
+      "next_action": {
+        "id": "AUD13-11:DONE",
+        "kind": "VERIFY",
+        "summary": "Inventario congelado; jornadas M2 executam sob AUD13-12..20."
+      },
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-CVG-AUD13-11-001",
+        ".agent/gates/aud13-wave-2.json"
+      ],
+      "gate_ref": ".agent/gates/aud13-wave-2.json",
+      "owned_paths": [
+        "docs/adr/031-journey-inventory-and-open-decisions.md"
+      ],
+      "completed_at": "2026-09-13T11:12:30-03:00"
+    },
+    {
+      "id": "AUD13-12",
+      "title": "Tutores e pacientes completos",
+      "stage": "BUILD",
+      "milestone": "M2",
+      "priority": "P1",
+      "size": "L",
+      "risk": "R2",
+      "status": "DONE",
+      "origin": "docs/plano-melhorias-2026-09-13/backlog.json",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "contract_digest": "1b6fc4e05b9a9f2c612021f2f6376da17372931d8a78df94e85f6aded67fa0ba",
+      "quality_bar_digest": "2093461a8d6103641a555ad45371dde4649e5f144c32260b80244e219fa70697",
+      "parent_legacy_tasks": [
+        "FUN-03"
+      ],
+      "findings": [
+        "H05"
+      ],
+      "dependencies": [
+        "AUD13-11",
+        "AUD13-04",
+        "AUD13-05"
+      ],
+      "owner": "Produto/cadastro",
+      "exclusive_resources": [
+        "patient-feature",
+        "domain-core"
+      ],
+      "allowed_paths": [
+        "apps/web/src/features/patients/",
+        "apps/web/src/routes/",
+        "apps/api/src/application/",
+        "packages/domain/src/",
+        "tests/"
+      ],
+      "acceptance_criteria": [
+        "Cadastrar/pesquisar tutor/paciente e gerenciar vínculo pelo servidor",
+        "Abrir ficha, desativar e mesclar com aprovação preservando histórico",
+        "Cross-scope/duplicidade/retry/conflito negam sem parcialidade",
+        "UI exibe receipt, erro recuperável e confirmação de ação destrutiva lógica"
+      ],
+      "validation": [
+        "npm run test:database",
+        "npm run verify:pdp",
+        "E2E cadastro→busca→ficha→merge/desativação e negativos"
+      ],
+      "external_prerequisites": [],
+      "acceptance_summary": "Cadastrar/pesquisar tutor/paciente e gerenciar vínculo pelo servidor",
+      "reconciled_at": "2026-09-13T10:26:58-03:00",
+      "reconciliation": "AUD13-01: contracted from the 2026-09-13 audit plan; legacy parents referenced, never duplicated as dependencies.",
+      "next_action": {
+        "id": "AUD13-12:DONE",
+        "kind": "VERIFY",
+        "summary": "Jornada minima completa com recibos/confirmacoes; anexos e edicao avancada fora do escopo desta fatia."
+      },
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-CVG-AUD13-12-001",
+        ".agent/gates/aud13-12.json"
+      ],
+      "gate_ref": ".agent/gates/aud13-12.json",
+      "completed_at": "2026-09-13T11:38:03-03:00"
+    },
+    {
+      "id": "AUD13-13",
+      "title": "Agenda, check-in, triagem e handoff",
+      "stage": "BUILD",
+      "milestone": "M2",
+      "priority": "P1",
+      "size": "L",
+      "risk": "R2",
+      "status": "DONE",
+      "origin": "docs/plano-melhorias-2026-09-13/backlog.json",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "contract_digest": "1b6fc4e05b9a9f2c612021f2f6376da17372931d8a78df94e85f6aded67fa0ba",
+      "quality_bar_digest": "2093461a8d6103641a555ad45371dde4649e5f144c32260b80244e219fa70697",
+      "parent_legacy_tasks": [
+        "FUN-03"
+      ],
+      "findings": [
+        "H05",
+        "M01"
+      ],
+      "dependencies": [
+        "AUD13-12",
+        "AUD13-08"
+      ],
+      "owner": "Produto/recepção",
+      "exclusive_resources": [
+        "agenda-feature",
+        "clinical-feature",
+        "domain-core"
+      ],
+      "allowed_paths": [
+        "apps/web/src/features/agenda/",
+        "apps/web/src/features/clinical/",
+        "apps/api/src/application/",
+        "packages/domain/src/",
+        "tests/"
+      ],
+      "acceptance_criteria": [
+        "Criar/reagendar/cancelar/confirmar sem dupla reserva",
+        "Check-in→fila→triagem→atribuição→handoff com autoria/estado",
+        "Duas confirmações concorrentes geram uma reserva e conflito claro",
+        "Sem CTA substituído apenas por aviso genérico"
+      ],
+      "validation": [
+        "npm run test:database",
+        "E2E reserva→check-in→handoff",
+        "Concorrência duas sessões e replay após resposta perdida"
+      ],
+      "external_prerequisites": [],
+      "acceptance_summary": "Criar/reagendar/cancelar/confirmar sem dupla reserva",
+      "reconciled_at": "2026-09-13T10:26:58-03:00",
+      "reconciliation": "AUD13-01: contracted from the 2026-09-13 audit plan; legacy parents referenced, never duplicated as dependencies.",
+      "next_action": {
+        "id": "AUD13-13:DONE",
+        "kind": "VERIFY",
+        "summary": "Jornada de agenda completa com concorrencia, replay e handoff provados localmente."
+      },
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-CVG-AUD13-13-001",
+        ".agent/gates/aud13-13.json"
+      ],
+      "gate_ref": ".agent/gates/aud13-13.json",
+      "completed_at": "2026-09-13T12:04:04-03:00"
+    },
+    {
+      "id": "AUD13-14",
+      "title": "Prontuário, anexos, assinatura e adendo",
+      "stage": "BUILD",
+      "milestone": "M2",
+      "priority": "P1",
+      "size": "L",
+      "risk": "R2",
+      "status": "PARTIAL",
+      "origin": "docs/plano-melhorias-2026-09-13/backlog.json",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "contract_digest": "1b6fc4e05b9a9f2c612021f2f6376da17372931d8a78df94e85f6aded67fa0ba",
+      "quality_bar_digest": "2093461a8d6103641a555ad45371dde4649e5f144c32260b80244e219fa70697",
+      "parent_legacy_tasks": [
+        "FUN-03"
+      ],
+      "findings": [
+        "H05",
+        "H11"
+      ],
+      "dependencies": [
+        "AUD13-13",
+        "AUD13-04"
+      ],
+      "owner": "Produto/clínica",
+      "exclusive_resources": [
+        "clinical-feature",
+        "domain-core",
+        "persistence-core"
+      ],
+      "allowed_paths": [
+        "apps/web/src/features/clinical/",
+        "apps/api/src/application/",
+        "packages/domain/src/",
+        "packages/persistence/",
+        "tests/"
+      ],
+      "acceptance_criteria": [
+        "Editor/timeline/anexos com escopo e estados persistidos",
+        "Draft IA nunca vira fato assinado sem revisão e ator autorizado",
+        "Assinatura imutável; correção via adendo, conflito de versão explícito",
+        "Com IA indisponível, registro manual continua concluível"
+      ],
+      "validation": [
+        "npm run test:database",
+        "npm run verify:authoritative-writes",
+        "E2E editar→revisar→assinar→adendo e upload/ACL/falha",
+        "Decisões clínicas faltantes devem ser registradas antes dos atos afetados"
+      ],
+      "external_prerequisites": [],
+      "acceptance_summary": "Editor/timeline/anexos com escopo e estados persistidos",
+      "reconciled_at": "2026-09-13T10:26:58-03:00",
+      "reconciliation": "AUD13-01: contracted from the 2026-09-13 audit plan; legacy parents referenced, never duplicated as dependencies.",
+      "next_action": {
+        "id": "AUD13-14:ATTACHMENTS",
+        "kind": "BLOCKED",
+        "summary": "Editor/revisao/assinatura/adendo concluidos; anexos dependem de D-03 e da filha AUD13-14A.",
+        "blocker": "D-03: retencao/residencia e autoridade de storage de anexos clinicos",
+        "target": "apps/web/src/features/clinical/; apps/api/src/application/; packages/domain/src/; packages/persistence/; tests/",
+        "completion_signal": "D-03 e AUD13-14A autorizados, com contrato/migration e upload, ACL, retencao e auditoria de anexos cobertos por testes."
+      },
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-CVG-AUD13-14-001",
+        ".agent/gates/aud13-14.json"
+      ],
+      "gate_ref": ".agent/gates/aud13-14.json",
+      "child_tasks": [
+        "AUD13-14A"
+      ]
+    },
+    {
+      "id": "AUD13-15",
+      "title": "Exames: pedido, amostra, resultado e revisão",
+      "stage": "BUILD",
+      "milestone": "M2",
+      "priority": "P1",
+      "size": "L",
+      "risk": "R2",
+      "status": "PARTIAL",
+      "origin": "docs/plano-melhorias-2026-09-13/backlog.json",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "contract_digest": "1b6fc4e05b9a9f2c612021f2f6376da17372931d8a78df94e85f6aded67fa0ba",
+      "quality_bar_digest": "2093461a8d6103641a555ad45371dde4649e5f144c32260b80244e219fa70697",
+      "parent_legacy_tasks": [
+        "FUN-03"
+      ],
+      "findings": [
+        "H05",
+        "H11"
+      ],
+      "dependencies": [
+        "AUD13-14"
+      ],
+      "owner": "Produto/diagnóstico",
+      "exclusive_resources": [
+        "diagnostic-feature",
+        "domain-core"
+      ],
+      "allowed_paths": [
+        "apps/web/src/features/",
+        "apps/web/src/routes/",
+        "apps/api/src/application/diagnostic-service.ts",
+        "packages/domain/src/",
+        "tests/"
+      ],
+      "acceptance_criteria": [
+        "UI percorre pedido→amostra→resultado→revisão com vínculo paciente/autor",
+        "Out-of-order, unidade incompatível, parent errado e duplicidade vão para erro/quarentena",
+        "Resultados aprovados visíveis só no escopo; origem e versão preservadas"
+      ],
+      "validation": [
+        "npm run test:database",
+        "E2E cadeia diagnóstica e publicação negada de resultado inválido"
+      ],
+      "external_prerequisites": [],
+      "acceptance_summary": "UI percorre pedido→amostra→resultado→revisão com vínculo paciente/autor",
+      "reconciled_at": "2026-09-13T17:23:37-03:00",
+      "reconciliation": "AAA2-01: historical AUD13-15 gate retained; UC03 examination semantics reopen the affected acceptance under AAA2-33.",
+      "aaa2_contract_refs": [
+        "AAA2-33"
+      ],
+      "reopened_from_status": "DONE",
+      "reopened_at": "2026-09-13T17:23:37-03:00",
+      "next_action": {
+        "id": "AUD13-15:AAA2-33-WAIT",
+        "kind": "WAIT",
+        "summary": "Aguardar a migração de escritas AAA2-12 antes de completar a semântica clínica dos exames.",
+        "target": "packages/contracts/; packages/domain/; packages/persistence/; apps/api/; apps/web/src/features/diagnostics/",
+        "completion_signal": "AAA2-12 concluído e a cadeia UC03 com vínculo, revisão, quarentena e publicação inválida estiver testada."
+      },
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-CVG-AUD13-15-001",
+        ".agent/gates/aud13-15.json"
+      ],
+      "gate_ref": ".agent/gates/aud13-15.json",
+      "completed_at": "2026-09-13T12:27:23-03:00"
+    },
+    {
+      "id": "AUD13-16",
+      "title": "Internação, medicação, procedimento e alta",
+      "stage": "BUILD",
+      "milestone": "M2",
+      "priority": "P1",
+      "size": "L",
+      "risk": "R2",
+      "status": "IN_PROGRESS",
+      "origin": "docs/plano-melhorias-2026-09-13/backlog.json",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "contract_digest": "1b6fc4e05b9a9f2c612021f2f6376da17372931d8a78df94e85f6aded67fa0ba",
+      "quality_bar_digest": "2093461a8d6103641a555ad45371dde4649e5f144c32260b80244e219fa70697",
+      "parent_legacy_tasks": [
+        "FUN-03"
+      ],
+      "findings": [
+        "H05",
+        "H11"
+      ],
+      "dependencies": [
+        "AUD13-14"
+      ],
+      "owner": "Produto/internação",
+      "exclusive_resources": [
+        "hospital-feature",
+        "clinical-feature",
+        "domain-core"
+      ],
+      "allowed_paths": [
+        "apps/web/src/features/",
+        "apps/web/src/routes/",
+        "apps/api/src/application/",
+        "packages/domain/src/",
+        "tests/"
+      ],
+      "acceptance_criteria": [
+        "Leito/episódio/checklist/consentimento e handoff operacionais",
+        "Prescrição, dispensação e administração são fatos distintos com lote/horário/autoria",
+        "Dose/ordem/lote inválido, dupla administração e alta com pendência são negados",
+        "Alta assinada e plano de retorno concluem somente com regras documentadas"
+      ],
+      "validation": [
+        "npm run test:database",
+        "E2E admissão→ordem→administração→handoff→alta, crash/retry e pendências"
+      ],
+      "external_prerequisites": [],
+      "acceptance_summary": "Leito/episódio/checklist/consentimento e handoff operacionais",
+      "reconciled_at": "2026-09-13T10:26:58-03:00",
+      "reconciliation": "AUD13-01: contracted from the 2026-09-13 audit plan; legacy parents referenced, never duplicated as dependencies.",
+      "current_evidence": "AAA2-02/E01 DONE_WITH_LIMITATION no escopo local: critica I1 CRIT-AAA2-02-E01-FINAL-20260913-7F3A aprovou a fatia apos npm test 386/387 com 1 skip, test:database 66/66, typecheck/lint/static/build e diff check. O item AUD13-16 permanece IN_PROGRESS por AUD13-16A/D-02; AAA_NOT_PROVEN.",
+      "next_action": {
+        "id": "AUD13-16:AAA2-02-E01-WAIT-D02",
+        "kind": "WAIT",
+        "summary": "E01 fechado localmente com ressalvas; aguardar D-02 para AUD13-16A sem reabrir o escopo clinico nem promover o item pai.",
+        "dependency": "D-02 e AUD13-16A",
+        "target": "apps/web/src/features/; apps/web/src/routes/; apps/api/src/application/; packages/domain/src/; tests/",
+        "completion_signal": "D-02 autorizado e AUD13-16A tiver contrato/migration aprovados; a evidencia local de E01 permanece preservada e AUD13-16/Triplo AAA nao sao fechados por inferencia."
+      },
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-CVG-AUD13-16-001",
+        ".agent/verification.jsonl#VER-CVG-AAA2-02-001",
+        ".agent/verification.jsonl#VER-CVG-AAA2-02-002",
+        ".agent/verification.jsonl#VER-CVG-AAA2-02-003",
+        ".agent/verification.jsonl#VER-CVG-AAA2-02-004",
+        ".agent/verification.jsonl#VER-CVG-AAA2-02-005",
+        ".agent/gates/aud13-16.json"
+      ],
+      "gate_ref": ".agent/gates/aud13-16.json",
+      "child_tasks": [
+        "AUD13-16A"
+      ]
+    },
+    {
+      "id": "AUD13-17",
+      "title": "Estoque e inventário completos",
+      "stage": "BUILD",
+      "milestone": "M2",
+      "priority": "P1",
+      "size": "L",
+      "risk": "R2",
+      "status": "PARTIAL",
+      "origin": "docs/plano-melhorias-2026-09-13/backlog.json",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "contract_digest": "1b6fc4e05b9a9f2c612021f2f6376da17372931d8a78df94e85f6aded67fa0ba",
+      "quality_bar_digest": "2093461a8d6103641a555ad45371dde4649e5f144c32260b80244e219fa70697",
+      "parent_legacy_tasks": [
+        "FUN-02"
+      ],
+      "findings": [
+        "H05"
+      ],
+      "dependencies": [
+        "AUD13-11",
+        "AUD13-04"
+      ],
+      "owner": "Produto/estoque",
+      "exclusive_resources": [
+        "stock-feature",
+        "domain-core",
+        "persistence-core"
+      ],
+      "allowed_paths": [
+        "apps/web/src/features/stock/",
+        "apps/api/src/application/",
+        "packages/domain/src/",
+        "packages/persistence/",
+        "tests/"
+      ],
+      "acceptance_criteria": [
+        "Entrada com fornecedor/lote/validade/quantidade/custo persiste uma vez",
+        "Reserva/dispensa/consumo/devolução/perda/transferência e inventário são movimentos auditáveis",
+        "Saldo negativo/lote expirado/sem autorização negam atomicamente",
+        "Divergência física vira ajuste compensatório com motivo e alçada"
+      ],
+      "validation": [
+        "npm run test:database",
+        "E2E entrada→reserva→consumo→devolução→inventário",
+        "Corrida de saldo insuficiente e replay"
+      ],
+      "external_prerequisites": [],
+      "acceptance_summary": "Entrada com fornecedor/lote/validade/quantidade/custo persiste uma vez",
+      "reconciled_at": "2026-09-13T10:26:58-03:00",
+      "reconciliation": "AUD13-01: contracted from the 2026-09-13 audit plan; legacy parents referenced, never duplicated as dependencies.",
+      "next_action": {
+        "id": "AUD13-17:SUPPLIER-COST",
+        "kind": "BLOCKED",
+        "summary": "Entrada/movimentos/inventario concluidos; fornecedor/custo dependem de campos de contrato (AUD13-17A).",
+        "blocker": "Contrato Product/Lot/StockMovement sem fornecedor/custo",
+        "target": "apps/web/src/features/stock/; apps/api/src/application/; packages/domain/src/; packages/persistence/; tests/",
+        "completion_signal": "AUD13-17A autorizado e fornecedor, custo e vinculacao contabil persistem uma vez com movimento auditavel e testes de duplicidade."
+      },
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-CVG-AUD13-17-001",
+        ".agent/gates/aud13-17.json"
+      ],
+      "gate_ref": ".agent/gates/aud13-17.json",
+      "child_tasks": [
+        "AUD13-17A"
+      ]
+    },
+    {
+      "id": "AUD13-18",
+      "title": "Jornada financeira e decisão de estornos",
+      "stage": "BUILD",
+      "milestone": "M2",
+      "priority": "P1",
+      "size": "L",
+      "risk": "R3",
+      "status": "PARTIAL",
+      "origin": "docs/plano-melhorias-2026-09-13/backlog.json",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "contract_digest": "1b6fc4e05b9a9f2c612021f2f6376da17372931d8a78df94e85f6aded67fa0ba",
+      "quality_bar_digest": "2093461a8d6103641a555ad45371dde4649e5f144c32260b80244e219fa70697",
+      "parent_legacy_tasks": [
+        "FIN-02",
+        "FIN-04",
+        "FIN-03"
+      ],
+      "findings": [
+        "H03",
+        "H05"
+      ],
+      "dependencies": [
+        "AUD13-09",
+        "AUD13-11",
+        "AUD13-17"
+      ],
+      "owner": "Produto/financeiro",
+      "exclusive_resources": [
+        "finance",
+        "domain-core",
+        "persistence-core"
+      ],
+      "allowed_paths": [
+        "apps/web/src/features/finance/",
+        "apps/api/src/application/",
+        "packages/domain/src/",
+        "packages/persistence/",
+        "docs/adr/",
+        "tests/"
+      ],
+      "acceptance_criteria": [
+        "Orçamento→aprovação→cobrança→pagamento→conciliação com origem/versão/moeda",
+        "Regra de estorno/crédito/reabertura e alçadas pendentes decididas por responsável financeiro",
+        "Compensação append-only sem apagar ledger; dupla submissão não duplica liquidação",
+        "API/UI/ledger/export concordam em sequências aleatórias de pagamentos/estornos"
+      ],
+      "validation": [
+        "npm run test:database",
+        "Testes de propriedades com seed, concorrência e callback duplicado",
+        "E2E jornada financeira e reconciliação"
+      ],
+      "external_prerequisites": [
+        "Decisão financeira apenas para semântica hoje não especificada; correção PAID de AUD13-09 independe dela"
+      ],
+      "acceptance_summary": "Orçamento→aprovação→cobrança→pagamento→conciliação com origem/versão/moeda",
+      "reconciled_at": "2026-09-13T10:26:58-03:00",
+      "reconciliation": "AUD13-01: contracted from the 2026-09-13 audit plan; legacy parents referenced, never duplicated as dependencies.",
+      "next_action": {
+        "id": "AUD13-18:POLICY",
+        "kind": "BLOCKED",
+        "summary": "Nucleo financeiro concluido; orcamento/aprovacao e conciliacao em AUD13-18A; politica de estorno aguarda D-01.",
+        "blocker": "D-01 e contrato de orcamento/conciliacao",
+        "target": "apps/web/src/features/finance/; apps/api/src/application/; packages/domain/src/; packages/persistence/; docs/adr/; tests/",
+        "completion_signal": "D-01 decidido e AUD13-18A concluido, com orcamento/aprovacao/conciliacao e compensacao append-only cobertos por testes."
+      },
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-CVG-AUD13-18-001",
+        ".agent/gates/aud13-18.json"
+      ],
+      "gate_ref": ".agent/gates/aud13-18.json",
+      "child_tasks": [
+        "AUD13-18A"
+      ]
+    },
+    {
+      "id": "AUD13-19",
+      "title": "Histórico e operação do copiloto",
+      "stage": "BUILD",
+      "milestone": "M2",
+      "priority": "P1",
+      "size": "L",
+      "risk": "R2",
+      "status": "PARTIAL",
+      "origin": "docs/plano-melhorias-2026-09-13/backlog.json",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "contract_digest": "1b6fc4e05b9a9f2c612021f2f6376da17372931d8a78df94e85f6aded67fa0ba",
+      "quality_bar_digest": "2093461a8d6103641a555ad45371dde4649e5f144c32260b80244e219fa70697",
+      "parent_legacy_tasks": [
+        "FUN-03",
+        "AIG-01"
+      ],
+      "findings": [
+        "H05",
+        "H09"
+      ],
+      "dependencies": [
+        "AUD13-14",
+        "AUD13-04",
+        "AUD13-08"
+      ],
+      "owner": "IA/frontend",
+      "exclusive_resources": [
+        "copilot-feature",
+        "ai-application"
+      ],
+      "allowed_paths": [
+        "apps/web/src/features/copilot/",
+        "apps/api/src/application/agent-service.ts",
+        "tests/"
+      ],
+      "acceptance_criteria": [
+        "Reutilizar sessão autorizada e vincular paciente/atendimento/contexto",
+        "Histórico/replay, referências/modelo/versão/revisão visíveis",
+        "Aprovação/negação/cancelamento e retomada não duplicam turno/efeito",
+        "Composer oculta dados sensíveis offline, purga em perda de contexto e nunca autoenvia"
+      ],
+      "validation": [
+        "npm run test:security",
+        "E2E múltiplos turnos, mudança contexto, offline/reconexão, aprovação e replay"
+      ],
+      "external_prerequisites": [],
+      "acceptance_summary": "Reutilizar sessão autorizada e vincular paciente/atendimento/contexto",
+      "reconciled_at": "2026-09-13T17:39:57-03:00",
+      "reconciliation": "AAA2-01: canonical status remains PARTIAL; the source matrix declares DONE but the current backlog has a prior partial state that requires explicit revalidation.",
+      "aaa2_contract_refs": [
+        "AAA2-29",
+        "AAA2-31"
+      ],
+      "status_drift": {
+        "source_declared_status": "DONE",
+        "canonical_observed_status": "PARTIAL",
+        "reason": "A historical DONE event exists, but the current canonical backlog is PARTIAL and no later downgrade event was found.",
+        "disposition": "RECONCILE_BEFORE_DONE"
+      },
+      "next_action": {
+        "id": "AUD13-19:AAA2-29-REVALIDATE",
+        "kind": "VERIFY",
+        "summary": "Revalidar a jornada do copiloto e a regressão de personas antes de recuperar o status terminal.",
+        "target": "apps/web/src/features/copilot/; apps/api/src/application/agent-service.ts; tests/",
+        "completion_signal": "Sessão, histórico, replay, contexto, aprovação/negação e não-autoenvio passam na regressão AAA2-29."
+      },
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-CVG-AUD13-19-001",
+        ".agent/gates/aud13-19.json"
+      ],
+      "gate_ref": ".agent/gates/aud13-19.json",
+      "completed_at": "2026-09-13T13:34:49-03:00"
+    },
+    {
+      "id": "AUD13-20",
+      "title": "Conhecimento, catálogo e admissão de artefatos",
+      "stage": "BUILD",
+      "milestone": "M2",
+      "priority": "P1",
+      "size": "L",
+      "risk": "R2",
+      "status": "PARTIAL",
+      "origin": "docs/plano-melhorias-2026-09-13/backlog.json",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "contract_digest": "1b6fc4e05b9a9f2c612021f2f6376da17372931d8a78df94e85f6aded67fa0ba",
+      "quality_bar_digest": "2093461a8d6103641a555ad45371dde4649e5f144c32260b80244e219fa70697",
+      "parent_legacy_tasks": [
+        "AIG-01",
+        "AIG-03",
+        "FUN-03"
+      ],
+      "findings": [
+        "H09",
+        "H05"
+      ],
+      "dependencies": [
+        "AUD13-11",
+        "AUD13-04"
+      ],
+      "owner": "IA/conhecimento",
+      "exclusive_resources": [
+        "ai-registry",
+        "knowledge",
+        "persistence-core"
+      ],
+      "allowed_paths": [
+        "packages/harness/",
+        "packages/agent-policy/",
+        "packages/agent-tools/",
+        "packages/persistence/",
+        "apps/web/src/features/",
+        "docs/adr/",
+        "tests/"
+      ],
+      "acceptance_criteria": [
+        "Registro versiona modelos/prompts/tools/skills/MCP e seus escopos/digests/aprovação",
+        "Revogação, expiração, rollback e kill switch impedem admissão",
+        "Ingestão→classificação→aprovação→indexação→retrieval com origem/chunks/checksum",
+        "ACL é aplicada antes/depois de retrieval e remoção invalida projeções",
+        "UI permite gerir conhecimento sem promover conteúdo não aprovado"
+      ],
+      "validation": [
+        "npm run test:security",
+        "Testes cross-scope, poisoning, versão revogada e índice stale",
+        "E2E ingestão→aprovação→busca→revogação"
+      ],
+      "external_prerequisites": [],
+      "acceptance_summary": "Registro versiona modelos/prompts/tools/skills/MCP e seus escopos/digests/aprovação",
+      "reconciled_at": "2026-09-13T10:26:58-03:00",
+      "reconciliation": "AUD13-01: contracted from the 2026-09-13 audit plan; legacy parents referenced, never duplicated as dependencies.",
+      "next_action": {
+        "id": "AUD13-20:REGISTRY",
+        "kind": "BLOCKED",
+        "summary": "Conhecimento completo; registry GovernedArtifact depende de contrato/colecao (AUD13-20A).",
+        "blocker": "Tipos/colecao/migrations para GovernedArtifact",
+        "target": "packages/harness/; packages/agent-policy/; packages/agent-tools/; packages/persistence/; apps/web/src/features/; docs/adr/; tests/",
+        "completion_signal": "AUD13-20A concluido com contrato/colecao, admissao, revogacao, expiracao, rollback e kill switch cobertos por testes."
+      },
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-CVG-AUD13-20-001",
+        ".agent/gates/aud13-20.json"
+      ],
+      "gate_ref": ".agent/gates/aud13-20.json",
+      "child_tasks": [
+        "AUD13-20A"
+      ]
+    },
+    {
+      "id": "AUD13-21",
+      "title": "Budget atômico e settlement multidimensional",
+      "stage": "BUILD",
+      "milestone": "M2",
+      "priority": "P1",
+      "size": "L",
+      "risk": "R2",
+      "status": "PARTIAL",
+      "origin": "docs/plano-melhorias-2026-09-13/backlog.json",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "contract_digest": "1b6fc4e05b9a9f2c612021f2f6376da17372931d8a78df94e85f6aded67fa0ba",
+      "quality_bar_digest": "2093461a8d6103641a555ad45371dde4649e5f144c32260b80244e219fa70697",
+      "parent_legacy_tasks": [
+        "AIG-01",
+        "AIG-03"
+      ],
+      "findings": [
+        "H09"
+      ],
+      "dependencies": [
+        "AUD13-04",
+        "AUD13-11"
+      ],
+      "owner": "IA/dados",
+      "exclusive_resources": [
+        "usage-ledger",
+        "persistence-core",
+        "ai-runtime"
+      ],
+      "allowed_paths": [
+        "packages/harness/",
+        "packages/agent-runtime/",
+        "packages/agent-tools/",
+        "apps/api/src/application/agent-service.ts",
+        "packages/persistence/",
+        "tests/"
+      ],
+      "acceptance_criteria": [
+        "Reservar antes do dispatch por organização/workspace/ator/sessão e modalidades",
+        "Sub-reservas nested/retry não ampliam teto; concorrência atômica",
+        "Usage tardio/duplicado/fora de ordem reconcilia; desconhecido não vira custo zero",
+        "Reserva não usada expira/libera sem permitir duplo gasto"
+      ],
+      "validation": [
+        "npm run test:database",
+        "Testes paralelos orçamento insuficiente, late usage, cancelamento e crash",
+        "Propriedades de reserva+consumo+saldo com seed"
+      ],
+      "external_prerequisites": [],
+      "acceptance_summary": "Reservar antes do dispatch por organização/workspace/ator/sessão e modalidades",
+      "reconciled_at": "2026-09-13T17:23:37-03:00",
+      "reconciliation": "AAA2-01: historical AUD13-21 gate retained; E02 budget overage/hold semantics reopen the affected acceptance under AAA2-03 and AAA2-04.",
+      "aaa2_contract_refs": [
+        "AAA2-01",
+        "AAA2-03",
+        "AAA2-04"
+      ],
+      "reopened_from_status": "DONE",
+      "reopened_at": "2026-09-13T17:23:37-03:00",
+      "next_action": {
+        "id": "AUD13-21:AAA2-03-IMPLEMENT",
+        "kind": "IMPLEMENT",
+        "summary": "Corrigir contabilização de uso real e retenção de budget em disputa antes do settlement ACP.",
+        "target": "packages/domain/; packages/persistence/; packages/harness/; tests/",
+        "completion_signal": "Overage, hold, late usage, duplicidade e expiração ficam persistidos e cobertos por testes negativos/concorrentes."
+      },
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-CVG-AUD13-21-001",
+        ".agent/gates/aud13-21.json"
+      ],
+      "gate_ref": ".agent/gates/aud13-21.json",
+      "completed_at": "2026-09-13T14:01:14-03:00"
+    },
+    {
+      "id": "AUD13-22",
+      "title": "Identidade idempotente e claims abandonados",
+      "stage": "BUILD",
+      "milestone": "M2",
+      "priority": "P1",
+      "size": "L",
+      "risk": "R2",
+      "status": "PARTIAL",
+      "origin": "docs/plano-melhorias-2026-09-13/backlog.json",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "contract_digest": "1b6fc4e05b9a9f2c612021f2f6376da17372931d8a78df94e85f6aded67fa0ba",
+      "quality_bar_digest": "2093461a8d6103641a555ad45371dde4649e5f144c32260b80244e219fa70697",
+      "parent_legacy_tasks": [
+        "DAT-02"
+      ],
+      "findings": [
+        "H10"
+      ],
+      "dependencies": [
+        "AUD13-02",
+        "AUD13-11"
+      ],
+      "owner": "Dados/idempotência",
+      "exclusive_resources": [
+        "idempotency",
+        "domain-core",
+        "persistence-core",
+        "db-schema"
+      ],
+      "allowed_paths": [
+        "apps/api/src/application/idempotency-service.ts",
+        "packages/domain/src/",
+        "packages/persistence/",
+        "db/migrations/",
+        "docs/adr/",
+        "tests/"
+      ],
+      "acceptance_criteria": [
+        "Resolver conflito docs04/ADR019 sobre sessionId com decisão explícita",
+        "Migração de lookup preserva receipts e replay autorizado sem ampliar escopo",
+        "Claim expirado invalida fence e finaliza PRE_DISPATCH quando ausência de intent é comprovada",
+        "Intent/envio incerto permanece OUTCOME_UNKNOWN, sem retry automático",
+        "Dois processos e escopos opcionais ausentes provam unicidade e takeover"
+      ],
+      "validation": [
+        "npm run test:database",
+        "npm run verify:postgres:concurrency",
+        "Injetar crash imediatamente após claim e após intent; re-login e replay de chave"
+      ],
+      "external_prerequisites": [],
+      "acceptance_summary": "Resolver conflito docs04/ADR019 sobre sessionId com decisão explícita",
+      "reconciled_at": "2026-09-13T10:26:58-03:00",
+      "reconciliation": "AUD13-01: contracted from the 2026-09-13 audit plan; legacy parents referenced, never duplicated as dependencies.",
+      "next_action": {
+        "id": "AUD13-22:POSTGRES-TAKEOVER",
+        "kind": "BLOCKED",
+        "summary": "Maquina de estados e dominio concluidos; takeover multiprocesso real aguarda PostgreSQL acessivel.",
+        "blocker": "DATABASE_URL/PostgreSQL local ausente (verify:postgres:concurrency BLOCKED_EXTERNAL)",
+        "target": "apps/api/src/application/idempotency-service.ts; packages/domain/src/; packages/persistence/; db/migrations/; docs/adr/; tests/",
+        "completion_signal": "PostgreSQL efemero acessivel e dois processos provam unicidade, fence, takeover e finalizacao segura com receipts preservados."
+      },
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-CVG-AUD13-22-001",
+        ".agent/gates/aud13-22.json"
+      ],
+      "gate_ref": ".agent/gates/aud13-22.json"
+    },
+    {
+      "id": "AUD13-23",
+      "title": "Escritas autoritativas por domínio e banco real",
+      "stage": "BUILD",
+      "milestone": "M2",
+      "priority": "P1",
+      "size": "L",
+      "risk": "R2",
+      "status": "PARTIAL",
+      "origin": "docs/plano-melhorias-2026-09-13/backlog.json",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "contract_digest": "1b6fc4e05b9a9f2c612021f2f6376da17372931d8a78df94e85f6aded67fa0ba",
+      "quality_bar_digest": "2093461a8d6103641a555ad45371dde4649e5f144c32260b80244e219fa70697",
+      "parent_legacy_tasks": [
+        "DAT-01",
+        "DAT-02"
+      ],
+      "findings": [
+        "H11"
+      ],
+      "dependencies": [
+        "AUD13-02",
+        "AUD13-22"
+      ],
+      "owner": "Dados",
+      "exclusive_resources": [
+        "persistence-core",
+        "api-root",
+        "db-schema"
+      ],
+      "allowed_paths": [
+        "packages/persistence/",
+        "apps/api/src/application/",
+        "apps/api/src/app.ts",
+        "db/migrations/",
+        "scripts/verify-authoritative-writes.ts",
+        "tests/"
+      ],
+      "acceptance_criteria": [
+        "Inventário por comando liga tabela/owner/invariantes, não só coleção",
+        "Eliminar dependência operacional primária de snapshot nas entidades faltantes preservando journal/recovery",
+        "Commit inclui estado/audit/receipt/outbox de forma atômica",
+        "PostgreSQL efêmero aplica migrations imutáveis, FORCE RLS e role runtime mínima",
+        "Testar FK poisoning, CAS, mixed-version e crash"
+      ],
+      "validation": [
+        "npm run verify:postgres",
+        "npm run verify:postgres:concurrency",
+        "npm run verify:authoritative-writes",
+        "npm run test:database"
+      ],
+      "external_prerequisites": [],
+      "acceptance_summary": "Inventário por comando liga tabela/owner/invariantes, não só coleção",
+      "reconciled_at": "2026-09-13T10:26:58-03:00",
+      "reconciliation": "AUD13-01: contracted from the 2026-09-13 audit plan; legacy parents referenced, never duplicated as dependencies.",
+      "next_action": {
+        "id": "AUD13-23:NORMALIZED-WRITES",
+        "kind": "BLOCKED",
+        "summary": "Inventario por comando validado; 24 entidades snapshot-primary aguardam fatias command-owned e PostgreSQL real para RLS/CAS/crash.",
+        "blocker": "DATABASE_URL/PostgreSQL ausente + volume de escritas normalizadas",
+        "target": "packages/persistence/; apps/api/src/application/; apps/api/src/app.ts; db/migrations/; scripts/verify-authoritative-writes.ts; tests/",
+        "completion_signal": "Entidades priorizadas possuem command-owned writes, transacao atomica, FORCE RLS/CAS e cenarios FK poisoning, mixed-version e crash aprovados."
+      },
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-CVG-AUD13-23-001",
+        ".agent/gates/aud13-23.json"
+      ],
+      "gate_ref": ".agent/gates/aud13-23.json"
+    },
+    {
+      "id": "AUD13-24",
+      "title": "Lifecycle de dados e retorno reconciliado do restore",
+      "stage": "BUILD",
+      "milestone": "M3",
+      "priority": "P1",
+      "size": "L",
+      "risk": "R3",
+      "status": "PARTIAL",
+      "origin": "docs/plano-melhorias-2026-09-13/backlog.json",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "contract_digest": "1b6fc4e05b9a9f2c612021f2f6376da17372931d8a78df94e85f6aded67fa0ba",
+      "quality_bar_digest": "2093461a8d6103641a555ad45371dde4649e5f144c32260b80244e219fa70697",
+      "parent_legacy_tasks": [
+        "DAT-03",
+        "DAT-04",
+        "OPS-02",
+        "OPS-03"
+      ],
+      "findings": [
+        "H11",
+        "M05"
+      ],
+      "dependencies": [
+        "AUD13-23",
+        "AUD13-20"
+      ],
+      "owner": "Dados/recuperação",
+      "exclusive_resources": [
+        "recovery",
+        "persistence-core",
+        "db-schema"
+      ],
+      "allowed_paths": [
+        "packages/persistence/",
+        "apps/api/src/application/export-service.ts",
+        "apps/worker/src/",
+        "scripts/verify-postgres-restore.ts",
+        "docs/runbooks/",
+        "db/migrations/",
+        "tests/"
+      ],
+      "acceptance_criteria": [
+        "Backup→restrição/revogação/exclusão→restore reaplica decisões posteriores por autoridade independente",
+        "Cobrir DB/object/vector/session/cache/provider/telemetry/backup/export, ou bloquear store não integrado",
+        "Chave errada/tamper/stale/partial/migration mismatch negam e origem intacta",
+        "Quarentena permanece até reconciliação comprovada; então retorno seguro a READY é exercitado",
+        "Export tem purpose/TTL/escopo/cifra e recuperação sem reenvio cego"
+      ],
+      "validation": [
+        "npm run test:restore",
+        "npm run verify:postgres:restore",
+        "Drill com perda do store local de decisão e replay pós-watermark"
+      ],
+      "external_prerequisites": [
+        "Política de retenção/residência e autoridade de reconciliação dos stores reais antes do drill externo; preparar e provar contrato sintético primeiro"
+      ],
+      "acceptance_summary": "Backup→restrição/revogação/exclusão→restore reaplica decisões posteriores por autoridade independente",
+      "reconciled_at": "2026-09-13T10:26:58-03:00",
+      "reconciliation": "AUD13-01: contracted from the 2026-09-13 audit plan; legacy parents referenced, never duplicated as dependencies.",
+      "next_action": {
+        "id": "AUD13-24:EXTERNAL-DRILL",
+        "kind": "BLOCKED",
+        "summary": "Contrato sintetico e cobertura de stores concluidos; drill real/RTO/RPO aguarda D-03 e PostgreSQL/backup gerenciado.",
+        "blocker": "D-03 (retencao/residencia) + DATABASE_URL/backup gerenciado",
+        "target": "packages/persistence/; apps/api/src/application/export-service.ts; apps/worker/src/; scripts/verify-postgres-restore.ts; docs/runbooks/; db/migrations/; tests/",
+        "completion_signal": "D-03, PostgreSQL e backup gerenciado autorizados; drill RTO/RPO, restore reconciliado, quarentena e export seguro passam sem reenvio cego."
+      },
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-CVG-AUD13-24-001",
+        ".agent/gates/aud13-24.json"
+      ],
+      "gate_ref": ".agent/gates/aud13-24.json"
+    },
+    {
+      "id": "AUD13-25",
+      "title": "Workers, automações e comunicação operacionais",
+      "stage": "BUILD",
+      "milestone": "M3",
+      "priority": "P1",
+      "size": "L",
+      "risk": "R2",
+      "status": "PARTIAL",
+      "origin": "docs/plano-melhorias-2026-09-13/backlog.json",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "contract_digest": "1b6fc4e05b9a9f2c612021f2f6376da17372931d8a78df94e85f6aded67fa0ba",
+      "quality_bar_digest": "2093461a8d6103641a555ad45371dde4649e5f144c32260b80244e219fa70697",
+      "parent_legacy_tasks": [
+        "WRK-01",
+        "WRK-02",
+        "FUN-03"
+      ],
+      "findings": [
+        "H05",
+        "H15"
+      ],
+      "dependencies": [
+        "AUD13-23",
+        "AUD13-21"
+      ],
+      "owner": "Worker/produto",
+      "exclusive_resources": [
+        "worker",
+        "persistence-core",
+        "automation-feature"
+      ],
+      "allowed_paths": [
+        "apps/worker/",
+        "packages/persistence/",
+        "apps/web/src/features/",
+        "apps/web/src/routes/",
+        "tests/"
+      ],
+      "acceptance_criteria": [
+        "Cinco handlers e outbox executam trabalho governado com escopo mínimo",
+        "Dois workers provam lease/fencing/takeover/shutdown/restart sem duplicação",
+        "Fila cheia, poison, timeout e pool saturado degradam antes do claim/dispatch",
+        "UI agenda/janela/cancela automação e mostra execução/falha/receipt",
+        "Comunicação permite preparar/revisar/aprovar/consultar mensagem sem envio direto por rota"
+      ],
+      "validation": [
+        "npm run verify:worker-runtime",
+        "npm run verify:postgres:concurrency",
+        "E2E automação/comunicação e teste multiprocesso com kill controlado"
+      ],
+      "external_prerequisites": [],
+      "acceptance_summary": "Cinco handlers e outbox executam trabalho governado com escopo mínimo",
+      "reconciled_at": "2026-09-13T10:26:58-03:00",
+      "reconciliation": "AUD13-01: contracted from the 2026-09-13 audit plan; legacy parents referenced, never duplicated as dependencies.",
+      "next_action": {
+        "id": "AUD13-25:AUTOMATION-UI",
+        "kind": "BLOCKED",
+        "summary": "Comunicacao governada e worker runtime provados localmente; UI de automacao depende de API de jobs e PostgreSQL.",
+        "blocker": "API surface para automacoes fora dos allowed_paths + DATABASE_URL",
+        "target": "apps/worker/; packages/persistence/; apps/web/src/features/; apps/web/src/routes/; tests/",
+        "completion_signal": "API de jobs e PostgreSQL autorizados; agendamento, janela, cancelamento, receipt e comunicacao sem envio direto passam na jornada UI/API/worker."
+      },
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-CVG-AUD13-25-001",
+        ".agent/gates/aud13-25.json"
+      ],
+      "gate_ref": ".agent/gates/aud13-25.json",
+      "child_tasks": [
+        "AUD13-25A"
+      ]
+    },
+    {
+      "id": "AUD13-26",
+      "title": "Preparar recursos e autoridade de teste externa",
+      "stage": "BUILD",
+      "milestone": "M0",
+      "priority": "P1",
+      "size": "M",
+      "risk": "R3",
+      "status": "DONE",
+      "origin": "docs/plano-melhorias-2026-09-13/backlog.json",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "contract_digest": "1b6fc4e05b9a9f2c612021f2f6376da17372931d8a78df94e85f6aded67fa0ba",
+      "quality_bar_digest": "2093461a8d6103641a555ad45371dde4649e5f144c32260b80244e219fa70697",
+      "parent_legacy_tasks": [
+        "DEV-02"
+      ],
+      "findings": [
+        "H08",
+        "H13",
+        "H15"
+      ],
+      "dependencies": [
+        "AUD13-01"
+      ],
+      "owner": "Infraestrutura",
+      "exclusive_resources": [
+        "environment-contracts"
+      ],
+      "allowed_paths": [
+        "docs/staging.md",
+        "docs/adr/",
+        "docker/.env.example"
+      ],
+      "acceptance_criteria": [
+        "Inventariar endpoints, versões, owners e referências sem expor segredos",
+        "Definir dados/destinatários sintéticos, limites de custo/carga e isolamento",
+        "Preparação técnica é entregável; falta de acesso bloqueia somente execução dependente",
+        "Revalidar autoridade já concedida na sessão antes de perguntar novamente"
+      ],
+      "validation": [
+        "Inspecionar manifestos/scripts e preencher matriz recurso→responsável→disponibilidade→gate"
+      ],
+      "external_prerequisites": [
+        "Provisionamento de staging/TLS/DB/secret authority/modelo/provider/sink e orçamento de teste pelos responsáveis"
+      ],
+      "acceptance_summary": "Inventariar endpoints, versões, owners e referências sem expor segredos",
+      "reconciled_at": "2026-09-13T10:26:58-03:00",
+      "reconciliation": "AUD13-01: contracted from the 2026-09-13 audit plan; legacy parents referenced, never duplicated as dependencies.",
+      "next_action": {
+        "id": "AUD13-26:EXTERNAL-PROVISIONING",
+        "kind": "BLOCKED",
+        "summary": "Matriz e contrato preparados; provisionamento externo aguarda owners, autoridade e teto aprovados.",
+        "blocker": "staging/TLS/DB/secret authority/provider/DeepSeek/observabilidade/carga/recovery ausentes",
+        "target": "docs/staging.md; docs/adr/; docker/.env.example; .agent/verification.jsonl",
+        "completion_signal": "Owners, autoridade, isolamento, limites e recursos externos revalidados para o candidato; enquanto ausentes, permanece BLOCKED_EXTERNAL e nao conta como DONE."
+      },
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-CVG-AUD13-26-001",
+        ".agent/gates/aud13-26.json"
+      ],
+      "gate_ref": ".agent/gates/aud13-26.json"
+    },
+    {
+      "id": "AUD13-27",
+      "title": "Governance durável do ACP e vertical DeepSeek",
+      "stage": "BUILD",
+      "milestone": "M3",
+      "priority": "P1",
+      "size": "L",
+      "risk": "R3",
+      "status": "PARTIAL",
+      "origin": "docs/plano-melhorias-2026-09-13/backlog.json",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "contract_digest": "1b6fc4e05b9a9f2c612021f2f6376da17372931d8a78df94e85f6aded67fa0ba",
+      "quality_bar_digest": "2093461a8d6103641a555ad45371dde4649e5f144c32260b80244e219fa70697",
+      "parent_legacy_tasks": [
+        "AIG-02",
+        "AIG-03"
+      ],
+      "findings": [
+        "H08"
+      ],
+      "dependencies": [
+        "AUD13-20",
+        "AUD13-21",
+        "AUD13-23",
+        "AUD13-26"
+      ],
+      "owner": "IA/runtime",
+      "exclusive_resources": [
+        "deepseek",
+        "ai-runtime",
+        "external-ai"
+      ],
+      "allowed_paths": [
+        "packages/deepseek-bridge/",
+        "packages/harness-adapters/",
+        "packages/agent-runtime/",
+        "apps/deepseek-bridge/",
+        "tests/",
+        "docs/deepseek-real-proof.md"
+      ],
+      "acceptance_criteria": [
+        "Implementar e injetar DeepSeekAcpGovernance durável no entrypoint",
+        "Modelo/tool/approval/replay/usage/provenance ligados ao candidato e perfil",
+        "Provar restart, cancelamento, timeout, JSON inválido, manifest/HMAC incorretos e usage ausente",
+        "Sem fallback para mock em ambiente real; prova externa separada de fixtures"
+      ],
+      "validation": [
+        "npm run verify:deepseek-acp",
+        "npm run verify:deepseek-real",
+        "Matriz completa docs prompt final F3/F4 com logs e receipts"
+      ],
+      "external_prerequisites": [
+        "Runtime/modelo/segredos e teto de custo de teste autorizados"
+      ],
+      "acceptance_summary": "Implementar e injetar DeepSeekAcpGovernance durável no entrypoint",
+      "reconciled_at": "2026-09-13T10:26:58-03:00",
+      "reconciliation": "AUD13-01: contracted from the 2026-09-13 audit plan; legacy parents referenced, never duplicated as dependencies.",
+      "next_action": {
+        "id": "AUD13-27:IMPLEMENT",
+        "kind": "IMPLEMENT",
+        "summary": "Ler contrato, reproduzir o comportamento atual e implementar com evidencia.",
+        "target": "packages/deepseek-bridge/; packages/harness-adapters/; packages/agent-runtime/; apps/deepseek-bridge/; tests/; docs/deepseek-real-proof.md",
+        "completion_signal": "Governanca ACP duravel injetada no entrypoint e testes locais cobrem restart, cancelamento, timeout, JSON/manifest/HMAC invalidos e usage ausente sem fallback real."
+      }
+    },
+    {
+      "id": "AUD13-28",
+      "title": "Provider real, secrets e MFA forte",
+      "stage": "BUILD",
+      "milestone": "M3",
+      "priority": "P1",
+      "size": "L",
+      "risk": "R3",
+      "status": "PLANNED",
+      "origin": "docs/plano-melhorias-2026-09-13/backlog.json",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "contract_digest": "1b6fc4e05b9a9f2c612021f2f6376da17372931d8a78df94e85f6aded67fa0ba",
+      "quality_bar_digest": "2093461a8d6103641a555ad45371dde4649e5f144c32260b80244e219fa70697",
+      "parent_legacy_tasks": [
+        "WRK-03",
+        "SEC-03",
+        "SEC-04"
+      ],
+      "findings": [
+        "H15",
+        "H08"
+      ],
+      "dependencies": [
+        "AUD13-06",
+        "AUD13-10",
+        "AUD13-25",
+        "AUD13-26"
+      ],
+      "owner": "Integrações/segurança",
+      "exclusive_resources": [
+        "integrations",
+        "auth-core",
+        "external-provider"
+      ],
+      "allowed_paths": [
+        "packages/integrations/",
+        "packages/auth/",
+        "packages/config/",
+        "apps/api/src/application/break-glass-service.ts",
+        "apps/worker/",
+        "tests/"
+      ],
+      "acceptance_criteria": [
+        "Secret authority configurada exerce falta/rotação/revogação/versão incorreta sem vazar chaves",
+        "WebAuthn registro/assertion/replay/rpId/origin e break-glass têm aprovador independente e revisão",
+        "Mensagem aprovada percorre outbox→provider→receipt/callback→inbox→effect→reconciliação",
+        "Perda de resposta, duplicata,429/500 e callback inválido não causam retry cego",
+        "Provider de pagamento/laboratório exigido pelo contrato é identificado, implementado ou permanece bloqueio explícito da jornada correspondente"
+      ],
+      "validation": [
+        "npm run test:security",
+        "npm run verify:provider-sandbox",
+        "npm run verify:provider-real",
+        "Matriz de faults e receipt externo com dados sintéticos"
+      ],
+      "external_prerequisites": [
+        "Destinatário/canal/provider e identidade WebAuthn de teste autorizados; sem enviar mensagens a terceiros sem autorização explícita"
+      ],
+      "acceptance_summary": "Secret authority configurada exerce falta/rotação/revogação/versão incorreta sem vazar chaves",
+      "reconciled_at": "2026-09-13T10:26:58-03:00",
+      "reconciliation": "AUD13-01: contracted from the 2026-09-13 audit plan; legacy parents referenced, never duplicated as dependencies.",
+      "next_action": {
+        "id": "AUD13-28:IMPLEMENT",
+        "kind": "IMPLEMENT",
+        "summary": "Ler contrato, reproduzir o comportamento atual e implementar com evidencia."
+      }
+    },
+    {
+      "id": "AUD13-29",
+      "title": "Telemetria limitada, causalidade e relatórios",
+      "stage": "BUILD",
+      "milestone": "M1",
+      "priority": "P1",
+      "size": "M",
+      "risk": "R2",
+      "status": "PARTIAL",
+      "origin": "docs/plano-melhorias-2026-09-13/backlog.json",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "contract_digest": "1b6fc4e05b9a9f2c612021f2f6376da17372931d8a78df94e85f6aded67fa0ba",
+      "quality_bar_digest": "2093461a8d6103641a555ad45371dde4649e5f144c32260b80244e219fa70697",
+      "parent_legacy_tasks": [
+        "OPS-01",
+        "PER-02",
+        "FUN-03"
+      ],
+      "findings": [
+        "H12",
+        "H05"
+      ],
+      "dependencies": [
+        "AUD13-02",
+        "AUD13-11"
+      ],
+      "owner": "Observabilidade",
+      "exclusive_resources": [
+        "telemetry",
+        "reports-feature"
+      ],
+      "allowed_paths": [
+        "packages/ops/",
+        "apps/api/src/application/operational-metrics-service.ts",
+        "apps/web/src/features/",
+        "tests/unit/ops.test.ts"
+      ],
+      "acceptance_criteria": [
+        "Logs/latências têm retenção/capacidade limitada e descarte observável",
+        "Percentis por janela/histograma sem ordenar histórico vitalício",
+        "Propagar trace/correlação HTTP→domínio→outbox→worker→provider sem payload sensível",
+        "Relatórios operação/qualidade/custo/auditoria/incidentes têm filtros e fonte real",
+        "Falha/duplicação collector não altera domínio"
+      ],
+      "validation": [
+        "node --import tsx --test tests/unit/ops.test.ts",
+        "Probe10000 eventos e soak verifica memória limitada",
+        "Teste collector local com contexto pai/filho e redaction",
+        "E2E filtros/relatório sem gráficos fixos"
+      ],
+      "external_prerequisites": [],
+      "acceptance_summary": "Logs/latências têm retenção/capacidade limitada e descarte observável",
+      "reconciled_at": "2026-09-13T10:26:58-03:00",
+      "reconciliation": "AUD13-01: contracted from the 2026-09-13 audit plan; legacy parents referenced, never duplicated as dependencies.",
+      "next_action": {
+        "id": "AUD13-29:REPORTS",
+        "kind": "IMPLEMENT",
+        "summary": "Implementar relatorios operacao/qualidade/custo/auditoria/incidentes com filtros e fonte real (portal de relatorios).",
+        "target": "packages/ops/; apps/api/src/application/operational-metrics-service.ts; apps/web/src/features/; tests/unit/ops.test.ts",
+        "completion_signal": "Telemetria limitada, causalidade sem payload sensivel e relatorios com filtros/fonte real passam testes de falha e duplicacao do collector."
+      },
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-CVG-AUD13-29-001",
+        ".agent/gates/aud13-wave-1.json"
+      ],
+      "gate_ref": ".agent/gates/aud13-wave-1.json"
+    },
+    {
+      "id": "AUD13-30",
+      "title": "Readiness por capacidade e degradação manual",
+      "stage": "BUILD",
+      "milestone": "M1",
+      "priority": "P1",
+      "size": "M",
+      "risk": "R2",
+      "status": "PLANNED",
+      "origin": "docs/plano-melhorias-2026-09-13/backlog.json",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "contract_digest": "1b6fc4e05b9a9f2c612021f2f6376da17372931d8a78df94e85f6aded67fa0ba",
+      "quality_bar_digest": "2093461a8d6103641a555ad45371dde4649e5f144c32260b80244e219fa70697",
+      "parent_legacy_tasks": [
+        "OPS-01",
+        "FUN-03"
+      ],
+      "findings": [
+        "M04"
+      ],
+      "dependencies": [
+        "AUD13-02"
+      ],
+      "owner": "Operação/API",
+      "exclusive_resources": [
+        "api-root",
+        "readiness"
+      ],
+      "allowed_paths": [
+        "apps/api/src/routes/health.ts",
+        "apps/api/src/app.ts",
+        "packages/config/",
+        "docker/",
+        "tests/"
+      ],
+      "acceptance_criteria": [
+        "Probes medem status corrente de segredos/policy/audit/fila e DB",
+        "Diferenciar liveness, readiness global e capacidade IA sem retirar caminho manual válido",
+        "Falha DB/audit obrigatória nega operações dependentes",
+        "Revogação depois do startup e recuperação são observáveis; sem READY constante enganoso"
+      ],
+      "validation": [
+        "npm run test:integration",
+        "Teste transição READY→revogado→recuperado e IA indisponível com escrita manual autorizada"
+      ],
+      "external_prerequisites": [],
+      "acceptance_summary": "Probes medem status corrente de segredos/policy/audit/fila e DB",
+      "reconciled_at": "2026-09-13T10:26:58-03:00",
+      "reconciliation": "AUD13-01: contracted from the 2026-09-13 audit plan; legacy parents referenced, never duplicated as dependencies.",
+      "next_action": {
+        "id": "AUD13-30:IMPLEMENT",
+        "kind": "IMPLEMENT",
+        "summary": "Ler contrato, reproduzir o comportamento atual e implementar com evidencia."
+      }
+    },
+    {
+      "id": "AUD13-31",
+      "title": "Renderizar Alertmanager e provar entrega",
+      "stage": "BUILD",
+      "milestone": "M3",
+      "priority": "P1",
+      "size": "L",
+      "risk": "R3",
+      "status": "PLANNED",
+      "origin": "docs/plano-melhorias-2026-09-13/backlog.json",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "contract_digest": "1b6fc4e05b9a9f2c612021f2f6376da17372931d8a78df94e85f6aded67fa0ba",
+      "quality_bar_digest": "2093461a8d6103641a555ad45371dde4649e5f144c32260b80244e219fa70697",
+      "parent_legacy_tasks": [
+        "OPS-01"
+      ],
+      "findings": [
+        "H13"
+      ],
+      "dependencies": [
+        "AUD13-26",
+        "AUD13-29",
+        "AUD13-30"
+      ],
+      "owner": "SRE",
+      "exclusive_resources": [
+        "observability-stack"
+      ],
+      "allowed_paths": [
+        "docker/observability/",
+        "docker-compose.observability.yml",
+        "scripts/verify-production.ts",
+        "tests/",
+        "docs/runbooks/"
+      ],
+      "acceptance_criteria": [
+        "Arquivo de configuração efetivo contém URL válida do sink, não placeholder literal",
+        "Ausência de autoridade bloqueia explicitamente startup/configuração",
+        "Validar config do Alertmanager e receber/resolver alerta real de teste",
+        "API/DB/worker/backlog/provider/DeepSeek apontam runbooks e têm evidência de entrega"
+      ],
+      "validation": [
+        "Validar arquivo renderizado com ferramenta da imagem fixada",
+        "Teste known-bad URL ausente e known-good sink local",
+        "Alerta chega e resolve no sink controlado"
+      ],
+      "external_prerequisites": [
+        "Sink e execução do stack de teste autorizados; nunca usar canais pessoais por inferência"
+      ],
+      "acceptance_summary": "Arquivo de configuração efetivo contém URL válida do sink, não placeholder literal",
+      "reconciled_at": "2026-09-13T10:26:58-03:00",
+      "reconciliation": "AUD13-01: contracted from the 2026-09-13 audit plan; legacy parents referenced, never duplicated as dependencies.",
+      "next_action": {
+        "id": "AUD13-31:IMPLEMENT",
+        "kind": "IMPLEMENT",
+        "summary": "Ler contrato, reproduzir o comportamento atual e implementar com evidencia."
+      }
+    },
+    {
+      "id": "AUD13-32",
+      "title": "Gates de runbooks e carga que discriminem runtime",
+      "stage": "BUILD",
+      "milestone": "M1",
+      "priority": "P1",
+      "size": "M",
+      "risk": "R2",
+      "status": "PLANNED",
+      "origin": "docs/plano-melhorias-2026-09-13/backlog.json",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "contract_digest": "1b6fc4e05b9a9f2c612021f2f6376da17372931d8a78df94e85f6aded67fa0ba",
+      "quality_bar_digest": "2093461a8d6103641a555ad45371dde4649e5f144c32260b80244e219fa70697",
+      "parent_legacy_tasks": [
+        "QUA-03",
+        "PER-01",
+        "OPS-03"
+      ],
+      "findings": [
+        "M02",
+        "M03"
+      ],
+      "dependencies": [
+        "AUD13-03",
+        "AUD13-02"
+      ],
+      "owner": "Qualidade/SRE",
+      "exclusive_resources": [
+        "evidence-harness",
+        "load-harness"
+      ],
+      "allowed_paths": [
+        "scripts/verify-runbook-execution.ts",
+        "scripts/verify-load.ts",
+        "tests/load/",
+        "tests/unit/runbook-gate.test.ts",
+        "tests/unit/load-gate.test.ts"
+      ],
+      "acceptance_criteria": [
+        "Separar checagem textual de cenário executado, sem EXECUTED_LOCAL para strings",
+        "Cada cenário aciona boundary e verifica efeito bloqueado/recuperado",
+        "Carga inclui clinical read/write,turno,envio,receipt e backlog além de GET",
+        "Workload ausente ou semântica inválida falha mesmo com HTTP200",
+        "Thresholds por operação/cenário/check e p50/p95/p99; limites aprovados sem adaptações para passar"
+      ],
+      "validation": [
+        "node --import tsx --test tests/unit/runbook-gate.test.ts tests/unit/load-gate.test.ts",
+        "Mutação conhecida ruim passa HTTP200 mas falha contrato",
+        "Executar cenários locais com medição real de estado"
+      ],
+      "external_prerequisites": [],
+      "acceptance_summary": "Separar checagem textual de cenário executado, sem EXECUTED_LOCAL para strings",
+      "reconciled_at": "2026-09-13T10:26:58-03:00",
+      "reconciliation": "AUD13-01: contracted from the 2026-09-13 audit plan; legacy parents referenced, never duplicated as dependencies.",
+      "next_action": {
+        "id": "AUD13-32:IMPLEMENT",
+        "kind": "IMPLEMENT",
+        "summary": "Ler contrato, reproduzir o comportamento atual e implementar com evidencia."
+      }
+    },
+    {
+      "id": "AUD13-33",
+      "title": "Extrações arquiteturais e otimização medidas",
+      "stage": "BUILD",
+      "milestone": "M3",
+      "priority": "P2",
+      "size": "L",
+      "risk": "R2",
+      "status": "PLANNED",
+      "origin": "docs/plano-melhorias-2026-09-13/backlog.json",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "contract_digest": "1b6fc4e05b9a9f2c612021f2f6376da17372931d8a78df94e85f6aded67fa0ba",
+      "quality_bar_digest": "2093461a8d6103641a555ad45371dde4649e5f144c32260b80244e219fa70697",
+      "parent_legacy_tasks": [
+        "ARC-02",
+        "ARC-03",
+        "PER-01",
+        "PER-02"
+      ],
+      "findings": [
+        "H11",
+        "H12"
+      ],
+      "dependencies": [
+        "AUD13-23",
+        "AUD13-25",
+        "AUD13-29",
+        "AUD13-32"
+      ],
+      "owner": "Arquitetura/performance",
+      "exclusive_resources": [
+        "api-root",
+        "domain-core",
+        "persistence-core",
+        "benchmark"
+      ],
+      "allowed_paths": [
+        "apps/api/src/",
+        "packages/domain/",
+        "packages/persistence/",
+        "scripts/benchmark-local.ts",
+        "docs/adr/",
+        "tests/"
+      ],
+      "acceptance_criteria": [
+        "Perfilar snapshot/locks/hash/queries/RLS/pool antes de otimizar",
+        "Congelar workload/dataset/hardware/seed/cold-warm/concorrência/caudas",
+        "Extrair composição e persistência por ownership mantendo transação e API",
+        "Ganho medido sem reduzir isolamento, custo do hash, auditoria ou correção",
+        "Não extrair apenas por quantidade de linhas"
+      ],
+      "validation": [
+        "npm run benchmark:local",
+        "npm run verify:authoritative-writes",
+        "npm run verify:pdp",
+        "npm run test:database",
+        "Comparar perfil antes/depois no mesmo equipamento e carga"
+      ],
+      "external_prerequisites": [],
+      "acceptance_summary": "Perfilar snapshot/locks/hash/queries/RLS/pool antes de otimizar",
+      "reconciled_at": "2026-09-13T10:26:58-03:00",
+      "reconciliation": "AUD13-01: contracted from the 2026-09-13 audit plan; legacy parents referenced, never duplicated as dependencies.",
+      "next_action": {
+        "id": "AUD13-33:IMPLEMENT",
+        "kind": "IMPLEMENT",
+        "summary": "Ler contrato, reproduzir o comportamento atual e implementar com evidencia."
+      }
+    },
+    {
+      "id": "AUD13-34",
+      "title": "CI do candidato, imagens e staging imutável",
+      "stage": "BUILD",
+      "milestone": "M3",
+      "priority": "P1",
+      "size": "L",
+      "risk": "R3",
+      "status": "PLANNED",
+      "origin": "docs/plano-melhorias-2026-09-13/backlog.json",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "contract_digest": "1b6fc4e05b9a9f2c612021f2f6376da17372931d8a78df94e85f6aded67fa0ba",
+      "quality_bar_digest": "2093461a8d6103641a555ad45371dde4649e5f144c32260b80244e219fa70697",
+      "parent_legacy_tasks": [
+        "DEV-01",
+        "DEV-03",
+        "SUP-02",
+        "SUP-03"
+      ],
+      "findings": [
+        "H07",
+        "H14",
+        "H15"
+      ],
+      "dependencies": [
+        "AUD13-03",
+        "AUD13-02",
+        "AUD13-26",
+        "AUD13-30"
+      ],
+      "owner": "Release",
+      "exclusive_resources": [
+        "ci",
+        "containers",
+        "staging-deploy"
+      ],
+      "allowed_paths": [
+        "scripts/verify-production.ts",
+        "scripts/verify-release-provenance.ts",
+        "scripts/verify-promotion-invariant.ts",
+        ".github/",
+        "docker/",
+        "docker-compose.production.yml",
+        "Dockerfile.api",
+        "Dockerfile.web"
+      ],
+      "acceptance_criteria": [
+        "CI do mesmo SHA executa instalação/typecheck/testes/build/Postgres/restore/browser/scans",
+        "SBOM e digests vinculam imagens reais; tags mutáveis revisadas/fixadas conforme política",
+        "Nenhum rebuild entre staging aprovado e promoção",
+        "Config insegura/demo/mock/segredo ausente falha; smoke inclui login/escrita/worker/outbox/shutdown/restart/headers TLS",
+        "Não atualizar evidência sem executar candidato"
+      ],
+      "validation": [
+        "npm run verify:static",
+        "npm run verify:production",
+        "npm run verify:release-provenance",
+        "npm run verify:container-smoke",
+        "npm run verify:promotion-invariant"
+      ],
+      "external_prerequisites": [
+        "CI remoto, Docker e staging disponíveis/autorizados; não publicar ou promover produção nesta tarefa"
+      ],
+      "acceptance_summary": "CI do mesmo SHA executa instalação/typecheck/testes/build/Postgres/restore/browser/scans",
+      "reconciled_at": "2026-09-13T10:26:58-03:00",
+      "reconciliation": "AUD13-01: contracted from the 2026-09-13 audit plan; legacy parents referenced, never duplicated as dependencies.",
+      "next_action": {
+        "id": "AUD13-34:IMPLEMENT",
+        "kind": "IMPLEMENT",
+        "summary": "Ler contrato, reproduzir o comportamento atual e implementar com evidencia."
+      }
+    },
+    {
+      "id": "AUD13-35",
+      "title": "Acessibilidade e usabilidade das jornadas completas",
+      "stage": "BUILD",
+      "milestone": "M4",
+      "priority": "P1",
+      "size": "L",
+      "risk": "R3",
+      "status": "PLANNED",
+      "origin": "docs/plano-melhorias-2026-09-13/backlog.json",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "contract_digest": "1b6fc4e05b9a9f2c612021f2f6376da17372931d8a78df94e85f6aded67fa0ba",
+      "quality_bar_digest": "2093461a8d6103641a555ad45371dde4649e5f144c32260b80244e219fa70697",
+      "parent_legacy_tasks": [
+        "A11Y-01",
+        "A11Y-02",
+        "A11Y-03",
+        "UX-03"
+      ],
+      "findings": [
+        "H04",
+        "H05"
+      ],
+      "dependencies": [
+        "AUD13-05",
+        "AUD13-06",
+        "AUD13-07",
+        "AUD13-08",
+        "AUD13-12",
+        "AUD13-13",
+        "AUD13-14",
+        "AUD13-15",
+        "AUD13-16",
+        "AUD13-17",
+        "AUD13-18",
+        "AUD13-19",
+        "AUD13-20",
+        "AUD13-25",
+        "AUD13-29",
+        "AUD13-34"
+      ],
+      "owner": "UX/qualidade",
+      "exclusive_resources": [
+        "e2e-visual",
+        "shared-ui",
+        "assistive-review"
+      ],
+      "allowed_paths": [
+        "tests/e2e/",
+        "playwright.config.ts",
+        "apps/web/src/",
+        "docs/visual-qa-vNext.md",
+        "docs/accessibility-proof.md"
+      ],
+      "acceptance_criteria": [
+        "Matriz Chromium/Firefox/WebKit desktop/tablet/mobile e estados críticos",
+        "Teclado/dialog/foco/live-region/erro/tabela/contraste e zoom nativo200/400% utilizáveis",
+        "Leitor de tela/toque/dispositivo real têm operador e evidência explícitos",
+        "Usuários representativos concluem recepção/clínica/financeiro; medir conclusão/erros",
+        "Corrigir maior falha e repetir cenário; duas críticas visuais independentes sem baseline ajustado para ocultar bug"
+      ],
+      "validation": [
+        "npm run test:e2e:full",
+        "npm run audit:contrast",
+        "npm run audit:tokens",
+        "Roteiro assistivo/usuários com registro anonimizado"
+      ],
+      "external_prerequisites": [
+        "Operador assistivo, dispositivos e participantes autorizados; ausência não vira PASS"
+      ],
+      "acceptance_summary": "Matriz Chromium/Firefox/WebKit desktop/tablet/mobile e estados críticos",
+      "reconciled_at": "2026-09-13T10:26:58-03:00",
+      "reconciliation": "AUD13-01: contracted from the 2026-09-13 audit plan; legacy parents referenced, never duplicated as dependencies.",
+      "next_action": {
+        "id": "AUD13-35:IMPLEMENT",
+        "kind": "IMPLEMENT",
+        "summary": "Ler contrato, reproduzir o comportamento atual e implementar com evidencia."
+      }
+    },
+    {
+      "id": "AUD13-36",
+      "title": "Carga, caos, segurança e recovery operacionais",
+      "stage": "BUILD",
+      "milestone": "M4",
+      "priority": "P1",
+      "size": "L",
+      "risk": "R3",
+      "status": "PLANNED",
+      "origin": "docs/plano-melhorias-2026-09-13/backlog.json",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "contract_digest": "1b6fc4e05b9a9f2c612021f2f6376da17372931d8a78df94e85f6aded67fa0ba",
+      "quality_bar_digest": "2093461a8d6103641a555ad45371dde4649e5f144c32260b80244e219fa70697",
+      "parent_legacy_tasks": [
+        "PER-03",
+        "SEC-04",
+        "OPS-02",
+        "OPS-03",
+        "FIN-03"
+      ],
+      "findings": [
+        "H06",
+        "H10",
+        "H11",
+        "H12",
+        "H15",
+        "M02",
+        "M03",
+        "M05"
+      ],
+      "dependencies": [
+        "AUD13-24",
+        "AUD13-27",
+        "AUD13-28",
+        "AUD13-31",
+        "AUD13-32",
+        "AUD13-33",
+        "AUD13-34"
+      ],
+      "owner": "SRE/segurança",
+      "exclusive_resources": [
+        "staging-db",
+        "load-environment",
+        "recovery",
+        "red-team"
+      ],
+      "allowed_paths": [
+        "tests/load/",
+        "tests/integration/",
+        "scripts/",
+        "docs/runbooks/",
+        "docs/load-proof.md",
+        "docs/chaos-proof.md",
+        "docs/recovery-proof-final.md"
+      ],
+      "acceptance_criteria": [
+        "W-A…W-H,50/100 usuários e burst com hardware/dados/duração/caudas brutas",
+        "CPU/memória/pool/FD/filas degradam e recuperam sem corrupção",
+        "Kill API/worker,DB restart,network/provider/secret/model failure sem efeito duplicado",
+        "Backup periódico cifrado/retido/rotacionado exercitado com retorno seguro",
+        "Operador independente executa runbooks de outage/restore/rotação/break-glass e mede RTO/RPO",
+        "Red-team F23/F24 com role runtime mínima e zero High/Critical aberto"
+      ],
+      "validation": [
+        "npm run verify:load",
+        "npm run verify:resource-pressure",
+        "npm run verify:runbook-execution",
+        "npm run verify:security-red-team",
+        "npm run verify:postgres:restore"
+      ],
+      "external_prerequisites": [
+        "Ambiente isolado, escopo de ataque, teto de custo/carga e targets SLO/RTO/RPO acordados; não deduzir disponibilidade mensal de teste curto"
+      ],
+      "acceptance_summary": "W-A…W-H,50/100 usuários e burst com hardware/dados/duração/caudas brutas",
+      "reconciled_at": "2026-09-13T10:26:58-03:00",
+      "reconciliation": "AUD13-01: contracted from the 2026-09-13 audit plan; legacy parents referenced, never duplicated as dependencies.",
+      "next_action": {
+        "id": "AUD13-36:IMPLEMENT",
+        "kind": "IMPLEMENT",
+        "summary": "Ler contrato, reproduzir o comportamento atual e implementar com evidencia."
+      }
+    },
+    {
+      "id": "AUD13-37",
+      "title": "Dossiê integrado, reavaliação e crítica final",
+      "stage": "BUILD",
+      "milestone": "M5",
+      "priority": "P1",
+      "size": "M",
+      "risk": "R2",
+      "status": "PLANNED",
+      "origin": "docs/plano-melhorias-2026-09-13/backlog.json",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "contract_digest": "1b6fc4e05b9a9f2c612021f2f6376da17372931d8a78df94e85f6aded67fa0ba",
+      "quality_bar_digest": "2093461a8d6103641a555ad45371dde4649e5f144c32260b80244e219fa70697",
+      "parent_legacy_tasks": [
+        "DEV-04",
+        "DOC-02",
+        "DOC-03",
+        "CON-03"
+      ],
+      "findings": [
+        "H07",
+        "H15",
+        "M06"
+      ],
+      "dependencies": [
+        "AUD13-35",
+        "AUD13-36"
+      ],
+      "owner": "Lead/críticos",
+      "exclusive_resources": [
+        "release-candidate",
+        "docs-index",
+        "control-plane"
+      ],
+      "allowed_paths": [
+        "docs/",
+        "README.md",
+        ".agent/",
+        ".gauntlet/"
+      ],
+      "acceptance_criteria": [
+        "Todos achados H01–H15/M01–M06 e FR/NFR têm evidência, candidato e resolução",
+        "Revalidar catálogo/compatibilidade após todas integrações",
+        "39 fases/25 gates/22 dimensões canônicas têm evidência exigida; crítica em15 especialidades conforme barra",
+        "Notas atribuídas por análise independente, nunca meta automaticamente",
+        "Reparo altera candidato e invalida prova afetada; nenhum High/Critical técnico aberto",
+        "Histórico preservado, comandos/estado atual sem contradição"
+      ],
+      "validation": [
+        "npm run verify:pdp",
+        "npm run test:contract",
+        "npm run verify:triplo-aaa",
+        "Conferir hashes/receipts e parecer independente; F38 pode permanecer pendente de AUD13-38"
+      ],
+      "external_prerequisites": [],
+      "acceptance_summary": "Todos achados H01–H15/M01–M06 e FR/NFR têm evidência, candidato e resolução",
+      "reconciled_at": "2026-09-13T10:26:58-03:00",
+      "reconciliation": "AUD13-01: contracted from the 2026-09-13 audit plan; legacy parents referenced, never duplicated as dependencies.",
+      "next_action": {
+        "id": "AUD13-37:IMPLEMENT",
+        "kind": "IMPLEMENT",
+        "summary": "Ler contrato, reproduzir o comportamento atual e implementar com evidencia."
+      }
+    },
+    {
+      "id": "AUD13-38",
+      "title": "Decisão humana e promoção do artefato aprovado",
+      "stage": "BUILD",
+      "milestone": "M5",
+      "priority": "P1",
+      "size": "M",
+      "risk": "R3",
+      "status": "PLANNED",
+      "origin": "docs/plano-melhorias-2026-09-13/backlog.json",
+      "source_report": "docs/auditoria-2026-09-13.md",
+      "contract_digest": "1b6fc4e05b9a9f2c612021f2f6376da17372931d8a78df94e85f6aded67fa0ba",
+      "quality_bar_digest": "2093461a8d6103641a555ad45371dde4649e5f144c32260b80244e219fa70697",
+      "parent_legacy_tasks": [
+        "DEV-05"
+      ],
+      "findings": [
+        "H15"
+      ],
+      "dependencies": [
+        "AUD13-37"
+      ],
+      "owner": "Decisor/release",
+      "exclusive_resources": [
+        "human-approval",
+        "promotion"
+      ],
+      "allowed_paths": [
+        "docs/11-transicao-para-producao.md",
+        ".agent/",
+        "artifacts/"
+      ],
+      "acceptance_criteria": [
+        "Apresentar candidato concreto, riscos residuais e rollback; decisão humana genuína ligada ao digest",
+        "F38,retenção,dados reais,alçadas e metas têm autoridade registrada",
+        "verify:triplo-aaa só passa com todos gates efetivamente atendidos",
+        "Produção apenas se explicitamente autorizada para o candidato, sem rebuild; rejeição não vira PASS"
+      ],
+      "validation": [
+        "npm run verify:triplo-aaa",
+        "npm run verify:promotion-invariant",
+        "Conferir identidade/escopo/validade da decisão e sujeito"
+      ],
+      "external_prerequisites": [
+        "Aceite humano e autorização explícita de produção; planejamento não os concede"
+      ],
+      "acceptance_summary": "Apresentar candidato concreto, riscos residuais e rollback; decisão humana genuína ligada ao digest",
+      "reconciled_at": "2026-09-13T10:26:58-03:00",
+      "reconciliation": "AUD13-01: contracted from the 2026-09-13 audit plan; legacy parents referenced, never duplicated as dependencies.",
+      "next_action": {
+        "id": "AUD13-38:IMPLEMENT",
+        "kind": "IMPLEMENT",
+        "summary": "Ler contrato, reproduzir o comportamento atual e implementar com evidencia."
+      }
+    },
+    {
+      "id": "AUD13-14A",
+      "title": "Anexos clinicos governados (storage/ACL/retencao)",
+      "stage": "BUILD",
+      "milestone": "M2",
+      "priority": "P1",
+      "size": "M",
+      "risk": "R3",
+      "status": "PLANNED",
+      "origin": "AUD13-14 dismemberment",
+      "parent_task": "AUD13-14",
+      "dependencies": [
+        "AUD13-14"
+      ],
+      "blocked_by": "D-03 (retencao/residencia e autoridade de storage) + migration/contrato/persistence de anexos",
+      "owner": "Dados/seguranca + produto",
+      "acceptance_summary": "Upload/retencao/ACL de anexos clinicos com classificacao, cifra, quarentena e auditoria, sem binario em snapshot ou Git.",
+      "next_action": {
+        "id": "AUD13-14A:IMPLEMENT",
+        "kind": "WAIT",
+        "summary": "Aguardar decisao D-03; preparar contrato e migration apos autorizacao.",
+        "dependency": "D-03 e AUD13-14",
+        "target": "apps/web/src/features/clinical/; apps/api/src/application/; packages/domain/src/; packages/persistence/; db/migrations/; tests/",
+        "completion_signal": "D-03 autorizado e contrato/migration de anexos aprovado; upload, classificacao, cifra, quarentena, ACL, retencao e auditoria passam nos testes."
+      }
+    },
+    {
+      "id": "AUD13-16A",
+      "title": "Checklist e consentimento de admissao first-class",
+      "stage": "BUILD",
+      "milestone": "M2",
+      "priority": "P1",
+      "size": "M",
+      "risk": "R3",
+      "status": "PLANNED",
+      "origin": "AUD13-16 dismemberment",
+      "parent_task": "AUD13-16",
+      "dependencies": [
+        "AUD13-16"
+      ],
+      "blocked_by": "D-02 (regras clinicas) + campos no contrato HospitalEpisode + migration/persistence",
+      "owner": "Produto/clinica + dados",
+      "acceptance_summary": "Checklist obrigatorio e consentimento registrados com versao/autoria, bloqueando admissao/alta quando aplicavel.",
+      "next_action": {
+        "id": "AUD13-16A:IMPLEMENT",
+        "kind": "WAIT",
+        "summary": "Aguardar D-02; preparar contrato e migration apos autorizacao.",
+        "dependency": "D-02 e AUD13-16",
+        "target": "apps/web/src/features/; apps/web/src/routes/; apps/api/src/application/; packages/domain/src/; db/migrations/; tests/",
+        "completion_signal": "D-02 autorizado e contrato/migration aprovados; checklist e consentimento versionados bloqueiam admissao/alta quando aplicavel."
+      }
+    },
+    {
+      "id": "AUD13-17A",
+      "title": "Fornecedor e custo de entrada no estoque",
+      "stage": "BUILD",
+      "milestone": "M2",
+      "priority": "P2",
+      "size": "M",
+      "risk": "R3",
+      "status": "PLANNED",
+      "origin": "AUD13-17 dismemberment",
+      "parent_task": "AUD13-17",
+      "dependencies": [
+        "AUD13-17"
+      ],
+      "blocked_by": "Campos fornecedor/custo no contrato + migration/persistence e regra contabil",
+      "owner": "Produto/estoque + financeiro",
+      "acceptance_summary": "Entrada registra fornecedor, custo unitario/total e vinculacao contabil sem duplicar movimento.",
+      "next_action": {
+        "id": "AUD13-17A:IMPLEMENT",
+        "kind": "WAIT",
+        "summary": "Aguardar definicao de contrato/custo; preparar migration apos autorizacao.",
+        "dependency": "Contrato de fornecedor/custo e AUD13-17",
+        "target": "apps/web/src/features/stock/; apps/api/src/application/; packages/domain/src/; packages/persistence/; db/migrations/; tests/",
+        "completion_signal": "Contrato de fornecedor/custo autorizado; entrada persiste custo e vinculacao contabil sem duplicar movimento, com testes de saldo e auditoria."
+      }
+    },
+    {
+      "id": "AUD13-18A",
+      "title": "Orcamento, aprovacao e conciliacao financeira",
+      "stage": "BUILD",
+      "milestone": "M2",
+      "priority": "P1",
+      "size": "L",
+      "risk": "R3",
+      "status": "PLANNED",
+      "origin": "AUD13-18 dismemberment",
+      "parent_task": "AUD13-18",
+      "dependencies": [
+        "AUD13-18"
+      ],
+      "blocked_by": "D-01 (politica de estorno/credito) + contrato de orcamento/aprovacao e conciliacao com provedor",
+      "owner": "Produto/financeiro + integracoes",
+      "acceptance_summary": "Orcamento versionado com validade/aprovacao e conciliacao de pagamentos com estado externo e compensacao append-only.",
+      "next_action": {
+        "id": "AUD13-18A:IMPLEMENT",
+        "kind": "WAIT",
+        "summary": "Aguardar D-01 e contrato; implementar apos autorizacao.",
+        "dependency": "D-01 e contrato de orcamento/aprovacao/conciliacao",
+        "target": "apps/web/src/features/finance/; apps/api/src/application/; packages/domain/src/; packages/persistence/; db/migrations/; tests/",
+        "completion_signal": "D-01 e contrato financeiro autorizados; orcamento, aprovacao, conciliacao e compensacao append-only passam nos testes de idempotencia."
+      }
+    },
+    {
+      "id": "AUD13-20A",
+      "title": "Registry GovernedArtifact com admissao, revogacao e kill switch",
+      "stage": "BUILD",
+      "milestone": "M2",
+      "priority": "P1",
+      "size": "L",
+      "risk": "R3",
+      "status": "PLANNED",
+      "origin": "AUD13-20 dismemberment",
+      "parent_task": "AUD13-20",
+      "dependencies": [
+        "AUD13-20"
+      ],
+      "blocked_by": "Novo tipo/colecao GovernedArtifact + migrations/RLS + projecao de persistencia",
+      "owner": "IA/plataforma + dados",
+      "acceptance_summary": "Modelos/prompts/tools/skills/MCP versionados com escopos/digests/aprovacao, revogacao, expiracao, rollback e kill switch bloqueando admissao.",
+      "next_action": {
+        "id": "AUD13-20A:IMPLEMENT",
+        "kind": "WAIT",
+        "summary": "Aguardar contrato/migration; implementar admissao governada apos autorizacao.",
+        "dependency": "Contrato/migration GovernedArtifact e AUD13-20",
+        "target": "packages/harness/; packages/agent-policy/; packages/agent-tools/; packages/persistence/; apps/web/src/features/; db/migrations/; tests/",
+        "completion_signal": "Contrato/migration GovernedArtifact autorizados; admissao, revogacao, expiracao, rollback e kill switch bloqueiam artefatos invalidos."
+      }
+    },
+    {
+      "id": "AUD13-25A",
+      "title": "UI e API de automacoes governadas (janela/cancelamento/receipt)",
+      "stage": "BUILD",
+      "milestone": "M3",
+      "priority": "P1",
+      "size": "M",
+      "risk": "R2",
+      "status": "PLANNED",
+      "origin": "AUD13-25 dismemberment",
+      "parent_task": "AUD13-25",
+      "dependencies": [
+        "AUD13-25"
+      ],
+      "blocked_by": "Reserva de superficie API (routes/catalog/policy) + PostgreSQL para jobs duraveis",
+      "owner": "Worker/produto",
+      "acceptance_summary": "Agendar/janela/cancelar automacao e ver execucao/falha/receipt sem envio direto por rota.",
+      "next_action": {
+        "id": "AUD13-25A:IMPLEMENT",
+        "kind": "WAIT",
+        "summary": "Reservar API/catalog/policy e implementar sobre worker jobs duraveis.",
+        "dependency": "API/catalog/policy e AUD13-25",
+        "target": "apps/worker/; packages/persistence/; apps/web/src/features/; apps/web/src/routes/; tests/",
+        "completion_signal": "API/catalog/policy reservados e jobs duraveis disponiveis; agendamento, janela, cancelamento e receipt passam sem envio direto."
+      }
     }
   ],
-  "updated_at": "2026-09-11T17:30:54.372Z"
+  "aaa2_reconciliation": {
+    "schema_version": 1,
+    "source_catalog": "docs/plano-triplo-aaa-pos-entrega-2026-09-13/backlog.json",
+    "source_catalog_sha256": "abc39ce6af71729def6dfb251cb7b4097a58e8c8508a0255f80e69a6e9da083a",
+    "source_traceability": "docs/plano-triplo-aaa-pos-entrega-2026-09-13/rastreabilidade.md",
+    "source_traceability_sha256": "f77c32dd0854787e5238cd093096f2ea693262f5b1a68a29346e370b6dadd0fa",
+    "source_report": "docs/auditoria-entrega-2026-09-13.md",
+    "quality_bar": ".gauntlet/bar-v4.json",
+    "quality_bar_sha256": "2093461a8d6103641a555ad45371dde4649e5f144c32260b80244e219fa70697",
+    "canonical_status_owner": ".agent/backlog.json#items",
+    "status_policy": "AAA2 is a planning delta; execution status is owned only by the mapped canonical AUD13 item or explicit child. This map carries no second mutable status.",
+    "contract_count": 33,
+    "legacy_count": 44,
+    "legacy_scope": [
+      "AUD13-01",
+      "AUD13-02",
+      "AUD13-03",
+      "AUD13-04",
+      "AUD13-05",
+      "AUD13-06",
+      "AUD13-07",
+      "AUD13-08",
+      "AUD13-09",
+      "AUD13-10",
+      "AUD13-11",
+      "AUD13-12",
+      "AUD13-13",
+      "AUD13-14",
+      "AUD13-15",
+      "AUD13-16",
+      "AUD13-17",
+      "AUD13-18",
+      "AUD13-19",
+      "AUD13-20",
+      "AUD13-21",
+      "AUD13-22",
+      "AUD13-23",
+      "AUD13-24",
+      "AUD13-25",
+      "AUD13-26",
+      "AUD13-27",
+      "AUD13-28",
+      "AUD13-29",
+      "AUD13-30",
+      "AUD13-31",
+      "AUD13-32",
+      "AUD13-33",
+      "AUD13-34",
+      "AUD13-35",
+      "AUD13-36",
+      "AUD13-37",
+      "AUD13-38",
+      "AUD13-14A",
+      "AUD13-16A",
+      "AUD13-17A",
+      "AUD13-18A",
+      "AUD13-20A",
+      "AUD13-25A"
+    ],
+    "contract_to_legacy": {
+      "AAA2-01": ["AUD13-01", "AUD13-21", "AUD13-37", "AUD13-15"],
+      "AAA2-02": ["AUD13-16", "AUD13-17"],
+      "AAA2-03": ["AUD13-21"],
+      "AAA2-04": ["AUD13-21", "AUD13-27"],
+      "AAA2-05": ["AUD13-27"],
+      "AAA2-06": ["AUD13-14"],
+      "AAA2-07": ["AUD13-16", "AUD13-17"],
+      "AAA2-08": ["AUD13-16", "AUD13-16A"],
+      "AAA2-09": ["AUD13-14", "AUD13-35"],
+      "AAA2-10": ["AUD13-03", "AUD13-34", "AUD13-37"],
+      "AAA2-11": ["AUD13-22"],
+      "AAA2-12": ["AUD13-23"],
+      "AAA2-13": ["AUD13-14", "AUD13-14A"],
+      "AAA2-14": ["AUD13-16A"],
+      "AAA2-15": ["AUD13-17A"],
+      "AAA2-16": ["AUD13-18", "AUD13-18A"],
+      "AAA2-17": ["AUD13-20", "AUD13-20A"],
+      "AAA2-18": ["AUD13-25", "AUD13-25A"],
+      "AAA2-19": ["AUD13-30"],
+      "AAA2-20": ["AUD13-29"],
+      "AAA2-21": ["AUD13-31"],
+      "AAA2-22": ["AUD13-32"],
+      "AAA2-23": ["AUD13-32", "AUD13-36"],
+      "AAA2-24": ["AUD13-24"],
+      "AAA2-25": ["AUD13-26", "AUD13-28"],
+      "AAA2-26": ["AUD13-27"],
+      "AAA2-27": ["AUD13-34"],
+      "AAA2-28": ["AUD13-33"],
+      "AAA2-29": ["AUD13-35", "AUD13-02", "AUD13-04", "AUD13-05", "AUD13-06", "AUD13-07", "AUD13-08", "AUD13-09", "AUD13-10", "AUD13-11", "AUD13-12", "AUD13-13", "AUD13-19"],
+      "AAA2-30": ["AUD13-36"],
+      "AAA2-31": ["AUD13-37", "AUD13-02", "AUD13-04", "AUD13-05", "AUD13-06", "AUD13-07", "AUD13-08", "AUD13-09", "AUD13-10", "AUD13-11", "AUD13-12", "AUD13-13", "AUD13-19"],
+      "AAA2-32": ["AUD13-38"],
+      "AAA2-33": ["AUD13-15"]
+    },
+    "dispositions": {
+      "PRESERVE_AND_REGRESSION": ["AUD13-02", "AUD13-04", "AUD13-05", "AUD13-06", "AUD13-07", "AUD13-08", "AUD13-09", "AUD13-10", "AUD13-11", "AUD13-12", "AUD13-13", "AUD13-19"],
+      "CONTINUE_WITH_NEW_CRITERIA": ["AUD13-01", "AUD13-03", "AUD13-14", "AUD13-16", "AUD13-17", "AUD13-18", "AUD13-20", "AUD13-22", "AUD13-23", "AUD13-24", "AUD13-25", "AUD13-26", "AUD13-27", "AUD13-28", "AUD13-29", "AUD13-30", "AUD13-31", "AUD13-32", "AUD13-33", "AUD13-34", "AUD13-35", "AUD13-36", "AUD13-37", "AUD13-38", "AUD13-14A", "AUD13-16A", "AUD13-17A", "AUD13-18A", "AUD13-20A", "AUD13-25A"],
+      "REOPEN_AFFECTED_ACCEPTANCE": ["AUD13-15", "AUD13-21"]
+    },
+    "ownership_resolution": {
+      "AAA2-01": {
+        "role": "RECONCILIATION_ONLY",
+        "status_owner": "AUD13-01",
+        "context_legacy": ["AUD13-15"],
+        "implementation_owner": "AAA2-33",
+        "note": "AUD13-15 aparece no contexto do catalogo AAA2-01 para a reconciliacao, mas sua implementacao UC03 pertence exclusivamente a AAA2-33."
+      },
+      "AAA2-33": {
+        "role": "IMPLEMENTATION",
+        "status_owner": "AUD13-15",
+        "implementation_legacy": ["AUD13-15"],
+        "note": "AAA2-33 fecha a semantica clinica dos exames; AAA2-01 nao duplica esse status."
+      }
+    },
+    "status_drift": [
+      {
+        "legacy_id": "AUD13-02",
+        "source_declared_status": "DONE",
+        "canonical_status": "PARTIAL",
+        "next_action": "AUD13-02:AAA2-29-REVALIDATE",
+        "reason": "Divergencia preexistente sem evento de downgrade localizado; manter PARTIAL ate revalidacao."
+      },
+      {
+        "legacy_id": "AUD13-19",
+        "source_declared_status": "DONE",
+        "canonical_status": "PARTIAL",
+        "next_action": "AUD13-19:AAA2-29-REVALIDATE",
+        "reason": "Evento DONE historico conflita com o backlog atual PARTIAL; revalidar antes de fechar."
+      }
+    ],
+    "next_action_policy": "Terminal DONE actions are historical only; active and PARTIAL items require one executable action. WAIT/BLOCKED actions must name their dependency or blocker and a completion signal.",
+    "reopened_acceptances": [
+      {
+        "legacy_id": "AUD13-15",
+        "historical_status": "DONE",
+        "current_status": "PARTIAL",
+        "reason": "E18 contradiz o aceite de exames concluídos ao exigir a semântica completa do UC03.",
+        "aaa2_refs": ["AAA2-33"],
+        "historical_gate": ".agent/gates/aud13-15.json",
+        "historical_gate_sha256": "086a97492df4c1cf1c09c1d5b5152ba2b6d3d74e860930c72f10638687d956b0",
+        "gate_hash_observed_at": "2026-09-13T17:39:57-03:00"
+      },
+      {
+        "legacy_id": "AUD13-21",
+        "historical_status": "DONE",
+        "current_status": "PARTIAL",
+        "reason": "E02 contradiz o aceite de budget ao exigir uso real, overage e retenção em disputa.",
+        "aaa2_refs": ["AAA2-01", "AAA2-03", "AAA2-04"],
+        "historical_gate": ".agent/gates/aud13-21.json",
+        "historical_gate_sha256": "a4bbc5c4fef3c146f815de1913c551151c4c34c0a2569229acd8a0225023b4ef",
+        "gate_hash_observed_at": "2026-09-13T17:39:57-03:00"
+      }
+    ],
+    "gate_preservation": {
+      "observations": {
+        ".agent/gates/aud13-15.json": "086a97492df4c1cf1c09c1d5b5152ba2b6d3d74e860930c72f10638687d956b0",
+        ".agent/gates/aud13-21.json": "a4bbc5c4fef3c146f815de1913c551151c4c34c0a2569229acd8a0225023b4ef"
+      },
+      "observed_at": "2026-09-13T17:39:57-03:00",
+      "pre_reconciliation_provenance": "DATED_AUDIT_RECORD_WITH_LIMITATION: the dated independent audit below links the auxiliary baseline to the pre-recovery audit and its files were observed before recovery; no trusted timestamp is embedded, so residual temporal limitation remains explicit.",
+      "supporting_baseline": {
+        "path": "artifacts/audit-entrega-2026-09-13/baseline.json",
+        "sha256": "6956600cd1cbc7c2d2d6b1665dc61af8399c3eaa8febe2d22bb40dcce68d7b74",
+        "gate_hashes_match": true,
+        "observed_mtime": "2026-09-13T16:33:21.530746-03:00",
+        "observed_birth": "2026-09-13T16:42:50.744890-03:00",
+        "relation_to_reconciliation": "Observed before EVT-CVG-20260913-AAA2-01-RECOVERY-001 at 2026-09-13T17:23:37-03:00.",
+        "attestation": "ABSENT; filesystem times and content match are supporting evidence only."
+      },
+      "pre_reconciliation_audit": {
+        "report": "docs/auditoria-entrega-2026-09-13.md",
+        "report_sha256": "69402de24574a15f7a5550b4e8d5c31e7faf225cebbaa2cc80c6d3a98e152548",
+        "report_date": "2026-09-13",
+        "report_mtime": "2026-09-13T16:49:48.809381-03:00",
+        "final_review": "artifacts/audit-entrega-2026-09-13/final-review.md",
+        "final_review_sha256": "8c18dafaf6eb4cb675a1542260e26b7fdfd64bcca8814b53f2e141e421821d3a",
+        "final_review_independence": "I1 read-only delivery_final_review, as declared by the artifact.",
+        "manifest": "artifacts/audit-entrega-2026-09-13/manifest.json",
+        "manifest_sha256": "a29746474d43a1d6241a4a2e99e404ffcd15ea76834f1b6d645a0b675d20a3bd",
+        "sentinel": "artifacts/audit-entrega-2026-09-13/sentinel.json",
+        "sentinel_sha256": "f43ed9863625ecad7781189f415d5481bfcafd6f03005e8366e45909199b654c",
+        "sentinel_claim": "unexpected_changes=[]; product_and_agent_state_unchanged=true",
+        "observed_before_recovery": true,
+        "attestation_limit": "Local dated record with filesystem metadata; no signed trusted timestamp or embedded event binding."
+      },
+      "limitation": "Current hashes, baseline and dated audit record support non-mutation and pre-recovery ordering, but lack a signed trusted timestamp or embedded event binding; the user explicitly accepted this residual limitation for local AAA2-01 closure, without extending acceptance to promotion or global Triplo AAA."
+    },
+    "critique_ref": ".gauntlet/critique-aaa2-01-reconciliation-008.md",
+    "critique_history": [
+      ".gauntlet/critique-aaa2-01-reconciliation-001.md",
+      ".gauntlet/critique-aaa2-01-reconciliation-002.md",
+      ".gauntlet/critique-aaa2-01-reconciliation-003.md",
+      ".gauntlet/critique-aaa2-01-reconciliation-004.md",
+      ".gauntlet/critique-aaa2-01-reconciliation-005.md",
+      ".gauntlet/critique-aaa2-01-reconciliation-006.md",
+      ".gauntlet/critique-aaa2-01-reconciliation-007.md",
+      ".gauntlet/critique-aaa2-01-reconciliation-008.md"
+    ],
+    "local_acceptance": {
+      "decision": "ACCEPT_LOCAL_ATTESTATION_WITH_LIMITATION",
+      "scope": "AAA2-01/AUD13-01 only",
+      "evidence": ".agent/verification.jsonl#VER-CVG-AAA2-01-014",
+      "accepted_at": "2026-09-13T20:26:56-03:00",
+      "global_status": "AAA_NOT_PROVEN",
+      "promotion": "BLOCKED"
+    },
+    "owner_next_action_policy": "Owner and singular next_action remain on each canonical backlog item; AAA2 source roles/actions are planning input until mapped.",
+    "reconciled_at": "2026-09-13T20:38:00-03:00"
+  },
+  "updated_at": "2026-09-13T20:38:00-03:00",
+  "catalog_contract_digest": "1b6fc4e05b9a9f2c612021f2f6376da17372931d8a78df94e85f6aded67fa0ba",
+  "reconciled_at": "2026-09-13T20:38:00-03:00"
 }

@@ -1,0 +1,19 @@
+{
+  "evidenceType": "isolated synthetic browser using actual candidate Clinical component, mocked ApiClient; no API writes",
+  "firstCalls": [
+    "/encounters",
+    "/clinical/documents",
+    "/encounters",
+    "/clinical/documents",
+    "/clinical/documents/a-new/addenda"
+  ],
+  "olderDocumentAddendaRequested": false,
+  "signedFocus": {
+    "activeTag": "BUTTON",
+    "activeText": "Ver conteúdo",
+    "dialogContains": false,
+    "disabledContent": true
+  },
+  "wrongPatientCorrectionVisible": true,
+  "timelineHeading": "LINHA DO TEMPO · Patient B"
+}

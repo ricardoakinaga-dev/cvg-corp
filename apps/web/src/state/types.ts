@@ -12,7 +12,7 @@ export type ContextReference = {
 
 export type User = { id: string; displayName: string; email: string; status: string };
 
-export type View = "overview" | "agenda" | "patients" | "clinical" | "stock" | "finance" | "copilot" | "admin";
+export type View = "overview" | "agenda" | "patients" | "clinical" | "exams" | "hospital" | "communications" | "knowledge" | "reports" | "stock" | "finance" | "copilot" | "admin";
 
 export type MeResponse = {
   user: User;

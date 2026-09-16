@@ -1,0 +1,7 @@
+e4fab67a203d9501c0e45fd688527bd9c54120165c57171f317148fcbca4a871  apps/web/src/features/clinical/Clinical.tsx
+6e1f6102c4db2ace1a08bc029d1df8011e5251971b81321cd593d5942718e6fa  apps/web/src/features/diagnostics/Exams.tsx
+bc72e2b5438d33c0f183a52da89cee848c589bc4f27283ecef03cc1d801e43ff  apps/web/src/features/hospital/Internacao.tsx
+485dff4a2fa5770178d0f0874d67faf392e286ea00a1831e187dfddd10f48f5c  apps/web/src/features/knowledge/Knowledge.tsx
+8b383b79dd8516a41392432f966f5ff672a656b1cbe9535437faa7a4c581c59e  apps/web/src/features/communications/Communications.tsx
+bea2c06bb4d8bbc2a2c0c48bf6abdc530a5fb6af258ab34a39f9ea17b4c09926  apps/web/src/hooks/use-runtime-state.ts
+ba708bfeb7b958e45d605e38ca7d75d6ee8abd551d3aee9865f984b5d2e68c69  apps/web/src/api/client.ts

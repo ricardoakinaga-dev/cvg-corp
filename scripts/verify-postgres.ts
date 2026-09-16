@@ -7,7 +7,10 @@ import { OutboxWorker, type ExternalEffectQueryAdapter } from "@cvg/integrations
 import { OutboxLeaseLostError, PersistenceConflictError, PersistenceStateError, PostgresPersistence, type DurableInboxInput } from "@cvg/persistence";
 
 const databaseUrl = process.env.DATABASE_URL;
-if (!databaseUrl) throw new Error("DATABASE_URL is required; run npm run db:migrate first");
+if (!databaseUrl) {
+  process.stderr.write("POSTGRES_BLOCKED_EXTERNAL DATABASE_URL is required; use an explicitly identified synthetic or staging database\n");
+  process.exit(2);
+}
 const configuredDatabaseUrl = databaseUrl;
 
 const bootstrapPassword = process.env.CVG_BOOTSTRAP_PASSWORD ?? "synthetic-password-123";
@@ -393,6 +396,7 @@ try {
   const vetOption = second.store.contextOptions(vetId)[0];
   if (!vetOption) throw new Error("veterinarian has no clinical context");
   const vetContext = second.store.resolveContext(vetId, { unitId: vetOption.unit.id, workspaceId: vetOption.workspace.id }, "verify.clinical.sign", "verify-postgres-clinical-sign");
+  second.store.reviewClinicalDocument(vetContext, clinicalDocument.id, null);
   second.store.signClinicalDocument(vetContext, clinicalDocument.id);
   const clinicalAddendum = second.store.addClinicalAddendum(vetContext, clinicalDocument.id, "correção de fixture", "adendo sintético protegido");
   const clinicalRevision = await second.persistence!.currentRevision(organizationId);

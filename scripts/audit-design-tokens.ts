@@ -23,7 +23,8 @@ const findings: Finding[] = [];
 const colors = new Set<string>();
 for (const path of files) {
   const content = await readFile(path, "utf8");
-  if (/\b(?:localStorage|sessionStorage|indexedDB)\b/.test(content)) {
+  const governedPersistenceAdapter = /(?:^|[/\\])state[/\\]persistence\.ts$/.test(path);
+  if (!governedPersistenceAdapter && /\b(?:localStorage|sessionStorage|indexedDB)\b/.test(content)) {
     findings.push({ code: "storage_bypass", severity: "high", category: "state", message: `${path}: browser persistence must use an explicitly governed adapter` });
   }
   for (const match of content.matchAll(/#[0-9a-fA-F]{6}\b/g)) {

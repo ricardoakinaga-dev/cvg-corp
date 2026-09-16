@@ -253,7 +253,8 @@ function hasExecutedBoundary(member: CallableMember, path: string, className: st
   // These exact production services validate an actor context without effects
   // before enforcing policy. No other arbitrary call is accepted as a prelude.
   if (((path === "apps/api/src/application/agent-service.ts" && className === "AgentApplicationService")
-    || (path === "apps/api/src/application/export-service.ts" && className === "ExportApplicationService"))
+    || (path === "apps/api/src/application/export-service.ts" && className === "ExportApplicationService")
+    || (path === "packages/harness/src/index.ts" && className === "GovernedHarness"))
     && statements[0]?.getText().replace(/\s+/g, "") === "this.store.validateContext(context);") index++;
   const statement = statements[index];
   const call = statement && immediateCall(statement);

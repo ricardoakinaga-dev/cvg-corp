@@ -1,0 +1,74 @@
+[WebServer] (node:665718) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+[WebServer] (node:665729) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+[WebServer] (node:666018) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+
+Running 36 tests using 6 workers
+
+(node:666043) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+(node:666036) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+(node:666055) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+(node:666045) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+(node:666037) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+(node:666061) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1/36] [chromium-wide-1440] › tests/e2e/app.spec.ts:3:1 › demonstração local atravessa login, dashboard e pacientes
+[2/36] [chromium-mobile-375] › tests/e2e/app.spec.ts:3:1 › demonstração local atravessa login, dashboard e pacientes
+[3/36] [chromium-stress] › tests/e2e/accessibility-stress.spec.ts:14:1 › reflow, reduced motion and DPR remain usable
+[4/36] [chromium-stress] › tests/e2e/accessibility.spec.ts:14:1 › login, dashboard and every primary route remain axe-clean
+[5/36] [chromium-mobile-375] › tests/e2e/accessibility.spec.ts:14:1 › login, dashboard and every primary route remain axe-clean
+[6/36] [chromium-wide-1440] › tests/e2e/accessibility.spec.ts:14:1 › login, dashboard and every primary route remain axe-clean
+[7/36] [chromium-stress] › tests/e2e/accessibility-stress.spec.ts:35:1 › touch input capability is exposed when the engine supports it
+[8/36] [chromium-wide-1440] › tests/e2e/app.spec.ts:18:1 › troca de contexto no menu móvel fecha o drawer e preserva o foco
+[9/36] [chromium-wide-1440] › tests/e2e/app.spec.ts:33:1 › rotas e controles permanecem utilizáveis sem overflow
+[10/36] [chromium-mobile-375] › tests/e2e/app.spec.ts:18:1 › troca de contexto no menu móvel fecha o drawer e preserva o foco
+[11/36] [chromium-stress] › tests/e2e/accessibility-stress.spec.ts:42:1 › keyboard focus, live status and high-zoom reflow supplement remain observable
+[12/36] [chromium-mobile-375] › tests/e2e/app.spec.ts:33:1 › rotas e controles permanecem utilizáveis sem overflow
+[13/36] [chromium-wide-1440] › tests/e2e/app.spec.ts:82:1 › agenda alterna períodos e fila por meio de consultas reais
+[14/36] [chromium-wide-1440] › tests/e2e/app.spec.ts:97:1 › revalidação bloqueia conteúdo enquanto /me e /contexts respondem
+[15/36] [chromium-mobile-375] › tests/e2e/app.spec.ts:82:1 › agenda alterna períodos e fila por meio de consultas reais
+[16/36] [chromium-wide-1440] › tests/e2e/app.spec.ts:122:1 › busca rápida abre pacientes com filtro e histórico do navegador
+[17/36] [chromium-mobile-375] › tests/e2e/app.spec.ts:97:1 › revalidação bloqueia conteúdo enquanto /me e /contexts respondem
+[18/36] [chromium-wide-1440] › tests/e2e/app.spec.ts:136:1 › skip link and global search expose a visible keyboard focus
+[19/36] [chromium-wide-1440] › tests/e2e/app.spec.ts:154:1 › captura os limites visuais principais
+[20/36] [chromium-stress] › tests/e2e/accessibility.spec.ts:44:1 › mobile navigation isolates the background and restores its trigger
+[21/36] [chromium-stress] › tests/e2e/accessibility.spec.ts:62:1 › login errors expose a shared field relationship
+[22/36] [chromium-wide-1440] › tests/e2e/app.spec.ts:163:1 › administração expõe concessão e trilha de auditoria
+[23/36] [chromium-wide-1440] › tests/e2e/accessibility.spec.ts:44:1 › mobile navigation isolates the background and restores its trigger
+[24/36] [chromium-wide-1440] › tests/e2e/accessibility.spec.ts:62:1 › login errors expose a shared field relationship
+[25/36] [chromium-mobile-375] › tests/e2e/app.spec.ts:122:1 › busca rápida abre pacientes com filtro e histórico do navegador
+[26/36] [chromium-mobile-375] › tests/e2e/app.spec.ts:136:1 › skip link and global search expose a visible keyboard focus
+[27/36] [chromium-mobile-375] › tests/e2e/app.spec.ts:154:1 › captura os limites visuais principais
+[28/36] [chromium-mobile-375] › tests/e2e/accessibility.spec.ts:44:1 › mobile navigation isolates the background and restores its trigger
+[29/36] [chromium-wide-1440] › tests/e2e/app.spec.ts:189:1 › 403 de autorização exibe estado estável sem repetir a solicitação
+[30/36] [chromium-mobile-375] › tests/e2e/app.spec.ts:163:1 › administração expõe concessão e trilha de auditoria
+[31/36] [chromium-wide-1440] › tests/e2e/app.spec.ts:206:1 › 401 durante uma sessão exibe sessão expirada e oculta o conteúdo
+[32/36] [chromium-mobile-375] › tests/e2e/accessibility.spec.ts:62:1 › login errors expose a shared field relationship
+[33/36] [chromium-mobile-375] › tests/e2e/app.spec.ts:189:1 › 403 de autorização exibe estado estável sem repetir a solicitação
+[34/36] [chromium-wide-1440] › tests/e2e/app.spec.ts:226:1 › enters OFFLINE_READ_ONLY without exposing the composer buffer
+[35/36] [chromium-mobile-375] › tests/e2e/app.spec.ts:206:1 › 401 durante uma sessão exibe sessão expirada e oculta o conteúdo
+[36/36] [chromium-mobile-375] › tests/e2e/app.spec.ts:226:1 › enters OFFLINE_READ_ONLY without exposing the composer buffer
+  5 skipped
+  31 passed (19.8s)

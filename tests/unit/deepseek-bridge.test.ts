@@ -20,13 +20,20 @@ import {
 } from "@cvg/deepseek-bridge";
 import { DeepSeekHarnessAdapter } from "@cvg/harness-adapters";
 import { replayDigest } from "@cvg/agent-runtime";
-import { createDeepSeekBridgeServer } from "../../apps/deepseek-bridge/src/server.ts";
+import { createDeepSeekBridgeServer, startDeepSeekBridgeServer } from "../../apps/deepseek-bridge/src/server.ts";
 import { runDeepSeekProtocolSmoke } from "../../scripts/verify-deepseek-real.ts";
 
 const engineCommit = "approved-commit";
 const manifestVersion = "approved-manifest";
 const toolNames = ["cvg.ai.summarize"];
 const aiSessionId = id("00000000-0000-4000-8000-000000000101");
+
+test("HTTP DeepSeek entrypoint refuses to listen without an explicit durable authority", async () => {
+  await assert.rejects(
+    () => startDeepSeekBridgeServer({ port: 0 }),
+    /autoridade ACP durável explícita/
+  );
+});
 
 function context(correlationId = "corr-test"): CvgContext {
   return {

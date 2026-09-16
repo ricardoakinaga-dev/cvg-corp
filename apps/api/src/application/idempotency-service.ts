@@ -48,11 +48,27 @@ export class DurableIdempotencyService {
     if (claim?.status === "CONFLICT") {
       throw new DomainError("IDEMPOTENCY_CONFLICT", "A chave já foi usada com outro corpo.", 409);
     }
-    if (claim?.status === "IN_FLIGHT" || claim?.status === "OUTCOME_UNKNOWN") {
+    if (claim?.status === "OUTCOME_UNKNOWN") {
       throw new DomainError("OUTCOME_UNKNOWN", "A execução anterior permanece em reconciliação.", 409, { receiptId: claim.receipt.id });
     }
     if (claim?.status === "FAILED") {
-      throw new DomainError("CONFLICT", "A execução anterior falhou; use uma nova intenção.", 409);
+      const phase = claim.receipt.failurePhase === "PRE_DISPATCH" ? " (finalizada antes do dispatch)" : "";
+      throw new DomainError("CONFLICT", `A execução anterior falhou${phase}; use uma nova intenção.`, 409, { receiptId: claim.receipt.id, failurePhase: claim.receipt.failurePhase ?? null });
+    }
+    if (claim?.status === "IN_FLIGHT") {
+      // Fenced takeover per docs04 §7: a lease that expired before any dispatch is
+      // finalized as a safe failure; anything that may have crossed the dispatch
+      // boundary stays OUTCOME_UNKNOWN and is never retried blindly.
+      const receipt = claim.receipt;
+      const expiresAt = receipt.claimExpiresAt ? Date.parse(receipt.claimExpiresAt) : Number.NaN;
+      // A missing or malformed deadline is not evidence of a live owner. Fail
+      // closed and reconcile it under the dispatch marker instead of allowing
+      // a legacy claim to remain permanently IN_FLIGHT.
+      const expired = !Number.isFinite(expiresAt) || expiresAt <= Date.now();
+      if (!expired) throw new DomainError("ADMISSION_IN_PROGRESS", "A mesma chave já possui uma admissão em andamento.", 409, { receiptId: receipt.id, claimExpiresAt: receipt.claimExpiresAt ?? null });
+      const reconciled = await this.persistence!.reconcileCommandReceiptClaim(receipt);
+      if (reconciled?.status === "FAILED") throw new DomainError("CLAIM_ABANDONED", "O claim expirou antes de qualquer dispatch e foi finalizado como falha segura.", 409, { receiptId: receipt.id, failurePhase: "PRE_DISPATCH" });
+      throw new DomainError("OUTCOME_UNKNOWN", "O claim expirou após possível dispatch; a execução permanece em reconciliação.", 409, { receiptId: receipt.id, failurePhase: "POST_DISPATCH" });
     }
 
     // Hydrate a durable replay into the process-local index so the domain
@@ -121,6 +137,19 @@ export class DurableIdempotencyService {
   ): Promise<IdempotentCommandResult<T>> {
     const effectiveClaim = claim ?? await this.claimInMemory(input);
     if (effectiveClaim.status === "REPLAY") return this.replayWithoutDispatch(input);
+    // Fence the claim before crossing the provider boundary so an expired lease
+    // is reconciled as OUTCOME_UNKNOWN instead of a safe PRE_DISPATCH failure.
+    if (this.persistence) {
+      const dispatched = await this.persistence.markCommandReceiptDispatched(input.organizationId, effectiveClaim.receipt.id, effectiveClaim.receipt.claimEpoch ?? 1);
+      if (!dispatched) {
+        throw new DomainError("OUTCOME_UNKNOWN", "A admissão perdeu a cerca durável antes do dispatch; o efeito externo não foi iniciado por este processo e exige reconciliação.", 409, { receiptId: effectiveClaim.receipt.id, failurePhase: "PRE_DISPATCH" });
+      }
+      syncReceipt(effectiveClaim.receipt, dispatched);
+    }
+    await this.coordinator.run(this.scopeKey(input.organizationId), () => {
+      syncReceipt(effectiveClaim.receipt, { ...effectiveClaim.receipt, dispatchState: "DISPATCHED" });
+      this.store.setCommandReceipt(effectiveClaim.receipt);
+    });
     let value: T;
     try {
       // No local lock is held while the remote/provider callback runs.
@@ -163,11 +192,15 @@ export class DurableIdempotencyService {
   }
 
   private async settleClaimFailure(receipt: CommandReceipt, error: unknown): Promise<void> {
+    const dispatched = (receipt.dispatchState ?? "NOT_STARTED") === "DISPATCHED";
+    const outcomeUnknown = dispatched || (error instanceof DomainError && error.code === "OUTCOME_UNKNOWN");
     const settled: CommandReceipt = {
       ...receipt,
-      status: error instanceof DomainError && error.code === "OUTCOME_UNKNOWN" ? "OUTCOME_UNKNOWN" : "FAILED",
+      status: outcomeUnknown ? "OUTCOME_UNKNOWN" : "FAILED",
       result: null,
-      completedAt: now()
+      completedAt: now(),
+      claimExpiresAt: null,
+      failurePhase: outcomeUnknown ? (dispatched ? "POST_DISPATCH" : receipt.failurePhase ?? "PRE_DISPATCH") : "PRE_DISPATCH"
     };
     await this.coordinator.run(this.scopeKey(receipt.organizationId), () => {
       syncReceipt(receipt, settled);

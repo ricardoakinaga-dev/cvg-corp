@@ -220,7 +220,7 @@ A Fase 0 autorizou a fundação; a implementação subsequente já adicionou os 
 
 Os gates locais reproduzidos nas fotografias anteriores são preservados como histórico. Na fotografia corrente, `npm run lint`, `npm run typecheck`, `npm test` (82/82), `npm run build`, `npm run verify:static` (35 artefatos/108 fontes), os testes dedicados de contrato/segurança/banco/fault, `npm run audit:licenses`, `npm run audit:contrast`, `npm run audit:tokens`, `npm run test:e2e` (22 executados, 2 skips intencionais), `npm audit --omit=dev`, `npm sbom --sbom-format cyclonedx`, `npm run benchmark:local`, `npm run verify:production` e `git diff --check` compõem os gates locais. A rota de detalhe de paciente, o Tool Gateway com ledger durável, a reconciliação de efeitos e o provider fail-closed também foram revalidados localmente. O verificador de release valida estrutura e Compose sem iniciar serviços; `verify:triplo-aaa` retorna `AAA_NOT_PROVEN` e `verify:staging` retorna `STAGING_EVIDENCE_INCOMPLETE` sem evidência externa. O veredito permanece `FAIL_WITH_LIMITATIONS`; nenhuma linha acima é evidência de produção ou de elegibilidade Triplo AAA.
 
-## 15. Revalidação do artifact corrente — PDP target-bound do detalhe
+## 14. Revalidação do artifact corrente — PDP target-bound do detalhe
 
 A rota `GET /api/v1/patients/:id` agora carrega o paciente-alvo no contexto autenticado, passa por `PatientApplicationService`, obtém uma projeção mínima e revalida a policy com sessão, operação/capability registrada, `resourceId`, classe de dados, unidade e workspace antes de serializar. O repositório de memória trata alvo fora do escopo como ausência sem revelar o recurso; a leitura PostgreSQL permanece escopada pela consulta repository-owned e RLS é o backstop.
 
@@ -228,10 +228,28 @@ Os testes cobrem conhecido-bom e conhecido-ruim para sessão ausente/divergente,
 
 Esta é uma fatia local delimitada: não fecha o critério de PDP/Tool Gateway universal, nem prova PostgreSQL production-like, CI remoto, provider, secret manager, fault distribuído, SLO, browsers adicionais ou revisão independente fresca.
 
-## 14. Revalidação do artifact corrente — gates de CI e release
+## 15. Revalidação do artifact corrente — gates de CI e release
 
 Depois da baseline, o artifact ganhou lint repository-owned, comandos separados para contrato, segurança, banco e fault/recovery, e um workflow que instala Chromium, inicia PostgreSQL efêmero, aplica migrations, executa verificação PostgreSQL/RLS e restore, e mantém build/scan de imagens bloqueantes. `scripts/verify-production.ts` exige esses controles no workflow e inclui os gates locais no comando único.
 
 Na execução local corrente, `npm run verify:production` saiu com código 0 após completar esses gates locais e validar `docker compose config` com valores sintéticos; nenhum serviço foi iniciado. A execução `node --import tsx scripts/verify-production.ts --production` saiu com código 1 porque a configuração real obrigatória não existe no workspace, comportamento fail-closed esperado.
 
 Esta seção não transforma a execução local em evidência de CI remoto: o serviço PostgreSQL do workflow, o runner GitHub, o build/scan de imagens e qualquer promoção continuam `NOT_RUN` nesta máquina. O maior gap corrente permanece a evidência production-like autorizada e a revisão independente final.
+
+## 16. ARC-01 — mapa de fronteiras e reservas
+
+O mapa formal de ownership desta etapa está em [`docs/adr/029-architecture-boundaries-and-ownership.md`](adr/029-architecture-boundaries-and-ownership.md). A decisão é documental e não extrai código. Os arquivos reservados exclusivamente para ARC-01 são este documento e o ADR 029; nenhum arquivo de API, domínio, persistência, teste, migration ou lockfile é alterado nesta fatia.
+
+O baseline histórico deste audit (`7b49bd22ec32c72d9aff8fb39bfb6be7fb6bd295`, seção 1) descreve o estado arquitetural anterior. O candidato desta fatia usa o HEAD atual `1c22c5dc79c52151f4c7c94c4402dfdc86812cbc` mais um overlay documental não commitado; a diferença é intencional, está registrada no manifesto de ARC-01 e não é uma alegação de que o HEAD já contenha o ADR.
+
+### Matriz resumida
+
+| Fronteira | Fonte de verdade | Callers observados | Prova de compatibilidade |
+|---|---|---|---|
+| HTTP/composição | `apps/api/src/app.ts` + `server.ts` | `server.ts`, scripts de startup, API/E2E | `tests/integration/api.test.ts`, `tests/e2e/app.spec.ts` |
+| Rotas/contratos | `packages/contracts/src/api-catalog.ts` + `apps/api/src/route-catalog.ts` | registro Fastify e cliente web | `tests/integration/route-catalog.test.ts`, `tests/unit/contracts.test.ts` |
+| Domínio | `packages/domain/src/index.ts` + autorização/validação | API, harness e persistência | `tests/unit/domain.test.ts`, `tests/unit/pdp-*.test.ts` |
+| Persistência | `packages/persistence/src/index.ts` + migrations | API, worker, scripts PostgreSQL | `tests/integration/persistence.test.ts`, `tests/integration/restore.test.ts`, `tests/integration/worker-jobs.test.ts` |
+| Contratos/dependências | `packages/contracts/*`, manifests e `package-lock.json` | API, web, worker, CI/SBOM | `tests/unit/contracts.test.ts`, typecheck, instalação limpa e gates de dependência |
+
+O fluxo `POST /api/v1/appointments` permanece a referência transacional: sessão/CSRF e schema, contexto e idempotência, application service, auditoria, commit com CAS, receipt e rollback ou `OUTCOME_UNKNOWN`. O teste observado prova a linha normalizada de appointment; não há claim de que esse fluxo produza um registro outbox específico. Qualquer futura extração deverá preservar esse caminho observável e será validada por imports/consumidores, contrato, integração e E2E. Nenhuma extração é justificada apenas pela quantidade de linhas.

@@ -1,0 +1,103 @@
+--- prior/tests/unit/domain.test.ts
++++ current/tests/unit/domain.test.ts
+@@ -451,6 +451,90 @@
+   const completed = await harness.executeTurn(vet, { sessionId: pending.session.id, prompt: "preparar mensagem", purpose: "OPERATIONS", patientId: null, encounterId: null, requestedTool: "cvg.communication.stage", approvalId: approval.id, idempotencyKey: "one-shot-2" }, approval.id);
+   assert.equal(completed.turn.status, "COMPLETED"); assert.equal(store.aiApprovals.get(approval.id)?.decision, "consumed");
+   await assert.rejects(() => harness.executeTurn(vet, { sessionId: pending.session.id, prompt: "preparar mensagem", purpose: "OPERATIONS", patientId: null, encounterId: null, requestedTool: "cvg.communication.stage", approvalId: approval.id, idempotencyKey: "one-shot-3" }, approval.id), (error: unknown) => error instanceof DomainError && error.code === "POLICY_DENIED");
++});
++
++test("medication terminal states cannot dispense, reopen, or create indirect stock exits", () => {
++  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
++  const vetId = [...store.users.values()].find((user) => user.login.startsWith("ana."))?.id;
++  const stockId = [...store.users.values()].find((user) => user.login.startsWith("leo."))?.id;
++  assert.ok(vetId && stockId);
++  const vet = context(store, vetId);
++  const stock = context(store, stockId);
++  const patient = [...store.patients.values()][0];
++  const product = [...store.products.values()][0];
++  const lot = [...store.lots.values()][0];
++  assert.ok(patient && product && lot);
++  const encounter = store.createEncounter(vet, { patientId: patient.id, appointmentId: null, chiefComplaint: "prescrição terminal", urgency: "ROUTINE" });
++  const order = store.createMedicationOrder(vet, { patientId: patient.id, encounterId: encounter.id, productId: product.id, dose: "1", route: "oral", frequency: "12/12h" });
++  const quantityBefore = lot.quantity;
++  const dispensationsBefore = store.dispensations.size;
++  const movementsBefore = store.stockMovements.size;
++
++  assert.equal(store.updateMedicationOrderStatus(vet, order.id, "SUSPENDED").status, "SUSPENDED");
++  assert.throws(
++    () => store.dispenseMedication(stock, order.id, lot.id, 1),
++    (error: unknown) => error instanceof DomainError && error.code === "INVALID_STATE"
++  );
++  assert.equal(store.lots.get(lot.id)?.quantity, quantityBefore);
++  assert.equal(store.dispensations.size, dispensationsBefore);
++  assert.equal(store.stockMovements.size, movementsBefore);
++
++  assert.equal(store.updateMedicationOrderStatus(vet, order.id, "ACTIVE").status, "ACTIVE");
++  assert.equal(store.updateMedicationOrderStatus(vet, order.id, "COMPLETED").status, "COMPLETED");
++  assert.throws(
++    () => store.dispenseMedication(stock, order.id, lot.id, 1),
++    (error: unknown) => error instanceof DomainError && error.code === "INVALID_STATE"
++  );
++  assert.throws(
++    () => store.updateMedicationOrderStatus(vet, order.id, "SUSPENDED"),
++    (error: unknown) => error instanceof DomainError && error.code === "INVALID_STATE"
++  );
++  assert.throws(
++    () => store.createStockMovement(stock, { productId: product.id, lotId: lot.id, locationId: lot.locationId, quantity: 1, movementType: "DISPENSE", reason: "saída indireta de prescrição concluída", referenceId: order.id }),
++    (error: unknown) => error instanceof DomainError && error.code === "INVALID_STATE"
++  );
++  for (const movementType of ["ADJUSTMENT_OUT", "TRANSFER_OUT"] as const) {
++    assert.throws(
++      () => store.createStockMovement(stock, { productId: product.id, lotId: lot.id, locationId: lot.locationId, quantity: 1, movementType, reason: "saída alternativa de prescrição concluída", referenceId: order.id }),
++      (error: unknown) => error instanceof DomainError && error.code === "INVALID_STATE"
++    );
++    assert.throws(
++      () => store.createStockMovement(stock, { productId: product.id, lotId: lot.id, locationId: lot.locationId, quantity: 1, movementType, reason: "saída alternativa sem referência", referenceId: id("00000000-0000-4000-8000-000000009996") }),
++      (error: unknown) => error instanceof DomainError && error.code === "NOT_FOUND"
++    );
++  }
++  assert.equal(store.lots.get(lot.id)?.quantity, quantityBefore);
++  assert.equal(store.dispensations.size, dispensationsBefore);
++  assert.equal(store.stockMovements.size, movementsBefore);
++  assert.throws(
++    () => store.createStockMovement(stock, { productId: product.id, lotId: lot.id, locationId: lot.locationId, quantity: 1, movementType: "DISPENSE", reason: "saída com referência ausente", referenceId: id("00000000-0000-4000-8000-000000009998") }),
++    (error: unknown) => error instanceof DomainError && error.code === "NOT_FOUND"
++  );
++  assert.equal(store.lots.get(lot.id)?.quantity, quantityBefore);
++  assert.equal(store.dispensations.size, dispensationsBefore);
++  assert.equal(store.stockMovements.size, movementsBefore);
++  const otherProduct = store.createProduct(stock, { sku: "TERM-OTHER", name: "Produto incompatível", category: "MEDICINE", unit: "unidade", reorderPoint: 0 });
++  const otherEncounter = store.createEncounter(vet, { patientId: patient.id, appointmentId: null, chiefComplaint: "referência incompatível", urgency: "ROUTINE" });
++  const otherOrder = store.createMedicationOrder(vet, { patientId: patient.id, encounterId: otherEncounter.id, productId: otherProduct.id, dose: "1", route: "oral", frequency: "12/12h" });
++  assert.throws(
++    () => store.createStockMovement(stock, { productId: product.id, lotId: lot.id, locationId: lot.locationId, quantity: 1, movementType: "DISPENSE", reason: "saída com produto incompatível", referenceId: otherOrder.id }),
++    (error: unknown) => error instanceof DomainError && error.code === "NOT_FOUND"
++  );
++  assert.equal(store.lots.get(lot.id)?.quantity, quantityBefore);
++  assert.equal(store.dispensations.size, dispensationsBefore);
++  assert.equal(store.stockMovements.size, movementsBefore);
++  const unscopedAdmin = { ...context(store), unitId: null, workspaceId: null };
++  assert.throws(
++    () => store.dispenseMedication(unscopedAdmin, order.id, lot.id, 1),
++    (error: unknown) => error instanceof DomainError && error.code === "INVALID_INPUT"
++  );
++  assert.throws(
++    () => store.createStockMovement(unscopedAdmin, { productId: product.id, lotId: lot.id, locationId: id("00000000-0000-4000-8000-000000009997"), quantity: 1, movementType: "DISPENSE", reason: "localização ausente", referenceId: null }),
++    (error: unknown) => error instanceof DomainError && error.code === "NOT_FOUND"
++  );
++  assert.equal(store.lots.get(lot.id)?.quantity, quantityBefore);
++  assert.equal(store.dispensations.size, dispensationsBefore);
++  assert.equal(store.stockMovements.size, movementsBefore);
+ });
+ 
+ test("hydrate rejects a dispensation whose lot product differs from the prescription", () => {
+@@ -636,7 +720,8 @@
+   const provider = [...store.providers.values()].find((candidate) => candidate.unitId === ctx.unitId);
+   const service = [...store.services.values()][0];
+   assert.ok(patient && provider && service);
+-  const base = new Date(Date.now() + 3 * 3_600_000);
++  const base = new Date();
++  base.setHours(1, 0, 0, 0);
+   base.setSeconds(0, 0);
+   const at = (offsetMinutes: number) => new Date(base.getTime() + offsetMinutes * 60_000).toISOString();
+   const created = store.createAppointment(ctx, { patientId: patient.id, providerId: provider.id, resourceId: null, serviceId: service.id, startsAt: at(0), endsAt: at(45), purpose: "lifecycle" });

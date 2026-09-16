@@ -1,0 +1,101 @@
+cvg-corp@0.1.0 /home/ricardo/Área de trabalho/cvg-corp
+├── @agentclientprotocol/sdk@1.4.0
+├── @axe-core/playwright@4.13.0
+├─┬ @cvg/agent-policy@0.1.0 -> ./packages/agent-policy
+│ └── @cvg/contracts@0.1.0 deduped -> ./packages/contracts
+├─┬ @cvg/agent-runtime@0.1.0 -> ./packages/agent-runtime
+│ └── @cvg/contracts@0.1.0 deduped -> ./packages/contracts
+├─┬ @cvg/agent-tools@0.1.0 -> ./packages/agent-tools
+│ ├── @cvg/agent-policy@0.1.0 deduped -> ./packages/agent-policy
+│ └── @cvg/contracts@0.1.0 deduped -> ./packages/contracts
+├─┬ @cvg/api@0.1.0 -> ./apps/api
+│ ├── @cvg/agent-runtime@0.1.0 deduped -> ./packages/agent-runtime
+│ ├── @cvg/auth@0.1.0 deduped -> ./packages/auth
+│ ├── @cvg/config@0.1.0 deduped -> ./packages/config
+│ ├── @cvg/contracts@0.1.0 deduped -> ./packages/contracts
+│ ├── @cvg/domain@0.1.0 deduped -> ./packages/domain
+│ ├── @cvg/harness-adapters@0.1.0 deduped -> ./packages/harness-adapters
+│ ├── @cvg/harness@0.1.0 deduped -> ./packages/harness
+│ ├── @cvg/integrations@0.1.0 deduped -> ./packages/integrations
+│ ├── @cvg/ops@0.1.0 deduped -> ./packages/ops
+│ ├── @cvg/persistence@0.1.0 deduped -> ./packages/persistence
+│ ├── @fastify/cookie@11.1.2 deduped
+│ ├── @fastify/cors@11.3.0 deduped
+│ ├── fastify@5.12.3 deduped
+│ └── zod@4.5.4 deduped
+├── @cvg/auth@0.1.0 -> ./packages/auth
+├─┬ @cvg/config@0.1.0 -> ./packages/config
+│ └── zod@4.5.4 deduped
+├── @cvg/contracts@0.1.0 -> ./packages/contracts
+├─┬ @cvg/deepseek-bridge-app@0.1.0 -> ./apps/deepseek-bridge
+│ ├── @cvg/deepseek-bridge@0.1.0 deduped -> ./packages/deepseek-bridge
+│ ├── @cvg/integrations@0.1.0 deduped -> ./packages/integrations
+│ └── @cvg/ops@0.1.0 deduped -> ./packages/ops
+├─┬ @cvg/deepseek-bridge@0.1.0 -> ./packages/deepseek-bridge
+│ ├── @agentclientprotocol/sdk@1.4.0 deduped
+│ ├── @cvg/agent-runtime@0.1.0 deduped -> ./packages/agent-runtime
+│ ├── @cvg/contracts@0.1.0 deduped -> ./packages/contracts
+│ └── zod@4.5.4 deduped
+├─┬ @cvg/domain@0.1.0 -> ./packages/domain
+│ ├── @cvg/auth@0.1.0 deduped -> ./packages/auth
+│ └── @cvg/contracts@0.1.0 deduped -> ./packages/contracts
+├─┬ @cvg/harness-adapters@0.1.0 -> ./packages/harness-adapters
+│ ├── @cvg/agent-runtime@0.1.0 deduped -> ./packages/agent-runtime
+│ ├── @cvg/contracts@0.1.0 deduped -> ./packages/contracts
+│ ├── @cvg/harness@0.1.0 deduped -> ./packages/harness
+│ └── zod@4.5.4 deduped
+├─┬ @cvg/harness@0.1.0 -> ./packages/harness
+│ ├── @cvg/agent-policy@0.1.0 deduped -> ./packages/agent-policy
+│ ├── @cvg/agent-runtime@0.1.0 deduped -> ./packages/agent-runtime
+│ ├── @cvg/agent-tools@0.1.0 deduped -> ./packages/agent-tools
+│ ├── @cvg/contracts@0.1.0 deduped -> ./packages/contracts
+│ └── @cvg/domain@0.1.0 deduped -> ./packages/domain
+├─┬ @cvg/integrations@0.1.0 -> ./packages/integrations
+│ ├── @cvg/contracts@0.1.0 deduped -> ./packages/contracts
+│ ├── @cvg/domain@0.1.0 deduped -> ./packages/domain
+│ └── @cvg/persistence@0.1.0 deduped -> ./packages/persistence
+├─┬ @cvg/ops@0.1.0 -> ./packages/ops
+│ ├── @opentelemetry/api@1.9.1
+│ ├── @opentelemetry/exporter-trace-otlp-proto@0.222.0
+│ ├── @opentelemetry/resources@2.11.0
+│ └── @opentelemetry/sdk-trace@2.11.0
+├─┬ @cvg/persistence@0.1.0 -> ./packages/persistence
+│ ├── @cvg/contracts@0.1.0 deduped -> ./packages/contracts
+│ ├── @cvg/domain@0.1.0 deduped -> ./packages/domain
+│ └── pg@8.23.0 deduped
+├─┬ @cvg/web@0.1.0 -> ./apps/web
+│ ├── @cvg/contracts@0.1.0 deduped -> ./packages/contracts
+│ ├── @vitejs/plugin-react@5.2.0 deduped invalid: "^6.1.1" from the root project, "^6.1.1" from apps/web
+│ ├── react-dom@19.2.8 deduped
+│ ├── react@19.2.8 deduped
+│ ├── typescript@5.9.3 deduped
+│ └── vite@7.3.6 deduped invalid: "^8.2.2" from the root project, "^8.2.2" from apps/web
+├─┬ @cvg/worker@0.1.0 -> ./apps/worker
+│ ├── @cvg/config@0.1.0 deduped -> ./packages/config
+│ ├── @cvg/contracts@0.1.0 deduped -> ./packages/contracts
+│ ├── @cvg/domain@0.1.0 deduped -> ./packages/domain
+│ ├── @cvg/integrations@0.1.0 deduped -> ./packages/integrations
+│ ├── @cvg/ops@0.1.0 deduped -> ./packages/ops
+│ └── @cvg/persistence@0.1.0 deduped -> ./packages/persistence
+├── @fastify/cookie@11.1.2
+├── @fastify/cors@11.3.0
+├── @playwright/test@1.63.0
+├── @types/node@24.13.3
+├── @types/pg@8.23.1
+├── @types/react-dom@19.2.7
+├── @types/react@19.2.18
+├── @vitejs/plugin-react@5.2.0 invalid: "^6.1.1" from the root project, "^6.1.1" from apps/web
+├── fastify@5.12.3
+├── pg@8.23.0
+├── playwright@1.63.0
+├── react-dom@19.2.8
+├── react@19.2.8
+├── tsx@4.23.13
+├── typescript@5.9.3
+├── vite@7.3.6 invalid: "^8.2.2" from the root project, "^8.2.2" from apps/web
+└── zod@4.5.4
+
+npm error code ELSPROBLEMS
+npm error invalid: @vitejs/plugin-react@5.2.0 /home/ricardo/Área de trabalho/cvg-corp/node_modules/@vitejs/plugin-react
+npm error invalid: vite@7.3.6 /home/ricardo/Área de trabalho/cvg-corp/node_modules/vite
+npm error A complete log of this run can be found in: /home/ricardo/.npm/_logs/2026-09-13T02_34_04_892Z-debug-0.log

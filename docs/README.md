@@ -6,14 +6,22 @@ Este diretório contém a documentação da arquitetura-alvo de um programa de g
 
 | Campo | Estado |
 |---|---|
-| Fase | BUILD vNext; fundação de runtime/policy/tools, API e web modulares, worker separado, migrations 001–036, handlers duráveis tipados, fila/heartbeats duráveis, boundary local de autenticação, provider/reconciliação fail-closed, cadeia de auditoria local, repositories normalizados e verificação determinística |
+| Fase | BUILD vNext; jornadas operacionais e controles AUD13 integrados no checkout, migrations 001–037, com dependências externas ainda pendentes de promoção |
 | Escopo desta fase | Evolução brownfield controlada; mock/sintético e PostgreSQL local continuam permitidos; aceite operacional independente e produção continuam pendentes |
-| Motor proposto | `AgentRuntime` com adapter Mock e bridge DeepSeek `/v1` opcional; port ACP exige `DeepSeekAcpGovernance` injetado e protocolo externo ainda não provados |
-| Qualidade | barra v4 `FAIL_WITH_LIMITATIONS`; `verify:triplo-aaa`/`verify:staging` fail-closed, recorte local executável incluindo sandbox HTTP de provider, produção bloqueada; revalidação corrente `VER-CVG-268`, `AAA_NOT_PROVEN` |
+| Motor proposto | AgentRuntime e bridge ACP com PDP de aplicação, budget/settlement serializados por sessão, receipts com claim fence e fallback fail-closed; integração real ainda não provada |
+| Qualidade | Rodada local de 14/09: 404 testes (403 pass + 1 skip), E2E Chromium/Firefox + stress 254 pass + 22 skips condicionais, axe isolado 14 pass + 4 skips, build/lint/static/PDP PASS; WebKit host-native e gates externos permanecem bloqueados. Programa permanece AAA_NOT_PROVEN |
 | Fonte de verdade clínica | O domínio transacional do CVG, não a conversa do agente |
-| Próximo gate | PostgreSQL multi-processo autorizado, DeepSeek/provider/secret authority reais, staging/observabilidade/carga/chaos/recovery, matriz assistiva completa e aceite humano |
+| Próximo gate | Bundle externo same-SHA: PostgreSQL multi-processo, provider/DeepSeek/secret authority, staging, carga/chaos/recovery/RTO-RPO, CI/proveniência, revisão independente e aprovação humana |
 
 ## Leitura recomendada
+
+**Continuação mais recente:** [fotografia local da rodada AAA3 de 14/09](rodada-aaa3-2026-09-14/README.md), [auditoria AAA2-02/E01](auditoria-continuacao-aaa2-02-2026-09-13.md) e [rodada AAA3 planejada](rodada-aaa3-2026-09-13/README.md). A correção local de medicação foi confirmada; a fotografia atual registra as integrações e os gates ainda externos.
+
+**Auditoria anterior da entrega:** [auditoria com 18 achados](auditoria-entrega-2026-09-13.md) e [novo plano Triplo AAA com 33 tarefas](plano-triplo-aaa-pos-entrega-2026-09-13/README.md). Preserva as melhorias verificadas e relaciona todos os 38 contratos anteriores e 6 filhos; o catálogo novo ainda não foi ativado no estado do agente.
+
+Auditoria de 13/09/2026: [relatório e evidências — 59/100](auditoria-2026-09-13.md) e [plano de melhorias](plano-melhorias-2026-09-13/README.md), com plano executivo, roadmap e 38 contratos de tarefa cobrindo os 21 achados. O novo pacote complementa o plano anterior, referencia suas tarefas e exige reconciliação antes da execução. As notas das auditorias não são automaticamente comparáveis.
+
+Planejamento derivado da auditoria de 12/09/2026: [relatório com notas por área](auditoria-2026-09-12.md) e [programa executivo State of Art / Triplo AAA](plano-aaa-2026-09-12/README.md), com plano executivo, roadmap, 54 tarefas, 16 fichas de área e protocolo multiagente. É um pacote para implementação futura; os critérios de promoção continuam na barra v4 e os resultados históricos abaixo não são nova prova do candidato.
 
 1. [`00-quality-bar-v1.md`](00-quality-bar-v1.md) — barra de aceite e proveniência registrada (v1.1).
 2. [`00-fontes-e-premissas.md`](00-fontes-e-premissas.md) — o que foi observado, proposto ou deixado desconhecido.

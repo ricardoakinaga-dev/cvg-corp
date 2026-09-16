@@ -5,7 +5,7 @@ import cookie from "@fastify/cookie";
 import cors from "@fastify/cors";
 import { Pool } from "pg";
 import { z } from "zod";
-import { generateOpaqueToken, passwordPolicyIssues, verifyTotpCode, type MfaSecretResolver } from "@cvg/auth";
+import { DUMMY_PASSWORD_DIGEST, generateOpaqueToken, PasswordDerivationOverloadedError, passwordHasher, passwordPolicyIssues, verifyTotpCode, type MfaSecretResolver } from "@cvg/auth";
 import { loadCvgConfig, validateCvgConfig, ConfigError } from "@cvg/config";
 import { assertPolicyAllowed, authorizeApplicationRequest, applicationPolicyFor, PolicyEvaluationError } from "@cvg/agent-policy";
 import {
@@ -71,12 +71,10 @@ import {
   CvgStore,
   DomainError,
   digest,
-  hashPassword,
   now,
   publicUser,
   parseSnapshot,
   serializeSnapshot,
-  verifyPassword,
   type PublicUser,
   type StoreSnapshot
 } from "@cvg/domain";
@@ -130,6 +128,8 @@ export interface ServerConfig {
   passwordMinLength: number;
   passwordMaxAgeDays: number;
   authMaxFailedAttempts: number;
+  authIdentifierRateLimit: number;
+  authIpRateLimit: number;
   authLockoutMinutes: number;
   authChallengeTtlSeconds: number;
   authMaxChallengeAttempts: number;
@@ -153,6 +153,7 @@ export interface ServerConfig {
 export interface RateLimiter {
   readonly distributed: boolean;
   consume(input: { key: string; limit: number; windowMs: number }): Promise<{ allowed: boolean; retryAfterSeconds: number }>;
+  peek?(input: { key: string; limit: number; windowMs: number }): Promise<{ allowed: boolean; retryAfterSeconds: number }>;
   close?(): Promise<void>;
 }
 
@@ -176,6 +177,14 @@ export class MemoryRateLimiter implements RateLimiter {
     }
     if (current.count >= input.limit) return { allowed: false, retryAfterSeconds: Math.max(1, Math.ceil((current.resetAt - nowMs) / 1_000)) };
     current.count += 1;
+    return { allowed: true, retryAfterSeconds: 0 };
+  }
+
+  async peek(input: { key: string; limit: number; windowMs: number }): Promise<{ allowed: boolean; retryAfterSeconds: number }> {
+    const nowMs = Date.now();
+    const current = this.buckets.get(input.key);
+    if (!current || current.resetAt <= nowMs) return { allowed: true, retryAfterSeconds: 0 };
+    if (current.count >= input.limit) return { allowed: false, retryAfterSeconds: Math.max(1, Math.ceil((current.resetAt - nowMs) / 1_000)) };
     return { allowed: true, retryAfterSeconds: 0 };
   }
 
@@ -223,6 +232,23 @@ export class PostgresRateLimiter implements RateLimiter {
     } catch (error) {
       if (error instanceof DomainError) throw error;
       throw new DomainError("DEPENDENCY_UNAVAILABLE", "O rate limit distribuído está indisponível; a solicitação foi bloqueada.", 503, { cause: error instanceof Error ? error.name : "unknown" });
+    }
+  }
+
+  async peek(input: { key: string; limit: number; windowMs: number }): Promise<{ allowed: boolean; retryAfterSeconds: number }> {
+    try {
+      const result = await this.pool.query<{ request_count: number; retry_after_ms: number }>(
+        `select request_count, greatest(0, extract(epoch from ((window_started_at + ($2::double precision * interval '1 millisecond')) - now())) * 1000)::double precision as retry_after_ms
+         from cvg_rate_limit_buckets
+         where bucket_key = $1 and window_started_at > now() - ($2::double precision * interval '1 millisecond')`,
+        [tokenDigest(input.key), input.windowMs]
+      );
+      const row = result.rows[0];
+      if (!row) return { allowed: true, retryAfterSeconds: 0 };
+      const retryAfterSeconds = Math.max(1, Math.ceil(Number(row.retry_after_ms ?? input.windowMs) / 1_000));
+      return { allowed: Number(row.request_count) <= input.limit, retryAfterSeconds: Number(row.request_count) <= input.limit ? 0 : retryAfterSeconds };
+    } catch {
+      return { allowed: true, retryAfterSeconds: 0 };
     }
   }
 
@@ -316,6 +342,8 @@ function getConfig(overrides: Partial<ServerConfig> = {}): ServerConfig {
     passwordMinLength: overrides.passwordMinLength ?? typed.passwordMinLength,
     passwordMaxAgeDays: overrides.passwordMaxAgeDays ?? typed.passwordMaxAgeDays,
     authMaxFailedAttempts: overrides.authMaxFailedAttempts ?? typed.authMaxFailedAttempts,
+    authIdentifierRateLimit: overrides.authIdentifierRateLimit ?? typed.authIdentifierRateLimit,
+    authIpRateLimit: overrides.authIpRateLimit ?? typed.authIpRateLimit,
     authLockoutMinutes: overrides.authLockoutMinutes ?? typed.authLockoutMinutes,
     authChallengeTtlSeconds: overrides.authChallengeTtlSeconds ?? typed.authChallengeTtlSeconds,
     authMaxChallengeAttempts: overrides.authMaxChallengeAttempts ?? typed.authMaxChallengeAttempts,
@@ -335,7 +363,7 @@ function getConfig(overrides: Partial<ServerConfig> = {}): ServerConfig {
     rateLimitRequestsPerWindow: overrides.rateLimitRequestsPerWindow ?? typed.rateLimitRequestsPerWindow,
     rateLimitWindowSeconds: overrides.rateLimitWindowSeconds ?? typed.rateLimitWindowSeconds
   });
-  return { nodeEnv: validated.nodeEnv, host: validated.host, trustProxy: validated.trustProxy, trustedProxyIps: [...validated.trustedProxyIps], port: validated.apiPort, webOrigin: validated.webOrigin, releaseSha: validated.releaseSha, releaseArtifactDigest: validated.releaseArtifactDigest, storageMode: validated.storageMode, demoMode: validated.demoMode, sessionTtlMinutes: validated.sessionTtlMinutes, authMfaMode: validated.authMfaMode, passwordMinLength: validated.passwordMinLength, passwordMaxAgeDays: validated.passwordMaxAgeDays, authMaxFailedAttempts: validated.authMaxFailedAttempts, authLockoutMinutes: validated.authLockoutMinutes, authChallengeTtlSeconds: validated.authChallengeTtlSeconds, authMaxChallengeAttempts: validated.authMaxChallengeAttempts, databaseUrl: validated.databaseUrl, bootstrapPassword: validated.bootstrapPassword, deepseekBaseUrl: validated.deepseekBaseUrl, deepseekRuntimeEnabled: validated.deepseekRuntimeEnabled, deepseekExpectedEngineCommit: validated.deepseekExpectedEngineCommit, deepseekExpectedManifestVersion: validated.deepseekExpectedManifestVersion, deepseekBearerTokenRef: validated.deepseekBearerTokenRef, deepseekContextSigningSecretRef: validated.deepseekContextSigningSecretRef, recoveryEncryptionKeyRef: validated.recoveryEncryptionKeyRef, secretDir: validated.secretDir, workerOrganizationId: validated.workerOrganizationId, secretProvider: validated.secretProvider, rateLimitBackend: validated.rateLimitBackend, rateLimitRequestsPerWindow: validated.rateLimitRequestsPerWindow, rateLimitWindowSeconds: validated.rateLimitWindowSeconds };
+  return { nodeEnv: validated.nodeEnv, host: validated.host, trustProxy: validated.trustProxy, trustedProxyIps: [...validated.trustedProxyIps], port: validated.apiPort, webOrigin: validated.webOrigin, releaseSha: validated.releaseSha, releaseArtifactDigest: validated.releaseArtifactDigest, storageMode: validated.storageMode, demoMode: validated.demoMode, sessionTtlMinutes: validated.sessionTtlMinutes, authMfaMode: validated.authMfaMode, passwordMinLength: validated.passwordMinLength, passwordMaxAgeDays: validated.passwordMaxAgeDays, authMaxFailedAttempts: validated.authMaxFailedAttempts, authIdentifierRateLimit: validated.authIdentifierRateLimit, authIpRateLimit: validated.authIpRateLimit, authLockoutMinutes: validated.authLockoutMinutes, authChallengeTtlSeconds: validated.authChallengeTtlSeconds, authMaxChallengeAttempts: validated.authMaxChallengeAttempts, databaseUrl: validated.databaseUrl, bootstrapPassword: validated.bootstrapPassword, deepseekBaseUrl: validated.deepseekBaseUrl, deepseekRuntimeEnabled: validated.deepseekRuntimeEnabled, deepseekExpectedEngineCommit: validated.deepseekExpectedEngineCommit, deepseekExpectedManifestVersion: validated.deepseekExpectedManifestVersion, deepseekBearerTokenRef: validated.deepseekBearerTokenRef, deepseekContextSigningSecretRef: validated.deepseekContextSigningSecretRef, recoveryEncryptionKeyRef: validated.recoveryEncryptionKeyRef, secretDir: validated.secretDir, workerOrganizationId: validated.workerOrganizationId, secretProvider: validated.secretProvider, rateLimitBackend: validated.rateLimitBackend, rateLimitRequestsPerWindow: validated.rateLimitRequestsPerWindow, rateLimitWindowSeconds: validated.rateLimitWindowSeconds };
 }
 
 function tokenDigest(value: string): string {
@@ -408,43 +436,6 @@ function publicPatient(store: CvgStore, patientId: OpaqueId, roles: Role[]): Rec
 function publicGuardian(guardian: { id: OpaqueId; displayName: string; phone: string; email: string | null; status: string }): Record<string, unknown> {
   return { id: guardian.id, displayName: guardian.displayName, phone: guardian.phone, email: guardian.email, status: guardian.status };
 }
-
-const commandOperationByAuditAction: Record<string, string> = {
-  "identity.mfa.enroll": "identity.mfa.enroll",
-  "identity.mfa.revoke": "identity.mfa.revoke",
-  "identity.sessions.revoke": "identity.sessions.revoke",
-  "role.grant": "role.grant",
-  "role.revoke": "role.revoke",
-  "guardians.create": "guardians.create",
-  "patients.create": "patients.create",
-  "patients.disable": "patients.disable",
-  "patients.merge": "patients.merge",
-  "appointments.create": "appointments.create",
-  "queue.check-in": "queue.check-in",
-  "encounters.create": "encounters.create",
-  "clinical.write": "clinical.write",
-  "clinical.sign": "clinical.sign",
-  "clinical.addendum": "clinical.addendum",
-  "diagnostics.create": "diagnostics.create",
-  "diagnostics.specimen": "diagnostics.specimen",
-  "diagnostics.result": "diagnostics.result",
-  "stock.write": "stock.movement",
-  "hospitalization.create": "hospitalization.create",
-  "medication.prescribe": "medication.prescribe",
-  "medication.dispense": "medication.dispense",
-  "medication.administer": "medication.administer",
-  "finance.charge": "finance.charge",
-  "finance.payment": "finance.payment",
-  "finance.refund": "finance.refund",
-  "communication.stage": "communication.stage",
-  "communication.approve": "communication.approve",
-  "knowledge.write": "knowledge.write",
-  "ai.turn": "ai.turn",
-  "ai.approval": "ai.approval",
-  "ai.approval.retry": "ai.approval.retry",
-  "ai.draft.promote": "ai.draft.promote",
-  "ops.export": "ops.export"
-};
 
 export async function createRuntime(options: ServerOptions = {}): Promise<CvgServerRuntime> {
   const config = getConfig(options.config);
@@ -799,7 +790,25 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     deepseekBearerTokenStatus,
     deepseekContextSignatureStatus,
     secretProviderRequired: config.nodeEnv === "production" || config.deepseekRuntimeEnabled,
-    config
+    config,
+    operationalMetrics: operationalMetricsApplication,
+    probes: {
+      secretProviderStatus: () => secretProvider?.status() ?? (config.demoMode ? "DEGRADED" : "UNAVAILABLE"),
+      authMfaStatus: async () => {
+        const currentMfaUsers = [...store.users.values()].filter((user) => config.authMfaMode === "required" || user.security.mfaRequired);
+        if (currentMfaUsers.length === 0) return "NOT_REQUIRED" as const;
+        if (!mfaSecretResolver) return "UNAVAILABLE" as const;
+        const resolved = await Promise.all(currentMfaUsers.map((user) => resolveMfaReference(user.security.mfaSecretRef)));
+        return resolved.every(Boolean) ? "READY" as const : "UNAVAILABLE" as const;
+      },
+      deepseekBearerTokenStatus: () => !config.deepseekRuntimeEnabled || !config.deepseekBearerTokenRef
+        ? "NOT_REQUIRED" as const
+        : isSecretReferenceUsable(secretProvider, config.deepseekBearerTokenRef).then((usable) => usable ? "READY" as const : "UNAVAILABLE" as const),
+      deepseekContextSignatureStatus: () => !config.deepseekRuntimeEnabled || !config.deepseekContextSigningSecretRef
+        ? "NOT_REQUIRED" as const
+        : isSecretReferenceUsable(secretProvider, config.deepseekContextSigningSecretRef).then((usable) => usable ? "READY" as const : "UNAVAILABLE" as const),
+      policyStoreStatus: () => store.healthStatus === "READY" ? "READY" as const : "UNAVAILABLE" as const
+    }
   });
 
   const startedAt = new WeakMap<object, { startedAt: number; span: ReturnType<OpsTelemetry["startSpan"]> }>();
@@ -869,9 +878,37 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     return { session, context };
   };
 
+  const LOGIN_WINDOW_MS = 15 * 60_000;
+  const loginBucketKeys = (request: FastifyRequest, login: string) => ({
+    identifier: `login-identifier:${tokenDigest(login.trim().toLowerCase())}`,
+    ip: `login-ip:${tokenDigest(request.ip ?? "unknown")}`
+  });
+  const loginRateRetrySeconds = (identifier: { allowed: boolean; retryAfterSeconds: number }, ip: { allowed: boolean; retryAfterSeconds: number }): number =>
+    Math.max(identifier.allowed ? 0 : identifier.retryAfterSeconds, ip.allowed ? 0 : ip.retryAfterSeconds);
+  /** Rejects an already-exhausted window before any derivation; failures are the only consumes. */
   const checkLoginRate = async (request: FastifyRequest, login: string): Promise<void> => {
-    const decision = await rateLimiter.consume({ key: `login:${request.ip}:${tokenDigest(login.trim().toLowerCase())}`, limit: config.authMaxFailedAttempts, windowMs: 5 * 60_000 });
-    if (!decision.allowed) throw new DomainError("RATE_LIMITED", "Muitas tentativas de login; aguarde antes de tentar novamente.", 429, { retryAfterSeconds: decision.retryAfterSeconds });
+    const keys = loginBucketKeys(request, login);
+    const [identifier, ip] = await Promise.all([
+      rateLimiter.peek ? rateLimiter.peek({ key: keys.identifier, limit: config.authIdentifierRateLimit, windowMs: LOGIN_WINDOW_MS }) : Promise.resolve({ allowed: true, retryAfterSeconds: 0 }),
+      rateLimiter.peek ? rateLimiter.peek({ key: keys.ip, limit: config.authIpRateLimit, windowMs: LOGIN_WINDOW_MS }) : Promise.resolve({ allowed: true, retryAfterSeconds: 0 })
+    ]);
+    if (!identifier.allowed || !ip.allowed) throw new DomainError("RATE_LIMITED", "Muitas tentativas de login; aguarde antes de tentar novamente.", 429, { retryAfterSeconds: loginRateRetrySeconds(identifier, ip) });
+  };
+  const recordLoginFailureRate = async (request: FastifyRequest, login: string): Promise<void> => {
+    const keys = loginBucketKeys(request, login);
+    const [identifier, ip] = await Promise.all([
+      rateLimiter.consume({ key: keys.identifier, limit: config.authIdentifierRateLimit, windowMs: LOGIN_WINDOW_MS }),
+      rateLimiter.consume({ key: keys.ip, limit: config.authIpRateLimit, windowMs: LOGIN_WINDOW_MS })
+    ]);
+    if (!identifier.allowed || !ip.allowed) throw new DomainError("RATE_LIMITED", "Muitas tentativas de login; aguarde antes de tentar novamente.", 429, { retryAfterSeconds: loginRateRetrySeconds(identifier, ip) });
+  };
+  const verifyPasswordUniform = async (password: string, digest: string | undefined): Promise<{ valid: boolean; needsRehash: boolean }> => {
+    try {
+      return await passwordHasher.verify(password, digest ?? DUMMY_PASSWORD_DIGEST);
+    } catch (error) {
+      if (error instanceof PasswordDerivationOverloadedError) throw new DomainError("DEPENDENCY_UNAVAILABLE", "O serviço de autenticação está saturado; tente novamente.", 503, { retryAfterSeconds: 5 });
+      throw error;
+    }
   };
 
   const passwordPolicy = {
@@ -929,11 +966,17 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     currentCredentialVersion: session.credentialVersion
   });
 
-  const audit = (context: CvgContext, action: string, resourceType: string, resourceId: OpaqueId | null, result: "ALLOWED" | "DENIED" | "ERROR" | "UNKNOWN", reason: string | null = null, metadata: Record<string, string | number | boolean | null> = {}, linkCommandReceipt = true) => {
+  const audit = (context: CvgContext, action: string, resourceType: string, resourceId: OpaqueId | null, result: "ALLOWED" | "DENIED" | "ERROR" | "UNKNOWN", reason: string | null = null, metadata: Record<string, string | number | boolean | null> = {}, linkCommandReceipt = true, commandReceiptId: OpaqueId | null = null) => {
     const record = store.recordAudit({ organizationId: context.organizationId, actorId: context.actorId, unitId: context.unitId, workspaceId: context.workspaceId, action, resourceType, resourceId, result, reason, correlationId: context.correlationId, metadata });
-    const operation = commandOperationByAuditAction[action];
-    if (!linkCommandReceipt || result !== "ALLOWED" || !operation) return record;
-    const receipt = [...store.commandReceipts.values()].reverse().find((candidate) => candidate.organizationId === context.organizationId && candidate.actorId === context.actorId && candidate.operation === operation && candidate.status === "SUCCEEDED" && candidate.auditRecordId === null);
+    // A receipt is linked only by the exact receipt returned by the command
+    // boundary. Reverse-searching by actor/operation is ambiguous under
+    // concurrent requests and can attach an audit event to the wrong effect.
+    if (!linkCommandReceipt || result !== "ALLOWED" || !commandReceiptId) return record;
+    const receipt = [...store.commandReceipts.values()].find((candidate) => candidate.id === commandReceiptId
+      && candidate.organizationId === context.organizationId
+      && candidate.actorId === context.actorId
+      && candidate.status === "SUCCEEDED"
+      && candidate.auditRecordId === null);
     if (receipt) store.linkCommandReceiptAudit(receipt.idempotencyLookup, record.id);
     return record;
   };
@@ -959,17 +1002,42 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     }
   });
 
+  const knowledgeVersionInputSchema = z.object({ expectedVersion: z.number().int().min(1).nullable().default(null) }).strict();
+  const knowledgeQuarantineInputSchema = z.object({ reason: z.string().trim().min(5).max(300), expectedVersion: z.number().int().min(1).nullable().default(null) }).strict();
+  const productInputSchema = z.object({ sku: z.string().trim().min(2).max(40), name: z.string().trim().min(2).max(160), category: z.string().trim().min(2).max(80), unit: z.string().trim().min(1).max(40), reorderPoint: z.number().int().min(0).max(1_000_000) }).strict();
+  const lotInputSchema = z.object({ productId: idSchema, lotNumber: z.string().trim().min(2).max(80), expiresOn: z.string().date(), quantity: z.number().int().min(0).max(1_000_000), locationId: idSchema }).strict();
+  const inventoryCountInputSchema = z.object({ lotId: idSchema, countedQuantity: z.number().int().min(0).max(1_000_000), reason: z.string().trim().min(5).max(240) }).strict();
+  const hospitalEpisodeStatusInputSchema = z.object({ status: z.enum(["ADMITTED", "PROCEDURE", "RECOVERY"]) }).strict();
+  const medicationOrderStatusInputSchema = z.object({ status: z.enum(["ACTIVE", "SUSPENDED", "COMPLETED"]) }).strict();
+  const clinicalDraftUpdateInputSchema = z.object({ title: z.string().trim().min(2).max(180).optional(), content: z.string().trim().min(1).max(30_000), expectedVersion: z.string().regex(/^\d{1,18}$/).nullable().default(null) }).strict();
+  const appointmentVersionInputSchema = z.object({ expectedVersion: z.number().int().min(1) }).strict();
+  const appointmentCancelInputSchema = z.object({ reason: z.string().trim().min(3).max(300), expectedVersion: z.number().int().min(1) }).strict();
+  const appointmentRescheduleInputSchema = z.object({ startsAt: z.string().datetime({ offset: true }), endsAt: z.string().datetime({ offset: true }), expectedVersion: z.number().int().min(1) }).strict();
+  const queueTriageInputSchema = z.object({ priority: z.enum(["ROUTINE", "URGENT", "EMERGENCY"]) }).strict();
+  const queueHandoffInputSchema = z.object({ chiefComplaint: z.string().trim().min(3).max(500), urgency: z.enum(["ROUTINE", "URGENT", "EMERGENCY"]) }).strict();
+
   app.post("/api/v1/auth/login", async (request, reply) => {
     const input = parse(loginInputSchema, request.body);
     await checkLoginRate(request, input.login);
     const user = store.getUserByLogin(input.login);
     if (user && store.isAccountLocked(user)) throw new DomainError("RATE_LIMITED", "Muitas tentativas de login; aguarde antes de tentar novamente.", 429, { retryAfterSeconds: Math.max(1, Math.ceil((Date.parse(user.security.lockedUntil!) - Date.now()) / 1_000)) });
-    if (!user || user.status !== "ACTIVE" || !verifyPassword(input.password, user.passwordDigest) || store.healthStatus === "QUARANTINED") {
+    const verification = await verifyPasswordUniform(input.password, user?.passwordDigest);
+    const activeAccount = user !== undefined && user.status === "ACTIVE" && store.healthStatus !== "QUARANTINED";
+    if (!activeAccount || !verification.valid) {
       if (user && user.status === "ACTIVE" && store.healthStatus !== "QUARANTINED") {
         store.recordLoginFailure(user.id, config.authMaxFailedAttempts, config.authLockoutMinutes);
         store.recordAudit({ organizationId: user.organizationId, actorId: user.id, unitId: null, workspaceId: null, action: "auth.login", resourceType: "User", resourceId: user.id, result: "DENIED", reason: "AUTHENTICATION_FAILED", correlationId: correlationId(request), metadata: { failedAttempts: user.security.failedLoginAttempts } });
       }
+      await recordLoginFailureRate(request, input.login);
       throw new DomainError("AUTHENTICATION_FAILED", "Login ou senha inválidos.", 401);
+    }
+    if (verification.needsRehash) {
+      try {
+        store.upgradePasswordDigest(user.id, await passwordHasher.hash(input.password));
+        store.recordAudit({ organizationId: user.organizationId, actorId: user.id, unitId: null, workspaceId: null, action: "auth.credential.rehash", resourceType: "User", resourceId: user.id, result: "ALLOWED", reason: "LEGACY_SCRYPT_PARAMS", correlationId: correlationId(request), metadata: { algorithm: "scrypt", N: 131072, r: 8, p: 1 } });
+      } catch (error) {
+        if (!(error instanceof PasswordDerivationOverloadedError)) throw error;
+      }
     }
     const corr = randomUUID();
     if (user.security.passwordExpiresAt && Date.parse(user.security.passwordExpiresAt) <= Date.now()) {
@@ -1014,7 +1082,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     requireCsrf(request, session);
     const input = parse(mfaEnrollmentInputSchema, request.body);
     const user = readApplication.getCurrentUser(context);
-    if (!verifyPassword(input.currentPassword, user.passwordDigest)) {
+    if (!(await verifyPasswordUniform(input.currentPassword, user.passwordDigest)).valid) {
       audit(context, "identity.mfa.enroll", "User", user.id, "DENIED", "AUTHENTICATION_FAILED");
       throw new DomainError("AUTHENTICATION_FAILED", "A senha atual é inválida.", 401);
     }
@@ -1032,7 +1100,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
       store.markSessionMfaVerified(session.id);
       return { enrolled: true, method: "TOTP" as const, sessionsRevoked };
     });
-    audit(context, "identity.mfa.enroll", "User", user.id, "ALLOWED", null, { method: "TOTP", replay: result.replayed, sessionsRevoked: result.value.sessionsRevoked });
+    audit(context, "identity.mfa.enroll", "User", user.id, "ALLOWED", null, { method: "TOTP", replay: result.replayed, sessionsRevoked: result.value.sessionsRevoked }, true, result.receipt.id);
     return response(reply, success({ ...result.value, receiptId: result.receipt.id }, context.correlationId), result.replayed ? 200 : 201);
   });
 
@@ -1042,7 +1110,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const input = parse(mfaFactorRevokeInputSchema, request.body);
     const user = readApplication.getCurrentUser(context);
     if (config.authMfaMode === "required") throw new DomainError("CAPABILITY_DISABLED", "O MFA obrigatório não pode ser revogado nesta configuração.", 409);
-    if (!verifyPassword(input.currentPassword, user.passwordDigest)) {
+    if (!(await verifyPasswordUniform(input.currentPassword, user.passwordDigest)).valid) {
       audit(context, "identity.mfa.revoke", "User", user.id, "DENIED", "AUTHENTICATION_FAILED");
       throw new DomainError("AUTHENTICATION_FAILED", "A senha atual é inválida.", 401);
     }
@@ -1053,7 +1121,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
       const sessionsRevoked = store.revokeAllSessions(user.id);
       return { revoked: hadFactor, method: "TOTP" as const, sessionsRevoked };
     });
-    audit(context, "identity.mfa.revoke", "User", user.id, "ALLOWED", null, { method: "TOTP", replay: result.replayed, sessionsRevoked: result.value.sessionsRevoked });
+    audit(context, "identity.mfa.revoke", "User", user.id, "ALLOWED", null, { method: "TOTP", replay: result.replayed, sessionsRevoked: result.value.sessionsRevoked }, true, result.receipt.id);
     reply.clearCookie(SESSION_COOKIE, { path: "/" });
     reply.clearCookie(CSRF_COOKIE, { path: "/" });
     telemetry.sessionClosed();
@@ -1090,7 +1158,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
       throw new DomainError(failedChallenge.status === "LOCKED" ? "ACCOUNT_LOCKED" : "RECOVERY_INVALID", "O código de recuperação é inválido.", failedChallenge.status === "LOCKED" ? 429 : 401);
     }
     store.consumeAuthChallenge(challenge);
-    store.rotatePassword(user.id, hashPassword(input.newPassword), passwordExpiry());
+    store.rotatePassword(user.id, await passwordHasher.hash(input.newPassword), passwordExpiry());
     const session = createAuthenticatedSession(request, reply, user, now());
     store.recordAudit({ organizationId: user.organizationId, actorId: user.id, unitId: null, workspaceId: null, action: "auth.recovery.complete", resourceType: "Session", resourceId: session.id, result: "ALLOWED", reason: "recovery_code_consumed", correlationId: corr, metadata: { sessionsRevoked: true } });
     return response(reply, success({ ...authPayload(user, session), recovered: true }, corr));
@@ -1101,11 +1169,11 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     requireCsrf(request, session);
     const input = parse(passwordRotationInputSchema, request.body);
     const user = readApplication.getCurrentUser(context);
-    if (!verifyPassword(input.currentPassword, user.passwordDigest)) throw new DomainError("AUTHENTICATION_FAILED", "A senha atual é inválida.", 401);
-    if (verifyPassword(input.newPassword, user.passwordDigest)) throw new DomainError("INVALID_INPUT", "A nova senha deve ser diferente da senha atual.", 400);
+    if (!(await verifyPasswordUniform(input.currentPassword, user.passwordDigest)).valid) throw new DomainError("AUTHENTICATION_FAILED", "A senha atual é inválida.", 401);
+    if ((await verifyPasswordUniform(input.newPassword, user.passwordDigest)).valid) throw new DomainError("INVALID_INPUT", "A nova senha deve ser diferente da senha atual.", 400);
     const issues = passwordPolicyIssues(input.newPassword, passwordPolicy, { identifier: user.login });
     if (issues.length) throw new DomainError("INVALID_INPUT", "A nova senha não atende à política de segurança.", 400, { issues });
-    store.rotatePassword(user.id, hashPassword(input.newPassword), passwordExpiry());
+    store.rotatePassword(user.id, await passwordHasher.hash(input.newPassword), passwordExpiry());
     const newSession = createAuthenticatedSession(request, reply, user, session.mfaVerifiedAt);
     audit(context, "identity.password.rotate", "User", user.id, "ALLOWED", null, { sessionsRevoked: true });
     return response(reply, success({ ...authPayload(user, newSession), rotated: true }, context.correlationId));
@@ -1129,7 +1197,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
       store.revokeSessionById(target.id);
       return { revoked: true, sessionId: target.id, current: target.id === session.id };
     });
-    audit(context, "identity.sessions.revoke", "Session", target.id, "ALLOWED", null, { current: result.value.current, replay: result.replayed });
+    audit(context, "identity.sessions.revoke", "Session", target.id, "ALLOWED", null, { current: result.value.current, replay: result.replayed }, true, result.receipt.id);
     if (result.value.current) {
       reply.clearCookie(SESSION_COOKIE, { path: "/" });
       reply.clearCookie(CSRF_COOKIE, { path: "/" });
@@ -1155,7 +1223,15 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     reply.clearCookie(SESSION_COOKIE, { path: "/" });
     reply.clearCookie(CSRF_COOKIE, { path: "/" });
     telemetry.sessionClosed();
-    return response(reply, success({ loggedOut: true }, context.correlationId));
+    return response(reply, success({
+      sessionId: session.id,
+      localState: "SIGNED_OUT",
+      serverRevocation: "CONFIRMED",
+      serverAttempted: true,
+      serverObservation: { status: "REVOKED", observedAt: now() },
+      retryable: false,
+      correlationId: context.correlationId
+    }, context.correlationId));
   });
 
   app.get("/api/v1/me", async (request, reply) => {
@@ -1197,7 +1273,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const key = header(request, "idempotency-key");
     if (!key) throw new DomainError("INVALID_INPUT", "Idempotency-Key é obrigatório.", 400);
     const result = await commandExecutor.execute(commandInput(context, "role.grant", key, input.userId, input, { unitId: input.unitId, workspaceId: input.workspaceId }), () => domainCommands.grantRole(context, input));
-    audit(context, "role.grant", "RoleAssignment", result.value.id, "ALLOWED", null, { replay: result.replayed });
+    audit(context, "role.grant", "RoleAssignment", result.value.id, "ALLOWED", null, { replay: result.replayed }, true, result.receipt.id);
     return response(reply, success({ assignment: result.value, receiptId: result.receipt.id, revision: store.organizations.get(context.organizationId)?.authorizationRevision.toString() ?? "0" }, context.correlationId), 201);
   });
 
@@ -1212,7 +1288,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const key = header(request, "idempotency-key");
     if (!key || !expectedRevision) throw new DomainError("INVALID_INPUT", "Idempotency-Key e expectedRevision são obrigatórios.", 400);
     const result = await commandExecutor.execute(commandInput(context, "role.revoke", key, parsedId, { assignmentId: parsedId, expectedRevision }), () => domainCommands.revokeRole(context, parsedId, expectedRevision));
-    audit(context, "role.revoke", "RoleAssignment", parsedId, "ALLOWED");
+    audit(context, "role.revoke", "RoleAssignment", parsedId, "ALLOWED", null, {}, true, result.receipt.id);
     return response(reply, success({ assignment: result.value, receiptId: result.receipt.id, revision: store.organizations.get(context.organizationId)?.authorizationRevision.toString() ?? "0" }, context.correlationId));
   });
 
@@ -1240,7 +1316,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const input = parse(z.object({ displayName: z.string().trim().min(2).max(120), phone: z.string().trim().min(8).max(40), email: z.string().email().nullable().default(null) }).strict(), request.body);
     const key = requireIdempotencyKey(request);
     const result = await commandExecutor.execute(commandInput(context, "guardians.create", key, null, input), () => guardianApplication.create(context, input));
-    audit(context, "guardians.create", "Guardian", result.value.id, "ALLOWED", null, { replay: result.replayed });
+    audit(context, "guardians.create", "Guardian", result.value.id, "ALLOWED", null, { replay: result.replayed }, true, result.receipt.id);
     if (persistence) {
       if (result.replayed) await commitDurableRequest?.(request, reply, undefined, undefined, undefined, undefined, undefined, undefined, result.value.id);
       else {
@@ -1275,7 +1351,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const { context } = requestContext(request, "patients.create", null, null, false, true, input.guardianId);
     const key = requireIdempotencyKey(request);
     const result = await commandExecutor.execute(commandInput(context, "patients.create", key, input.guardianId, input), () => patientApplication.create(context, input));
-    audit(context, "patients.create", "AnimalPatient", result.value.id, "ALLOWED");
+    audit(context, "patients.create", "AnimalPatient", result.value.id, "ALLOWED", null, {}, true, result.receipt.id);
     if (persistence && !result.replayed) {
       reply.code(201);
       await commitDurableRequest?.(request, reply, result.value);
@@ -1290,7 +1366,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const key = header(request, "idempotency-key");
     if (!key) throw new DomainError("INVALID_INPUT", "Idempotency-Key é obrigatório.", 400);
     const result = await commandExecutor.execute(commandInput(context, "patients.disable", key, patientId, { patientId }), () => domainCommands.disablePatient(context, patientId));
-    audit(context, "patients.disable", "AnimalPatient", patientId, "ALLOWED", "registro preservado; apenas status alterado");
+    audit(context, "patients.disable", "AnimalPatient", patientId, "ALLOWED", "registro preservado; apenas status alterado", {}, true, result.receipt.id);
     return response(reply, success({ patient: publicPatient(store, result.value.id, context.actorRoleSnapshot), receiptId: result.receipt.id }, context.correlationId));
   });
 
@@ -1301,7 +1377,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const key = header(request, "idempotency-key");
     if (!key) throw new DomainError("INVALID_INPUT", "Idempotency-Key é obrigatório.", 400);
     const result = await commandExecutor.execute(commandInput(context, "patients.merge", key, input.sourcePatientId, input), () => domainCommands.mergePatients(context, input));
-    audit(context, "patients.merge", "AnimalPatient", input.sourcePatientId, "ALLOWED", "confirmação humana explícita; histórico preservado", { targetPatientId: input.targetPatientId });
+    audit(context, "patients.merge", "AnimalPatient", input.sourcePatientId, "ALLOWED", "confirmação humana explícita; histórico preservado", { targetPatientId: input.targetPatientId }, true, result.receipt.id);
     return response(reply, success({ targetPatient: publicPatient(store, result.value.id, context.actorRoleSnapshot), sourcePatientId: input.sourcePatientId, receiptId: result.receipt.id }, context.correlationId), 202);
   });
 
@@ -1321,7 +1397,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const key = header(request, "idempotency-key");
     if (!key) throw new DomainError("INVALID_INPUT", "Idempotency-Key é obrigatório.", 400);
     const result = await commandExecutor.execute(commandInput(context, "appointments.create", key, input.patientId, input), () => appointmentApplication.create(context, input));
-    audit(context, "appointments.create", "Appointment", result.value.id, "ALLOWED");
+    audit(context, "appointments.create", "Appointment", result.value.id, "ALLOWED", null, {}, true, result.receipt.id);
     if (persistence && !result.replayed) {
       reply.code(201);
       await commitDurableRequest?.(request, reply, undefined, result.value);
@@ -1343,8 +1419,70 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const key = header(request, "idempotency-key");
     if (!key) throw new DomainError("INVALID_INPUT", "Idempotency-Key é obrigatório.", 400);
     const result = await commandExecutor.execute(commandInput(context, "queue.check-in", key, appointmentId, { appointmentId }), () => domainCommands.checkInAppointment(context, appointmentId));
-    audit(context, "queue.check-in", "QueueEntry", result.value.id, "ALLOWED");
+    audit(context, "queue.check-in", "QueueEntry", result.value.id, "ALLOWED", null, {}, true, result.receipt.id);
     return response(reply, success({ queueEntry: result.value, receiptId: result.receipt.id }, context.correlationId), 201);
+  });
+
+  app.get("/api/v1/scheduling/options", async (request, reply) => {
+    const { context } = requestContext(request, "scheduling.read");
+    const options = await readApplication.listSchedulingOptions(context);
+    audit(context, "scheduling.read", "SchedulingOptions", null, "ALLOWED", null, { providers: options.providers.length, services: options.services.length, resources: options.resources.length });
+    return response(reply, success(options, context.correlationId));
+  });
+
+  app.post("/api/v1/appointments/:id/confirm", async (request, reply) => {
+    const session = requireSession(request); requireCsrf(request, session);
+    const appointmentId = id(parse(idSchema, (request.params as { id: string }).id));
+    const input = parse(appointmentVersionInputSchema, request.body ?? {});
+    const { context } = requestContext(request, "appointments.confirm", null, null, false, true, appointmentId);
+    const key = requireIdempotencyKey(request);
+    const result = await commandExecutor.execute(commandInput(context, "appointments.confirm", key, appointmentId, input), () => domainCommands.confirmAppointment(context, appointmentId, input.expectedVersion));
+    audit(context, "appointments.confirm", "Appointment", result.value.id, "ALLOWED", null, { replay: result.replayed }, true, result.receipt.id);
+    return response(reply, success({ appointment: result.value, receiptId: result.receipt.id }, context.correlationId));
+  });
+
+  app.post("/api/v1/appointments/:id/cancel", async (request, reply) => {
+    const session = requireSession(request); requireCsrf(request, session);
+    const appointmentId = id(parse(idSchema, (request.params as { id: string }).id));
+    const input = parse(appointmentCancelInputSchema, request.body);
+    const { context } = requestContext(request, "appointments.cancel", null, null, false, true, appointmentId);
+    const key = requireIdempotencyKey(request);
+    const result = await commandExecutor.execute(commandInput(context, "appointments.cancel", key, appointmentId, input), () => domainCommands.cancelAppointment(context, appointmentId, input.reason, input.expectedVersion));
+    audit(context, "appointments.cancel", "Appointment", result.value.id, "ALLOWED", input.reason, { replay: result.replayed }, true, result.receipt.id);
+    return response(reply, success({ appointment: result.value, receiptId: result.receipt.id }, context.correlationId));
+  });
+
+  app.post("/api/v1/appointments/:id/reschedule", async (request, reply) => {
+    const session = requireSession(request); requireCsrf(request, session);
+    const appointmentId = id(parse(idSchema, (request.params as { id: string }).id));
+    const input = parse(appointmentRescheduleInputSchema, request.body);
+    const { context } = requestContext(request, "appointments.reschedule", null, null, false, true, appointmentId);
+    const key = requireIdempotencyKey(request);
+    const result = await commandExecutor.execute(commandInput(context, "appointments.reschedule", key, appointmentId, input), () => domainCommands.rescheduleAppointment(context, appointmentId, input));
+    audit(context, "appointments.reschedule", "Appointment", result.value.id, "ALLOWED", null, { replay: result.replayed, startsAt: result.value.startsAt }, true, result.receipt.id);
+    return response(reply, success({ appointment: result.value, receiptId: result.receipt.id }, context.correlationId));
+  });
+
+  app.post("/api/v1/queue/:id/triage", async (request, reply) => {
+    const session = requireSession(request); requireCsrf(request, session);
+    const queueEntryId = id(parse(idSchema, (request.params as { id: string }).id));
+    const input = parse(queueTriageInputSchema, request.body);
+    const { context } = requestContext(request, "queue.triage", null, null, false, true, queueEntryId);
+    const key = requireIdempotencyKey(request);
+    const result = await commandExecutor.execute(commandInput(context, "queue.triage", key, queueEntryId, input), () => domainCommands.triageQueueEntry(context, queueEntryId, input.priority));
+    audit(context, "queue.triage", "QueueEntry", result.value.id, "ALLOWED", null, { priority: input.priority, replay: result.replayed }, true, result.receipt.id);
+    return response(reply, success({ queueEntry: result.value, receiptId: result.receipt.id }, context.correlationId));
+  });
+
+  app.post("/api/v1/queue/:id/handoff", async (request, reply) => {
+    const session = requireSession(request); requireCsrf(request, session);
+    const queueEntryId = id(parse(idSchema, (request.params as { id: string }).id));
+    const input = parse(queueHandoffInputSchema, request.body);
+    const { context } = requestContext(request, "queue.handoff", null, null, false, true, queueEntryId);
+    const key = requireIdempotencyKey(request);
+    const result = await commandExecutor.execute(commandInput(context, "queue.handoff", key, queueEntryId, input), () => domainCommands.handoffQueueEntry(context, queueEntryId, input));
+    audit(context, "queue.handoff", "QueueEntry", result.value.queueEntry.id, "ALLOWED", null, { encounterId: result.value.encounter.id, replay: result.replayed }, true, result.receipt.id);
+    return response(reply, success({ queueEntry: result.value.queueEntry, encounter: result.value.encounter, receiptId: result.receipt.id }, context.correlationId), 201);
   });
 
   app.get("/api/v1/encounters", async (request, reply) => {
@@ -1360,7 +1498,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const { context } = requestContext(request, "encounters.create", input.patientId);
     const key = requireIdempotencyKey(request);
     const result = await commandExecutor.execute(commandInput(context, "encounters.create", key, input.patientId, input), () => encounterApplication.create(context, input));
-    audit(context, "encounters.create", "Encounter", result.value.id, "ALLOWED");
+    audit(context, "encounters.create", "Encounter", result.value.id, "ALLOWED", null, {}, true, result.receipt.id);
     if (persistence && !result.replayed) {
       reply.code(201);
       await commitDurableRequest?.(request, reply, undefined, undefined, result.value);
@@ -1381,7 +1519,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const { context } = requestContext(request, "clinical.write", null, input.encounterId, false, true, input.encounterId);
     const key = requireIdempotencyKey(request);
     const result = await commandExecutor.execute(commandInput(context, "clinical.write", key, input.encounterId, input), () => domainCommands.createClinicalDocument(context, input));
-    audit(context, "clinical.write", "ClinicalDocument", result.value.id, "ALLOWED");
+    audit(context, "clinical.write", "ClinicalDocument", result.value.id, "ALLOWED", null, {}, true, result.receipt.id);
     return response(reply, success({ document: { ...result.value, content: undefined }, receiptId: result.receipt.id }, context.correlationId), 201);
   });
 
@@ -1392,7 +1530,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const { context } = requestContext(request, "clinical.sign", null, null, false, false, documentId);
     const key = requireIdempotencyKey(request);
     const result = await clinicalSignApplication.signIdempotent(context, documentId, input.expectedVersion, key, { documentId, ...input });
-    audit(context, "clinical.sign", "ClinicalDocument", result.value.id, "ALLOWED", result.replayed ? "idempotency replay" : null, { replayed: result.replayed }, !result.replayed);
+    audit(context, "clinical.sign", "ClinicalDocument", result.value.id, "ALLOWED", result.replayed ? "idempotency replay" : null, { replayed: result.replayed }, !result.replayed, result.receipt.id);
     if (persistence) {
       if (result.replayed) await commitDurableRequest?.(request, reply, undefined, undefined, undefined, undefined, result.value.id);
       else await commitDurableRequest?.(request, reply, undefined, undefined, undefined, result.value);
@@ -1408,8 +1546,48 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const key = header(request, "idempotency-key");
     if (!key) throw new DomainError("INVALID_INPUT", "Idempotency-Key é obrigatório.", 400);
     const result = await commandExecutor.execute(commandInput(context, "clinical.addendum", key, documentId, input), () => domainCommands.addClinicalAddendum(context, documentId, input.reason, input.content));
-    audit(context, "clinical.addendum", "ClinicalAddendum", result.value.id, "ALLOWED", "documento assinado permanece imutável");
+    audit(context, "clinical.addendum", "ClinicalAddendum", result.value.id, "ALLOWED", "documento assinado permanece imutável", {}, true, result.receipt.id);
     return response(reply, success({ addendum: result.value, receiptId: result.receipt.id }, context.correlationId), 201);
+  });
+
+  app.get("/api/v1/clinical/documents/:id", async (request, reply) => {
+    const session = requireSession(request);
+    const documentId = id(parse(idSchema, (request.params as { id: string }).id));
+    const { context } = requestContext(request, "clinical.read", null, null, true, false, documentId);
+    const document = await readApplication.getClinicalDocument(context, documentId);
+    if (!document) throw new DomainError("NOT_FOUND", "Recurso não encontrado.", 404);
+    audit(context, "clinical.read", "ClinicalDocument", document.id, "ALLOWED", null, { detail: true });
+    return response(reply, success({ document }, context.correlationId));
+  });
+
+  app.post("/api/v1/clinical/documents/:id/update", async (request, reply) => {
+    const session = requireSession(request); requireCsrf(request, session);
+    const documentId = id(parse(idSchema, (request.params as { id: string }).id));
+    const input = parse(clinicalDraftUpdateInputSchema, request.body);
+    const { context } = requestContext(request, "clinical.write", null, null, false, true, documentId);
+    const key = requireIdempotencyKey(request);
+    const result = await commandExecutor.execute(commandInput(context, "clinical.write", key, documentId, input), () => domainCommands.updateClinicalDraft(context, documentId, input));
+    audit(context, "clinical.update", "ClinicalDocument", result.value.id, "ALLOWED", result.replayed ? "idempotency replay" : null, { version: result.value.version, replayed: result.replayed }, true, result.receipt.id);
+    return response(reply, success({ document: result.value, receiptId: result.receipt.id }, context.correlationId));
+  });
+
+  app.post("/api/v1/clinical/documents/:id/review", async (request, reply) => {
+    const session = requireSession(request); requireCsrf(request, session);
+    const documentId = id(parse(idSchema, (request.params as { id: string }).id));
+    const input = parse(clinicalSignInputSchema, request.body ?? {});
+    const { context } = requestContext(request, "clinical.draft", null, null, false, true, documentId);
+    const key = requireIdempotencyKey(request);
+    const result = await commandExecutor.execute(commandInput(context, "clinical.draft", key, documentId, input), () => domainCommands.reviewClinicalDocument(context, documentId, input.expectedVersion));
+    audit(context, "clinical.review", "ClinicalDocument", result.value.id, "ALLOWED", null, { version: result.value.version }, true, result.receipt.id);
+    return response(reply, success({ document: result.value, receiptId: result.receipt.id }, context.correlationId));
+  });
+
+  app.get("/api/v1/clinical/documents/:id/addenda", async (request, reply) => {
+    const documentId = id(parse(idSchema, (request.params as { id: string }).id));
+    const { context } = requestContext(request, "clinical.read", null, null, false, false, documentId);
+    const items = await readApplication.listClinicalAddenda(context, documentId);
+    audit(context, "clinical.read", "ClinicalAddendum", documentId, "ALLOWED", null, { count: items.length });
+    return response(reply, success({ items }, context.correlationId));
   });
 
   app.get("/api/v1/diagnostics/requests", async (request, reply) => {
@@ -1425,7 +1603,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const { context } = requestContext(request, "diagnostics.create", input.patientId, input.encounterId);
     const key = requireIdempotencyKey(request);
     const result = await commandExecutor.execute(commandInput(context, "diagnostics.create", key, input.patientId, input), () => diagnosticRequestApplication.create(context, input));
-    audit(context, "diagnostics.create", "DiagnosticRequest", result.value.id, "ALLOWED");
+    audit(context, "diagnostics.create", "DiagnosticRequest", result.value.id, "ALLOWED", null, {}, true, result.receipt.id);
     if (persistence) {
       if (result.replayed) await commitDurableRequest?.(request, reply, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, result.value.id);
       else {
@@ -1450,7 +1628,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const { context } = requestContext(request, "diagnostics.specimen", null, null, false, false, requestId);
     const key = requireIdempotencyKey(request);
     const result = await commandExecutor.execute(commandInput(context, "diagnostics.specimen", key, requestId, input), () => diagnosticSpecimenApplication.create(context, requestId, input.label));
-    audit(context, "diagnostics.specimen", "Specimen", result.value.id, "ALLOWED");
+    audit(context, "diagnostics.specimen", "Specimen", result.value.id, "ALLOWED", null, {}, true, result.receipt.id);
     if (persistence) {
       if (result.replayed) await commitDurableRequest?.(request, reply, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, result.value.id);
       else {
@@ -1467,7 +1645,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const { context } = requestContext(request, "diagnostics.result", null, null, false, false, input.requestId);
     const key = requireIdempotencyKey(request);
     const idempotentResult = await commandExecutor.execute(commandInput(context, "diagnostics.result", key, input.requestId, input), () => diagnosticResultApplication.create(context, input));
-    audit(context, "diagnostics.result", "DiagnosticResult", idempotentResult.value.id, "ALLOWED");
+    audit(context, "diagnostics.result", "DiagnosticResult", idempotentResult.value.id, "ALLOWED", null, {}, true, idempotentResult.receipt.id);
     if (persistence) {
       if (idempotentResult.replayed) await commitDurableRequest?.(request, reply, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, idempotentResult.value.id);
       else {
@@ -1476,6 +1654,16 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
       }
     }
     return response(reply, success({ result: idempotentResult.value, receiptId: idempotentResult.receipt.id }, context.correlationId), 201);
+  });
+
+  app.post("/api/v1/diagnostics/requests/:id/review", async (request, reply) => {
+    const session = requireSession(request); requireCsrf(request, session);
+    const requestId = id(parse(idSchema, (request.params as { id: string }).id));
+    const { context } = requestContext(request, "diagnostics.review", null, null, false, true, requestId);
+    const key = requireIdempotencyKey(request);
+    const result = await commandExecutor.execute(commandInput(context, "diagnostics.review", key, requestId, { requestId }), () => domainCommands.reviewDiagnosticRequest(context, requestId));
+    audit(context, "diagnostics.review", "DiagnosticRequest", result.value.id, "ALLOWED", result.replayed ? "idempotency replay" : null, { replayed: result.replayed }, true, result.receipt.id);
+    return response(reply, success({ request: result.value, receiptId: result.receipt.id }, context.correlationId));
   });
 
   app.get("/api/v1/diagnostics/results", async (request, reply) => {
@@ -1492,6 +1680,50 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     return response(reply, success({ items }, context.correlationId));
   });
 
+  app.get("/api/v1/stock/movements", async (request, reply) => {
+    const { context } = requestContext(request, "stock.read");
+    const items = await readApplication.listStockMovements(context);
+    audit(context, "stock.read", "StockMovement", null, "ALLOWED", null, { count: items.length });
+    return response(reply, success({ items: items.slice(-200).reverse() }, context.correlationId));
+  });
+
+  app.get("/api/v1/stock/locations", async (request, reply) => {
+    const { context } = requestContext(request, "stock.read");
+    const items = await readApplication.listStockLocations(context);
+    audit(context, "stock.read", "StockLocation", null, "ALLOWED", null, { count: items.length });
+    return response(reply, success({ items }, context.correlationId));
+  });
+
+  app.post("/api/v1/stock/products", async (request, reply) => {
+    const session = requireSession(request); requireCsrf(request, session);
+    const input = parse(productInputSchema, request.body);
+    const { context } = requestContext(request, "stock.write");
+    const key = requireIdempotencyKey(request);
+    const result = await commandExecutor.execute(commandInput(context, "stock.write", key, null, input), () => domainCommands.createProduct(context, input));
+    audit(context, "stock.write", "Product", result.value.id, "ALLOWED", result.replayed ? "idempotency replay" : null, { replayed: result.replayed }, true, result.receipt.id);
+    return response(reply, success({ product: result.value, receiptId: result.receipt.id }, context.correlationId), 201);
+  });
+
+  app.post("/api/v1/stock/lots", async (request, reply) => {
+    const session = requireSession(request); requireCsrf(request, session);
+    const input = parse(lotInputSchema, request.body);
+    const { context } = requestContext(request, "stock.write", null, null, false, true, input.productId);
+    const key = requireIdempotencyKey(request);
+    const result = await commandExecutor.execute(commandInput(context, "stock.write", key, input.productId, input), () => domainCommands.createLot(context, input));
+    audit(context, "stock.write", "Lot", result.value.lot.id, "ALLOWED", `entrada ${input.quantity}`, { replayed: result.replayed, movementId: result.value.movement?.id ?? null }, true, result.receipt.id);
+    return response(reply, success({ lot: result.value.lot, movement: result.value.movement, receiptId: result.receipt.id }, context.correlationId), 201);
+  });
+
+  app.post("/api/v1/stock/inventory", async (request, reply) => {
+    const session = requireSession(request); requireCsrf(request, session);
+    const input = parse(inventoryCountInputSchema, request.body);
+    const { context } = requestContext(request, "stock.inventory", null, null, false, true, input.lotId);
+    const key = requireIdempotencyKey(request);
+    const result = await commandExecutor.execute(commandInput(context, "stock.inventory", key, input.lotId, input), () => domainCommands.adjustStockInventory(context, input));
+    audit(context, "stock.inventory", "Lot", result.value.lot.id, "ALLOWED", input.reason, { delta: result.value.delta, movementId: result.value.movement?.id ?? null, replayed: result.replayed }, true, result.receipt.id);
+    return response(reply, success({ lot: result.value.lot, movement: result.value.movement, delta: result.value.delta, receiptId: result.receipt.id }, context.correlationId));
+  });
+
   app.post("/api/v1/stock/movements", async (request, reply) => {
     const session = requireSession(request); requireCsrf(request, session);
     const input = parse(stockMovementInputSchema, request.body);
@@ -1499,7 +1731,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const key = header(request, "idempotency-key");
     if (!key) throw new DomainError("INVALID_INPUT", "Idempotency-Key é obrigatório.", 400);
     const result = await commandExecutor.execute(commandInput(context, "stock.movement", key, input.lotId, input), () => domainCommands.createStockMovement(context, input));
-    audit(context, "stock.write", "StockMovement", result.value.id, "ALLOWED");
+    audit(context, "stock.write", "StockMovement", result.value.id, "ALLOWED", null, {}, true, result.receipt.id);
     return response(reply, success({ movement: result.value, receiptId: result.receipt.id }, context.correlationId), 201);
   });
 
@@ -1524,8 +1756,22 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const key = header(request, "idempotency-key");
     if (!key) throw new DomainError("INVALID_INPUT", "Idempotency-Key é obrigatório.", 400);
     const result = await commandExecutor.execute(commandInput(context, "hospitalization.create", key, input.patientId, input), () => domainCommands.createHospitalEpisode(context, input));
-    audit(context, "hospitalization.create", "HospitalEpisode", result.value.id, "ALLOWED");
+    audit(context, "hospitalization.create", "HospitalEpisode", result.value.id, "ALLOWED", null, {}, true, result.receipt.id);
     return response(reply, success({ episode: result.value, receiptId: result.receipt.id }, context.correlationId), 201);
+  });
+
+  app.get("/api/v1/medications/dispensations", async (request, reply) => {
+    const { context } = requestContext(request, "medication.read");
+    const items = await readApplication.listDispensations(context);
+    audit(context, "medication.read", "Dispensation", null, "ALLOWED", null, { count: items.length });
+    return response(reply, success({ items }, context.correlationId));
+  });
+
+  app.get("/api/v1/medications/administrations", async (request, reply) => {
+    const { context } = requestContext(request, "medication.read");
+    const items = await readApplication.listMedicationAdministrations(context);
+    audit(context, "medication.read", "AdministrationOccurrence", null, "ALLOWED", null, { count: items.length });
+    return response(reply, success({ items }, context.correlationId));
   });
 
   app.get("/api/v1/medications/orders", async (request, reply) => {
@@ -1542,7 +1788,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const key = header(request, "idempotency-key");
     if (!key) throw new DomainError("INVALID_INPUT", "Idempotency-Key é obrigatório.", 400);
     const result = await commandExecutor.execute(commandInput(context, "medication.prescribe", key, input.patientId, input), () => domainCommands.createMedicationOrder(context, input));
-    audit(context, "medication.prescribe", "MedicationOrder", result.value.id, "ALLOWED");
+    audit(context, "medication.prescribe", "MedicationOrder", result.value.id, "ALLOWED", null, {}, true, result.receipt.id);
     return response(reply, success({ order: result.value, receiptId: result.receipt.id }, context.correlationId), 201);
   });
 
@@ -1554,8 +1800,40 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const key = header(request, "idempotency-key");
     if (!key) throw new DomainError("INVALID_INPUT", "Idempotency-Key é obrigatório.", 400);
     const result = await commandExecutor.execute(commandInput(context, "medication.dispense", key, medicationOrderId, input), () => domainCommands.dispenseMedication(context, medicationOrderId, input.lotId, input.quantity));
-    audit(context, "medication.dispense", "Dispensation", result.value.id, "ALLOWED");
+    audit(context, "medication.dispense", "Dispensation", result.value.id, "ALLOWED", null, {}, true, result.receipt.id);
     return response(reply, success({ dispensation: result.value, receiptId: result.receipt.id }, context.correlationId), 201);
+  });
+
+  app.post("/api/v1/hospitalization/episodes/:id/status", async (request, reply) => {
+    const session = requireSession(request); requireCsrf(request, session);
+    const episodeId = id(parse(idSchema, (request.params as { id: string }).id));
+    const input = parse(hospitalEpisodeStatusInputSchema, request.body);
+    const { context } = requestContext(request, "hospitalization.update", null, null, false, true, episodeId);
+    const key = requireIdempotencyKey(request);
+    const result = await commandExecutor.execute(commandInput(context, "hospitalization.update", key, episodeId, input), () => domainCommands.updateHospitalEpisodeStatus(context, episodeId, input.status));
+    audit(context, "hospitalization.update", "HospitalEpisode", result.value.id, "ALLOWED", null, { status: result.value.status, replayed: result.replayed }, true, result.receipt.id);
+    return response(reply, success({ episode: result.value, receiptId: result.receipt.id }, context.correlationId));
+  });
+
+  app.post("/api/v1/hospitalization/episodes/:id/discharge", async (request, reply) => {
+    const session = requireSession(request); requireCsrf(request, session);
+    const episodeId = id(parse(idSchema, (request.params as { id: string }).id));
+    const { context } = requestContext(request, "hospitalization.discharge", null, null, false, true, episodeId);
+    const key = requireIdempotencyKey(request);
+    const result = await commandExecutor.execute(commandInput(context, "hospitalization.discharge", key, episodeId, { episodeId }), () => domainCommands.dischargeHospitalEpisode(context, episodeId));
+    audit(context, "hospitalization.discharge", "HospitalEpisode", result.value.id, "ALLOWED", "alta com documento assinado e prescrições decididas", { replayed: result.replayed }, true, result.receipt.id);
+    return response(reply, success({ episode: result.value, receiptId: result.receipt.id }, context.correlationId));
+  });
+
+  app.post("/api/v1/medications/orders/:id/status", async (request, reply) => {
+    const session = requireSession(request); requireCsrf(request, session);
+    const medicationOrderId = id(parse(idSchema, (request.params as { id: string }).id));
+    const input = parse(medicationOrderStatusInputSchema, request.body);
+    const { context } = requestContext(request, "medication.update", null, null, false, true, medicationOrderId);
+    const key = requireIdempotencyKey(request);
+    const result = await commandExecutor.execute(commandInput(context, "medication.update", key, medicationOrderId, input), () => domainCommands.updateMedicationOrderStatus(context, medicationOrderId, input.status));
+    audit(context, "medication.update", "MedicationOrder", result.value.id, "ALLOWED", null, { status: result.value.status, replayed: result.replayed }, true, result.receipt.id);
+    return response(reply, success({ order: result.value, receiptId: result.receipt.id }, context.correlationId));
   });
 
   app.post("/api/v1/medications/orders/:id/administer", async (request, reply) => {
@@ -1566,15 +1844,15 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const key = header(request, "idempotency-key");
     if (!key) throw new DomainError("INVALID_INPUT", "Idempotency-Key é obrigatório.", 400);
     const result = await commandExecutor.execute(commandInput(context, "medication.administer", key, medicationOrderId, input), () => domainCommands.administerMedication(context, medicationOrderId, input.status, input.note));
-    audit(context, "medication.administer", "AdministrationOccurrence", result.value.id, "ALLOWED");
+    audit(context, "medication.administer", "AdministrationOccurrence", result.value.id, "ALLOWED", null, {}, true, result.receipt.id);
     return response(reply, success({ occurrence: result.value, receiptId: result.receipt.id }, context.correlationId), 201);
   });
 
   app.get("/api/v1/finance/charges", async (request, reply) => {
     const { context } = requestContext(request, "finance.read");
-    const items = await readApplication.listCharges(context);
-    audit(context, "finance.read", "Charge", null, "ALLOWED", null, { count: items.length });
-    return response(reply, success({ items }, context.correlationId));
+    const [items, balance] = await Promise.all([readApplication.listCharges(context), readApplication.financeBalance(context)]);
+    audit(context, "finance.read", "Charge", null, "ALLOWED", null, { count: items.length, balanceState: balance.state });
+    return response(reply, success({ items, balance }, context.correlationId));
   });
 
   app.post("/api/v1/finance/charges", async (request, reply) => {
@@ -1583,7 +1861,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const { context } = requestContext(request, "finance.charge", input.patientId, null, false, true, input.patientId);
     const key = requireIdempotencyKey(request);
     const result = await commandExecutor.execute(commandInput(context, "finance.charge", key, input.patientId, input), () => domainCommands.createCharge(context, input));
-    audit(context, "finance.charge", "Charge", result.value.id, "ALLOWED");
+    audit(context, "finance.charge", "Charge", result.value.id, "ALLOWED", null, {}, true, result.receipt.id);
     return response(reply, success({ charge: result.value, receiptId: result.receipt.id }, context.correlationId), 201);
   });
 
@@ -1594,7 +1872,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const key = header(request, "idempotency-key");
     if (!key) throw new DomainError("INVALID_INPUT", "Idempotency-Key é obrigatório.", 400);
     const result = await commandExecutor.execute(commandInput(context, "finance.payment", key, input.chargeId, input), () => domainCommands.createPayment(context, input));
-    audit(context, "finance.payment", "Payment", result.value.id, "ALLOWED");
+    audit(context, "finance.payment", "Payment", result.value.id, "ALLOWED", null, {}, true, result.receipt.id);
     return response(reply, success({ payment: result.value, receiptId: result.receipt.id }, context.correlationId), 201);
   });
 
@@ -1619,7 +1897,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const key = header(request, "idempotency-key");
     if (!key) throw new DomainError("INVALID_INPUT", "Idempotency-Key é obrigatório.", 400);
     const result = await commandExecutor.execute(commandInput(context, "finance.refund", key, input.paymentId, input), () => domainCommands.requestRefund(context, input.paymentId, input.reason));
-    audit(context, "finance.refund", "Payment", input.paymentId, "ALLOWED", "ledger compensatório criado");
+    audit(context, "finance.refund", "Payment", input.paymentId, "ALLOWED", "ledger compensatório criado", {}, true, result.receipt.id);
     return response(reply, success({ payment: result.value, receiptId: result.receipt.id }, context.correlationId), 202);
   });
 
@@ -1636,7 +1914,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const { context } = requestContext(request, "communication.stage", input.patientId, null, false, true, input.patientId);
     const key = requireIdempotencyKey(request);
     const result = await commandExecutor.execute(commandInput(context, "communication.stage", key, input.patientId, input), () => domainCommands.createMessage(context, input));
-    audit(context, "communication.stage", "CommunicationMessage", result.value.id, "ALLOWED");
+    audit(context, "communication.stage", "CommunicationMessage", result.value.id, "ALLOWED", null, {}, true, result.receipt.id);
     return response(reply, success({ message: result.value, receiptId: result.receipt.id }, context.correlationId), 201);
   });
 
@@ -1651,7 +1929,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     if (input.decision === "approved" && !result.replayed) {
       durableOutboxes.set(request, [{ id: id(randomUUID()), organizationId: context.organizationId, eventType: "communication.message.approved", aggregateId: messageId, payload: { source: "CVG_COMMUNICATION_APPROVAL", messageId, channel: result.value.channel, recipient: result.value.recipient, template: result.value.template, body: result.value.body } }]);
     }
-    audit(context, "communication.approve", "CommunicationMessage", messageId, "ALLOWED", input.reason);
+    audit(context, "communication.approve", "CommunicationMessage", messageId, "ALLOWED", input.reason, {}, true, result.receipt.id);
     return response(reply, success({ message: result.value, receiptId: result.receipt.id, queued: input.decision === "approved" }, context.correlationId), input.decision === "approved" ? 202 : 200);
   });
 
@@ -1669,7 +1947,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const key = header(request, "idempotency-key");
     if (!key) throw new DomainError("INVALID_INPUT", "Idempotency-Key é obrigatório.", 400);
     const result = await commandExecutor.execute(commandInput(context, "knowledge.write", key, null, input), () => domainCommands.createKnowledgeDocument(context, input));
-    audit(context, "knowledge.write", "KnowledgeDocument", result.value.id, "ALLOWED", "documento aguardando validação humana");
+    audit(context, "knowledge.write", "KnowledgeDocument", result.value.id, "ALLOWED", "documento aguardando validação humana", {}, true, result.receipt.id);
     return response(reply, success({ document: { ...result.value, content: undefined }, receiptId: result.receipt.id }, context.correlationId), 201);
   });
 
@@ -1692,7 +1970,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const { context } = requestContext(request, `ai.turn.${input.purpose}`, input.patientId, input.encounterId, false, true, input.resourceId ?? null);
     const result = await agentApplication.executeTurn(context, input);
     const turnResult = result.value;
-    audit(context, "ai.turn", "AiTurn", turnResult.turn.id, turnResult.turn.status === "DENIED" ? "DENIED" : "ALLOWED", turnResult.turn.status === "QUARANTINED" ? "untrusted content quarantined" : null, { inputTokens: turnResult.turn.inputTokens, outputTokens: turnResult.turn.outputTokens, provider: turnResult.provenance.provider, replay: result.replayed });
+    audit(context, "ai.turn", "AiTurn", turnResult.turn.id, turnResult.turn.status === "DENIED" ? "DENIED" : "ALLOWED", turnResult.turn.status === "QUARANTINED" ? "untrusted content quarantined" : null, { inputTokens: turnResult.turn.inputTokens, outputTokens: turnResult.turn.outputTokens, provider: turnResult.provenance.provider, replay: result.replayed }, true, result.receipt.id);
     return response(reply, success({ ...turnResult, receiptId: result.receipt.id }, context.correlationId), turnResult.approval ? 202 : 201);
   });
 
@@ -1703,7 +1981,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const { context } = requestContext(request, "ai.approval", null, null, false, true, approvalId);
     const key = requireIdempotencyKey(request);
     const result = await agentApplication.approve(context, approvalId, input.decision, input.reason, key);
-    audit(context, "ai.approval", "AiApproval", result.value.id, "ALLOWED", input.reason);
+    audit(context, "ai.approval", "AiApproval", result.value.id, "ALLOWED", input.reason, {}, true, result.receipt.id);
     return response(reply, success({ approval: result.value, receiptId: result.receipt.id }, context.correlationId));
   });
 
@@ -1715,7 +1993,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const { context } = requestContext(request, "ai.approval.retry", input.patientId, input.encounterId, false, true, input.resourceId ?? approvalId);
     const result = await agentApplication.retryTurn(context, input, approvalId);
     const turnResult = result.value;
-    audit(context, "ai.approval.retry", "AiTurn", turnResult.turn.id, "ALLOWED", "dispatch revalidado após approval", { provider: turnResult.provenance.provider, replay: result.replayed });
+    audit(context, "ai.approval.retry", "AiTurn", turnResult.turn.id, "ALLOWED", "dispatch revalidado após approval", { provider: turnResult.provenance.provider, replay: result.replayed }, true, result.receipt.id);
     return response(reply, success({ ...turnResult, receiptId: result.receipt.id }, context.correlationId), turnResult.approval ? 202 : 201);
   });
 
@@ -1725,7 +2003,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const { context } = requestContext(request, "ai.draft.promote", null, null, false, true, draftId);
     const key = requireIdempotencyKey(request);
     const result = await agentApplication.promoteDraft(context, draftId, key);
-    audit(context, "ai.draft.promote", "AiDraft", draftId, "ALLOWED", "explicit human promotion");
+    audit(context, "ai.draft.promote", "AiDraft", draftId, "ALLOWED", "explicit human promotion", {}, true, result.receipt.id);
     return response(reply, success({ ...result.value, receiptId: result.receipt.id }, context.correlationId));
   });
 
@@ -1735,6 +2013,56 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const replay = await agentApplication.replay(context, sessionId);
     audit(context, "ai.replay", "AiSession", sessionId, "ALLOWED", null, { digest: replay.digest });
     return response(reply, success(replay, context.correlationId));
+  });
+
+  app.get("/api/v1/knowledge/search", async (request, reply) => {
+    const { context } = requestContext(request, "knowledge.search");
+    const query = request.query as Record<string, unknown>;
+    const items = await readApplication.searchKnowledge(context, typeof query.q === "string" ? query.q : "");
+    audit(context, "knowledge.search", "KnowledgeDocument", null, "ALLOWED", null, { count: items.length });
+    return response(reply, success({ items }, context.correlationId));
+  });
+
+  app.get("/api/v1/knowledge/:id/index", async (request, reply) => {
+    const documentId = id(parse(idSchema, (request.params as { id: string }).id));
+    const { context } = requestContext(request, "knowledge.read", null, null, false, false, documentId);
+    const index = await readApplication.getKnowledgeIndex(context, documentId);
+    if (!index) throw new DomainError("NOT_FOUND", "Recurso não encontrado.", 404);
+    audit(context, "knowledge.read", "KnowledgeDocument", documentId, "ALLOWED", null, { chunks: index.chunks.length });
+    return response(reply, success(index, context.correlationId));
+  });
+
+  app.post("/api/v1/knowledge/:id/approve", async (request, reply) => {
+    const session = requireSession(request); requireCsrf(request, session);
+    const documentId = id(parse(idSchema, (request.params as { id: string }).id));
+    const input = parse(knowledgeVersionInputSchema, request.body ?? {});
+    const { context } = requestContext(request, "knowledge.approve", null, null, false, true, documentId);
+    const key = requireIdempotencyKey(request);
+    const result = await commandExecutor.execute(commandInput(context, "knowledge.approve", key, documentId, input), () => domainCommands.approveKnowledgeDocument(context, documentId, input.expectedVersion));
+    audit(context, "knowledge.approve", "KnowledgeDocument", result.value.id, "ALLOWED", null, { version: result.value.version, replayed: result.replayed }, true, result.receipt.id);
+    return response(reply, success({ document: result.value, receiptId: result.receipt.id }, context.correlationId));
+  });
+
+  app.post("/api/v1/knowledge/:id/index", async (request, reply) => {
+    const session = requireSession(request); requireCsrf(request, session);
+    const documentId = id(parse(idSchema, (request.params as { id: string }).id));
+    const input = parse(knowledgeVersionInputSchema, request.body ?? {});
+    const { context } = requestContext(request, "knowledge.index", null, null, false, true, documentId);
+    const key = requireIdempotencyKey(request);
+    const result = await commandExecutor.execute(commandInput(context, "knowledge.index", key, documentId, input), () => domainCommands.indexKnowledgeDocument(context, documentId, input.expectedVersion));
+    audit(context, "knowledge.index", "KnowledgeDocument", result.value.id, "ALLOWED", null, { version: result.value.version, replayed: result.replayed }, true, result.receipt.id);
+    return response(reply, success({ document: result.value, receiptId: result.receipt.id }, context.correlationId));
+  });
+
+  app.post("/api/v1/knowledge/:id/quarantine", async (request, reply) => {
+    const session = requireSession(request); requireCsrf(request, session);
+    const documentId = id(parse(idSchema, (request.params as { id: string }).id));
+    const input = parse(knowledgeQuarantineInputSchema, request.body);
+    const { context } = requestContext(request, "knowledge.quarantine", null, null, false, true, documentId);
+    const key = requireIdempotencyKey(request);
+    const result = await commandExecutor.execute(commandInput(context, "knowledge.quarantine", key, documentId, input), () => domainCommands.quarantineKnowledgeDocument(context, documentId, input.reason, input.expectedVersion));
+    audit(context, "knowledge.quarantine", "KnowledgeDocument", result.value.id, "ALLOWED", input.reason, { version: result.value.version, replayed: result.replayed }, true, result.receipt.id);
+    return response(reply, success({ document: result.value, receiptId: result.receipt.id }, context.correlationId));
   });
 
   app.get("/api/v1/capabilities", async (request, reply) => {
@@ -1766,6 +2094,134 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const summary = { appointmentsToday: appointments.length, waitingPatients: waiting.length, lowStockItems: lowStock.length, openCharges: openCharges.length, ai: { provider: runtimeHealth.capabilities.provider, tools: runtimeHealth.capabilities.toolNames.length, status: runtimeHealth.status }, unit: context.unitId ? store.units.get(context.unitId)?.name ?? "" : "Organização" };
     audit(context, "operations.summary", "Dashboard", null, "ALLOWED");
     return response(reply, success(summary, context.correlationId));
+  });
+
+  /**
+   * Bounded operational reports use the read application boundary and return
+   * aggregates/safe identifiers only. The report is deliberately filterable
+   * by kind and time window so dashboards cannot mistake a fixed fixture for
+   * live operational data.
+   */
+  app.get("/api/v1/operations/reports", async (request, reply) => {
+    const { context } = requestContext(request, "operations.reports");
+    const query = request.query as Record<string, unknown>;
+    const kind = typeof query.kind === "string" ? query.kind : "operation";
+    const validKinds = new Set(["operation", "quality", "cost", "audit", "incidents"]);
+    if (!validKinds.has(kind)) throw new DomainError("INVALID_INPUT", "O tipo de relatório deve ser operation, quality, cost, audit ou incidents.", 400);
+    const parseBoundary = (value: unknown, field: string): string | null => {
+      if (value === undefined || value === null || value === "") return null;
+      if (typeof value !== "string" || !Number.isFinite(Date.parse(value))) throw new DomainError("INVALID_INPUT", `${field} deve ser uma data ISO válida.`, 400);
+      return new Date(value).toISOString();
+    };
+    const from = parseBoundary(query.from, "from");
+    const to = parseBoundary(query.to, "to");
+    if (from && to && Date.parse(from) > Date.parse(to)) throw new DomainError("INVALID_INPUT", "from não pode ser posterior a to.", 400);
+    const parsedLimit = Number(query.limit ?? 50);
+    const limit = Number.isSafeInteger(parsedLimit) ? Math.min(100, Math.max(1, parsedLimit)) : 50;
+    const inWindow = (value: unknown): boolean => {
+      if (!from && !to) return true;
+      if (typeof value !== "string" || !Number.isFinite(Date.parse(value))) return false;
+      const timestamp = Date.parse(value);
+      return (!from || timestamp >= Date.parse(from)) && (!to || timestamp <= Date.parse(to));
+    };
+    const source = {
+      boundary: "ReadApplicationService",
+      storageMode: store.storageMode,
+      organizationId: context.organizationId,
+      unitId: context.unitId,
+      workspaceId: context.workspaceId,
+      generatedAt: now(),
+      filters: { kind, from, to, limit },
+      bounded: true
+    };
+    const scopedCommandReceipts = [...store.commandReceipts.values()].filter((receipt) => receipt.organizationId === context.organizationId
+      && (!context.unitId || receipt.unitId === context.unitId)
+      && (!context.workspaceId || receipt.workspaceId === context.workspaceId));
+    const statusCounts = (items: readonly { status: string }[]): Record<string, number> => {
+      const counts: Record<string, number> = {};
+      for (const item of items) counts[item.status] = (counts[item.status] ?? 0) + 1;
+      return counts;
+    };
+    let report: Record<string, unknown>;
+    if (kind === "operation") {
+      const [appointments, queue, stock, beds, episodes, messages] = await Promise.all([
+        readApplication.listAppointments(context, "week"),
+        readApplication.listQueue(context),
+        readApplication.listStock(context),
+        readApplication.listBeds(context),
+        readApplication.listHospitalEpisodes(context),
+        readApplication.listMessages(context)
+      ]);
+      const scopedAppointments = appointments.filter((item) => inWindow(item.startsAt));
+      const scopedQueue = queue.filter((item) => inWindow(item.checkedInAt));
+      const scopedStock = stock.filter((item) => inWindow(item.expiresOn));
+      const scopedEpisodes = episodes.filter((item) => item.admittedAt === null || inWindow(item.admittedAt));
+      const scopedMessages = messages.filter((item) => inWindow(item.createdAt));
+      report = {
+        appointments: { total: scopedAppointments.length, byStatus: statusCounts(scopedAppointments) },
+        queue: { total: scopedQueue.length, waiting: scopedQueue.filter((item) => item.status === "WAITING").length, byStatus: statusCounts(scopedQueue) },
+        stock: { totalLots: scopedStock.length, lowStockLots: scopedStock.filter((item) => (item.product?.reorderPoint ?? 0) >= item.quantity).length },
+        hospitalization: { beds: statusCounts(beds), episodes: statusCounts(scopedEpisodes) },
+        communications: { total: scopedMessages.length, byStatus: statusCounts(scopedMessages) }
+      };
+    } else if (kind === "quality") {
+      const [documents, results, auditRecords] = await Promise.all([
+        readApplication.listClinicalDocuments(context),
+        readApplication.listDiagnosticResults(context),
+        readApplication.listAudit(context, 100)
+      ]);
+      const scopedDocuments = documents.filter((item) => inWindow(item.createdAt));
+      const scopedResults = results.filter((item) => inWindow(item.createdAt));
+      const scopedAudit = auditRecords.filter((item) => inWindow(item.createdAt));
+      const receipts = scopedCommandReceipts.filter((item) => inWindow(item.createdAt));
+      report = {
+        clinical: { total: scopedDocuments.length, byStatus: statusCounts(scopedDocuments), unsigned: scopedDocuments.filter((item) => item.status === "DRAFT" || item.status === "REVIEW").length },
+        diagnostics: { total: scopedResults.length, byStatus: statusCounts(scopedResults), quarantined: scopedResults.filter((item) => item.status === "QUARANTINED").length },
+        audit: { records: scopedAudit.length, denied: scopedAudit.filter((item) => item.result !== "ALLOWED").length },
+        receipts: { total: receipts.length, unknown: receipts.filter((item) => item.status === "OUTCOME_UNKNOWN").length, unlinked: receipts.filter((item) => item.status === "SUCCEEDED" && item.auditRecordId === null).length },
+        quarantine: { total: store.quarantined.length }
+      };
+    } else if (kind === "cost") {
+      const [charges, payments, balance] = await Promise.all([
+        readApplication.listCharges(context),
+        readApplication.listPayments(context),
+        readApplication.financeBalance(context)
+      ]);
+      const scopedCharges = charges.filter((item) => inWindow(item.createdAt));
+      const chargeIds = new Set(scopedCharges.map((item) => item.id));
+      const scopedPayments = payments.filter((item) => chargeIds.has(item.chargeId) && inWindow(item.createdAt));
+      report = {
+        currentBalance: balance,
+        window: {
+          charges: { total: scopedCharges.length, amountCents: scopedCharges.reduce((sum, item) => sum + item.amountCents, 0), byStatus: statusCounts(scopedCharges) },
+          payments: { total: scopedPayments.length, settledAmountCents: scopedPayments.filter((item) => item.status === "SETTLED").reduce((sum, item) => sum + item.amountCents, 0), byStatus: statusCounts(scopedPayments) }
+        }
+      };
+    } else if (kind === "audit") {
+      const auditRecords = (await readApplication.listAudit(context, 100)).filter((item) => inWindow(item.createdAt)).slice(0, limit);
+      report = {
+        total: auditRecords.length,
+        byAction: Object.fromEntries(Object.entries(auditRecords.reduce<Record<string, number>>((counts, item) => { counts[item.action] = (counts[item.action] ?? 0) + 1; return counts; }, {})).sort(([left], [right]) => left.localeCompare(right))),
+        items: auditRecords.map((item) => ({ id: item.id, action: item.action, resourceType: item.resourceType, result: item.result, correlationId: item.correlationId, createdAt: item.createdAt }))
+      };
+    } else {
+      const [auditRecords, operational, agentHealth] = await Promise.all([
+        readApplication.listAudit(context, 100),
+        operationalMetricsApplication.read(context),
+        agentRuntime.health()
+      ]);
+      const receipts = scopedCommandReceipts;
+      const incidents = auditRecords.filter((item) => item.result !== "ALLOWED" && inWindow(item.createdAt)).slice(0, limit);
+      report = {
+        runtime: { status: agentHealth.status, provider: agentHealth.capabilities.provider },
+        queue: operational.queueSignals,
+        audit: { denied: incidents.length, items: incidents.map((item) => ({ id: item.id, action: item.action, result: item.result, reason: item.reason, correlationId: item.correlationId, createdAt: item.createdAt })) },
+        receipts: { outcomeUnknown: receipts.filter((item) => item.status === "OUTCOME_UNKNOWN" && inWindow(item.createdAt)).length, inFlight: receipts.filter((item) => item.status === "IN_FLIGHT" && inWindow(item.createdAt)).length },
+        quarantine: { total: store.quarantined.length }
+      };
+    }
+    audit(context, "operations.reports", "OperationsReport", null, "ALLOWED", null, { kind, from, to, limit });
+    return response(reply, success({ kind, source, report }, context.correlationId));
   });
 
   app.get("/api/v1/metrics", async (request, reply) => {
@@ -1840,7 +2296,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const input = parse(governedExportInputSchema, request.body);
     const idempotencyKey = requireIdempotencyKey(request);
     const result = await exportApplication.create(context, input, idempotencyKey);
-    audit(context, "ops.export", "RecoveryBundle", result.value.exportId, "ALLOWED", null, { purposeDigest: result.value.purposeDigest, expiresAt: result.value.expiresAt, payloadDigest: result.value.envelope.payloadDigest, exportDigest: governedExportDigest(result.value) });
+    audit(context, "ops.export", "RecoveryBundle", result.value.exportId, "ALLOWED", null, { purposeDigest: result.value.purposeDigest, expiresAt: result.value.expiresAt, payloadDigest: result.value.envelope.payloadDigest, exportDigest: governedExportDigest(result.value) }, true, result.receipt.id);
     return response(reply, success({ ...result.value, receiptId: result.receipt.id, replayed: result.replayed }, context.correlationId), 201);
   });
 

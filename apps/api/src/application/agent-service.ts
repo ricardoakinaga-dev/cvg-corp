@@ -21,7 +21,7 @@ export class AgentApplicationService {
   async executeTurn(context: CvgContext, input: AiTurnInput): Promise<IdempotentCommandResult<AgentTurnResult>> {
     this.store.validateContext(context);
     enforceApplicationPolicy(context, `ai.turn.${input.purpose}`, { resourceId: input.resourceId ?? input.encounterId ?? input.patientId });
-    return this.commands.execute(this.command(context, "ai.turn", input.idempotencyKey, input.sessionId, input), async () => this.persistRuntimeResult(context, await this.runtime.executeTurn(context, input, input.approvalId)), { external: true });
+    return this.commands.execute(this.command(context, "ai.turn", input.idempotencyKey, input.sessionId, input), async () => this.persistRuntimeResult(context, input, await this.runtime.executeTurn(context, input, input.approvalId)), { external: true });
   }
 
   async approve(context: CvgContext, approvalId: OpaqueId, decision: "allowed-once" | "rejected", reason: string | null, idempotencyKey: string): Promise<IdempotentCommandResult<AiApproval>> {
@@ -33,7 +33,7 @@ export class AgentApplicationService {
   async retryTurn(context: CvgContext, input: AiTurnInput, approvalId: OpaqueId): Promise<IdempotentCommandResult<AgentTurnResult>> {
     this.store.validateContext(context);
     enforceApplicationPolicy(context, "ai.approval.retry", { resourceId: input.resourceId ?? input.encounterId ?? approvalId });
-    return this.commands.execute(this.command(context, "ai.approval.retry", input.idempotencyKey, approvalId, input), async () => this.persistRuntimeResult(context, await this.runtime.executeTurn(context, input, approvalId)), { external: true });
+    return this.commands.execute(this.command(context, "ai.approval.retry", input.idempotencyKey, approvalId, input), async () => this.persistRuntimeResult(context, input, await this.runtime.executeTurn(context, input, approvalId)), { external: true });
   }
 
   async promoteDraft(context: CvgContext, draftId: OpaqueId, idempotencyKey: string): Promise<IdempotentCommandResult<AgentDraftPromotion>> {
@@ -58,41 +58,75 @@ export class AgentApplicationService {
    * turn to the authenticated scope and creates one durable usage identity for
    * the exact turn before the HTTP transaction is committed.
    */
-  private persistRuntimeResult(context: CvgContext, result: AgentTurnResult): AgentTurnResult {
+  private currentAuthorityReason(context: CvgContext, session: AgentTurnResult["session"], input: AiTurnInput): string | null {
+    try {
+      this.store.validateContext(context);
+      const current = this.store.aiSessions.get(session.id);
+      if (!current || current.id !== session.id || current.status !== "ACTIVE" || current.organizationId !== context.organizationId || current.actorId !== context.actorId || current.unitId !== context.unitId || current.workspaceId !== context.workspaceId || current.purpose !== input.purpose || current.patientId !== input.patientId || current.encounterId !== input.encounterId || (input.sessionId !== null && input.sessionId !== session.id)) return "AI_TURN_AUTHORITY_REVOKED";
+      const resourceId = input.resourceId ?? input.encounterId;
+      if (resourceId) {
+        const encounter = this.store.encounters.get(resourceId);
+        if (encounter && (encounter.organizationId !== context.organizationId || encounter.unitId !== context.unitId || encounter.workspaceId !== context.workspaceId || encounter.patientId !== (input.patientId ?? encounter.patientId))) return "AI_TURN_RESOURCE_SCOPE_CHANGED";
+      }
+      return null;
+    } catch {
+      return "AI_TURN_AUTHORITY_REVOKED";
+    }
+  }
+
+  private persistRuntimeResult(context: CvgContext, input: AiTurnInput, result: AgentTurnResult): AgentTurnResult {
     const { session, turn } = result;
     if (session.organizationId !== context.organizationId || session.actorId !== context.actorId || session.unitId !== context.unitId || session.workspaceId !== context.workspaceId) {
       throw new DomainError("POLICY_DENIED", "O runtime retornou uma sessão fora do contexto autenticado.", 403);
     }
-    if (turn.sessionId !== session.id) throw new DomainError("QUARANTINED", "O runtime retornou um turno desvinculado da sessão.", 503);
+    if (turn.sessionId !== session.id || (input.sessionId !== null && input.sessionId !== session.id)) throw new DomainError("QUARANTINED", "O runtime retornou um turno desvinculado da sessão.", 503);
 
-    const references = [...turn.references];
-    const referencesDigest = digest(references);
-    const units = turn.inputTokens + turn.outputTokens;
     const existingUsage = turn.usage;
-    const settlement = existingUsage?.settlement ?? {
+    const validInputTokens = Number.isSafeInteger(turn.inputTokens) && turn.inputTokens >= 0 ? turn.inputTokens : 0;
+    const validOutputTokens = Number.isSafeInteger(turn.outputTokens) && turn.outputTokens >= 0 ? turn.outputTokens : 0;
+    const observedUnits = validInputTokens + validOutputTokens;
+    const candidateSettlement = existingUsage?.settlement;
+    const fallbackSettlement = {
       model: turn.model,
-      inputTokens: turn.inputTokens,
-      outputTokens: turn.outputTokens,
-      // A request id proves which attempt was made; it is not a digest of the
-      // provider response. Keep the response fact absent until the adapter
-      // supplies an actual response digest.
+      inputTokens: validInputTokens,
+      outputTokens: validOutputTokens,
+      // No production price is inferred at this boundary.
       providerResponseDigest: null,
       estimatedCost: { amountMicros: null, currency: null, source: "UNAVAILABLE" as const, pricingRevision: null },
       actualCost: { amountMicros: null, currency: null, source: "UNAVAILABLE" as const, pricingRevision: null },
       discrepancy: { status: "NOT_EVALUATED" as const, deltaMicros: null, reason: "provider pricing evidence was not supplied" }
     };
-    if (!aiUsageSettlementSchema.safeParse(settlement).success || settlement.model !== turn.model || settlement.inputTokens !== turn.inputTokens || settlement.outputTokens !== turn.outputTokens) {
-      throw new DomainError("QUARANTINED", "O settlement de usage não corresponde ao turno retornado pelo runtime.", 503);
-    }
+    const settlementValid = candidateSettlement !== undefined
+      && aiUsageSettlementSchema.safeParse(candidateSettlement).success
+      && candidateSettlement.model === turn.model
+      && candidateSettlement.inputTokens === validInputTokens
+      && candidateSettlement.outputTokens === validOutputTokens;
+    const settlement = settlementValid ? candidateSettlement : fallbackSettlement;
+    const stableReservationId = existingUsage?.reservationId && existingUsage.reservationId.trim() ? existingUsage.reservationId : null;
+    const hasStableSettlement = turn.status === "COMPLETED" && settlementValid && stableReservationId !== null && existingUsage?.status === "SETTLED";
+    let authorityReason = this.currentAuthorityReason(context, session, input);
+    let status: AgentTurnResult["turn"]["status"] = authorityReason || (turn.status === "COMPLETED" && !hasStableSettlement) ? "OUTCOME_UNKNOWN" : turn.status;
+
+    // This is deliberately adjacent to the persistence seam. No COMPLETED
+    // turn is persisted after a stale authority check.
+    if (status === "COMPLETED") authorityReason = this.currentAuthorityReason(context, session, input);
+    if (authorityReason) status = "OUTCOME_UNKNOWN";
+
+    const scrubOutput = authorityReason !== null || (turn.status === "COMPLETED" && status === "OUTCOME_UNKNOWN");
+    const references = scrubOutput ? [] : [...turn.references];
+    const referencesDigest = digest(references);
+    const consumedUnits = Math.max(observedUnits, Number.isSafeInteger(existingUsage?.consumedUnits) && (existingUsage?.consumedUnits ?? 0) >= 0 ? existingUsage!.consumedUnits : 0);
+    const reservedUnits = Number.isSafeInteger(existingUsage?.reservedUnits) && (existingUsage?.reservedUnits ?? 0) >= 0 ? existingUsage!.reservedUnits : observedUnits;
+    const usageStatus: AiTurnUsage["status"] = status === "OUTCOME_UNKNOWN" ? "RECONCILIATION_REQUIRED" : existingUsage?.status ?? (status === "RECEIVED" ? "RECEIVED" : "SETTLED");
     const usage: AiTurnUsage = {
       id: existingUsage?.id ?? makeId(),
-      reservationId: existingUsage?.reservationId ?? null,
+      reservationId: stableReservationId,
       providerRequestId: existingUsage?.providerRequestId ?? null,
-      idempotencyKey: `ai-turn:${turn.id}`,
+      idempotencyKey: existingUsage?.idempotencyKey ?? `ai-turn:${turn.id}`,
       usageKind: existingUsage?.usageKind ?? "TOKENS",
-      reservedUnits: units,
-      consumedUnits: units,
-      status: turn.status === "OUTCOME_UNKNOWN" ? "RECONCILIATION_REQUIRED" : "SETTLED",
+      reservedUnits,
+      consumedUnits,
+      status: usageStatus,
       record: {
         kind: "AI_TURN_USAGE",
         turnId: turn.id,
@@ -106,6 +140,10 @@ export class AgentApplicationService {
         correlationId: context.correlationId,
         referencesDigest,
         responseDigest: digest(turn.response ?? ""),
+        reservationId: stableReservationId,
+        reservedUnits,
+        consumedUnits,
+        settlementStatus: usageStatus,
         settlement
       },
       settlement
@@ -118,10 +156,11 @@ export class AgentApplicationService {
       correlationId: context.correlationId,
       usageRecordId: usage.id
     };
+    const safeTurn = { ...turn, status, response: scrubOutput ? null : turn.response, inputTokens: validInputTokens, outputTokens: validOutputTokens, references, provenance, usage };
     const persistedSession = this.store.persistAiSession({ ...session });
-    const persistedTurn = this.store.persistAiTurn({ ...turn, references, provenance, usage });
-    const persistedDraft = result.draft ? this.store.persistAiDraft({ ...result.draft }) : null;
-    const persistedApproval = result.approval ? this.store.persistAiApproval({ ...result.approval }) : null;
+    const persistedTurn = this.store.persistAiTurn(safeTurn);
+    const persistedDraft = status === "COMPLETED" && !scrubOutput && result.draft ? this.store.persistAiDraft({ ...result.draft }) : null;
+    const persistedApproval = !scrubOutput && result.approval ? this.store.persistAiApproval({ ...result.approval }) : null;
     return { ...result, session: persistedSession, turn: persistedTurn, draft: persistedDraft, approval: persistedApproval, provenance };
   }
 }

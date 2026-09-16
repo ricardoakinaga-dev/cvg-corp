@@ -1,0 +1,5 @@
+
+> cvg-corp@0.1.0 lint
+> tsx scripts/lint.ts
+
+lint passed: 169 repository source files checked

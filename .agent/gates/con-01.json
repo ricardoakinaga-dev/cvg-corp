@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "gate_id": "GATE-CVG-CON-01-001",
+  "task_id": "CON-01",
+  "status": "PASS",
+  "decision": "PASS",
+  "score": 9.5,
+  "critic_artifact": ".gauntlet/critique-con-01-final.md",
+  "subject": {
+    "head_sha": "1c22c5dc79c52151f4c7c94c4402dfdc86812cbc",
+    "worktree": "MODIFIED_OVERLAY",
+    "task_owned_paths": [
+      "docs/adr/030-contracts-session-finance-compatibility.md",
+      "packages/contracts/src/index.ts",
+      "packages/contracts/src/api-catalog.ts"
+    ],
+    "exclusive_resource": "contracts"
+  },
+  "bar": {
+    "path": ".gauntlet/bar-v4.json",
+    "sha256": "2093461a8d6103641a555ad45371dde4649e5f144c32260b80244e219fa70697"
+  },
+  "checks": [
+    {"command":"npm run typecheck","exit_code":0,"result":"PASS"},
+    {"command":"npm run test:contract","exit_code":0,"result":"PASS","summary":"5 tests, 5 pass, 0 fail, 0 skipped"},
+    {"command":"npm test","exit_code":0,"result":"PASS","summary":"330 tests, 329 pass, 1 skipped, 0 fail"},
+    {"command":"npm run lint","exit_code":0,"result":"PASS","summary":"169 repository source files checked"},
+    {"command":"npm run verify:pdp:runtime","exit_code":0,"result":"PASS","summary":"26 tests, 26 pass, 0 fail"},
+    {"command":"git diff --check","exit_code":0,"result":"PASS"},
+    {"command":"direct hostile sync/async contract matrix","exit_code":0,"result":"PASS","summary":"All four guarded schemas and five entry points; 17 hostile graph cases rejected"}
+  ],
+  "artifacts": {
+    "docs/adr/030-contracts-session-finance-compatibility.md": "2974306776dac09398dc3d2206a45a19eda24665261bd6e14bde15e58d73de41",
+    "packages/contracts/src/index.ts": "8e2e747efd78ad09178b0026ca94c58047996b2f8f53422ed4ee1cbd110338de",
+    "packages/contracts/src/api-catalog.ts": "a0539c4843658dc2c44195ec818860199f6044c8741e8fcfa50c640200c8a1b7",
+    ".gauntlet/bar-v4.json": "2093461a8d6103641a555ad45371dde4649e5f144c32260b80244e219fa70697"
+  },
+  "limitations": [
+    "Endpoint, client and domain migrations remain outside CON-01 scope and are documented in ADR 030.",
+    "npm run verify:static remains limited by stale operational evidence SHA/mtime checks outside the reserved paths.",
+    "The evidence is local and synthetic; provider, staging, release, production and global AAA approval remain AAA_NOT_PROVEN."
+  ],
+  "review": {
+    "required": true,
+    "independence": "I1",
+    "fresh_context": true,
+    "mutating_agent": false,
+    "minimum_score": 9
+  }
+}

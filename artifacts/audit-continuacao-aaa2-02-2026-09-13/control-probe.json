@@ -1,0 +1,44 @@
+{
+  "verification_records": 327,
+  "verification_ids_unique": true,
+  "execution_events": 392,
+  "event_ids_unique": true,
+  "current_slice_hashes_match": {
+    "packages/domain/src/index.ts": true,
+    "tests/unit/domain.test.ts": true,
+    "tests/integration/api.test.ts": true
+  },
+  "state_action": "AUD13-16:AAA2-02-E01-WAIT-D02",
+  "backlog_action": "AUD13-16:AAA2-02-E01-WAIT-D02",
+  "plan_marker": "AUD13-16:AAA2-02-E01-WAIT-D02",
+  "tail_action": "AUD13-16:AAA2-02-E01-WAIT-D02",
+  "first_concrete_step": "**AUD13-01:DONE** - reconciliação local concluída com limitação temporal aceita; nenhuma promoção global foi inferida.",
+  "first_step_matches_active_action": false,
+  "surface_pointers_match": true,
+  "slice_evidence_refs_resolve": true,
+  "parent_waits_for_child": {
+    "parent": "AUD13-16",
+    "child": "AUD13-16A",
+    "parent_next_action": {
+      "id": "AUD13-16:AAA2-02-E01-WAIT-D02",
+      "kind": "WAIT",
+      "summary": "E01 fechado localmente com ressalvas; aguardar D-02 para AUD13-16A sem reabrir o escopo clinico nem promover o item pai.",
+      "dependency": "D-02 e AUD13-16A",
+      "target": "apps/web/src/features/; apps/web/src/routes/; apps/api/src/application/; packages/domain/src/; tests/",
+      "completion_signal": "D-02 autorizado e AUD13-16A tiver contrato/migration aprovados; a evidencia local de E01 permanece preservada e AUD13-16/Triplo AAA nao sao fechados por inferencia."
+    },
+    "child_dependencies": [
+      "AUD13-16"
+    ],
+    "completion_cycle_observed": true
+  },
+  "aaa2_tasks_depending_only_on_reconciliation": [
+    "AAA2-02",
+    "AAA2-03",
+    "AAA2-05",
+    "AAA2-06",
+    "AAA2-08",
+    "AAA2-10",
+    "AAA2-19"
+  ]
+}

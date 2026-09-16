@@ -10,12 +10,12 @@ import { RUNTIME_STATES } from "../state/runtime-state";
 import type { View } from "../state/types";
 import { Shell } from "./Shell";
 
-const ROUTABLE_VIEWS: readonly View[] = ["overview", "agenda", "patients", "clinical", "stock", "finance", "copilot", "admin"];
+const ROUTABLE_VIEWS = ["overview", "agenda", "patients", "clinical", "exams", "hospital", "communications", "knowledge", "reports", "stock", "finance", "copilot", "admin"] as const satisfies readonly View[];
 
 function viewFromLocation(): View {
   if (typeof window === "undefined") return "overview";
-  const candidate = window.location.pathname.replace(/^\/+|\/+$/g, "") as View;
-  return ROUTABLE_VIEWS.includes(candidate) ? candidate : "overview";
+  const candidate = window.location.pathname.replace(/^\/+|\/+$/g, "");
+  return ROUTABLE_VIEWS.find((view) => view === candidate) ?? "overview";
 }
 
 function queryFromLocation(): string {
@@ -29,7 +29,7 @@ export function App() {
   runtimeStateRef.current = runtime.state;
   const client = useMemo(() => createApiClient(() => runtimeStateRef.current, runtime.reportFailure), [runtime.reportFailure]);
   const session = useSession(client, runtime);
-  const { toast, notify } = useToast();
+  const { toast, notify, dismiss } = useToast();
   const [view, setView] = useState<View>(viewFromLocation);
   const [patientSearchQuery, setPatientSearchQuery] = useState(queryFromLocation);
   const [composerBuffer, setComposerBuffer] = useState("");
@@ -61,9 +61,10 @@ export function App() {
   const handleLogin = (user: Parameters<typeof session.signIn>[0], contexts: Parameters<typeof session.signIn>[1]) => {
     setComposerBuffer("");
     setFocusShellMain(true);
-    setView("overview");
+    const initialView = viewFromLocation();
+    setView(initialView);
     setPatientSearchQuery("");
-    window.history.replaceState({}, "", "/");
+    window.history.replaceState({}, "", initialView === "overview" ? "/" : `/${initialView}`);
     session.signIn(user, contexts);
   };
 
@@ -92,8 +93,8 @@ export function App() {
   if (runtime.state === RUNTIME_STATES.REAUTH_REQUIRED) return <SessionBlockedState runtimeState={runtime.state} contexts={session.contexts} context={session.context} onContextChange={handleContextChange} onReset={handleReset} />;
   if (runtime.state === RUNTIME_STATES.PERMISSION_DENIED) return <SessionBlockedState runtimeState={runtime.state} contexts={session.contexts} context={session.context} onContextChange={handleContextChange} onReset={handlePermissionRecovery} />;
   if (session.status === "loading") return <main className="context-loading" aria-label="Validação da sessão"><StatePanel kind="loading" title="Confirmando sua sessão" body="Validando identidade, espaços autorizados e policy antes de exibir dados." /></main>;
-  if (!session.user) return <Login client={client} onLogin={handleLogin} />;
+  if (!session.user) return <Login client={client} onLogin={handleLogin} signOutNotice={session.signOutRecord} onRetryRevocation={session.retrySignOut} />;
   if (runtime.state === RUNTIME_STATES.CONTEXT_INVALID || !session.context) return <SessionBlockedState runtimeState={runtime.state} contexts={session.contexts} context={session.context} onContextChange={handleContextChange} onReset={handleReset} />;
 
-  return <Shell client={client} user={session.user} contexts={session.contexts} context={session.context} onContextChange={handleContextChange} view={view} onViewChange={changeView} globalSearchQuery={patientSearchQuery} onGlobalSearchQueryChange={setPatientSearchQuery} patientSearchQuery={patientSearchQuery} onLogout={() => void session.signOut()} toast={toast} notify={notify} runtimeState={runtime.state} composerBuffer={composerBuffer} onComposerBufferChange={setComposerBuffer} onRetry={() => runtime.transition({ type: "NETWORK_ONLINE" })} autoFocusMain={focusShellMain} />;
+  return <Shell client={client} user={session.user} contexts={session.contexts} context={session.context} onContextChange={handleContextChange} view={view} onViewChange={changeView} globalSearchQuery={patientSearchQuery} onGlobalSearchQueryChange={setPatientSearchQuery} patientSearchQuery={patientSearchQuery} onLogout={() => { setComposerBuffer(""); void session.signOut(); }} toast={toast} notify={notify} onDismissToast={dismiss} runtimeState={runtime.state} composerBuffer={composerBuffer} onComposerBufferChange={setComposerBuffer} onRetry={() => runtime.transition({ type: "NETWORK_ONLINE" })} autoFocusMain={focusShellMain} />;
 }

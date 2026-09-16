@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "gate_id": "GATE-CVG-AUD13-WAVE-2",
+  "task_id": "AUD13-WAVE-2",
+  "status": "PASS",
+  "decision": "PASS",
+  "score": 8.5,
+  "critic_artifact": null,
+  "subject": {
+    "head_sha": "1c22c5dc79c52151f4c7c94c4402dfdc86812cbc",
+    "worktree": "MODIFIED",
+    "wave": [
+      "AUD13-11",
+      "AUD13-08"
+    ]
+  },
+  "bar": {
+    "path": ".gauntlet/bar-v4.json",
+    "sha256": "2093461a8d6103641a555ad45371dde4649e5f144c32260b80244e219fa70697"
+  },
+  "checks": [
+    {
+      "command": "inventory coverage query (FR/UC/CTA/decisoes)",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "22/22 FRs, 7/7 UCs, 13/13 notify mapeados, 6/6 decisoes"
+    },
+    {
+      "command": "npx playwright test app.spec.ts (375/768/1440)",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "72 passed, 6 skipped"
+    },
+    {
+      "command": "npm test",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "349 testes: 348 pass, 1 skip, 0 fail"
+    },
+    {
+      "command": "npm run typecheck",
+      "exit_code": 0,
+      "result": "PASS"
+    },
+    {
+      "command": "npm run lint",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "171 arquivos"
+    }
+  ],
+  "artifact_digests": {
+    "docs/adr/031-journey-inventory-and-open-decisions.md": "d4461cecd0c0ef3d013e5efc60b70558173eacf7b50bcd99a94019a3a1e94e86",
+    "apps/web/src/features/agenda/Agenda.tsx": "25b63e420f617d62e7d94db2a48ccfa9d6828c42556f297fcd4bb7f7bb0d6671",
+    "apps/web/src/features/copilot/Copilot.tsx": "063e0d587dbe7be4652b3ec5c2e8ffc28cfad458ee95df5d00c8a68a4c085e52",
+    "apps/web/src/features/overview/Overview.tsx": "2e176bf023239a540e82cd7430fcd43aa358bac7640e7feed79f2445413eb7f5",
+    "tests/e2e/app.spec.ts": "1f89aa9f7f54436f8f3768284cfa44f44beb098f0802392d1389ed29626ccb33"
+  },
+  "verification_refs": [
+    "VER-CVG-AUD13-11-001",
+    "VER-CVG-AUD13-08-001"
+  ],
+  "review": "Onda de escopo documental+UI sem criticamente independente propria; AUD13-37 revisa o candidato integral. Nenhuma promocao.",
+  "recorded_at": "2026-09-13T11:12:30-03:00"
+}

@@ -1,0 +1,81 @@
+{
+  "schema_version": 1,
+  "gate_id": "GATE-CVG-AUD13-15",
+  "task_id": "AUD13-15",
+  "status": "PASS",
+  "decision": "PASS",
+  "score": 8.5,
+  "critic_artifact": null,
+  "subject": {
+    "head_sha": "1c22c5dc79c52151f4c7c94c4402dfdc86812cbc",
+    "worktree": "MODIFIED",
+    "task_owned_paths": [
+      "apps/web/src/features/",
+      "apps/api/src/application/diagnostic-service.ts",
+      "packages/domain/src/",
+      "tests/"
+    ],
+    "registered_surface_extensions": [
+      "apps/api/src/app.ts",
+      "apps/api/src/application/domain-command-service.ts",
+      "packages/agent-policy/src/index.ts",
+      "packages/contracts/src/api-catalog.ts",
+      "packages/domain/src/authorization.ts"
+    ]
+  },
+  "bar": {
+    "path": ".gauntlet/bar-v4.json",
+    "sha256": "2093461a8d6103641a555ad45371dde4649e5f144c32260b80244e219fa70697"
+  },
+  "checks": [
+    {
+      "command": "npm test",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "357 testes: 356 pass, 1 skip, 0 fail"
+    },
+    {
+      "command": "npm run test:database",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "61 testes"
+    },
+    {
+      "command": "npm run verify:pdp",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "catalogo+inventario e 26 runtime"
+    },
+    {
+      "command": "npx playwright test app.spec.ts (375/768/1440)",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "96 passed, 6 skipped"
+    },
+    {
+      "command": "npm run typecheck",
+      "exit_code": 0,
+      "result": "PASS"
+    },
+    {
+      "command": "npm run lint",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "172 arquivos"
+    }
+  ],
+  "residuals": [
+    "revisao e por pedido, nao por resultado (contrato sem reviewedBy)",
+    "integracao externa real de resultados (AUD13-28) e concorrencia PG (AUD13-23/36)"
+  ],
+  "verification_refs": [
+    "VER-CVG-AUD13-15-001"
+  ],
+  "artifact_digests": {
+    "apps/web/src/features/diagnostics/Exams.tsx": "6e1f6102c4db2ace1a08bc029d1df8011e5251971b81321cd593d5942718e6fa",
+    "packages/domain/src/index.ts": "996defe6248bad826d78491132543c8b45825cbf5cfccb922e05399fce278c1c",
+    "apps/api/src/app.ts": "5149c0dba69245ded899f6c7c1695198d5236242a4fbe9b007640cb63fa10bac",
+    "tests/e2e/app.spec.ts": "dcc06b4fe0efc9aad503cb263523ff6b6405ae894b2f09db10537f94f633e778"
+  },
+  "recorded_at": "2026-09-13T12:27:23-03:00"
+}

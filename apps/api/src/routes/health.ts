@@ -18,6 +18,17 @@ export interface HealthRouteDependencies {
   deepseekContextSignatureStatus: HealthDependencyStatus;
   secretProviderRequired: boolean;
   config: { demoMode: boolean; storageMode: "memory" | "postgres" };
+  /** Dynamic probes prevent a startup snapshot from masquerading as readiness. */
+  probes?: {
+    secretProviderStatus?: () => SecretProviderStatus | Promise<SecretProviderStatus>;
+    authMfaStatus?: () => HealthDependencyStatus | Promise<HealthDependencyStatus>;
+    deepseekBearerTokenStatus?: () => HealthDependencyStatus | Promise<HealthDependencyStatus>;
+    deepseekContextSignatureStatus?: () => HealthDependencyStatus | Promise<HealthDependencyStatus>;
+    policyStoreStatus?: () => "READY" | "UNAVAILABLE" | "DEGRADED" | Promise<"READY" | "UNAVAILABLE" | "DEGRADED">;
+  };
+  operationalMetrics?: {
+    readInternal(organizationId: string): Promise<{ queueSignals: { outboxDepth: number; oldestAgeMs: number; poisonMessages: number; reconciliationLag: number; workerHeartbeatAgeMs: number; workerHeartbeatCount: number }; outboxDependency: "READY" | "UNAVAILABLE" | "NOT_CONFIGURED" }>;
+  };
 }
 
 function send<T>(reply: FastifyReply, payload: ApiResponse<T>, statusCode = 200): FastifyReply {
@@ -41,22 +52,48 @@ export async function registerHealthRoutes(app: FastifyInstance, dependencies: H
     if (dependencies.persistence) {
       try { await dependencies.persistence.check(); } catch { database = "UNAVAILABLE"; }
     }
+    const [secretProvider, authMfa, deepseekBearerToken, deepseekContextSignature, policyStore] = await Promise.all([
+      dependencies.probes?.secretProviderStatus?.() ?? dependencies.secretProviderStatus,
+      dependencies.probes?.authMfaStatus?.() ?? dependencies.authMfaStatus,
+      dependencies.probes?.deepseekBearerTokenStatus?.() ?? dependencies.deepseekBearerTokenStatus,
+      dependencies.probes?.deepseekContextSignatureStatus?.() ?? dependencies.deepseekContextSignatureStatus,
+      dependencies.probes?.policyStoreStatus?.() ?? "READY"
+    ]);
     const agentHealth = await dependencies.agentRuntime.health();
+    let outbox: "READY" | "UNAVAILABLE" | "NOT_CONFIGURED" = dependencies.persistence ? "UNAVAILABLE" : "NOT_CONFIGURED";
+    let queueSignals = { outboxDepth: 0, oldestAgeMs: 0, poisonMessages: 0, reconciliationLag: 0, workerHeartbeatAgeMs: 0, workerHeartbeatCount: 0 };
+    if (dependencies.operationalMetrics) {
+      try {
+        const operational = await dependencies.operationalMetrics.readInternal(dependencies.store.bootstrapCredentials.organizationId);
+        outbox = operational.outboxDependency;
+        queueSignals = operational.queueSignals;
+      } catch {
+        outbox = dependencies.persistence ? "UNAVAILABLE" : "NOT_CONFIGURED";
+      }
+    }
     const checks = {
       database,
-      policyStore: "READY" as const,
-      secretProvider: dependencies.secretProviderStatus,
-      secretReferences: { deepseekBearerToken: dependencies.deepseekBearerTokenStatus, deepseekContextSignature: dependencies.deepseekContextSignatureStatus },
-      authMfa: dependencies.authMfaStatus,
+      policyStore,
+      secretProvider,
+      secretReferences: { deepseekBearerToken, deepseekContextSignature },
+      authMfa,
       agentRuntime: agentHealth.status,
-      outbox: "NOT_CONFIGURED" as const,
-      auditLedger: dependencies.persistence ? "READY" as const : "DEGRADED" as const
+      outbox,
+      auditLedger: dependencies.persistence && database === "READY" ? "READY" as const : dependencies.persistence ? "UNAVAILABLE" as const : "DEGRADED" as const,
+      queue: queueSignals
     };
     const demoOnly = dependencies.config.demoMode && dependencies.config.storageMode === "memory";
+    // Memory runtimes are valid only as explicit local/test boundaries. They
+    // report NOT_CONFIGURED/DEGRADED rather than READY, but those states do
+    // not become failures until a durable dependency was actually configured;
+    // an unavailable configured dependency always blocks readiness.
+    const persistenceReady = checks.database !== "UNAVAILABLE";
+    const outboxReady = checks.outbox !== "UNAVAILABLE";
+    const auditReady = checks.auditLedger !== "UNAVAILABLE";
     const providerReady = !dependencies.secretProviderRequired || checks.secretProvider === "READY" || demoOnly;
     const referencesReady = Object.values(checks.secretReferences).every((status) => status === "READY" || status === "NOT_REQUIRED");
     const mfaReady = checks.authMfa === "READY" || checks.authMfa === "NOT_REQUIRED";
-    const ready = dependencies.store.healthStatus === "READY" && database !== "UNAVAILABLE" && providerReady && referencesReady && mfaReady && checks.agentRuntime === "READY";
+    const ready = dependencies.store.healthStatus === "READY" && persistenceReady && outboxReady && auditReady && checks.policyStore === "READY" && providerReady && referencesReady && mfaReady && checks.agentRuntime === "READY";
     return send(reply, success({ ready, status: dependencies.store.healthStatus, checks }, randomUUID()), ready ? 200 : 503);
   });
 }

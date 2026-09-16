@@ -1,0 +1,192 @@
+[WebServer] (node:693161) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+[WebServer] (node:693175) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+[WebServer] (node:693681) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+
+Running 40 tests using 8 workers
+
+(node:693826) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+(node:693786) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+(node:693818) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+(node:693787) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+(node:693793) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+(node:693805) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+(node:693799) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+(node:693812) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1/40] [chromium-wide-1440] › tests/e2e/app.spec.ts:3:1 › demonstração local atravessa login, dashboard e pacientes
+[2/40] [chromium-mobile-375] › tests/e2e/audit-findings.spec.ts:4:1 › audit: paid charge is included in open total
+[3/40] [chromium-stress] › tests/e2e/accessibility.spec.ts:14:1 › login, dashboard and every primary route remain axe-clean
+[4/40] [chromium-wide-1440] › tests/e2e/audit-findings.spec.ts:4:1 › audit: paid charge is included in open total
+[5/40] [chromium-mobile-375] › tests/e2e/app.spec.ts:3:1 › demonstração local atravessa login, dashboard e pacientes
+[6/40] [chromium-stress] › tests/e2e/accessibility-stress.spec.ts:14:1 › reflow, reduced motion and DPR remain usable
+[7/40] [chromium-mobile-375] › tests/e2e/audit-findings.spec.ts:15:1 › audit: logout failure leaves session usable after reload
+[8/40] [chromium-mobile-375] › tests/e2e/accessibility.spec.ts:14:1 › login, dashboard and every primary route remain axe-clean
+[9/40] [chromium-wide-1440] › tests/e2e/accessibility.spec.ts:14:1 › login, dashboard and every primary route remain axe-clean
+[10/40] [chromium-wide-1440] › tests/e2e/audit-findings.spec.ts:15:1 › audit: logout failure leaves session usable after reload
+[11/40] [chromium-stress] › tests/e2e/accessibility-stress.spec.ts:35:1 › touch input capability is exposed when the engine supports it
+[12/40] [chromium-wide-1440] › tests/e2e/app.spec.ts:18:1 › troca de contexto no menu móvel fecha o drawer e preserva o foco
+[13/40] [chromium-wide-1440] › tests/e2e/app.spec.ts:33:1 › rotas e controles permanecem utilizáveis sem overflow
+[14/40] [chromium-mobile-375] › tests/e2e/app.spec.ts:18:1 › troca de contexto no menu móvel fecha o drawer e preserva o foco
+[15/40] [chromium-stress] › tests/e2e/accessibility-stress.spec.ts:42:1 › keyboard focus, live status and high-zoom reflow supplement remain observable
+[WebServer] 11:36:03 PM [vite] (client) [Unhandled rejection] TypeError: Failed to fetch
+[WebServer]  > Object.request src/api/client.ts:112:29
+[WebServer]     110 |  
+[WebServer]     111 |      try {
+[WebServer]     112 |        const response = await fetch(`${API}/api/v1${path}`, { ...init, headers, credentials: "include" });
+[WebServer]         |                               ^
+[WebServer]     113 |        const payload = parseEnvelope<T>(await response.text());
+[WebServer]     114 |        if (!payload) {
+[WebServer]  > Object.signOut src/hooks/use-session.ts:109:75
+[WebServer]  > onLogout src/app-shell/App.tsx:98:340
+[WebServer]  > executeDispatch ../../node_modules/react-dom/cjs/react-dom-client.development.js:19116:8
+[WebServer]  > runWithFiberInDEV ../../node_modules/react-dom/cjs/react-dom-client.development.js:871:29
+[WebServer]  > processDispatchQueue ../../node_modules/react-dom/cjs/react-dom-client.development.js:19166:18
+[WebServer]  > ../../node_modules/react-dom/cjs/react-dom-client.development.js:19767:8
+[WebServer]  > batchedUpdates$1 ../../node_modules/react-dom/cjs/react-dom-client.development.js:3255:39
+[WebServer]  > dispatchEventForPluginEventSystem ../../node_modules/react-dom/cjs/react-dom-client.development.js:19320:6
+[WebServer]  > dispatchEvent ../../node_modules/react-dom/cjs/react-dom-client.development.js:23585:10
+[WebServer] 
+
+[16/40] [chromium-mobile-375] › tests/e2e/app.spec.ts:33:1 › rotas e controles permanecem utilizáveis sem overflow
+[17/40] [chromium-stress] › tests/e2e/accessibility.spec.ts:44:1 › mobile navigation isolates the background and restores its trigger
+[18/40] [chromium-stress] › tests/e2e/accessibility.spec.ts:62:1 › login errors expose a shared field relationship
+[19/40] [chromium-wide-1440] › tests/e2e/accessibility.spec.ts:44:1 › mobile navigation isolates the background and restores its trigger
+[20/40] [chromium-wide-1440] › tests/e2e/accessibility.spec.ts:62:1 › login errors expose a shared field relationship
+  1) [chromium-wide-1440] › tests/e2e/app.spec.ts:33:1 › rotas e controles permanecem utilizáveis sem overflow 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByText(/Resposta para revisão|Conteúdo retido/)
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByText(/Resposta para revisão|Conteúdo retido/) with timeout 5000ms
+      - waiting for getByText(/Resposta para revisão|Conteúdo retido/)
+
+
+      70 |   await page.getByLabel("Pedido").fill("organize os pontos de atenção da fila");
+      71 |   await page.getByRole("button", { name: /Processar turno/i }).click();
+    > 72 |   await expect(page.getByText(/Resposta para revisão|Conteúdo retido/)).toBeVisible();
+         |                                                                         ^
+      73 |
+      74 |   if (testInfo.project.name.includes("mobile-375") || testInfo.project.name.includes("tablet-768")) {
+      75 |     await openMenuIfNeeded();
+        at /tmp/cvg-audit-20260912/clean/tests/e2e/app.spec.ts:72:73
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../clean-playwright/app-rotas-e-controles-permanecem-utilizáveis-sem-overflow-chromium-wide-1440/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../clean-playwright/app-rotas-e-controles-permanecem-utilizáveis-sem-overflow-chromium-wide-1440/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../clean-playwright/app-rotas-e-controles-permanecem-utilizáveis-sem-overflow-chromium-wide-1440/trace.zip
+    Usage:
+
+        npx playwright show-trace ../clean-playwright/app-rotas-e-controles-permanecem-utilizáveis-sem-overflow-chromium-wide-1440/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+[21/40] [chromium-mobile-375] › tests/e2e/accessibility.spec.ts:44:1 › mobile navigation isolates the background and restores its trigger
+(node:696897) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[22/40] [chromium-wide-1440] › tests/e2e/app.spec.ts:82:1 › agenda alterna períodos e fila por meio de consultas reais
+[23/40] [chromium-mobile-375] › tests/e2e/accessibility.spec.ts:62:1 › login errors expose a shared field relationship
+[24/40] [chromium-wide-1440] › tests/e2e/app.spec.ts:97:1 › revalidação bloqueia conteúdo enquanto /me e /contexts respondem
+  2) [chromium-mobile-375] › tests/e2e/app.spec.ts:33:1 › rotas e controles permanecem utilizáveis sem overflow 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByText(/Resposta para revisão|Conteúdo retido/)
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByText(/Resposta para revisão|Conteúdo retido/) with timeout 5000ms
+      - waiting for getByText(/Resposta para revisão|Conteúdo retido/)
+
+
+      70 |   await page.getByLabel("Pedido").fill("organize os pontos de atenção da fila");
+      71 |   await page.getByRole("button", { name: /Processar turno/i }).click();
+    > 72 |   await expect(page.getByText(/Resposta para revisão|Conteúdo retido/)).toBeVisible();
+         |                                                                         ^
+      73 |
+      74 |   if (testInfo.project.name.includes("mobile-375") || testInfo.project.name.includes("tablet-768")) {
+      75 |     await openMenuIfNeeded();
+        at /tmp/cvg-audit-20260912/clean/tests/e2e/app.spec.ts:72:73
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../clean-playwright/app-rotas-e-controles-permanecem-utilizáveis-sem-overflow-chromium-mobile-375/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../clean-playwright/app-rotas-e-controles-permanecem-utilizáveis-sem-overflow-chromium-mobile-375/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../clean-playwright/app-rotas-e-controles-permanecem-utilizáveis-sem-overflow-chromium-mobile-375/trace.zip
+    Usage:
+
+        npx playwright show-trace ../clean-playwright/app-rotas-e-controles-permanecem-utilizáveis-sem-overflow-chromium-mobile-375/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+(node:697477) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[25/40] [chromium-mobile-375] › tests/e2e/app.spec.ts:82:1 › agenda alterna períodos e fila por meio de consultas reais
+[26/40] [chromium-wide-1440] › tests/e2e/app.spec.ts:122:1 › busca rápida abre pacientes com filtro e histórico do navegador
+[27/40] [chromium-mobile-375] › tests/e2e/app.spec.ts:97:1 › revalidação bloqueia conteúdo enquanto /me e /contexts respondem
+[28/40] [chromium-wide-1440] › tests/e2e/app.spec.ts:136:1 › skip link and global search expose a visible keyboard focus
+[29/40] [chromium-wide-1440] › tests/e2e/app.spec.ts:154:1 › captura os limites visuais principais
+[30/40] [chromium-wide-1440] › tests/e2e/app.spec.ts:163:1 › administração expõe concessão e trilha de auditoria
+[31/40] [chromium-mobile-375] › tests/e2e/app.spec.ts:122:1 › busca rápida abre pacientes com filtro e histórico do navegador
+[32/40] [chromium-mobile-375] › tests/e2e/app.spec.ts:136:1 › skip link and global search expose a visible keyboard focus
+[33/40] [chromium-mobile-375] › tests/e2e/app.spec.ts:154:1 › captura os limites visuais principais
+[34/40] [chromium-wide-1440] › tests/e2e/app.spec.ts:189:1 › 403 de autorização exibe estado estável sem repetir a solicitação
+[35/40] [chromium-mobile-375] › tests/e2e/app.spec.ts:163:1 › administração expõe concessão e trilha de auditoria
+[36/40] [chromium-wide-1440] › tests/e2e/app.spec.ts:206:1 › 401 durante uma sessão exibe sessão expirada e oculta o conteúdo
+[37/40] [chromium-mobile-375] › tests/e2e/app.spec.ts:189:1 › 403 de autorização exibe estado estável sem repetir a solicitação
+[38/40] [chromium-wide-1440] › tests/e2e/app.spec.ts:226:1 › enters OFFLINE_READ_ONLY without exposing the composer buffer
+[39/40] [chromium-mobile-375] › tests/e2e/app.spec.ts:206:1 › 401 durante uma sessão exibe sessão expirada e oculta o conteúdo
+[40/40] [chromium-mobile-375] › tests/e2e/app.spec.ts:226:1 › enters OFFLINE_READ_ONLY without exposing the composer buffer
+  2 failed
+    [chromium-wide-1440] › tests/e2e/app.spec.ts:33:1 › rotas e controles permanecem utilizáveis sem overflow 
+    [chromium-mobile-375] › tests/e2e/app.spec.ts:33:1 › rotas e controles permanecem utilizáveis sem overflow 
+  7 skipped
+  31 passed (27.0s)

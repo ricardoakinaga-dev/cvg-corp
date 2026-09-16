@@ -48,9 +48,19 @@ export const API_ROUTE_CATALOG: readonly ApiRouteDescriptor[] = [
   { version: "v1", method: "POST", path: "/appointments", operation: "appointments.create", auth: "SESSION+CSRF", requestSchema: "AppointmentInput", responseSchema: "AppointmentResponse", idempotent: true, deprecation: null },
   { version: "v1", method: "GET", path: "/queue", operation: "queue.read", auth: "SESSION", requestSchema: null, responseSchema: "QueueListResponse", idempotent: false, deprecation: null },
   { version: "v1", method: "POST", path: "/appointments/:id/check-in", operation: "queue.check-in", auth: "SESSION+CSRF", requestSchema: null, responseSchema: "QueueEntryResponse", idempotent: true, deprecation: null },
+  { version: "v1", method: "POST", path: "/appointments/:id/confirm", operation: "appointments.confirm", auth: "SESSION+CSRF", requestSchema: "AppointmentVersionInput", responseSchema: "AppointmentResponse", idempotent: true, deprecation: null },
+  { version: "v1", method: "POST", path: "/appointments/:id/cancel", operation: "appointments.cancel", auth: "SESSION+CSRF", requestSchema: "AppointmentCancelInput", responseSchema: "AppointmentResponse", idempotent: true, deprecation: null },
+  { version: "v1", method: "POST", path: "/appointments/:id/reschedule", operation: "appointments.reschedule", auth: "SESSION+CSRF", requestSchema: "AppointmentRescheduleInput", responseSchema: "AppointmentResponse", idempotent: true, deprecation: null },
+  { version: "v1", method: "POST", path: "/queue/:id/triage", operation: "queue.triage", auth: "SESSION+CSRF", requestSchema: "QueueTriageInput", responseSchema: "QueueEntryResponse", idempotent: true, deprecation: null },
+  { version: "v1", method: "POST", path: "/queue/:id/handoff", operation: "queue.handoff", auth: "SESSION+CSRF", requestSchema: "QueueHandoffInput", responseSchema: "QueueHandoffResponse", idempotent: true, deprecation: null },
+  { version: "v1", method: "GET", path: "/scheduling/options", operation: "scheduling.read", auth: "SESSION", requestSchema: null, responseSchema: "SchedulingOptionsResponse", idempotent: false, deprecation: null },
   { version: "v1", method: "GET", path: "/encounters", operation: "encounters.read", auth: "SESSION", requestSchema: null, responseSchema: "EncounterListResponse", idempotent: false, deprecation: null },
   { version: "v1", method: "POST", path: "/encounters", operation: "encounters.create", auth: "SESSION+CSRF", requestSchema: "EncounterInput", responseSchema: "EncounterResponse", idempotent: true, deprecation: null },
   { version: "v1", method: "GET", path: "/clinical/documents", operation: "clinical.read", auth: "SESSION", requestSchema: null, responseSchema: "ClinicalDocumentListResponse", idempotent: false, deprecation: null },
+  { version: "v1", method: "GET", path: "/clinical/documents/:id", operation: "clinical.read", auth: "SESSION", requestSchema: null, responseSchema: "ClinicalDocumentResponse", idempotent: false, deprecation: null },
+  { version: "v1", method: "POST", path: "/clinical/documents/:id/update", operation: "clinical.write", auth: "SESSION+CSRF", requestSchema: "ClinicalDraftUpdateInput", responseSchema: "ClinicalDocumentResponse", idempotent: true, deprecation: null },
+  { version: "v1", method: "POST", path: "/clinical/documents/:id/review", operation: "clinical.draft", auth: "SESSION+CSRF", requestSchema: "ClinicalSignInput", responseSchema: "ClinicalDocumentResponse", idempotent: true, deprecation: null },
+  { version: "v1", method: "GET", path: "/clinical/documents/:id/addenda", operation: "clinical.read", auth: "SESSION", requestSchema: null, responseSchema: "ClinicalAddendumListResponse", idempotent: false, deprecation: null },
   { version: "v1", method: "POST", path: "/clinical/documents", operation: "clinical.write", auth: "SESSION+CSRF", requestSchema: "ClinicalDocumentInput", responseSchema: "ClinicalDocumentResponse", idempotent: true, deprecation: null },
   { version: "v1", method: "POST", path: "/clinical/documents/:id/sign", operation: "clinical.sign", auth: "SESSION+CSRF", requestSchema: "ClinicalSignInput", responseSchema: "ClinicalDocumentResponse", idempotent: true, deprecation: null },
   { version: "v1", method: "POST", path: "/clinical/documents/:id/addenda", operation: "clinical.addendum", auth: "SESSION+CSRF", requestSchema: "ClinicalAddendumInput", responseSchema: "ClinicalAddendumResponse", idempotent: true, deprecation: null },
@@ -59,16 +69,27 @@ export const API_ROUTE_CATALOG: readonly ApiRouteDescriptor[] = [
   { version: "v1", method: "GET", path: "/diagnostics/specimens", operation: "diagnostics.specimens.read", auth: "SESSION", requestSchema: null, responseSchema: "SpecimenListResponse", idempotent: false, deprecation: null },
   { version: "v1", method: "POST", path: "/diagnostics/requests/:id/specimens", operation: "diagnostics.specimen", auth: "SESSION+CSRF", requestSchema: "SpecimenInput", responseSchema: "SpecimenResponse", idempotent: true, deprecation: null },
   { version: "v1", method: "POST", path: "/diagnostics/results", operation: "diagnostics.result", auth: "SESSION+CSRF", requestSchema: "ResultInput", responseSchema: "ResultResponse", idempotent: true, deprecation: null },
+  { version: "v1", method: "POST", path: "/diagnostics/requests/:id/review", operation: "diagnostics.review", auth: "SESSION+CSRF", requestSchema: null, responseSchema: "DiagnosticRequestResponse", idempotent: true, deprecation: null },
   { version: "v1", method: "GET", path: "/diagnostics/results", operation: "diagnostics.results.read", auth: "SESSION", requestSchema: null, responseSchema: "ResultListResponse", idempotent: false, deprecation: null },
   { version: "v1", method: "GET", path: "/stock", operation: "stock.read", auth: "SESSION", requestSchema: null, responseSchema: "StockListResponse", idempotent: false, deprecation: null },
+  { version: "v1", method: "GET", path: "/stock/movements", operation: "stock.read", auth: "SESSION", requestSchema: null, responseSchema: "StockMovementListResponse", idempotent: false, deprecation: null },
+  { version: "v1", method: "GET", path: "/stock/locations", operation: "stock.read", auth: "SESSION", requestSchema: null, responseSchema: "StockLocationListResponse", idempotent: false, deprecation: null },
+  { version: "v1", method: "POST", path: "/stock/products", operation: "stock.write", auth: "SESSION+CSRF", requestSchema: "ProductInput", responseSchema: "ProductResponse", idempotent: true, deprecation: null },
+  { version: "v1", method: "POST", path: "/stock/lots", operation: "stock.write", auth: "SESSION+CSRF", requestSchema: "LotInput", responseSchema: "LotResponse", idempotent: true, deprecation: null },
+  { version: "v1", method: "POST", path: "/stock/inventory", operation: "stock.inventory", auth: "SESSION+CSRF", requestSchema: "InventoryCountInput", responseSchema: "InventoryCountResponse", idempotent: true, deprecation: null },
   { version: "v1", method: "POST", path: "/stock/movements", operation: "stock.write", auth: "SESSION+CSRF", requestSchema: "StockMovementInput", responseSchema: "StockMovementResponse", idempotent: true, deprecation: null },
   { version: "v1", method: "GET", path: "/hospitalization/beds", operation: "hospitalization.beds.read", auth: "SESSION", requestSchema: null, responseSchema: "BedListResponse", idempotent: false, deprecation: null },
   { version: "v1", method: "GET", path: "/hospitalization/episodes", operation: "hospitalization.read", auth: "SESSION", requestSchema: null, responseSchema: "HospitalEpisodeListResponse", idempotent: false, deprecation: null },
   { version: "v1", method: "POST", path: "/hospitalization/episodes", operation: "hospitalization.create", auth: "SESSION+CSRF", requestSchema: "HospitalEpisodeInput", responseSchema: "HospitalEpisodeResponse", idempotent: true, deprecation: null },
+  { version: "v1", method: "POST", path: "/hospitalization/episodes/:id/status", operation: "hospitalization.update", auth: "SESSION+CSRF", requestSchema: "HospitalEpisodeStatusInput", responseSchema: "HospitalEpisodeResponse", idempotent: true, deprecation: null },
+  { version: "v1", method: "POST", path: "/hospitalization/episodes/:id/discharge", operation: "hospitalization.discharge", auth: "SESSION+CSRF", requestSchema: null, responseSchema: "HospitalEpisodeResponse", idempotent: true, deprecation: null },
   { version: "v1", method: "GET", path: "/medications/orders", operation: "medication.read", auth: "SESSION", requestSchema: null, responseSchema: "MedicationOrderListResponse", idempotent: false, deprecation: null },
+  { version: "v1", method: "GET", path: "/medications/dispensations", operation: "medication.read", auth: "SESSION", requestSchema: null, responseSchema: "DispensationListResponse", idempotent: false, deprecation: null },
+  { version: "v1", method: "GET", path: "/medications/administrations", operation: "medication.read", auth: "SESSION", requestSchema: null, responseSchema: "AdministrationListResponse", idempotent: false, deprecation: null },
   { version: "v1", method: "POST", path: "/medications/orders", operation: "medication.prescribe", auth: "SESSION+CSRF", requestSchema: "MedicationOrderInput", responseSchema: "MedicationOrderResponse", idempotent: true, deprecation: null },
   { version: "v1", method: "POST", path: "/medications/orders/:id/dispense", operation: "medication.dispense", auth: "SESSION+CSRF", requestSchema: "DispensationInput", responseSchema: "DispensationResponse", idempotent: true, deprecation: null },
   { version: "v1", method: "POST", path: "/medications/orders/:id/administer", operation: "medication.administer", auth: "SESSION+CSRF", requestSchema: "AdministrationInput", responseSchema: "AdministrationResponse", idempotent: true, deprecation: null },
+  { version: "v1", method: "POST", path: "/medications/orders/:id/status", operation: "medication.update", auth: "SESSION+CSRF", requestSchema: "MedicationOrderStatusInput", responseSchema: "MedicationOrderResponse", idempotent: true, deprecation: null },
   { version: "v1", method: "GET", path: "/finance/charges", operation: "finance.read", auth: "SESSION", requestSchema: null, responseSchema: "ChargeListResponse", idempotent: false, deprecation: null },
   { version: "v1", method: "POST", path: "/finance/charges", operation: "finance.charge", auth: "SESSION+CSRF", requestSchema: "ChargeInput", responseSchema: "ChargeResponse", idempotent: true, deprecation: null },
   { version: "v1", method: "POST", path: "/finance/payments", operation: "finance.payment", auth: "SESSION+CSRF", requestSchema: "PaymentInput", responseSchema: "PaymentResponse", idempotent: true, deprecation: null },
@@ -80,8 +101,14 @@ export const API_ROUTE_CATALOG: readonly ApiRouteDescriptor[] = [
   { version: "v1", method: "POST", path: "/communications/:id/approve", operation: "communication.approve", auth: "SESSION+CSRF", requestSchema: "CommunicationApprovalInput", responseSchema: "CommunicationResponse", idempotent: true, deprecation: null },
   { version: "v1", method: "GET", path: "/knowledge", operation: "knowledge.read", auth: "SESSION", requestSchema: null, responseSchema: "KnowledgeListResponse", idempotent: false, deprecation: null },
   { version: "v1", method: "POST", path: "/knowledge", operation: "knowledge.write", auth: "SESSION+CSRF", requestSchema: "KnowledgeDocumentInput", responseSchema: "KnowledgeDocumentResponse", idempotent: true, deprecation: null },
+  { version: "v1", method: "GET", path: "/knowledge/search", operation: "knowledge.search", auth: "SESSION", requestSchema: null, responseSchema: "KnowledgeSearchResponse", idempotent: false, deprecation: null },
+  { version: "v1", method: "GET", path: "/knowledge/:id/index", operation: "knowledge.read", auth: "SESSION", requestSchema: null, responseSchema: "KnowledgeIndexResponse", idempotent: false, deprecation: null },
+  { version: "v1", method: "POST", path: "/knowledge/:id/approve", operation: "knowledge.approve", auth: "SESSION+CSRF", requestSchema: "KnowledgeVersionInput", responseSchema: "KnowledgeDocumentResponse", idempotent: true, deprecation: null },
+  { version: "v1", method: "POST", path: "/knowledge/:id/index", operation: "knowledge.index", auth: "SESSION+CSRF", requestSchema: "KnowledgeVersionInput", responseSchema: "KnowledgeDocumentResponse", idempotent: true, deprecation: null },
+  { version: "v1", method: "POST", path: "/knowledge/:id/quarantine", operation: "knowledge.quarantine", auth: "SESSION+CSRF", requestSchema: "KnowledgeQuarantineInput", responseSchema: "KnowledgeDocumentResponse", idempotent: true, deprecation: null },
   { version: "v1", method: "GET", path: "/capabilities", operation: "capabilities.read", auth: "SESSION", requestSchema: null, responseSchema: "CapabilityListResponse", idempotent: false, deprecation: null },
   { version: "v1", method: "GET", path: "/operations/summary", operation: "operations.summary", auth: "SESSION", requestSchema: null, responseSchema: "OperationsSummary", idempotent: false, deprecation: null },
+  { version: "v1", method: "GET", path: "/operations/reports", operation: "operations.reports", auth: "SESSION+ROLE", requestSchema: null, responseSchema: "OperationsReport", idempotent: false, deprecation: null },
   { version: "v1", method: "GET", path: "/metrics", operation: "metrics.read", auth: "SESSION+ROLE", requestSchema: null, responseSchema: "MetricsResponse", idempotent: false, deprecation: null },
   { version: "v1", method: "GET", path: "/ops/snapshot", operation: "ops.snapshot", auth: "SESSION+ROLE", requestSchema: null, responseSchema: "SnapshotResponse", idempotent: false, deprecation: null },
   { version: "v1", method: "POST", path: "/ops/export", operation: "ops.export", auth: "SESSION+CSRF+ROLE", requestSchema: "GovernedExportInput", responseSchema: "EncryptedRecoveryBundle", idempotent: true, deprecation: null },
@@ -121,8 +148,87 @@ export class ApiCompatibilityError extends Error {
   }
 }
 
+const API_GRAPH_MAX_DEPTH = 16;
+const API_GRAPH_MAX_NODES = 4_096;
+const API_GRAPH_MAX_KEYS = 1_024;
+const API_GRAPH_MAX_ARRAY_LENGTH = 4_096;
+const API_GRAPH_MAX_STRING_LENGTH = 1_000_000;
+
+function hasPrototypeProperty(value: object, property: string): boolean {
+  if (Object.prototype.hasOwnProperty.call(value, property)) return true;
+  let prototype = Object.getPrototypeOf(value);
+  const seen = new WeakSet<object>();
+  for (let depth = 0; prototype !== null; depth += 1) {
+    if (depth >= API_GRAPH_MAX_DEPTH || seen.has(prototype)) return true;
+    seen.add(prototype);
+    if (Object.prototype.hasOwnProperty.call(prototype, property)) return true;
+    prototype = Object.getPrototypeOf(prototype);
+  }
+  return false;
+}
+
+function isDataOnlyGraph(value: unknown, seen: WeakSet<object>, depth = 0, budget = { nodes: 0 }): boolean {
+  if (value === null || typeof value === "boolean") return true;
+  if (typeof value === "number") return Number.isFinite(value);
+  if (typeof value === "string") return value.length <= API_GRAPH_MAX_STRING_LENGTH;
+  if (typeof value !== "object" || seen.has(value)) return false;
+  if (depth > API_GRAPH_MAX_DEPTH || budget.nodes >= API_GRAPH_MAX_NODES) return false;
+  budget.nodes += 1;
+  seen.add(value);
+  try {
+    const prototype = Object.getPrototypeOf(value);
+    if (hasPrototypeProperty(value, "toJSON")) return false;
+    const keys = Reflect.ownKeys(value);
+    if (Array.isArray(value)) {
+      if (prototype !== Array.prototype && prototype !== null) return false;
+      const lengthDescriptor = Object.getOwnPropertyDescriptor(value, "length");
+      if (!lengthDescriptor || !("value" in lengthDescriptor) || !Number.isInteger(lengthDescriptor.value) || lengthDescriptor.value < 0 || lengthDescriptor.value > API_GRAPH_MAX_ARRAY_LENGTH || keys.length > API_GRAPH_MAX_KEYS) return false;
+      for (let index = 0; index < lengthDescriptor.value; index += 1) {
+        const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+        if (!descriptor?.enumerable || !("value" in descriptor) || !isDataOnlyGraph(descriptor.value, seen, depth + 1, budget)) return false;
+      }
+      return keys.every((key) => {
+        if (key === "length") return true;
+        if (typeof key !== "string" || !/^(0|[1-9]\d*)$/.test(key) || Number(key) >= lengthDescriptor.value) return false;
+        const descriptor = Object.getOwnPropertyDescriptor(value, key);
+        return Boolean(descriptor?.enumerable && "value" in descriptor);
+      });
+    }
+    if (prototype !== Object.prototype && prototype !== null) return false;
+    if (keys.length > API_GRAPH_MAX_KEYS) return false;
+    return keys.every((key) => {
+      if (typeof key !== "string") return false;
+      const descriptor = Object.getOwnPropertyDescriptor(value, key);
+      return Boolean(descriptor?.enumerable && "value" in descriptor && isDataOnlyGraph(descriptor.value, seen, depth + 1, budget));
+    });
+  } catch {
+    return false;
+  } finally {
+    seen.delete(value);
+  }
+}
+
 function isApiVersionedValue(value: unknown): value is ApiVersionedValue {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
+  try {
+    const prototype = Object.getPrototypeOf(value);
+    const schemaVersion = Object.getOwnPropertyDescriptor(value, "schemaVersion");
+    const keys = Reflect.ownKeys(value);
+    const valid = (prototype === Object.prototype || prototype === null)
+      && !Object.prototype.hasOwnProperty.call(value, "toJSON")
+      && !(prototype && Object.prototype.hasOwnProperty.call(prototype, "toJSON"))
+      && keys.every((key) => {
+        if (typeof key !== "string" || key === "toJSON") return false;
+        const descriptor = Object.getOwnPropertyDescriptor(value, key);
+        return Boolean(descriptor?.enumerable && "value" in descriptor);
+      })
+      && Boolean(schemaVersion?.enumerable && "value" in schemaVersion);
+    if (!valid || !isDataOnlyGraph(value, new WeakSet<object>())) return false;
+    structuredClone(value);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -131,21 +237,22 @@ function isApiVersionedValue(value: unknown): value is ApiVersionedValue {
  * keeps unsupported legacy/future payloads fail-closed.
  */
 export function upcastApiValue(value: unknown, targetSchemaVersion: number = API_SCHEMA_VERSION): ApiVersionedValue {
-  if (!isApiVersionedValue(value)) throw new ApiCompatibilityError("versioned API payload must be an object");
   if (!Number.isInteger(targetSchemaVersion) || targetSchemaVersion < 1) throw new ApiCompatibilityError("target schema version is invalid");
-  const rawVersion = value.schemaVersion;
+  if (targetSchemaVersion !== API_SCHEMA_VERSION) throw new ApiCompatibilityError(`target schema version ${targetSchemaVersion} is not supported by the current contract`);
+  if (!isApiVersionedValue(value)) throw new ApiCompatibilityError("versioned API payload must be an object");
+  const rawVersion = Object.getOwnPropertyDescriptor(value, "schemaVersion")?.value;
   if (!Number.isInteger(rawVersion) || typeof rawVersion !== "number" || rawVersion < 1) throw new ApiCompatibilityError("API payload schemaVersion is invalid");
   if (rawVersion > targetSchemaVersion) throw new ApiCompatibilityError(`API payload schemaVersion ${rawVersion} is newer than target ${targetSchemaVersion}`);
-  if (rawVersion === targetSchemaVersion) return Object.freeze({ ...value });
+  if (rawVersion === targetSchemaVersion) return Object.freeze(structuredClone(value));
 
   let currentVersion = rawVersion;
-  let current: ApiVersionedValue = Object.freeze({ ...value });
+  let current: ApiVersionedValue = Object.freeze(structuredClone(value));
   while (currentVersion < targetSchemaVersion) {
     const upcaster = API_UPCASTERS.find((candidate) => candidate.fromSchemaVersion === currentVersion && candidate.toSchemaVersion === currentVersion + 1 && candidate.canHandle(current));
     if (!upcaster) throw new ApiCompatibilityError(`no approved API upcaster exists from schema ${currentVersion} to ${currentVersion + 1}`);
     const next = upcaster.upcast(current);
     if (!isApiVersionedValue(next) || next.schemaVersion !== currentVersion + 1) throw new ApiCompatibilityError(`API upcaster from schema ${currentVersion} returned an invalid target payload`);
-    current = Object.freeze({ ...next });
+    current = Object.freeze(structuredClone(next));
     currentVersion += 1;
   }
   return current;

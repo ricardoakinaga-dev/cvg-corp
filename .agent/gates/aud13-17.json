@@ -1,0 +1,90 @@
+{
+  "schema_version": 1,
+  "gate_id": "GATE-CVG-AUD13-17",
+  "task_id": "AUD13-17",
+  "status": "PASS_COM_RESSALVAS",
+  "decision": "PARTIAL_PASS",
+  "score": 8.0,
+  "critic_artifact": null,
+  "subject": {
+    "head_sha": "1c22c5dc79c52151f4c7c94c4402dfdc86812cbc",
+    "worktree": "MODIFIED",
+    "task_owned_paths": [
+      "apps/web/src/features/stock/",
+      "apps/api/src/application/",
+      "packages/domain/src/",
+      "packages/persistence/",
+      "tests/"
+    ],
+    "registered_surface_extensions": [
+      "apps/api/src/app.ts",
+      "packages/agent-policy/src/index.ts",
+      "packages/contracts/src/api-catalog.ts",
+      "packages/contracts/src/index.ts (movement types ADJUSTMENT_IN/OUT)",
+      "packages/domain/src/authorization.ts"
+    ],
+    "blocked_slice": "fornecedor e custo de entrada (contrato sem campos) -> AUD13-17A"
+  },
+  "bar": {
+    "path": ".gauntlet/bar-v4.json",
+    "sha256": "2093461a8d6103641a555ad45371dde4649e5f144c32260b80244e219fa70697"
+  },
+  "checks": [
+    {
+      "command": "npm test",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "361 testes: 360 pass, 1 skip, 0 fail"
+    },
+    {
+      "command": "npm run test:database",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "61 testes"
+    },
+    {
+      "command": "npm run verify:pdp",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "catalogo+inventario e 26 runtime"
+    },
+    {
+      "command": "npm run verify:authoritative-writes",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "32 dominios; tamper rejeitado"
+    },
+    {
+      "command": "npx playwright test app.spec.ts (375/768/1440)",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "100 passed, 8 skipped"
+    },
+    {
+      "command": "npm run typecheck",
+      "exit_code": 0,
+      "result": "PASS"
+    },
+    {
+      "command": "npm run lint",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "173 arquivos"
+    }
+  ],
+  "residuals": [
+    "fornecedor/custo de entrada exigem campos de contrato (AUD13-17A)",
+    "transferencia pareada manual por movimentos TRANSFER_OUT/IN",
+    "concorrencia PostgreSQL multi-processo (AUD13-23/36)"
+  ],
+  "verification_refs": [
+    "VER-CVG-AUD13-17-001"
+  ],
+  "artifact_digests": {
+    "apps/web/src/features/stock/Stock.tsx": "27ed72eb0ee32f132eedb1b8e7d8626024960780367501558e61d055aeb440fa",
+    "packages/domain/src/index.ts": "497d6e615e5e0bc9fbac5cdc0febcfdbfb0d3675a720fa1a30c20ba78ba31742",
+    "apps/api/src/app.ts": "a55ba03af0a02333ac7c3bf6f33edfb0879b1ad293490297916b6c485374b8d6",
+    "tests/e2e/app.spec.ts": "2884eeccce3ef059c7ac310169a9fb2f85120a9b9d1418fc5c6f2e7f665091e5"
+  },
+  "recorded_at": "2026-09-13T12:54:21-03:00"
+}

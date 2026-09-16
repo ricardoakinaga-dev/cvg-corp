@@ -1,0 +1,9 @@
+{
+  "command": [
+    "npm",
+    "run",
+    "verify:static"
+  ],
+  "exit": 0,
+  "seconds": 4.66
+}

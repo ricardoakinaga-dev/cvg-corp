@@ -1,0 +1,486 @@
+
+> cvg-corp@0.1.0 audit:tokens
+> tsx scripts/audit-design-tokens.ts apps/web/src --strict
+
+{
+  "schema_version": 1,
+  "root": "/home/ricardo/Área de trabalho/cvg-corp/apps/web/src",
+  "files_scanned": [
+    "api/client.ts",
+    "api/session.ts",
+    "app-shell/App.tsx",
+    "app-shell/Shell.tsx",
+    "components/Icon.tsx",
+    "components/Login.tsx",
+    "components/OfflineReadOnlyState.tsx",
+    "components/SessionBlockedState.tsx",
+    "components/ui.tsx",
+    "features/admin/Admin.tsx",
+    "features/agenda/Agenda.tsx",
+    "features/clinical/Clinical.tsx",
+    "features/copilot/Copilot.tsx",
+    "features/finance/Finance.tsx",
+    "features/overview/Overview.tsx",
+    "features/patients/Patients.tsx",
+    "features/stock/Stock.tsx",
+    "hooks/use-mobile-menu.ts",
+    "hooks/use-runtime-state.ts",
+    "hooks/use-session.ts",
+    "hooks/use-toast.ts",
+    "main.tsx",
+    "routes/AppRoutes.tsx",
+    "state/formatters.ts",
+    "state/runtime-state.ts",
+    "state/session-state.ts",
+    "state/types.ts",
+    "styles.css"
+  ],
+  "findings": [
+    {
+      "code": "near_duplicate_color",
+      "severity": "medium",
+      "category": "color",
+      "message": "token colors #0a171f and #0e1a24 are visually near-duplicates (distance 7.07)"
+    },
+    {
+      "code": "near_duplicate_color",
+      "severity": "medium",
+      "category": "color",
+      "message": "token colors #0d1d29 and #0e1a24 are visually near-duplicates (distance 5.92)"
+    },
+    {
+      "code": "near_duplicate_color",
+      "severity": "medium",
+      "category": "color",
+      "message": "token colors #142433 and #152a38 are visually near-duplicates (distance 7.87)"
+    },
+    {
+      "code": "near_duplicate_color",
+      "severity": "medium",
+      "category": "color",
+      "message": "token colors #142433 and #162735 are visually near-duplicates (distance 4.12)"
+    },
+    {
+      "code": "near_duplicate_color",
+      "severity": "medium",
+      "category": "color",
+      "message": "token colors #152a38 and #162735 are visually near-duplicates (distance 4.36)"
+    },
+    {
+      "code": "near_duplicate_color",
+      "severity": "medium",
+      "category": "color",
+      "message": "token colors #152a38 and #17303e are visually near-duplicates (distance 8.72)"
+    },
+    {
+      "code": "near_duplicate_color",
+      "severity": "medium",
+      "category": "color",
+      "message": "token colors #17303e and #1b3141 are visually near-duplicates (distance 5.10)"
+    },
+    {
+      "code": "near_duplicate_color",
+      "severity": "medium",
+      "category": "color",
+      "message": "token colors #526e7d and #59717c are visually near-duplicates (distance 7.68)"
+    },
+    {
+      "code": "near_duplicate_color",
+      "severity": "medium",
+      "category": "color",
+      "message": "token colors #c9e8dd and #cdebe2 are visually near-duplicates (distance 7.07)"
+    },
+    {
+      "code": "near_duplicate_color",
+      "severity": "medium",
+      "category": "color",
+      "message": "token colors #def5ed and #dfeeea are visually near-duplicates (distance 7.68)"
+    },
+    {
+      "code": "near_duplicate_color",
+      "severity": "medium",
+      "category": "color",
+      "message": "token colors #def5ed and #e5f7f0 are visually near-duplicates (distance 7.87)"
+    },
+    {
+      "code": "near_duplicate_color",
+      "severity": "medium",
+      "category": "color",
+      "message": "token colors #dfeeea and #e7efed are visually near-duplicates (distance 8.60)"
+    },
+    {
+      "code": "near_duplicate_color",
+      "severity": "medium",
+      "category": "color",
+      "message": "token colors #e5f7f0 and #e7efed are visually near-duplicates (distance 8.77)"
+    },
+    {
+      "code": "near_duplicate_color",
+      "severity": "medium",
+      "category": "color",
+      "message": "token colors #e5f7f0 and #eaf4f0 are visually near-duplicates (distance 5.83)"
+    },
+    {
+      "code": "near_duplicate_color",
+      "severity": "medium",
+      "category": "color",
+      "message": "token colors #e5f7f0 and #eaf7f2 are visually near-duplicates (distance 5.39)"
+    },
+    {
+      "code": "near_duplicate_color",
+      "severity": "medium",
+      "category": "color",
+      "message": "token colors #e5f7f0 and #eef6f2 are visually near-duplicates (distance 9.27)"
+    },
+    {
+      "code": "near_duplicate_color",
+      "severity": "medium",
+      "category": "color",
+      "message": "token colors #e5f7f0 and #eef8f4 are visually near-duplicates (distance 9.90)"
+    },
+    {
+      "code": "near_duplicate_color",
+      "severity": "medium",
+      "category": "color",
+      "message": "token colors #e7efed and #eaf4f0 are visually near-duplicates (distance 6.56)"
+    },
+    {
+      "code": "near_duplicate_color",
+      "severity": "medium",
+      "category": "color",
+      "message": "token colors #e7efed and #eaf7f2 are visually near-duplicates (distance 9.90)"
+    },
+    {
+      "code": "near_duplicate_color",
+      "severity": "medium",
+      "category": "color",
+      "message": "token colors #eaf4f0 and #eaf7f2 are visually near-duplicates (distance 3.61)"
+    },
+    {
+      "code": "near_duplicate_color",
+      "severity": "medium",
+      "category": "color",
+      "message": "token colors #eaf4f0 and #eef6f2 are visually near-duplicates (distance 4.90)"
+    },
+    {
+      "code": "near_duplicate_color",
+      "severity": "medium",
+      "category": "color",
+      "message": "token colors #eaf4f0 and #eef8f4 are visually near-duplicates (distance 6.93)"
+    },
+    {
+      "code": "near_duplicate_color",
+      "severity": "medium",
+      "category": "color",
+      "message": "token colors #eaf4f0 and #f2f7f5 are visually near-duplicates (distance 9.90)"
+    },
+    {
+      "code": "near_duplicate_color",
+      "severity": "medium",
+      "category": "color",
+      "message": "token colors #eaf7f2 and #eef6f2 are visually near-duplicates (distance 4.12)"
+    },
+    {
+      "code": "near_duplicate_color",
+      "severity": "medium",
+      "category": "color",
+      "message": "token colors #eaf7f2 and #eef8f4 are visually near-duplicates (distance 4.58)"
+    },
+    {
+      "code": "near_duplicate_color",
+      "severity": "medium",
+      "category": "color",
+      "message": "token colors #eaf7f2 and #f2f7f5 are visually near-duplicates (distance 8.54)"
+    },
+    {
+      "code": "near_duplicate_color",
+      "severity": "medium",
+      "category": "color",
+      "message": "token colors #eaf7f2 and #f2faf6 are visually near-duplicates (distance 9.43)"
+    },
+    {
+      "code": "near_duplicate_color",
+      "severity": "medium",
+      "category": "color",
+      "message": "token colors #eef6f2 and #eef8f4 are visually near-duplicates (distance 2.83)"
+    },
+    {
+      "code": "near_duplicate_color",
+      "severity": "medium",
+      "category": "color",
+      "message": "token colors #eef6f2 and #f2f7f5 are visually near-duplicates (distance 5.10)"
+    },
+    {
+      "code": "near_duplicate_color",
+      "severity": "medium",
+      "category": "color",
+      "message": "token colors #eef6f2 and #f2faf6 are visually near-duplicates (distance 6.93)"
+    },
+    {
+      "code": "near_duplicate_color",
+      "severity": "medium",
+      "category": "color",
+      "message": "token colors #eef6f2 and #f3faf7 are visually near-duplicates (distance 8.12)"
+    },
+    {
+      "code": "near_duplicate_color",
+      "severity": "medium",
+      "category": "color",
+      "message": "token colors #eef6f2 and #f5f8f6 are visually near-duplicates (distance 8.31)"
+    },
+    {
+      "code": "near_duplicate_color",
+      "severity": "medium",
+      "category": "color",
+      "message": "token colors #eef8f4 and #f2f7f5 are visually near-duplicates (distance 4.24)"
+    },
+    {
+      "code": "near_duplicate_color",
+      "severity": "medium",
+      "category": "color",
+      "message": "token colors #eef8f4 and #f2faf6 are visually near-duplicates (distance 4.90)"
+    },
+    {
+      "code": "near_duplicate_color",
+      "severity": "medium",
+      "category": "color",
+      "message": "token colors #eef8f4 and #f3faf7 are visually near-duplicates (distance 6.16)"
+    },
+    {
+      "code": "near_duplicate_color",
+      "severity": "medium",
+      "category": "color",
+      "message": "token colors #eef8f4 and #f5f8f6 are visually near-duplicates (distance 7.28)"
+    },
+    {
+      "code": "near_duplicate_color",
+      "severity": "medium",
+      "category": "color",
+      "message": "token colors #eef8f4 and #f5fbf8 are visually near-duplicates (distance 8.60)"
+    },
+    {
+      "code": "near_duplicate_color",
+      "severity": "medium",
+      "category": "color",
+      "message": "token colors #eef8f4 and #f6fcf8 are visually near-duplicates (distance 9.80)"
+    },
+    {
+      "code": "near_duplicate_color",
+      "severity": "medium",
+      "category": "color",
+      "message": "token colors #f2f7f5 and #f2faf6 are visually near-duplicates (distance 3.16)"
+    },
+    {
+      "code": "near_duplicate_color",
+      "severity": "medium",
+      "category": "color",
+      "message": "token colors #f2f7f5 and #f3faf7 are visually near-duplicates (distance 3.74)"
+    },
+    {
+      "code": "near_duplicate_color",
+      "severity": "medium",
+      "category": "color",
+      "message": "token colors #f2f7f5 and #f5f8f6 are visually near-duplicates (distance 3.32)"
+    },
+    {
+      "code": "near_duplicate_color",
+      "severity": "medium",
+      "category": "color",
+      "message": "token colors #f2f7f5 and #f5fbf8 are visually near-duplicates (distance 5.83)"
+    },
+    {
+      "code": "near_duplicate_color",
+      "severity": "medium",
+      "category": "color",
+      "message": "token colors #f2f7f5 and #f6fcf8 are visually near-duplicates (distance 7.07)"
+    },
+    {
+      "code": "near_duplicate_color",
+      "severity": "medium",
+      "category": "color",
+      "message": "token colors #f2f7f5 and #f7faf8 are visually near-duplicates (distance 6.56)"
+    },
+    {
+      "code": "near_duplicate_color",
+      "severity": "medium",
+      "category": "color",
+      "message": "token colors #f2f7f5 and #f7fbf8 are visually near-duplicates (distance 7.07)"
+    },
+    {
+      "code": "near_duplicate_color",
+      "severity": "medium",
+      "category": "color",
+      "message": "token colors #f2faf6 and #f3faf7 are visually near-duplicates (distance 1.41)"
+    },
+    {
+      "code": "near_duplicate_color",
+      "severity": "medium",
+      "category": "color",
+      "message": "token colors #f2faf6 and #f5f8f6 are visually near-duplicates (distance 3.61)"
+    },
+    {
+      "code": "near_duplicate_color",
+      "severity": "medium",
+      "category": "color",
+      "message": "token colors #f2faf6 and #f5fbf8 are visually near-duplicates (distance 3.74)"
+    },
+    {
+      "code": "near_duplicate_color",
+      "severity": "medium",
+      "category": "color",
+      "message": "token colors #f2faf6 and #f6fcf8 are visually near-duplicates (distance 4.90)"
+    },
+    {
+      "code": "near_duplicate_color",
+      "severity": "medium",
+      "category": "color",
+      "message": "token colors #f2faf6 and #f7faf8 are visually near-duplicates (distance 5.39)"
+    },
+    {
+      "code": "near_duplicate_color",
+      "severity": "medium",
+      "category": "color",
+      "message": "token colors #f2faf6 and #f7fbf8 are visually near-duplicates (distance 5.48)"
+    },
+    {
+      "code": "near_duplicate_color",
+      "severity": "medium",
+      "category": "color",
+      "message": "token colors #f3faf7 and #f5f8f6 are visually near-duplicates (distance 3.00)"
+    },
+    {
+      "code": "near_duplicate_color",
+      "severity": "medium",
+      "category": "color",
+      "message": "token colors #f3faf7 and #f5fbf8 are visually near-duplicates (distance 2.45)"
+    },
+    {
+      "code": "near_duplicate_color",
+      "severity": "medium",
+      "category": "color",
+      "message": "token colors #f3faf7 and #f6fcf8 are visually near-duplicates (distance 3.74)"
+    },
+    {
+      "code": "near_duplicate_color",
+      "severity": "medium",
+      "category": "color",
+      "message": "token colors #f3faf7 and #f7faf8 are visually near-duplicates (distance 4.12)"
+    },
+    {
+      "code": "near_duplicate_color",
+      "severity": "medium",
+      "category": "color",
+      "message": "token colors #f3faf7 and #f7fbf8 are visually near-duplicates (distance 4.24)"
+    },
+    {
+      "code": "near_duplicate_color",
+      "severity": "medium",
+      "category": "color",
+      "message": "token colors #f5f8f6 and #f5fbf8 are visually near-duplicates (distance 3.61)"
+    },
+    {
+      "code": "near_duplicate_color",
+      "severity": "medium",
+      "category": "color",
+      "message": "token colors #f5f8f6 and #f6fcf8 are visually near-duplicates (distance 4.58)"
+    },
+    {
+      "code": "near_duplicate_color",
+      "severity": "medium",
+      "category": "color",
+      "message": "token colors #f5f8f6 and #f7faf8 are visually near-duplicates (distance 3.46)"
+    },
+    {
+      "code": "near_duplicate_color",
+      "severity": "medium",
+      "category": "color",
+      "message": "token colors #f5f8f6 and #f7fbf8 are visually near-duplicates (distance 4.12)"
+    },
+    {
+      "code": "near_duplicate_color",
+      "severity": "medium",
+      "category": "color",
+      "message": "token colors #f5f8f6 and #fbf8ef are visually near-duplicates (distance 9.22)"
+    },
+    {
+      "code": "near_duplicate_color",
+      "severity": "medium",
+      "category": "color",
+      "message": "token colors #f5fbf8 and #f6fcf8 are visually near-duplicates (distance 1.41)"
+    },
+    {
+      "code": "near_duplicate_color",
+      "severity": "medium",
+      "category": "color",
+      "message": "token colors #f5fbf8 and #f7faf8 are visually near-duplicates (distance 2.24)"
+    },
+    {
+      "code": "near_duplicate_color",
+      "severity": "medium",
+      "category": "color",
+      "message": "token colors #f5fbf8 and #f7fbf8 are visually near-duplicates (distance 2.00)"
+    },
+    {
+      "code": "near_duplicate_color",
+      "severity": "medium",
+      "category": "color",
+      "message": "token colors #f6fcf8 and #f7faf8 are visually near-duplicates (distance 2.24)"
+    },
+    {
+      "code": "near_duplicate_color",
+      "severity": "medium",
+      "category": "color",
+      "message": "token colors #f6fcf8 and #f7fbf8 are visually near-duplicates (distance 1.41)"
+    },
+    {
+      "code": "near_duplicate_color",
+      "severity": "medium",
+      "category": "color",
+      "message": "token colors #f6fcf8 and #fffcf4 are visually near-duplicates (distance 9.85)"
+    },
+    {
+      "code": "near_duplicate_color",
+      "severity": "medium",
+      "category": "color",
+      "message": "token colors #f7faf8 and #f7fbf8 are visually near-duplicates (distance 1.00)"
+    },
+    {
+      "code": "near_duplicate_color",
+      "severity": "medium",
+      "category": "color",
+      "message": "token colors #f7faf8 and #fffcf4 are visually near-duplicates (distance 9.17)"
+    },
+    {
+      "code": "near_duplicate_color",
+      "severity": "medium",
+      "category": "color",
+      "message": "token colors #f7fbf8 and #fffcf4 are visually near-duplicates (distance 9.00)"
+    },
+    {
+      "code": "near_duplicate_color",
+      "severity": "medium",
+      "category": "color",
+      "message": "token colors #fbf8ef and #fffbef are visually near-duplicates (distance 5.00)"
+    },
+    {
+      "code": "near_duplicate_color",
+      "severity": "medium",
+      "category": "color",
+      "message": "token colors #fbf8ef and #fffcf4 are visually near-duplicates (distance 7.55)"
+    },
+    {
+      "code": "near_duplicate_color",
+      "severity": "medium",
+      "category": "color",
+      "message": "token colors #fffbef and #fffcf4 are visually near-duplicates (distance 5.10)"
+    }
+  ],
+  "summary": {
+    "high": 0,
+    "medium": 73
+  },
+  "limitations": [
+    "Static source scan only; browser cascade and computed styles are not evaluated.",
+    "Near-duplicate colors use Euclidean RGB distance, not perceptual Delta E."
+  ]
+}

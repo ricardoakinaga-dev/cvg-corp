@@ -1,0 +1,10 @@
+{
+  "agendaSouth": "CAPACIDADE & FLUXO\nAgenda\n\nO que precisa acontecer, na hora certa e no lugar certo.\n\nNovo horário\nHoje\nPróximos 7 dias\nVisão de fila\nAtualizar\n08 SET · UNIDADE CENTRO\nTerça-feira\n0 janelas\nNenhuma janela encontrada\n\nAjuste o período ou cadastre um serviço para começar.",
+  "newAppointment": {
+    "toast": "A criação de horário será aberta após selecionar um serviço.",
+    "writes": 0
+  },
+  "financePaid": "LEDGER & CONCILIAÇÃO\nFinanceiro\n\nCada cobrança tem um movimento. Cada movimento deixa rastro.\n\nNova cobrança\nEM ABERTO · VISÃO LOCAL\nR$ 100,00\nLedger append-only lógico · 1 lançamentos\nMOVIMENTOS RECENTES\nContas em aberto\nExportar\nCobrança paga fixture de auditoria\n13 set., 09:49 · movimento CHARGE\nR$ 100,00\nPago",
+  "offlineLogoutShowsLogin": true,
+  "reloadAfterOfflineLogout": "LEDGER & CONCILIAÇÃO\nFinanceiro\n\nCada cobrança tem um movimento. Cada movimento deixa rastro.\n\nNova cobrança\nEM ABERTO · VISÃO LOCAL\nR$ 100,00\nLedger append-only lógico · 1 lançamentos\nMOVIMENTOS RECENTES\nContas em aberto\nExportar\nCobrança paga fixture de auditoria\n13 set., 09:49 · movimento CHARGE\nR$ 100,00\nPago"
+}

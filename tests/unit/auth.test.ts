@@ -89,3 +89,27 @@ test("break-glass lifecycle requires explicit activation, expires automatically 
   assert.equal(reviewed.reviewedBy, "reviewer-3");
   assert.throws(() => registry.activate("org-1", { ...request, approverId: "actor-1" }, issuedAt + 1_000), (error: unknown) => error instanceof BreakGlassError && error.code === "DENIED");
 });
+
+test("password hasher stores algorithm parameters, migrates legacy hashes and limits derivation concurrency", async () => {
+  const { scryptSync } = await import("node:crypto");
+  const { CURRENT_SCRYPT_PARAMS, PasswordDerivationOverloadedError, PasswordHasher, parsePasswordDigest } = await import("@cvg/auth");
+  const hasher = new PasswordHasher({ maxConcurrent: 1, queueLimit: 1 });
+  const current = await hasher.hash("Synthetic-Password-123!");
+  assert.match(current, /^scrypt\$N=131072,r=8,p=1\$/);
+  const parsed = parsePasswordDigest(current);
+  assert.equal(parsed?.legacy, false);
+  assert.equal(parsed?.params.N, CURRENT_SCRYPT_PARAMS.N);
+  assert.deepEqual(await hasher.verify("Synthetic-Password-123!", current), { valid: true, needsRehash: false });
+  assert.deepEqual(await hasher.verify("Wrong-Password-123!", current), { valid: false, needsRehash: false });
+  const salt = Buffer.from("legacy-synthetic-salt");
+  const legacyDigest = scryptSync("Synthetic-Password-123!", salt, 64, { N: 16_384, r: 8, p: 1, maxmem: 32 * 1024 * 1024 });
+  const legacy = `scrypt$${salt.toString("base64url")}$${legacyDigest.toString("base64url")}`;
+  assert.deepEqual(await hasher.verify("Synthetic-Password-123!", legacy), { valid: true, needsRehash: true });
+  assert.equal(parsePasswordDigest("scrypt$N=99999,r=8,p=1$c2FsdHNhbHQ$AAAA"), null);
+  assert.equal(parsePasswordDigest("argon2$whatever"), null);
+  const first = hasher.verify("Synthetic-Password-123!", legacy);
+  const second = hasher.verify("Synthetic-Password-123!", legacy);
+  await assert.rejects(hasher.verify("Synthetic-Password-123!", legacy), PasswordDerivationOverloadedError);
+  assert.deepEqual(await first, { valid: true, needsRehash: true });
+  assert.deepEqual(await second, { valid: true, needsRehash: true });
+});

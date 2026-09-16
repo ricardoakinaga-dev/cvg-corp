@@ -1,0 +1,145 @@
+{
+  "schema_version": 1,
+  "gate_id": "GATE-CVG-AUD13-16",
+  "task_id": "AUD13-16",
+  "status": "PASS_COM_RESSALVAS",
+  "decision": "PARTIAL_PASS",
+  "score": 8.0,
+  "critic_artifact": ".gauntlet/critique-aaa2-02-e01-final-20260913.md",
+  "current_slice": {
+    "id": "AAA2-02/E01",
+    "status": "DONE_WITH_LIMITATION",
+    "decision": "APPROVE_LOCAL_WITH_LIMITATIONS",
+    "critic_id": "CRIT-AAA2-02-E01-FINAL-20260913-7F3A",
+    "verification_refs": [
+      "VER-CVG-AAA2-02-002",
+      "VER-CVG-AAA2-02-003",
+      "VER-CVG-AAA2-02-004",
+      "VER-CVG-AAA2-02-005"
+    ],
+    "limitations": [
+      "PostgreSQL multi-process medication concurrency is not proven in this slice",
+      "AUD13-16A remains blocked by D-02",
+      "global AAA_NOT_PROVEN and external/human gates remain unchanged"
+    ]
+  },
+  "subject": {
+    "head_sha": "1c22c5dc79c52151f4c7c94c4402dfdc86812cbc",
+    "worktree": "MODIFIED",
+    "task_owned_paths": [
+      "apps/web/src/features/",
+      "apps/api/src/application/",
+      "packages/domain/src/",
+      "tests/"
+    ],
+    "registered_surface_extensions": [
+      "apps/api/src/app.ts",
+      "packages/agent-policy/src/index.ts",
+      "packages/contracts/src/api-catalog.ts",
+      "packages/domain/src/authorization.ts"
+    ],
+    "blocked_slice": "checklist/consentimento de admissao (contrato HospitalEpisode sem campos) -> AUD13-16A"
+  },
+  "bar": {
+    "path": ".gauntlet/bar-v4.json",
+    "sha256": "2093461a8d6103641a555ad45371dde4649e5f144c32260b80244e219fa70697"
+  },
+  "checks": [
+    {
+      "command": "npm test",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "359 testes: 358 pass, 1 skip, 0 fail"
+    },
+    {
+      "command": "npm run test:database",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "61 testes"
+    },
+    {
+      "command": "npm run verify:pdp",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "catalogo+inventario e 26 runtime"
+    },
+    {
+      "command": "npx playwright test app.spec.ts (375/768/1440)",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "97 passed, 8 skipped"
+    },
+    {
+      "command": "npm run typecheck",
+      "exit_code": 0,
+      "result": "PASS"
+    },
+    {
+      "command": "npm run lint",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "173 arquivos"
+    }
+  ],
+  "current_slice_checks": [
+    {
+      "command": "node --import tsx --test tests/unit/domain.test.ts",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "40/40"
+    },
+    {
+      "command": "node --import tsx --test tests/integration/api.test.ts",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "27/27"
+    },
+    {
+      "command": "npm test",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "387 testes: 386 pass, 1 skip, 0 fail"
+    },
+    {
+      "command": "npm run test:database",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "66/66"
+    },
+    {
+      "command": "npm run typecheck && npm run lint && npm run verify:static && npm run build",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "typecheck, lint (176 fontes), static (149 artefatos/178 fontes) e build"
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0,
+      "result": "PASS"
+    }
+  ],
+  "residuals": [
+    "checklist/consentimento dedicados dependem de campos de contrato e decisao D-02 (AUD13-16A)",
+    "e2e da jornada roda apenas no projeto wide por leito unico compartilhado",
+    "concorrencia PostgreSQL multi-processo (AUD13-23/36)"
+  ],
+  "verification_refs": [
+    "VER-CVG-AUD13-16-001",
+    "VER-CVG-AAA2-02-002",
+    "VER-CVG-AAA2-02-003",
+    "VER-CVG-AAA2-02-004",
+    "VER-CVG-AAA2-02-005"
+  ],
+  "artifact_digests": {
+    "apps/web/src/features/hospital/Internacao.tsx": "bc72e2b5438d33c0f183a52da89cee848c589bc4f27283ecef03cc1d801e43ff",
+    "packages/domain/src/index.ts": "42b280f2afb9e83073fd72530019d1477f670b309410b4cf705412a3bb1bedb3",
+    "apps/api/src/app.ts": "bcbca7c0ed8c1ed9a9a2e675c7b2606eaad3bb90eb94a4d4fd4ff876a9b23e2f",
+    "tests/e2e/app.spec.ts": "c8dbf2122b6a0696d0c4aa42dcba37abe675bb2c70638f00d7e964b6279760ec"
+  },
+  "current_slice_artifact_digests": {
+    "packages/domain/src/index.ts": "4d6e28a163d04b333eb2e5d264cc1686f8b4955cce5ed8ba182f77d141390c62",
+    "tests/unit/domain.test.ts": "1ff96e3a7f8685350f436f693c9f87a9c3fdc72e797ee2ef30d9dbc227b9d3de",
+    "tests/integration/api.test.ts": "281312aa46feb7bc9085d0419e0ddc569b968cadaa56aee88be29203f370c2d0"
+  },
+  "recorded_at": "2026-09-13T22:17:02-03:00"
+}

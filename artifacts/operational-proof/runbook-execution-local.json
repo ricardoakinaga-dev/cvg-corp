@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "status": "RUNBOOK_LOCAL_CONTRACT_VERIFIED",
-  "observedAt": "2026-09-11T17:27:39.271Z",
+  "observedAt": "2026-09-14T07:38:06.878Z",
   "prompt": {
     "reference": "docs/prompt-final-operational-proof-2026-09-10.txt",
     "sha256": "39dfbb610267b61854b972bf8513f6562b0ee374aa308f7a79b38d21f2cdeae3",

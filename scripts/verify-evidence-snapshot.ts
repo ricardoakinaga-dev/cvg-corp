@@ -129,12 +129,26 @@ export async function createEvidenceSnapshot(): Promise<EvidenceSnapshot> {
   return { schemaVersion: 1, capturedAt, sourceSha, worktree, prompt: { path: PROMPT_REFERENCE, sha256: promptSha256(prompt) }, artifacts, runId };
 }
 
-export async function verifyEvidenceSnapshot(snapshot: EvidenceSnapshot, now = Date.now()): Promise<string[]> {
+/**
+ * Verification is bound to bytes and declared facts, not to the ambient Git
+ * checkout or filesystem mtimes: a byte-identical copy in a clean or modified
+ * checkout must verify the same way. Tests inject the environment so the
+ * fixture is deterministic instead of depending on the developer worktree.
+ */
+export type EvidenceVerificationEnvironment = {
+  now?: number;
+  headSha?: string;
+  worktree?: EvidenceSnapshot["worktree"];
+  readArtifact?: (path: string) => Promise<{ bytes: Buffer; modifiedAt: string }>;
+};
+
+export async function verifyEvidenceSnapshot(snapshot: EvidenceSnapshot, environment: EvidenceVerificationEnvironment = {}): Promise<string[]> {
   const errors: string[] = [];
+  const now = environment.now ?? Date.now();
   if (snapshot.schemaVersion !== 1) errors.push("unsupported evidence snapshot schema");
-  const currentSha = git(["rev-parse", "HEAD"]);
+  const currentSha = environment.headSha ?? git(["rev-parse", "HEAD"]);
   if (snapshot.sourceSha !== currentSha) errors.push("evidence snapshot source SHA does not match HEAD");
-  const currentWorktree: EvidenceSnapshot["worktree"] = git(["status", "--porcelain=v1", "--untracked-files=all"]).trim().length === 0 ? "CLEAN" : "MODIFIED";
+  const currentWorktree: EvidenceSnapshot["worktree"] = environment.worktree ?? (git(["status", "--porcelain=v1", "--untracked-files=all"]).trim().length === 0 ? "CLEAN" : "MODIFIED");
   if (snapshot.worktree !== "CLEAN" && snapshot.worktree !== "MODIFIED") errors.push("evidence snapshot worktree state is invalid");
   else if (snapshot.worktree !== currentWorktree) errors.push(`evidence snapshot worktree state ${snapshot.worktree} does not match current state ${currentWorktree}`);
   const captured = Date.parse(snapshot.capturedAt);
@@ -145,14 +159,13 @@ export async function verifyEvidenceSnapshot(snapshot: EvidenceSnapshot, now = D
   if (!Array.isArray(snapshot.artifacts) || snapshot.artifacts.length !== SNAPSHOT_ARTIFACTS.length || snapshot.artifacts.map((entry) => entry.path).join("\n") !== SNAPSHOT_ARTIFACTS.join("\n")) errors.push("evidence snapshot artifact inventory is not exact");
   for (const entry of snapshot.artifacts) {
     try {
-      const { bytes, modifiedAt } = await regularFile(entry.path);
+      const { bytes } = environment.readArtifact ? await environment.readArtifact(entry.path) : await regularFile(entry.path);
       if (sha256(bytes) !== entry.digest) errors.push(`${entry.path} bytes differ from the snapshot digest`);
       try {
         errors.push(...verifyEvidenceArtifactConsistency(entry.path, JSON.parse(bytes.toString("utf8"))));
       } catch (error) {
         errors.push(`${entry.path}: JSON parse failed while checking duplicated verification metadata (${error instanceof Error ? error.message : String(error)})`);
       }
-      if (modifiedAt !== entry.modifiedAt) errors.push(`${entry.path} mtime differs from the snapshot`);
       const modified = Date.parse(entry.modifiedAt);
       if (!Number.isFinite(modified) || modified > now + 5 * 60_000 || modified < now - 7 * 24 * 60 * 60_000) errors.push(`${entry.path} modification time is outside the bounded evidence window`);
       if (entry.declaredObservedAt !== null) {

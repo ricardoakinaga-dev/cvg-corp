@@ -1,4 +1,4 @@
-import { createHash, createHmac, createPublicKey, randomBytes, timingSafeEqual, verify as verifySignature } from "node:crypto";
+import { createHash, createHmac, createPublicKey, randomBytes, scrypt, timingSafeEqual, verify as verifySignature } from "node:crypto";
 
 export interface PasswordPolicy {
   minLength: number;
@@ -363,3 +363,123 @@ export class BreakGlassRegistry {
     return [...this.grants.keys()].map((grantId) => this.get(grantId, atMs)).filter((grant): grant is BreakGlassGrant => grant !== null);
   }
 }
+
+export const PASSWORD_HASH_ALGORITHM = "scrypt";
+export const CURRENT_SCRYPT_PARAMS = Object.freeze({ N: 131_072, r: 8, p: 1, maxmem: 256 * 1024 * 1024, keylen: 64, saltBytes: 16 });
+export const LEGACY_SCRYPT_PARAMS = Object.freeze({ N: 16_384, r: 8, p: 1, maxmem: 32 * 1024 * 1024, keylen: 64 });
+export const DUMMY_PASSWORD_DIGEST = "scrypt$N=131072,r=8,p=1$Y3ZnLWR1bW15LXNhbHQtMDE$G1h1OAeUIVvRqeBry3cQYpVWPhEjlqBuVyLWqsg0LXEt_4kmPlxS_FR9VZU93xVbh63OLvTGY4Klid9CnmhDcQ";
+
+export class PasswordDerivationOverloadedError extends Error {
+  constructor() {
+    super("The bounded password derivation queue is full.");
+    this.name = "PasswordDerivationOverloadedError";
+  }
+}
+
+type ScryptParams = { N: number; r: number; p: number; maxmem: number; keylen: number };
+type ParsedDigest = { params: ScryptParams; legacy: boolean; salt: Buffer; digest: Buffer };
+
+function scryptDerive(password: string, salt: Buffer, params: ScryptParams): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    scrypt(password, salt, params.keylen, { N: params.N, r: params.r, p: params.p, maxmem: params.maxmem }, (error, derived) => {
+      if (error) reject(error);
+      else resolve(derived);
+    });
+  });
+}
+
+function boundedInteger(value: number, minimum: number, maximum: number): boolean {
+  return Number.isInteger(value) && value >= minimum && value <= maximum;
+}
+
+export function parsePasswordDigest(encoded: string): ParsedDigest | null {
+  const parts = encoded.split("$");
+  if (parts[0] !== PASSWORD_HASH_ALGORITHM) return null;
+  let params: ScryptParams;
+  let saltText: string | undefined;
+  let digestText: string | undefined;
+  if (parts.length === 4) {
+    const match = /^N=(\d+),r=(\d+),p=(\d+)$/.exec(parts[1] ?? "");
+    if (!match) return null;
+    params = { N: Number(match[1]), r: Number(match[2]), p: Number(match[3]), maxmem: CURRENT_SCRYPT_PARAMS.maxmem, keylen: 0 };
+    saltText = parts[2];
+    digestText = parts[3];
+  } else if (parts.length === 3) {
+    params = { ...LEGACY_SCRYPT_PARAMS, maxmem: LEGACY_SCRYPT_PARAMS.maxmem, keylen: 0 };
+    saltText = parts[1];
+    digestText = parts[2];
+  } else {
+    return null;
+  }
+  if (!boundedInteger(params.N, 16_384, 1_048_576) || !boundedInteger(params.r, 1, 32) || !boundedInteger(params.p, 1, 16)) return null;
+  if (params.N & (params.N - 1)) return null;
+  if (!saltText || !digestText) return null;
+  let salt: Buffer;
+  let digest: Buffer;
+  try {
+    salt = Buffer.from(saltText, "base64url");
+    digest = Buffer.from(digestText, "base64url");
+  } catch {
+    return null;
+  }
+  if (salt.length < 8 || salt.length > 64 || digest.length < 16 || digest.length > 128) return null;
+  return { params: { ...params, keylen: digest.length }, legacy: parts.length === 3, salt, digest };
+}
+
+class BoundedDerivationQueue {
+  private active = 0;
+  private readonly waiting: Array<() => void> = [];
+
+  constructor(private readonly maxConcurrent: number, private readonly queueLimit: number) {}
+
+  get pending(): number {
+    return this.waiting.length;
+  }
+
+  run<T>(task: () => Promise<T>): Promise<T> {
+    if (this.active >= this.maxConcurrent && this.waiting.length >= this.queueLimit) return Promise.reject(new PasswordDerivationOverloadedError());
+    return new Promise<T>((resolve, reject) => {
+      const start = (): void => {
+        this.active += 1;
+        task().then(resolve, reject).finally(() => {
+          this.active -= 1;
+          const next = this.waiting.shift();
+          if (next) next();
+        });
+      };
+      if (this.active < this.maxConcurrent) start();
+      else this.waiting.push(start);
+    });
+  }
+}
+
+export class PasswordHasher {
+  private readonly queue: BoundedDerivationQueue;
+
+  constructor(options: { maxConcurrent?: number; queueLimit?: number } = {}) {
+    const maxConcurrent = Math.max(1, Math.min(Math.floor(options.maxConcurrent ?? 2), 8));
+    const queueLimit = Math.max(1, Math.min(Math.floor(options.queueLimit ?? 32), 1_024));
+    this.queue = new BoundedDerivationQueue(maxConcurrent, queueLimit);
+  }
+
+  async hash(password: string): Promise<string> {
+    const salt = randomBytes(CURRENT_SCRYPT_PARAMS.saltBytes);
+    const digest = await this.queue.run(() => scryptDerive(password, salt, CURRENT_SCRYPT_PARAMS));
+    return `${PASSWORD_HASH_ALGORITHM}$N=${CURRENT_SCRYPT_PARAMS.N},r=${CURRENT_SCRYPT_PARAMS.r},p=${CURRENT_SCRYPT_PARAMS.p}$${salt.toString("base64url")}$${digest.toString("base64url")}`;
+  }
+
+  async verify(password: string, encoded: string): Promise<{ valid: boolean; needsRehash: boolean }> {
+    const parsed = parsePasswordDigest(encoded);
+    if (!parsed) return { valid: false, needsRehash: false };
+    const candidate = await this.queue.run(() => scryptDerive(password, parsed.salt, parsed.params));
+    const valid = candidate.length === parsed.digest.length && timingSafeEqual(candidate, parsed.digest);
+    const needsRehash = valid && (parsed.legacy || parsed.params.N !== CURRENT_SCRYPT_PARAMS.N || parsed.params.r !== CURRENT_SCRYPT_PARAMS.r || parsed.params.p !== CURRENT_SCRYPT_PARAMS.p || parsed.params.keylen !== CURRENT_SCRYPT_PARAMS.keylen);
+    return { valid, needsRehash };
+  }
+
+  get pendingDerivations(): number {
+    return this.queue.pending;
+  }
+}
+
+export const passwordHasher = new PasswordHasher();

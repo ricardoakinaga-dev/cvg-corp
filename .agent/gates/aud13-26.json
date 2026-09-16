@@ -1,0 +1,101 @@
+{
+  "schema_version": 1,
+  "gate_id": "GATE-CVG-AUD13-26",
+  "task_id": "AUD13-26",
+  "status": "PASS_COM_RESSALVAS",
+  "decision": "PASS_WITH_EXTERNAL_BLOCKS",
+  "score": 8.0,
+  "critic_artifact": null,
+  "subject": {
+    "head_sha": "1c22c5dc79c52151f4c7c94c4402dfdc86812cbc",
+    "worktree": "MODIFIED",
+    "task_owned_paths": [
+      "docs/staging.md",
+      "docs/adr/",
+      "docker/.env.example"
+    ],
+    "blocked_slices": [
+      "Provisionamento de staging/TLS/DB/secret authority/provider/DeepSeek/collector/browser/load/recovery",
+      "Execucao de qualquer operacao externa, egress, custo ou dado sensivel"
+    ]
+  },
+  "bar": {
+    "path": ".gauntlet/bar-v4.json",
+    "sha256": "2093461a8d6103641a555ad45371dde4649e5f144c32260b80244e219fa70697"
+  },
+  "checks": [
+    {
+      "command": "git diff --check",
+      "exit_code": 0,
+      "result": "PASS"
+    },
+    {
+      "command": "npm run typecheck",
+      "exit_code": 0,
+      "result": "PASS"
+    },
+    {
+      "command": "npm run lint",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "176 arquivos"
+    },
+    {
+      "command": "npm test",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "385 testes: 384 pass, 1 skip, 0 fail"
+    },
+    {
+      "command": "staging-links-check",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "5 links relativos resolvidos"
+    },
+    {
+      "command": "external-env-example-check",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "7 variaveis externas permanecem comentadas"
+    },
+    {
+      "command": "npm run verify:staging",
+      "exit_code": 2,
+      "result": "BLOCKED_EXTERNAL",
+      "summary": "CVG_STAGING_URL ausente; nenhuma request foi feita"
+    },
+    {
+      "command": "npm run verify:load",
+      "exit_code": 2,
+      "result": "BLOCKED_EXTERNAL",
+      "summary": "URL explicita, token de secret authority e p95 aprovado ausentes"
+    },
+    {
+      "command": "npm run verify:static",
+      "exit_code": 1,
+      "result": "FAIL_WITH_STALE_SNAPSHOT",
+      "summary": "evidence snapshot source SHA nao corresponde ao HEAD do worktree"
+    },
+    {
+      "command": "npm run verify:production -- --structural",
+      "exit_code": null,
+      "result": "TIMED_OUT",
+      "summary": "timeout apos 300000 ms; nenhuma autoridade externa foi usada"
+    }
+  ],
+  "residuals": [
+    "A preparacao e o contrato sao locais; owners ainda precisam provisionar e autorizar os recursos externos fora do checkout.",
+    "verify:static continua impedido pelo snapshot de evidencia stale relativo ao HEAD modificado; o snapshot nao foi reescrito fora do escopo.",
+    "verify:production --structural nao concluiu dentro de 300000 ms e precisa de investigacao/reexecucao com limite controlado.",
+    "Sem staging, provider, secret authority, observabilidade, carga, recovery e revisao humana, o veredicto global permanece AAA_NOT_PROVEN."
+  ],
+  "verification_refs": [
+    "VER-CVG-AUD13-26-001"
+  ],
+  "artifact_digests": {
+    "docs/staging.md": "dfd67fc37a1e6c6ca14ddd73668a439c942a105c9c9c99c2371d03ed27ccb0c8",
+    "docs/adr/033-external-test-authority.md": "dd0f7995ad883fa7b8376fba0c6e3740d47df5db34e12fde005875bd8d4e5ef5",
+    "docker/.env.example": "ff4e2f78339a761e1c61eda0c6aa691d004a40c60fffd2f57d6fd031d7dec823"
+  },
+  "recorded_at": "2026-09-13T15:46:30-03:00"
+}

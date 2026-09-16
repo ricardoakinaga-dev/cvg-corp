@@ -1,0 +1,173 @@
+{
+  "schema_version": 1,
+  "gate_id": "GATE-CVG-AUD13-WAVE-1",
+  "task_id": "AUD13-WAVE-1",
+  "status": "PASS_WITH_RESIDUALS",
+  "decision": "PASS_WITH_RESIDUALS",
+  "score": 7.5,
+  "critic_artifact": ".gauntlet/critique-aud13-wave-1.md",
+  "subject": {
+    "head_sha": "1c22c5dc79c52151f4c7c94c4402dfdc86812cbc",
+    "worktree": "MODIFIED",
+    "wave": [
+      "AUD13-01",
+      "AUD13-02",
+      "AUD13-03",
+      "AUD13-04",
+      "AUD13-05",
+      "AUD13-06",
+      "AUD13-07",
+      "AUD13-09",
+      "AUD13-10",
+      "AUD13-29"
+    ]
+  },
+  "bar": {
+    "path": ".gauntlet/bar-v4.json",
+    "sha256": "2093461a8d6103641a555ad45371dde4649e5f144c32260b80244e219fa70697"
+  },
+  "checks": [
+    {
+      "command": "npm ci --ignore-scripts --offline",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "130 pacotes; Vite 8.3.0/plugin-react 6.1.1 do lockfile"
+    },
+    {
+      "command": "npm ls --depth=0",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "sem invalid apos o ci"
+    },
+    {
+      "command": "npm run typecheck",
+      "exit_code": 0,
+      "result": "PASS"
+    },
+    {
+      "command": "npm test",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "349 testes: 348 pass, 1 skip, 0 fail"
+    },
+    {
+      "command": "npm run build",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "Vite 8; bundle 383.46kB / 111.99kB gzip"
+    },
+    {
+      "command": "npm run lint",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "171 arquivos"
+    },
+    {
+      "command": "npm run audit:contrast",
+      "exit_code": 0,
+      "result": "PASS"
+    },
+    {
+      "command": "npm run test:contract",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "8 testes"
+    },
+    {
+      "command": "node --import tsx --test tests/unit/ops.test.ts",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "11 testes"
+    },
+    {
+      "command": "node --import tsx --test tests/unit/evidence-snapshot.test.ts",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "8 testes"
+    },
+    {
+      "command": "node --import tsx --test tests/unit/finance-balance.test.ts",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "7 testes"
+    },
+    {
+      "command": "node --import tsx --test tests/unit/auth.test.ts",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "6 testes"
+    },
+    {
+      "command": "npx playwright test tests/e2e/app.spec.ts --project=chromium-mobile-375 --project=chromium-tablet-768 --project=chromium-wide-1440",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "60 passed, 6 skipped, 0 fail"
+    },
+    {
+      "command": "npx playwright test tests/e2e/accessibility.spec.ts --project=chromium-stress",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "2 passed, 1 skipped"
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0,
+      "result": "PASS"
+    }
+  ],
+  "critic": {
+    "fresh_context": true,
+    "mutating_agent": false,
+    "shell_available": false,
+    "global_score": 7.5,
+    "fails": 0
+  },
+  "residuals": [
+    "AUD13-03: snapshot operacional continua no SHA antigo; verify:static vermelho ate AUD13-34 (nunca recapturar prova historica).",
+    "AUD13-29: relatorios operacionais com filtros/fonte real e soak em processo ainda nao implementados (PARTIAL).",
+    "AUD13-10: limite por IP sob concorrencia HTTP real e benchmark de login completo ficam para AUD13-36.",
+    "AUD13-04: correlationId de erro preservado estruturalmente; sem assercao E2E do valor.",
+    "docs/07-plano-execucao.md cita fila maxima oito divergente da implementacao (reconciliar em AUD13-37)."
+  ],
+  "artifact_digests": {
+    "apps/api/src/app.ts": "c12f447ef8eb2a181742ddc3cd6e9a1b00e792f969149b93e5abc7fedacbf08c",
+    "apps/api/src/application/read-services.ts": "965412f0c6149f15c8490a73985ea823e8209bf6460f0e53d29571bbb31390a0",
+    "apps/web/src/api/client.ts": "1a436e4db8ad98af0075fff87b69a3865e96ecba92444d8ceb203da8f55659a9",
+    "apps/web/src/api/validation.ts": "8b65185ac58c9666bb97762e38ce273d39deeee707b01faced400aa0696af43d",
+    "apps/web/src/app-shell/App.tsx": "7c5896ea495fb40715b65149e1859c5fc0adcff208d83cff6b78a0b9f31cf064",
+    "apps/web/src/app-shell/Shell.tsx": "269ad5b56c45e452864738e6ac8350212c5148325d7abea9f90aa800d027d172",
+    "apps/web/src/components/Login.tsx": "b9148154fdf6d8739c8546c3d29e7cea35ed90797f0ec6d541b650c57ca9f6a9",
+    "apps/web/src/features/finance/Finance.tsx": "4f52a9d0f5296e2dec73c412a17606418280d706a77f197a2d08c1c9fc0cb83e",
+    "apps/web/src/hooks/use-session.ts": "2f1026f54d5d0855dd4a786d35f31c8058423a2f9533d488ca3e61d8648e9588",
+    "apps/web/src/hooks/use-toast.ts": "113fc935526712e91acd3eb39b6acde4336e7e4573bf401aececcfbbc9c5f815",
+    "apps/web/src/state/sign-out.ts": "830b93e123042e8107614b00265ae016ae18f39681327851a6442259196163bf",
+    "apps/web/src/styles.css": "ed1b7f28c71295c5b60a3232a5440f7078d97aabcb3039d3b225051c816e590e",
+    "packages/auth/src/index.ts": "25ffb3250c2261f33dc1884e32885a0fc5bff81bbcba82d0b65354d8ee19388f",
+    "packages/config/src/index.ts": "889c2d495d8c6e94a77c935e0803e2ba2d58bcc8a554534df051be21bcb5aedd",
+    "packages/contracts/src/index.ts": "7fa2b1eac0b3e0eb8f4b72c60ffcb936d5082e39b230ed6bcf96d78f7d4e5cde",
+    "packages/domain/src/index.ts": "cd61fcf11e123ff0d2f8ffbafaf9f148e805fc6967c2bb3f24f3b981425dfc01",
+    "packages/ops/src/index.ts": "44ef85ed30fa24e23390b9b93bfb80a14164f023f1c604df6a8fa509a352fb6f",
+    "scripts/verify-evidence-snapshot.ts": "ae25bd308c87930890e9fe021b0607f285c91bc94801a23abbb27b6b2e95f11c",
+    "tests/e2e/app.spec.ts": "2eaad97fc232d3e2d86ee112a9a80e9e5fbf55dbaa2c74ab394bb96550130323",
+    "tests/integration/api.test.ts": "503a773139ea440dcbf23c31117b80bab0c41caadd71b0305ee65b9281509a38",
+    "tests/unit/auth.test.ts": "ac3593c45bebd6955a81c4e408ad85a3b19f1c3a701a00c7fcb66d4cefb6d86f",
+    "tests/unit/contracts.test.ts": "b29420c48a84e9d7831b9694486fbd51fc236e53068f052e599de0bfbda284d4",
+    "tests/unit/evidence-snapshot.test.ts": "5b8143a121862e81786408b5d33684d3129da06998500219790435ca99181ac8",
+    "tests/unit/finance-balance.test.ts": "dbd83af207e5c87142c19293b89fb99896a3fb7baeeff15272ef0d46d5fafd27",
+    "tests/unit/ops.test.ts": "b31894b6c49fdd031fc1c53f942ee04a060aadc951a3f9cf9f4f0e510304c9e8"
+  },
+  "verification_refs": [
+    "VER-CVG-AUD13-07-001",
+    "VER-CVG-AUD13-04-001",
+    "VER-CVG-AUD13-09-001",
+    "VER-CVG-AUD13-05-001",
+    "VER-CVG-AUD13-06-001",
+    "VER-CVG-AUD13-03-001",
+    "VER-CVG-AUD13-29-001",
+    "VER-CVG-AUD13-10-001",
+    "VER-CVG-AUD13-02-001",
+    "VER-CVG-AUD13-01-002"
+  ],
+  "review": "Critico fresco somente leitura (sem shell); Lead executou e registrou a regressao. Revisao independente de execucao permanece para AUD13-37.",
+  "recorded_at": "2026-09-13T10:59:54-03:00"
+}

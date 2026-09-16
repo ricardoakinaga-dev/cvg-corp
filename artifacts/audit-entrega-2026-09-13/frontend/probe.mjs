@@ -1,0 +1,28 @@
+import { chromium } from '@playwright/test';
+import fs from 'node:fs';
+const browser=await chromium.launch({headless:true});
+const page=await browser.newPage({viewport:{width:1440,height:1000}});
+await page.goto('http://127.0.0.1:50431');
+await page.waitForTimeout(500);
+await page.evaluate(async()=>{
+ const urls=performance.getEntriesByType('resource').map(x=>x.name);
+ const React=await import(urls.find(x=>x.includes('/react.js?')));
+ const ReactDOM=await import(urls.find(x=>x.includes('/react-dom_client.js?'))); const createRoot=ReactDOM.createRoot ?? ReactDOM.default.createRoot;
+ const {Clinical}=await import('/src/features/clinical/Clinical.tsx');
+ const host=document.createElement('div');host.id='synthetic-probe';document.body.replaceChildren(host);
+ window.probeCalls=[];
+ const docs=[{id:'a-old',encounterId:'A',documentType:'EVOLUTION',title:'A older signed note',content:'older signed content',dataClass:'D3',status:'SIGNED',version:1,signedAt:'2026-09-12T10:00:00Z',signedBy:'vet',createdAt:'2026-09-12T10:00:00Z'},{id:'a-new',encounterId:'A',documentType:'EVOLUTION',title:'A newest signed note',content:'newer signed content',dataClass:'D3',status:'SIGNED',version:1,signedAt:'2026-09-13T10:00:00Z',signedBy:'vet',createdAt:'2026-09-13T10:00:00Z'},{id:'b-new',encounterId:'B',documentType:'EVOLUTION',title:'B signed note',content:'B signed content',dataClass:'D3',status:'SIGNED',version:1,signedAt:'2026-09-13T10:00:00Z',signedBy:'vet',createdAt:'2026-09-13T10:00:00Z'}];
+ const client={get:async path=>{window.probeCalls.push(path);if(path==='/encounters')return {items:['A','B'].map(id=>({id,patientId:id,patient:{name:'Patient '+id},chiefComplaint:'Synthetic audit fixture',urgency:'ROUTINE',status:'OPEN',openedAt:'2026-09-13T10:00:00Z'}))};if(path==='/clinical/documents')return {items:docs};if(path.endsWith('/addenda')){if(path.includes('b-new'))return new Promise(resolve=>window.resolveB=()=>resolve({items:[]}));const doc=path.split('/')[3];return {items:[{id:'add-'+doc,documentId:doc,authorId:'vet',reason:'CORRECTION FOR PATIENT A',content:'Patient A correction: must never appear under B',createdAt:'2026-09-13T11:00:00Z'}]};}return {document:docs.find(d=>path.endsWith(d.id))};},request:async()=>{throw Error('No writes in audit');}};
+ createRoot(host).render((React.createElement ?? React.default.createElement)(Clinical,{client,context:{roles:['veterinario']},notify:()=>{}}));
+});
+await page.getByRole('button',{name:'Abrir atendimento'}).nth(0).click();
+await page.getByText('Patient A correction: must never appear under B').waitFor();
+const firstCalls=await page.evaluate(()=>window.probeCalls.slice());
+await page.getByRole('button',{name:'Ver conteúdo'}).first().click();
+const signedFocus=await page.evaluate(()=>({activeTag:document.activeElement.tagName,activeText:document.activeElement.textContent,dialogContains:!!document.querySelector('[role=dialog]')?.contains(document.activeElement),disabledContent:document.querySelector('#clinical-edit-content').disabled}));
+await page.getByRole('button',{name:'Fechar',exact:true}).last().click();
+await page.getByRole('button',{name:'Abrir atendimento'}).nth(1).click();
+await page.getByText('LINHA DO TEMPO · Patient B').waitFor();
+await page.screenshot({path:'/tmp/cvg-delivery-audit-20260913-bcsdpob2/evidence/frontend/wrong-patient-addendum.png',fullPage:true});
+const result={evidenceType:'isolated synthetic browser using actual candidate Clinical component, mocked ApiClient; no API writes',firstCalls,olderDocumentAddendaRequested:firstCalls.includes('/clinical/documents/a-old/addenda'),signedFocus,wrongPatientCorrectionVisible:await page.getByText('Patient A correction: must never appear under B').isVisible(),timelineHeading:await page.getByText('LINHA DO TEMPO · Patient B').textContent()};
+fs.writeFileSync('/tmp/cvg-delivery-audit-20260913-bcsdpob2/evidence/frontend/probe-results.json',JSON.stringify(result,null,2));console.log(JSON.stringify(result,null,2));await browser.close();

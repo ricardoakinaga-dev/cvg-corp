@@ -535,6 +535,86 @@ export class CvgStore {
     return clone(reservation);
   }
 
+  private budgetScopeCommitted(organizationId: OpaqueId, category: BudgetReservation["category"], scope: { unitId: OpaqueId | null; workspaceId: OpaqueId | null; actorId: OpaqueId }): number {
+    return [...this.budgetReservationsStore.values()].filter((reservation) => {
+      if (reservation.organizationId !== organizationId || reservation.category !== category) return false;
+      const session = this.aiSessionsStore.get(reservation.sessionId);
+      // An orphaned reservation is not evidence that capacity was released.
+      // Count it conservatively until reconciliation can establish its scope.
+      if (!session) return true;
+      return session.actorId === scope.actorId && (session.unitId ?? null) === scope.unitId && (session.workspaceId ?? null) === scope.workspaceId;
+    }).reduce((sum, reservation) => sum + (reservation.status === "RESERVED" ? reservation.reservedUnits : reservation.consumedUnits), 0);
+  }
+
+  /** Expire stale reservations so unused capacity never becomes a permanent lockup. */
+  expireBudgetReservations(ttlMs: number, nowMs = Date.now()): number {
+    if (!Number.isSafeInteger(ttlMs) || ttlMs < 1) throw new DomainError("INVALID_INPUT", "TTL de budget inválido.", 400);
+    let expired = 0;
+    for (const reservation of this.budgetReservationsStore.values()) {
+      if (reservation.status !== "RESERVED") continue;
+      if (nowMs - Date.parse(reservation.createdAt) < ttlMs) continue;
+      reservation.status = "RELEASED";
+      expired += 1;
+    }
+    return expired;
+  }
+
+  /** Atomic check-and-reserve before any provider dispatch. */
+  reserveBudget(context: CvgContext, input: { sessionId: OpaqueId; category: BudgetReservation["category"]; units: number; cap: number; ttlMs: number }): BudgetReservation {
+    this.requireRole(context, ["admin", "veterinario", "recepcao"], "ai:session");
+    if (!Number.isSafeInteger(input.units) || input.units < 1) throw new DomainError("INVALID_INPUT", "Unidades de reserva inválidas.", 400);
+    if (!Number.isSafeInteger(input.cap) || input.cap < 1) throw new DomainError("INVALID_INPUT", "Teto de budget inválido.", 400);
+    const session = this.aiSessionsStore.get(input.sessionId);
+    if (!session || session.organizationId !== context.organizationId || session.actorId !== context.actorId || !isInContext(session, context) || session.status !== "ACTIVE") throw new DomainError("NOT_FOUND", "Sessão de copiloto não encontrada.", 404);
+    this.expireBudgetReservations(input.ttlMs);
+    const committed = this.budgetScopeCommitted(context.organizationId, input.category, { unitId: context.unitId, workspaceId: context.workspaceId, actorId: context.actorId });
+    const available = input.cap - committed;
+    if (input.units > available) throw new DomainError("BUDGET_EXCEEDED", "O budget disponível não cobre esta operação.", 429, { available, required: input.units, category: input.category });
+    const reservation: BudgetReservation = { id: makeId(), organizationId: context.organizationId, sessionId: session.id, category: input.category, reservedUnits: input.units, consumedUnits: 0, status: "RESERVED", createdAt: now() };
+    this.budgetReservationsStore.set(reservation.id, reservation);
+    return clone(reservation);
+  }
+
+  settleBudgetReservation(reservationId: OpaqueId, actualUnits: number | null): { reservation: BudgetReservation; duplicate: boolean; late: boolean; overageUnits: number; unknown: boolean } {
+    if (actualUnits !== null && (!Number.isSafeInteger(actualUnits) || actualUnits < 0)) throw new DomainError("INVALID_INPUT", "Uso de budget inválido.", 400);
+    const reservation = this.budgetReservationsStore.get(reservationId);
+    if (!reservation) throw new DomainError("NOT_FOUND", "Reserva de budget não encontrada.", 404);
+    if (reservation.status === "EXHAUSTED" && (actualUnits === null || actualUnits <= reservation.consumedUnits)) return { reservation: clone(reservation), duplicate: true, late: false, overageUnits: 0, unknown: false };
+    const late = reservation.status === "RELEASED";
+    const unknown = actualUnits === null;
+    // Usage is an observation, not a cap. Capping here was the E02 defect: a
+    // 900-unit response against a 100-unit hold must commit all 900 units.
+    const observedUnits = unknown ? reservation.reservedUnits : actualUnits;
+    reservation.consumedUnits = Math.max(reservation.consumedUnits, observedUnits);
+    const overageUnits = unknown ? 0 : Math.max(0, actualUnits - reservation.reservedUnits);
+    if (unknown || reservation.consumedUnits >= reservation.reservedUnits) reservation.status = "EXHAUSTED";
+    else reservation.status = "RELEASED";
+    if (unknown || late || overageUnits > 0) {
+      const session = this.aiSessionsStore.get(reservation.sessionId);
+      this.recordAudit({
+        organizationId: reservation.organizationId,
+        actorId: session?.actorId ?? null,
+        unitId: session?.unitId ?? null,
+        workspaceId: session?.workspaceId ?? null,
+        action: "ai.budget.settlement",
+        resourceType: "BudgetReservation",
+        resourceId: reservation.id,
+        result: "UNKNOWN",
+        reason: unknown ? "usage unavailable; reservation remains committed for reconciliation" : late ? "usage arrived after reservation release" : "observed usage exceeded reservation",
+        correlationId: `budget:settlement:${reservation.id}`,
+        metadata: { category: reservation.category, reservedUnits: reservation.reservedUnits, actualUnits, consumedUnits: reservation.consumedUnits, overageUnits, late, unknown }
+      });
+    }
+    return { reservation: clone(reservation), duplicate: false, late, overageUnits, unknown };
+  }
+
+  releaseBudgetReservation(reservationId: OpaqueId): BudgetReservation {
+    const reservation = this.budgetReservationsStore.get(reservationId);
+    if (!reservation) throw new DomainError("NOT_FOUND", "Reserva de budget não encontrada.", 404);
+    if (reservation.status === "RESERVED") reservation.status = "RELEASED";
+    return clone(reservation);
+  }
+
   private seed(password: string): void {
     const organizationId = this.bootstrapCredentials.organizationId;
     const centroId = id("00000000-0000-4000-8000-000000000011");
@@ -764,6 +844,13 @@ export class CvgStore {
     user.security.credentialVersion += 1;
     this.clearLoginFailures(user);
     this.revokeAllSessions(user.id);
+    return clone(user);
+  }
+
+  /** Storage-only upgrade after a successful legacy verification; never changes credential identity. */
+  upgradePasswordDigest(userId: OpaqueId, passwordDigest: string): User {
+    const user = this.getUserRecord(userId);
+    user.passwordDigest = passwordDigest;
     return clone(user);
   }
 
@@ -1082,6 +1169,11 @@ export class CvgStore {
     this.requireRole(context, ["admin", "recepcao", "veterinario"], "patients:create");
     const guardian = this.guardiansStore.get(input.guardianId);
     if (!guardian || !this.guardianScopeMatches(guardian, context)) throw new DomainError("NOT_FOUND", "Responsável não encontrado neste contexto.", 404);
+    const normalizedIdentifiers = input.identifiers.map((value) => value.trim().toLowerCase()).filter(Boolean);
+    if (normalizedIdentifiers.length > 0) {
+      const duplicate = [...this.patientsStore.values()].find((candidate) => candidate.organizationId === context.organizationId && candidate.status === "ACTIVE" && candidate.identifiers.some((existing) => normalizedIdentifiers.includes(existing.trim().toLowerCase())));
+      if (duplicate) throw new DomainError("CONFLICT", "Identificador já vinculado a outro paciente ativo.", 409, { patientId: duplicate.id, identifiers: input.identifiers });
+    }
     const patient: AnimalPatient = { id: makeId(), organizationId: context.organizationId, unitId: context.unitId, workspaceId: context.workspaceId, guardianId: input.guardianId, name: input.name, species: input.species, breed: input.breed, sex: input.sex, reproductiveStatus: input.reproductiveStatus, birthDate: input.birthDate, identifiers: [...input.identifiers], dataClass: "D3", status: "ACTIVE", mergedIntoId: null, statusChangedAt: null, createdAt: now() };
     this.patientsStore.set(patient.id, patient);
     return clone(patient);
@@ -1099,6 +1191,7 @@ export class CvgStore {
     this.requireRole(context, ["admin", "veterinario"], "patients:merge");
     const source = this.findPatientRecord(context, input.sourcePatientId);
     const target = this.findPatientRecord(context, input.targetPatientId);
+    if (target.status !== "ACTIVE") throw new DomainError("CONFLICT", "O cadastro de destino precisa estar ativo para receber a mesclagem.", 409, { targetPatientId: target.id, status: target.status });
     source.status = "MERGED";
     source.mergedIntoId = target.id;
     source.statusChangedAt = now();
@@ -1166,9 +1259,159 @@ export class CvgStore {
     return clone(entry);
   }
 
+  private findAppointmentRecord(context: CvgContext, appointmentId: OpaqueId): Appointment {
+    const appointment = this.appointmentsStore.get(appointmentId);
+    if (!appointment || appointment.organizationId !== context.organizationId || (context.unitId && appointment.unitId !== context.unitId) || (context.workspaceId && appointment.workspaceId !== context.workspaceId)) throw new DomainError("NOT_FOUND", "Reserva não encontrada.", 404);
+    return appointment;
+  }
+
+  private requireAppointmentVersion(appointment: Appointment, expectedVersion: number | null | undefined): void {
+    if (expectedVersion !== null && expectedVersion !== undefined && appointment.version !== expectedVersion) throw new DomainError("REVISION_CONFLICT", "A reserva foi alterada por outra sessão; recarregue antes de repetir.", 409, { currentVersion: appointment.version });
+  }
+
+  private activeQueueEntryFor(appointmentId: OpaqueId): QueueEntry | null {
+    return [...this.queueEntriesStore.values()].find((entry) => entry.appointmentId === appointmentId && entry.status !== "CANCELLED" && entry.status !== "DONE") ?? null;
+  }
+
+  private windowOverlaps(context: CvgContext, input: { providerId: OpaqueId; resourceId: OpaqueId | null; startsAt: string; endsAt: string }, ignoreAppointmentId: OpaqueId | null = null): boolean {
+    const startsAt = Date.parse(input.startsAt);
+    const endsAt = Date.parse(input.endsAt);
+    return [...this.appointmentsStore.values()].some((appointment) => appointment.id !== ignoreAppointmentId && appointment.organizationId === context.organizationId && appointment.unitId === context.unitId && appointment.status !== "CANCELLED" && appointment.status !== "COMPLETED" && (appointment.providerId === input.providerId || (input.resourceId !== null && appointment.resourceId === input.resourceId)) && startsAt < Date.parse(appointment.endsAt) && endsAt > Date.parse(appointment.startsAt));
+  }
+
+  confirmAppointment(context: CvgContext, appointmentId: OpaqueId, expectedVersion?: number | null): Appointment {
+    this.requireRole(context, ["admin", "recepcao", "veterinario"], "appointments:confirm");
+    const appointment = this.findAppointmentRecord(context, appointmentId);
+    this.requireAppointmentVersion(appointment, expectedVersion);
+    if (appointment.status === "CANCELLED" || appointment.status === "COMPLETED") throw new DomainError("INVALID_STATE", "A reserva não pode ser confirmada neste estado.", 409, { status: appointment.status });
+    if (appointment.status === "CHECKED_IN") throw new DomainError("INVALID_STATE", "A reserva já está na fila de atendimento.", 409, { status: appointment.status });
+    if (appointment.status !== "CONFIRMED") {
+      appointment.status = "CONFIRMED";
+      appointment.version += 1;
+    }
+    return clone(appointment);
+  }
+
+  cancelAppointment(context: CvgContext, appointmentId: OpaqueId, reason: string, expectedVersion?: number | null): Appointment {
+    this.requireRole(context, ["admin", "recepcao", "veterinario"], "appointments:cancel");
+    const appointment = this.findAppointmentRecord(context, appointmentId);
+    this.requireAppointmentVersion(appointment, expectedVersion);
+    if (appointment.status === "COMPLETED") throw new DomainError("INVALID_STATE", "Atendimento concluído não pode ser cancelado.", 409, { status: appointment.status });
+    const queueEntry = this.activeQueueEntryFor(appointment.id);
+    if (queueEntry && queueEntry.status !== "WAITING") throw new DomainError("CONFLICT", "O paciente já entrou em triagem ou atendimento; conclua a fila antes de cancelar a reserva.", 409, { queueEntryId: queueEntry.id, queueStatus: queueEntry.status });
+    if (queueEntry) queueEntry.status = "CANCELLED";
+    if (appointment.status !== "CANCELLED") {
+      appointment.status = "CANCELLED";
+      appointment.version += 1;
+    }
+    return clone(appointment);
+  }
+
+  rescheduleAppointment(context: CvgContext, appointmentId: OpaqueId, input: { startsAt: string; endsAt: string; expectedVersion?: number | null }): Appointment {
+    this.requireRole(context, ["admin", "recepcao", "veterinario"], "appointments:reschedule");
+    const appointment = this.findAppointmentRecord(context, appointmentId);
+    this.requireAppointmentVersion(appointment, input.expectedVersion);
+    if (appointment.status !== "SCHEDULED" && appointment.status !== "CONFIRMED") throw new DomainError("INVALID_STATE", "Somente reservas agendadas ou confirmadas podem ser remarcadas.", 409, { status: appointment.status });
+    if (this.activeQueueEntryFor(appointment.id)) throw new DomainError("CONFLICT", "A reserva já possui fila ativa; cancele o check-in antes de remarcar.", 409, { appointmentId: appointment.id });
+    const startsAt = Date.parse(input.startsAt);
+    const endsAt = Date.parse(input.endsAt);
+    if (!Number.isFinite(startsAt) || !Number.isFinite(endsAt) || endsAt <= startsAt) throw new DomainError("INVALID_INPUT", "A nova janela da reserva é inválida.", 400);
+    if (this.windowOverlaps(context, { providerId: appointment.providerId, resourceId: appointment.resourceId, startsAt: input.startsAt, endsAt: input.endsAt }, appointment.id)) throw new DomainError("CONFLICT", "A janela escolhida já está ocupada.", 409);
+    appointment.startsAt = input.startsAt;
+    appointment.endsAt = input.endsAt;
+    appointment.version += 1;
+    return clone(appointment);
+  }
+
+  private findQueueEntryRecord(context: CvgContext, queueEntryId: OpaqueId): QueueEntry {
+    const entry = this.queueEntriesStore.get(queueEntryId);
+    if (!entry || entry.organizationId !== context.organizationId || (context.unitId && entry.unitId !== context.unitId)) throw new DomainError("NOT_FOUND", "Entrada de fila não encontrada.", 404);
+    if (context.workspaceId) {
+      const appointment = entry.appointmentId ? this.appointmentsStore.get(entry.appointmentId) : null;
+      if (!appointment || appointment.workspaceId !== context.workspaceId) throw new DomainError("NOT_FOUND", "Entrada de fila não encontrada.", 404);
+    }
+    return entry;
+  }
+
+  triageQueueEntry(context: CvgContext, queueEntryId: OpaqueId, priority: QueueEntry["priority"]): QueueEntry {
+    this.requireRole(context, ["admin", "recepcao", "veterinario"], "queue:triage");
+    const entry = this.findQueueEntryRecord(context, queueEntryId);
+    if (entry.status === "CANCELLED" || entry.status === "DONE") throw new DomainError("INVALID_STATE", "A entrada de fila não está mais aguardando atendimento.", 409, { status: entry.status });
+    entry.priority = priority;
+    if (entry.status === "WAITING") entry.status = "TRIAGE";
+    return clone(entry);
+  }
+
+  handoffQueueEntry(context: CvgContext, queueEntryId: OpaqueId, input: { chiefComplaint: string; urgency: Encounter["urgency"] }): { queueEntry: QueueEntry; encounter: Encounter } {
+    this.requireRole(context, ["admin", "veterinario"], "queue:handoff");
+    const entry = this.findQueueEntryRecord(context, queueEntryId);
+    if (entry.status === "CANCELLED" || entry.status === "DONE") throw new DomainError("INVALID_STATE", "A entrada de fila não está mais aguardando atendimento.", 409, { status: entry.status });
+    const existing = entry.appointmentId ? [...this.encountersStore.values()].find((encounter) => encounter.appointmentId === entry.appointmentId && encounter.organizationId === context.organizationId) : null;
+    if (existing) {
+      entry.status = "IN_SERVICE";
+      return { queueEntry: clone(entry), encounter: clone(existing) };
+    }
+    const encounter = this.createEncounter(context, { patientId: entry.patientId, appointmentId: entry.appointmentId, chiefComplaint: input.chiefComplaint, urgency: input.urgency });
+    entry.status = "IN_SERVICE";
+    return { queueEntry: clone(entry), encounter };
+  }
+
   listEncounters(context: CvgContext): Encounter[] {
     this.requireRole(context, ["admin", "veterinario"], "encounters:read");
     return [...this.encountersStore.values()].filter((encounter) => encounter.organizationId === context.organizationId && (!context.unitId || encounter.unitId === context.unitId) && (!context.workspaceId || encounter.workspaceId === context.workspaceId)).map(clone);
+  }
+
+  private findClinicalDocumentRecord(context: CvgContext, documentId: OpaqueId): ClinicalDocument {
+    const document = this.clinicalDocumentsStore.get(documentId);
+    if (!document || document.organizationId !== context.organizationId) throw new DomainError("NOT_FOUND", "Documento não encontrado.", 404);
+    const encounter = this.encountersStore.get(document.encounterId);
+    if (!encounter || encounter.organizationId !== context.organizationId || encounter.patientId !== document.patientId || (context.unitId && encounter.unitId !== context.unitId) || (context.workspaceId && encounter.workspaceId !== context.workspaceId)) throw new DomainError("NOT_FOUND", "Documento não encontrado.", 404);
+    return document;
+  }
+
+  findClinicalDocument(context: CvgContext, documentId: OpaqueId): ClinicalDocument {
+    this.requireRole(context, ["admin", "veterinario"], "clinical:read");
+    return clone(this.findClinicalDocumentRecord(context, documentId));
+  }
+
+  updateClinicalDraft(context: CvgContext, documentId: OpaqueId, input: { title?: string | undefined; content: string; expectedVersion: string | null }): ClinicalDocument {
+    this.requireRole(context, ["admin", "veterinario"], "clinical:write");
+    const document = this.findClinicalDocumentRecord(context, documentId);
+    if (input.expectedVersion !== null) {
+      let parsedVersion: bigint;
+      try {
+        parsedVersion = BigInt(input.expectedVersion);
+      } catch {
+        throw new DomainError("INVALID_INPUT", "A versão esperada do documento é inválida.", 400);
+      }
+      if (parsedVersion !== BigInt(document.version)) throw new DomainError("REVISION_CONFLICT", "O documento clínico mudou; recarregue-o antes de editar.", 409);
+    }
+    if (document.status !== "DRAFT" && document.status !== "REVIEW") throw new DomainError("CONFLICT", "Documento assinado não é sobrescrito; use adendo.", 409, { status: document.status });
+    if (input.title !== undefined) document.title = input.title;
+    document.content = input.content;
+    document.status = "DRAFT";
+    document.version += 1;
+    return clone(document);
+  }
+
+  reviewClinicalDocument(context: CvgContext, documentId: OpaqueId, expectedVersion: string | null): ClinicalDocument {
+    this.requireRole(context, ["admin", "veterinario"], "clinical:draft");
+    const document = this.findClinicalDocumentRecord(context, documentId);
+    if (expectedVersion !== null) {
+      let parsedVersion: bigint;
+      try {
+        parsedVersion = BigInt(expectedVersion);
+      } catch {
+        throw new DomainError("INVALID_INPUT", "A versão esperada do documento é inválida.", 400);
+      }
+      if (parsedVersion !== BigInt(document.version)) throw new DomainError("REVISION_CONFLICT", "O documento clínico mudou; recarregue-o antes de revisar.", 409);
+    }
+    if (document.status === "SIGNED" || document.status === "PUBLISHED") throw new DomainError("CONFLICT", "Documento já assinado não pode voltar para revisão.", 409, { status: document.status });
+    if (document.status !== "REVIEW") {
+      document.status = "REVIEW";
+      document.version += 1;
+    }
+    return clone(document);
   }
 
   createClinicalDocument(context: CvgContext, input: ClinicalDocumentInput): ClinicalDocument {
@@ -1196,6 +1439,7 @@ export class CvgStore {
       if (parsedVersion !== BigInt(document.version)) throw new DomainError("REVISION_CONFLICT", "O documento clínico mudou; recarregue-o antes de assinar.", 409);
     }
     if (document.status === "SIGNED" || document.status === "PUBLISHED") throw new DomainError("CONFLICT", "Documento clínico já está assinado e não pode ser sobrescrito.", 409);
+    if (document.status !== "REVIEW") throw new DomainError("INVALID_STATE", "O documento precisa passar por revisão explícita antes da assinatura.", 409, { status: document.status });
     document.status = "SIGNED";
     document.version += 1;
     document.signedAt = now();
@@ -1250,10 +1494,40 @@ export class CvgStore {
       const quarantineId = this.recordQuarantine("DIAGNOSTIC_RESULT", `Resultado incompatível: request=${input.requestId} specimen=${input.specimenId} patient=${quarantinePatientId}`);
       throw new DomainError("QUARANTINED", "Resultado incompatível enviado para quarentena.", 409, { resultId: quarantineId });
     }
+    if (request.status === "REVIEWED") throw new DomainError("INVALID_STATE", "Pedido já revisado não aceita novo resultado sem retificação explícita.", 409);
+    const duplicate = [...this.diagnosticResultsStore.values()].find((existing) => existing.organizationId === context.organizationId && existing.requestId === request.id && existing.specimenId === specimen.id && existing.source === input.source && existing.sourceVersion === input.sourceVersion && (existing.status === "VALID" || existing.status === "RECEIVED"));
+    if (duplicate) {
+      const quarantineId = this.recordQuarantine("DIAGNOSTIC_RESULT", `Resultado duplicado: request=${request.id} specimen=${specimen.id} source=${input.source} version=${input.sourceVersion}`);
+      throw new DomainError("QUARANTINED", "Resultado duplicado da mesma fonte/versão foi enviado para quarentena.", 409, { resultId: quarantineId, existingResultId: duplicate.id });
+    }
     const result: DiagnosticResult = { id: makeId(), organizationId: context.organizationId, requestId: request.id, specimenId: specimen.id, patientId: request.patientId, value: input.value, source: input.source, sourceVersion: input.sourceVersion, status: "VALID", createdAt: now() };
     this.diagnosticResultsStore.set(result.id, result);
     request.status = "RESULTED";
     return clone(result);
+  }
+
+  findDiagnosticRequest(context: CvgContext, requestId: OpaqueId): DiagnosticRequest {
+    this.requireRole(context, ["admin", "veterinario"], "diagnostics:read");
+    return clone(this.findDiagnosticRequestRecord(context, requestId));
+  }
+
+  private findDiagnosticRequestRecord(context: CvgContext, requestId: OpaqueId): DiagnosticRequest {
+    const request = this.diagnosticRequestsStore.get(requestId);
+    const encounter = request?.encounterId ? this.encountersStore.get(request.encounterId) : null;
+    if (!request || request.organizationId !== context.organizationId || !encounter || (context.unitId && encounter.unitId !== context.unitId) || (context.workspaceId && encounter.workspaceId !== context.workspaceId)) throw new DomainError("NOT_FOUND", "Pedido de exame não encontrado.", 404);
+    return request;
+  }
+
+  reviewDiagnosticRequest(context: CvgContext, requestId: OpaqueId): DiagnosticRequest {
+    this.requireRole(context, ["veterinario"], "diagnostics:review");
+    const request = this.findDiagnosticRequestRecord(context, requestId);
+    if (request.status === "CANCELLED") throw new DomainError("INVALID_STATE", "Pedido cancelado não pode ser revisado.", 409);
+    if (request.status === "REVIEWED") return clone(request);
+    if (request.status !== "RESULTED") throw new DomainError("INVALID_STATE", "O pedido precisa ter resultado válido antes da revisão.", 409, { status: request.status });
+    const hasValidResult = [...this.diagnosticResultsStore.values()].some((result) => result.requestId === request.id && result.status === "VALID");
+    if (!hasValidResult) throw new DomainError("INVALID_STATE", "Nenhum resultado válido disponível para revisão.", 409, { status: request.status });
+    request.status = "REVIEWED";
+    return clone(request);
   }
 
   listStock(context: CvgContext): Array<Lot & { product: Product | null; location: StockLocation | null }> {
@@ -1302,10 +1576,12 @@ export class CvgStore {
 
   dispenseMedication(context: CvgContext, medicationOrderId: OpaqueId, lotId: OpaqueId, quantity: number): Dispensation {
     this.requireRole(context, ["admin", "estoque"], "medication:dispense");
+    if (!context.unitId || !context.workspaceId) throw new DomainError("INVALID_INPUT", "Unidade e workspace são obrigatórios para dispensação.", 400);
     const order = this.medicationOrdersStore.get(medicationOrderId);
     const lot = this.lotsStore.get(lotId);
     const encounter = order?.encounterId ? this.encountersStore.get(order.encounterId) : null;
     if (!order || !lot || !encounter || order.organizationId !== context.organizationId || encounter.organizationId !== context.organizationId || (context.unitId && encounter.unitId !== context.unitId) || (context.workspaceId && encounter.workspaceId !== context.workspaceId) || lot.organizationId !== context.organizationId || order.productId !== lot.productId || (context.unitId && this.stockLocationsStore.get(lot.locationId)?.unitId !== context.unitId)) throw new DomainError("NOT_FOUND", "Prescrição ou lote não encontrado.", 404);
+    if (order.status !== "ACTIVE") throw new DomainError("INVALID_STATE", "Prescrição não está ativa para dispensação.", 409, { status: order.status });
     this.createStockMovement(context, { productId: lot.productId, lotId, locationId: lot.locationId, quantity, movementType: "DISPENSE", reason: `Dispensação da prescrição ${medicationOrderId}`, referenceId: medicationOrderId });
     const dispensation: Dispensation = { id: makeId(), organizationId: context.organizationId, medicationOrderId, lotId, quantity, dispensedBy: context.actorId, createdAt: now() };
     this.dispensationsStore.set(dispensation.id, dispensation);
@@ -1317,9 +1593,62 @@ export class CvgStore {
     const order = this.medicationOrdersStore.get(medicationOrderId);
     const encounter = order?.encounterId ? this.encountersStore.get(order.encounterId) : null;
     if (!order || !encounter || order.organizationId !== context.organizationId || encounter.organizationId !== context.organizationId || (context.unitId && encounter.unitId !== context.unitId) || (context.workspaceId && encounter.workspaceId !== context.workspaceId) || order.status !== "ACTIVE") throw new DomainError("NOT_FOUND", "Prescrição ativa não encontrada.", 404);
+    if (status === "ADMINISTERED") {
+      const previous = [...this.administrationOccurrencesStore.values()].filter((occurrence) => occurrence.medicationOrderId === order.id && occurrence.status === "ADMINISTERED").sort((left, right) => right.administeredAt.localeCompare(left.administeredAt))[0];
+      if (previous && Date.now() - Date.parse(previous.administeredAt) < 60_000) throw new DomainError("CONFLICT", "Administração duplicada no intervalo de proteção anti-duplo-envio.", 409, { previousOccurrenceId: previous.id, administeredAt: previous.administeredAt });
+    }
     const occurrence: AdministrationOccurrence = { id: makeId(), organizationId: context.organizationId, medicationOrderId, administeredBy: context.actorId, administeredAt: now(), status, note };
     this.administrationOccurrencesStore.set(occurrence.id, occurrence);
     return clone(occurrence);
+  }
+
+  private findHospitalEpisodeRecord(context: CvgContext, episodeId: OpaqueId): HospitalEpisode {
+    const episode = this.hospitalEpisodesStore.get(episodeId);
+    if (!episode || episode.organizationId !== context.organizationId || (context.unitId && episode.unitId !== context.unitId)) throw new DomainError("NOT_FOUND", "Episódio de internação não encontrado.", 404);
+    return episode;
+  }
+
+  updateHospitalEpisodeStatus(context: CvgContext, episodeId: OpaqueId, status: "ADMITTED" | "PROCEDURE" | "RECOVERY"): HospitalEpisode {
+    this.requireRole(context, ["admin", "veterinario"], "hospitalization:update");
+    const episode = this.findHospitalEpisodeRecord(context, episodeId);
+    if (episode.status === "DISCHARGED") throw new DomainError("INVALID_STATE", "Episódio com alta registrada não muda de status operacional.", 409, { status: episode.status });
+    if (episode.status === "PLANNED" && !episode.bedId) throw new DomainError("CONFLICT", "Admissão exige leito atribuído.", 409);
+    if (episode.status === status) return clone(episode);
+    const allowed: Record<string, readonly string[]> = { PLANNED: ["ADMITTED"], ADMITTED: ["PROCEDURE", "RECOVERY"], PROCEDURE: ["RECOVERY", "ADMITTED"], RECOVERY: ["ADMITTED", "PROCEDURE"] };
+    if (!(allowed[episode.status] ?? []).includes(status)) throw new DomainError("INVALID_STATE", "Transição operacional de internação inválida.", 409, { from: episode.status, to: status });
+    episode.status = status;
+    if (status === "ADMITTED" && !episode.admittedAt) episode.admittedAt = now();
+    return clone(episode);
+  }
+
+  updateMedicationOrderStatus(context: CvgContext, medicationOrderId: OpaqueId, status: "ACTIVE" | "SUSPENDED" | "COMPLETED"): MedicationOrder {
+    this.requireRole(context, ["veterinario"], "medication:update");
+    const order = this.medicationOrdersStore.get(medicationOrderId);
+    const encounter = order?.encounterId ? this.encountersStore.get(order.encounterId) : null;
+    if (!order || !encounter || order.organizationId !== context.organizationId || (context.unitId && encounter.unitId !== context.unitId) || (context.workspaceId && encounter.workspaceId !== context.workspaceId)) throw new DomainError("NOT_FOUND", "Prescrição não encontrada.", 404);
+    if (order.status === status) return clone(order);
+    if (order.status === "COMPLETED" && status !== "COMPLETED") throw new DomainError("INVALID_STATE", "Prescrição concluída é terminal e não reabre.", 409, { from: order.status, to: status });
+    order.status = status;
+    return clone(order);
+  }
+
+  dischargeHospitalEpisode(context: CvgContext, episodeId: OpaqueId): HospitalEpisode {
+    this.requireRole(context, ["veterinario"], "hospitalization:discharge");
+    const episode = this.findHospitalEpisodeRecord(context, episodeId);
+    if (episode.status === "DISCHARGED") return clone(episode);
+    if (episode.status === "PLANNED") throw new DomainError("INVALID_STATE", "Internação planejada precisa ser admitida antes da alta.", 409);
+    if (!episode.encounterId) throw new DomainError("CONFLICT", "Alta exige atendimento vinculado para o documento assinado.", 409);
+    const signedDischarge = [...this.clinicalDocumentsStore.values()].some((document) => document.encounterId === episode.encounterId && document.documentType === "DISCHARGE" && (document.status === "SIGNED" || document.status === "PUBLISHED"));
+    if (!signedDischarge) throw new DomainError("CONFLICT", "Alta exige documento de alta assinado com plano de retorno.", 409, { pending: ["SIGNED_DISCHARGE_DOCUMENT"] });
+    const pendingOrders = [...this.medicationOrdersStore.values()].filter((order) => order.encounterId === episode.encounterId && order.status === "ACTIVE" && ![...this.administrationOccurrencesStore.values()].some((occurrence) => occurrence.medicationOrderId === order.id));
+    if (pendingOrders.length > 0) throw new DomainError("CONFLICT", "Alta negada: prescrições ativas sem registro de administração.", 409, { pendingOrderIds: pendingOrders.map((order) => order.id) });
+    episode.status = "DISCHARGED";
+    episode.dischargedAt = now();
+    if (episode.bedId) {
+      const bed = this.bedsStore.get(episode.bedId);
+      if (bed) bed.status = "AVAILABLE";
+    }
+    return clone(episode);
   }
 
   listMedicationOrders(context: CvgContext): MedicationOrder[] {
@@ -1330,12 +1659,62 @@ export class CvgStore {
     }).map(clone);
   }
 
+  createProduct(context: CvgContext, input: { sku: string; name: string; category: string; unit: string; reorderPoint: number }): Product {
+    this.requireRole(context, ["admin", "estoque"], "stock:write");
+    const sku = input.sku.trim().toUpperCase();
+    const duplicate = [...this.productsStore.values()].find((product) => product.organizationId === context.organizationId && product.sku.toUpperCase() === sku && product.status === "ACTIVE");
+    if (duplicate) throw new DomainError("CONFLICT", "SKU já cadastrado nesta organização.", 409, { productId: duplicate.id });
+    const product: Product = { id: makeId(), organizationId: context.organizationId, sku, name: input.name, category: input.category, unit: input.unit, reorderPoint: input.reorderPoint, status: "ACTIVE" };
+    this.productsStore.set(product.id, product);
+    return clone(product);
+  }
+
+  createLot(context: CvgContext, input: { productId: OpaqueId; lotNumber: string; expiresOn: string; quantity: number; locationId: OpaqueId }): { lot: Lot; movement: StockMovement | null } {
+    this.requireRole(context, ["admin", "estoque"], "stock:write");
+    if (!context.unitId) throw new DomainError("INVALID_INPUT", "Unidade é obrigatória para entrada de estoque.", 400);
+    const product = this.productsStore.get(input.productId);
+    const location = this.stockLocationsStore.get(input.locationId);
+    if (!product || !location || product.organizationId !== context.organizationId || location.organizationId !== context.organizationId || location.unitId !== context.unitId) throw new DomainError("NOT_FOUND", "Produto ou localização não encontrados.", 404);
+    const expiresOn = Date.parse(input.expiresOn);
+    if (!Number.isFinite(expiresOn) || expiresOn <= Date.now()) throw new DomainError("INVALID_INPUT", "Validade do lote precisa ser uma data futura válida.", 400, { expiresOn: input.expiresOn });
+    if (!Number.isInteger(input.quantity) || input.quantity < 0 || input.quantity > 1_000_000) throw new DomainError("INVALID_INPUT", "Quantidade de entrada inválida.", 400);
+    const duplicate = [...this.lotsStore.values()].find((lot) => lot.organizationId === context.organizationId && lot.productId === product.id && lot.lotNumber.toUpperCase() === input.lotNumber.trim().toUpperCase());
+    if (duplicate) throw new DomainError("CONFLICT", "Lote já registrado para este produto.", 409, { lotId: duplicate.id });
+    const lot: Lot = { id: makeId(), organizationId: context.organizationId, productId: product.id, lotNumber: input.lotNumber.trim(), expiresOn: new Date(expiresOn).toISOString().slice(0, 10), quantity: 0, locationId: location.id, status: "AVAILABLE" };
+    this.lotsStore.set(lot.id, lot);
+    let movement: StockMovement | null = null;
+    if (input.quantity > 0) movement = this.createStockMovement(context, { productId: product.id, lotId: lot.id, locationId: location.id, quantity: input.quantity, movementType: "RECEIPT", reason: `Entrada inicial do lote ${lot.lotNumber}`, referenceId: null });
+    return { lot: clone(lot), movement };
+  }
+
+  adjustStockInventory(context: CvgContext, input: { lotId: OpaqueId; countedQuantity: number; reason: string }): { lot: Lot; movement: StockMovement | null; delta: number } {
+    this.requireRole(context, ["admin", "estoque"], "stock:inventory");
+    const lot = this.lotsStore.get(input.lotId);
+    if (!lot || lot.organizationId !== context.organizationId) throw new DomainError("NOT_FOUND", "Lote não encontrado.", 404);
+    if (context.unitId && this.stockLocationsStore.get(lot.locationId)?.unitId !== context.unitId) throw new DomainError("NOT_FOUND", "Lote não encontrado.", 404);
+    if (!Number.isInteger(input.countedQuantity) || input.countedQuantity < 0 || input.countedQuantity > 1_000_000) throw new DomainError("INVALID_INPUT", "Contagem de inventário inválida.", 400);
+    const delta = input.countedQuantity - lot.quantity;
+    if (delta === 0) return { lot: clone(lot), movement: null, delta: 0 };
+    const movement = this.createStockMovement(context, { productId: lot.productId, lotId: lot.id, locationId: lot.locationId, quantity: Math.abs(delta), movementType: delta > 0 ? "ADJUSTMENT_IN" : "ADJUSTMENT_OUT", reason: `Inventário: contagem ${input.countedQuantity} vs sistema ${lot.quantity}. ${input.reason}`, referenceId: null });
+    const adjusted = this.lotsStore.get(lot.id)!;
+    return { lot: clone(adjusted), movement, delta };
+  }
+
   createStockMovement(context: CvgContext, input: StockMovementInput): StockMovement {
     this.requireRole(context, ["admin", "estoque"], "stock:write");
     const lot = this.lotsStore.get(input.lotId);
     const product = this.productsStore.get(input.productId);
-    if (!lot || !product || lot.organizationId !== context.organizationId || product.organizationId !== context.organizationId || lot.productId !== product.id || (context.unitId && (lot.locationId !== input.locationId || this.stockLocationsStore.get(input.locationId)?.unitId !== context.unitId))) throw new DomainError("NOT_FOUND", "Lote não encontrado.", 404);
-    const subtract = ["DISPENSE", "TRANSFER_OUT"].includes(input.movementType);
+    const location = this.stockLocationsStore.get(input.locationId);
+    if (!lot || !product || !location || lot.organizationId !== context.organizationId || product.organizationId !== context.organizationId || location.organizationId !== context.organizationId || lot.productId !== product.id || lot.locationId !== input.locationId || (context.unitId && location.unitId !== context.unitId)) throw new DomainError("NOT_FOUND", "Lote não encontrado.", 404);
+    const subtract = ["DISPENSE", "TRANSFER_OUT", "ADJUSTMENT_OUT"].includes(input.movementType);
+    if (subtract && input.referenceId) {
+      const referencedOrder = this.medicationOrdersStore.get(input.referenceId);
+      const referencedEncounter = referencedOrder?.encounterId ? this.encountersStore.get(referencedOrder.encounterId) : null;
+      const validReference = Boolean(context.unitId && context.workspaceId && referencedOrder && referencedEncounter && referencedOrder.organizationId === context.organizationId && referencedEncounter.organizationId === context.organizationId && referencedEncounter.unitId === context.unitId && referencedEncounter.workspaceId === context.workspaceId && referencedOrder.productId === product.id);
+      if (!referencedOrder || !validReference) throw new DomainError("NOT_FOUND", "Prescrição vinculada não encontrada neste contexto.", 404);
+      if (referencedOrder.status !== "ACTIVE") throw new DomainError("INVALID_STATE", "Saída vinculada a prescrição não ativa não é permitida.", 409, { status: referencedOrder.status });
+      if (input.movementType !== "DISPENSE") throw new DomainError("INVALID_STATE", "Saída vinculada a prescrição exige o fluxo de dispensação.", 409, { movementType: input.movementType });
+    }
     const expiryTime = Date.parse(lot.expiresOn);
     if (!Number.isFinite(expiryTime)) throw new DomainError("CONFLICT", "Movimento rejeitado: a validade do lote é inválida.", 409, { expiresOn: lot.expiresOn });
     if (lot.status !== "AVAILABLE" || (subtract && (lot.quantity < input.quantity || expiryTime < Date.now()))) throw new DomainError("CONFLICT", expiryTime < Date.now() && subtract ? "Movimento rejeitado: lote vencido não pode sair do estoque." : "Movimento rejeitado: lote indisponível ou saldo insuficiente.", 409, { available: lot.quantity, expiresOn: lot.expiresOn });
@@ -1379,6 +1758,52 @@ export class CvgStore {
     charge.status = "REFUNDED";
     this.addLedger({ organizationId: context.organizationId, kind: "REFUND", referenceId: payment.id, amountCents: -payment.amountCents, currency: charge.currency, description: `Estorno: ${reason}` });
     return clone(payment);
+  }
+
+  approveKnowledgeDocument(context: CvgContext, documentId: OpaqueId, expectedVersion: number | null = null): KnowledgeDocument {
+    this.requireRole(context, ["admin", "veterinario"], "knowledge:approve");
+    const document = this.findKnowledgeDocumentRecord(context, documentId);
+    if (expectedVersion !== null && document.version !== expectedVersion) throw new DomainError("REVISION_CONFLICT", "O documento de conhecimento mudou; recarregue antes de aprovar.", 409, { currentVersion: document.version });
+    if (document.status === "QUARANTINED") throw new DomainError("INVALID_STATE", "Documento em quarentena não pode ser aprovado sem revisão de origem.", 409, { status: document.status });
+    if (document.status !== "APPROVED" && document.status !== "INDEXED") {
+      document.status = "APPROVED";
+      document.version += 1;
+    }
+    return clone(document);
+  }
+
+  indexKnowledgeDocument(context: CvgContext, documentId: OpaqueId, expectedVersion: number | null = null): KnowledgeDocument {
+    this.requireRole(context, ["admin", "veterinario"], "knowledge:index");
+    const document = this.findKnowledgeDocumentRecord(context, documentId);
+    if (expectedVersion !== null && document.version !== expectedVersion) throw new DomainError("REVISION_CONFLICT", "O documento de conhecimento mudou; recarregue antes de indexar.", 409, { currentVersion: document.version });
+    if (document.status !== "APPROVED" && document.status !== "INDEXED") throw new DomainError("INVALID_STATE", "Somente documento aprovado pode ser indexado.", 409, { status: document.status });
+    if (document.status !== "INDEXED") {
+      document.status = "INDEXED";
+      document.version += 1;
+    }
+    return clone(document);
+  }
+
+  quarantineKnowledgeDocument(context: CvgContext, documentId: OpaqueId, reason: string, expectedVersion: number | null = null): KnowledgeDocument {
+    this.requireRole(context, ["admin", "veterinario"], "knowledge:quarantine");
+    const document = this.findKnowledgeDocumentRecord(context, documentId);
+    if (expectedVersion !== null && document.version !== expectedVersion) throw new DomainError("REVISION_CONFLICT", "O documento de conhecimento mudou; recarregue antes de quarentenar.", 409, { currentVersion: document.version });
+    if (document.status === "QUARANTINED") return clone(document);
+    document.status = "QUARANTINED";
+    document.version += 1;
+    void reason;
+    return clone(document);
+  }
+
+  findKnowledgeDocument(context: CvgContext, documentId: OpaqueId): KnowledgeDocument {
+    this.requireRole(context, ["admin", "veterinario", "recepcao"], "knowledge:read");
+    return clone(this.findKnowledgeDocumentRecord(context, documentId));
+  }
+
+  private findKnowledgeDocumentRecord(context: CvgContext, documentId: OpaqueId): KnowledgeDocument {
+    const document = this.knowledgeDocumentsStore.get(documentId);
+    if (!document || document.organizationId !== context.organizationId || (context.unitId && document.unitId !== context.unitId) || (context.workspaceId && document.workspaceId !== context.workspaceId)) throw new DomainError("NOT_FOUND", "Documento de conhecimento não encontrado.", 404);
+    return document;
   }
 
   createKnowledgeDocument(context: CvgContext, input: { title: string; source: string; dataClass: KnowledgeDocument["dataClass"]; content: string }): KnowledgeDocument {
@@ -1436,6 +1861,8 @@ export interface IdempotencyInput {
   body: unknown;
 }
 
+export const COMMAND_CLAIM_LEASE_MS = 60_000;
+
 export function newCommandReceipt(input: IdempotencyInput): CommandReceipt {
   return {
     id: makeId(),
@@ -1450,31 +1877,113 @@ export function newCommandReceipt(input: IdempotencyInput): CommandReceipt {
     status: "IN_FLIGHT",
     result: null,
     createdAt: now(),
-    completedAt: null
+    completedAt: null,
+    claimEpoch: 1,
+    claimExpiresAt: new Date(Date.now() + COMMAND_CLAIM_LEASE_MS).toISOString(),
+    dispatchState: "NOT_STARTED",
+    failurePhase: null
   };
 }
 
+/**
+ * Stable server-scoped identity per docs04 §7: organization, actor, operation,
+ * key, resource and scope. The session is deliberately excluded so a re-login
+ * still replays the original receipt instead of creating a second effect.
+ * Absent optional scopes use an explicit marker so absence never degrades to a
+ * null/empty mismatch.
+ */
 export function idempotencyLookup(input: IdempotencyInput): string {
+  return digest({
+    v: 3,
+    organizationId: input.organizationId,
+    actorId: input.actorId,
+    operation: input.operation,
+    key: input.key,
+    resourceId: input.resourceId ?? "ABSENT",
+    unitId: input.unitId ?? "ABSENT",
+    workspaceId: input.workspaceId ?? "ABSENT"
+  });
+}
+
+/** Legacy v2 lookup that included the session; read-only compatibility path. */
+export function legacyIdempotencyLookup(input: IdempotencyInput): string {
   return digest({ v: 2, organizationId: input.organizationId, actorId: input.actorId, sessionId: input.sessionId ?? null, operation: input.operation, key: input.key, resourceId: input.resourceId, unitId: input.unitId, workspaceId: input.workspaceId });
 }
 
-export function idempotent<T>(store: CvgStore, input: IdempotencyInput, execute: () => T): { receipt: CommandReceipt; value: T; replayed: boolean } {
-  const lookup = idempotencyLookup(input);
-  const bodyDigest = digest({ v: 1, body: input.body });
-  const existing = store.commandReceipts.get(lookup);
-  if (existing) {
-    if (existing.bodyDigest !== bodyDigest) throw new DomainError("IDEMPOTENCY_CONFLICT", "A chave já foi usada com outro corpo.", 409);
-    if (existing.status === "SUCCEEDED") return { receipt: existing, value: existing.result as T, replayed: true };
-    if (existing.status === "IN_FLIGHT" || existing.status === "OUTCOME_UNKNOWN") throw new DomainError("OUTCOME_UNKNOWN", "A execução anterior permanece em reconciliação.", 409, { receiptId: existing.id });
-    throw new DomainError("CONFLICT", "A execução anterior falhou; use uma nova intenção.", 409);
+export function commandReceiptLookups(input: IdempotencyInput): string[] {
+  const stable = idempotencyLookup(input);
+  const legacy = legacyIdempotencyLookup(input);
+  return stable === legacy ? [stable] : [stable, legacy];
+}
+
+function findReceiptByLookups(store: CvgStore, input: IdempotencyInput): CommandReceipt | undefined {
+  for (const lookup of commandReceiptLookups(input)) {
+    const receipt = store.commandReceipts.get(lookup);
+    if (receipt) return receipt;
   }
-  store.setCommandReceipt(newCommandReceipt(input));
+  return undefined;
+}
+
+/**
+ * Resolves an existing receipt for a repeated command. An expired claim is
+ * reconciled with its fence: an attempt that never crossed dispatch is
+ * finalized as FAILED/PRE_DISPATCH (new intent requires a new key), while an
+ * attempt that may have reached the provider stays OUTCOME_UNKNOWN and is
+ * never retried blindly.
+ */
+export function resolveExistingReceipt(store: CvgStore, input: IdempotencyInput, existing: CommandReceipt): { receipt: CommandReceipt; replayed: boolean } {
+  const bodyDigest = digest({ v: 1, body: input.body });
+  if (existing.bodyDigest !== bodyDigest) throw new DomainError("IDEMPOTENCY_CONFLICT", "A chave já foi usada com outro corpo.", 409);
+  if (existing.status === "SUCCEEDED") return { receipt: existing, replayed: true };
+  if (existing.status === "FAILED") {
+    const phase = existing.failurePhase === "PRE_DISPATCH" ? " (finalizada antes do dispatch)" : "";
+    throw new DomainError("CONFLICT", `A execução anterior falhou${phase}; use uma nova intenção.`, 409, { receiptId: existing.id, failurePhase: existing.failurePhase ?? null });
+  }
+  if (existing.status === "OUTCOME_UNKNOWN") throw new DomainError("OUTCOME_UNKNOWN", "A execução anterior permanece em reconciliação; nenhum retry cego é permitido.", 409, { receiptId: existing.id });
+  const expiresAt = existing.claimExpiresAt ? Date.parse(existing.claimExpiresAt) : Number.NaN;
+  // Legacy claims without a deadline cannot prove that an owner is still
+  // alive. Reconcile them immediately under the dispatch marker.
+  const expired = !Number.isFinite(expiresAt) || expiresAt <= Date.now();
+  if (!expired) throw new DomainError("ADMISSION_IN_PROGRESS", "A mesma chave já possui uma admissão em andamento.", 409, { receiptId: existing.id, claimExpiresAt: existing.claimExpiresAt ?? null });
+  const notStarted = (existing.dispatchState ?? "NOT_STARTED") === "NOT_STARTED";
+  const finalized = store.updateCommandReceipt(existing.idempotencyLookup, {
+    status: notStarted ? "FAILED" : "OUTCOME_UNKNOWN",
+    result: null,
+    completedAt: now()
+  });
+  const settled: CommandReceipt = { ...finalized, claimExpiresAt: null, failurePhase: notStarted ? "PRE_DISPATCH" : "POST_DISPATCH" };
+  store.setCommandReceipt(settled);
+  if (notStarted) throw new DomainError("CLAIM_ABANDONED", "O claim expirou antes de qualquer dispatch e foi finalizado como falha segura.", 409, { receiptId: settled.id, failurePhase: "PRE_DISPATCH" });
+  throw new DomainError("OUTCOME_UNKNOWN", "O claim expirou após possível dispatch; a execução permanece em reconciliação.", 409, { receiptId: settled.id, failurePhase: "POST_DISPATCH" });
+}
+
+function commandFailureState(receipt: CommandReceipt, error: unknown): { status: CommandReceipt["status"]; failurePhase: "PRE_DISPATCH" | "POST_DISPATCH" } {
+  const dispatched = (receipt.dispatchState ?? "NOT_STARTED") === "DISPATCHED";
+  const outcomeUnknown = dispatched || (error instanceof DomainError && error.code === "OUTCOME_UNKNOWN");
+  return {
+    status: outcomeUnknown ? "OUTCOME_UNKNOWN" : "FAILED",
+    failurePhase: outcomeUnknown ? (dispatched ? "POST_DISPATCH" : receipt.failurePhase ?? "PRE_DISPATCH") : "PRE_DISPATCH"
+  };
+}
+
+export function idempotent<T>(store: CvgStore, input: IdempotencyInput, execute: () => T): { receipt: CommandReceipt; value: T; replayed: boolean } {
+  const existing = findReceiptByLookups(store, input);
+  if (existing) {
+    const resolved = resolveExistingReceipt(store, input, existing);
+    if (resolved.replayed) return { receipt: resolved.receipt, value: resolved.receipt.result as T, replayed: true };
+  }
+  const receipt = newCommandReceipt(input);
+  store.setCommandReceipt(receipt);
   try {
     const value = execute();
-    const receipt = store.updateCommandReceipt(lookup, { status: "SUCCEEDED", result: value, completedAt: now() });
-    return { receipt, value, replayed: false };
+    const settled = store.updateCommandReceipt(receipt.idempotencyLookup, { status: "SUCCEEDED", result: value, completedAt: now() });
+    const completed: CommandReceipt = { ...settled, claimExpiresAt: null, failurePhase: null };
+    store.setCommandReceipt(completed);
+    return { receipt: completed, value, replayed: false };
   } catch (error) {
-    store.updateCommandReceipt(lookup, { status: error instanceof DomainError && error.code === "OUTCOME_UNKNOWN" ? "OUTCOME_UNKNOWN" : "FAILED", result: null, completedAt: now() });
+    const failure = commandFailureState(receipt, error);
+    const failed = store.updateCommandReceipt(receipt.idempotencyLookup, { status: failure.status, result: null, completedAt: now() });
+    store.setCommandReceipt({ ...failed, claimExpiresAt: null, failurePhase: failure.failurePhase });
     throw error;
   }
 }
@@ -1486,26 +1995,89 @@ export interface IdempotentAsyncOptions {
 
 /** Runs one idempotent command whose implementation crosses an asynchronous adapter. */
 export async function idempotentAsync<T>(store: CvgStore, input: IdempotencyInput, execute: () => Promise<T>, options: IdempotentAsyncOptions = {}): Promise<{ receipt: CommandReceipt; value: T; replayed: boolean }> {
-  const lookup = idempotencyLookup(input);
   const bodyDigest = digest({ v: 1, body: input.body });
   const reservedReceipt = options.reservedReceipt;
-  if (reservedReceipt && (reservedReceipt.idempotencyLookup !== lookup || reservedReceipt.bodyDigest !== bodyDigest || reservedReceipt.status !== "IN_FLIGHT")) throw new DomainError("INVALID_INPUT", "A reserva de idempotência não corresponde ao comando.", 400);
-  const existing = store.commandReceipts.get(lookup);
+  if (reservedReceipt && (!commandReceiptLookups(input).includes(reservedReceipt.idempotencyLookup) || reservedReceipt.bodyDigest !== bodyDigest || reservedReceipt.status !== "IN_FLIGHT")) throw new DomainError("INVALID_INPUT", "A reserva de idempotência não corresponde ao comando.", 400);
+  const existing = findReceiptByLookups(store, input);
   if (existing && (!reservedReceipt || existing.id !== reservedReceipt.id)) {
-    if (existing.bodyDigest !== bodyDigest) throw new DomainError("IDEMPOTENCY_CONFLICT", "A chave já foi usada com outro corpo.", 409);
-    if (existing.status === "SUCCEEDED") return { receipt: existing, value: existing.result as T, replayed: true };
-    if (existing.status === "IN_FLIGHT" || existing.status === "OUTCOME_UNKNOWN") throw new DomainError("OUTCOME_UNKNOWN", "A execução anterior permanece em reconciliação.", 409, { receiptId: existing.id });
-    throw new DomainError("CONFLICT", "A execução anterior falhou; use uma nova intenção.", 409);
+    const resolved = resolveExistingReceipt(store, input, existing);
+    if (resolved.replayed) return { receipt: resolved.receipt, value: resolved.receipt.result as T, replayed: true };
   }
-  store.setCommandReceipt(reservedReceipt ?? newCommandReceipt(input));
+  const claimed = reservedReceipt ?? newCommandReceipt(input);
+  store.setCommandReceipt(claimed);
   try {
     const value = await execute();
-    const receipt = store.updateCommandReceipt(lookup, { status: "SUCCEEDED", result: value, completedAt: now() });
-    return { receipt, value, replayed: false };
+    const settled = store.updateCommandReceipt(claimed.idempotencyLookup, { status: "SUCCEEDED", result: value, completedAt: now() });
+    const completed: CommandReceipt = { ...settled, claimExpiresAt: null, failurePhase: null };
+    store.setCommandReceipt(completed);
+    return { receipt: completed, value, replayed: false };
   } catch (error) {
-    store.updateCommandReceipt(lookup, { status: error instanceof DomainError && error.code === "OUTCOME_UNKNOWN" ? "OUTCOME_UNKNOWN" : "FAILED", result: null, completedAt: now() });
+    const failure = commandFailureState(claimed, error);
+    const failed = store.updateCommandReceipt(claimed.idempotencyLookup, { status: failure.status, result: null, completedAt: now() });
+    store.setCommandReceipt({ ...failed, claimExpiresAt: null, failurePhase: failure.failurePhase });
     throw error;
   }
+}
+
+export type FinancialBalanceSnapshot = {
+  currency: string;
+  chargedCents: number;
+  settledPaymentCents: number;
+  pendingCents: number | null;
+  state: "OPEN" | "PARTIALLY_PAID" | "PAID" | "REFUNDED" | "REQUIRES_POLICY" | "UNKNOWN";
+  refunds: { status: "NOT_APPLICABLE" | "OBSERVED" | "UNRESOLVED"; amountCents: number | null };
+  observedAt: string;
+};
+
+/**
+ * Aggregates the known charge/payment facts into the shared balance contract.
+ * A refunded payment makes the aggregate depend on the refund policy, which is
+ * not yet defined by FIN-04: the result is explicitly REQUIRES_POLICY with a
+ * null pending amount instead of inventing whether a refund reopens a charge.
+ */
+export function computeFinancialBalance(
+  charges: readonly Charge[],
+  payments: readonly Payment[],
+  options: { currency: string; observedAt: string }
+): FinancialBalanceSnapshot {
+  const chargeIds = new Set(charges.map((charge) => charge.id));
+  const relevant = payments.filter((payment) => chargeIds.has(payment.chargeId));
+  const currencies = new Set(charges.map((charge) => charge.currency));
+  const chargedCents = charges.reduce((total, charge) => total + charge.amountCents, 0);
+  const settledPaymentCents = relevant.filter((payment) => payment.status === "SETTLED").reduce((total, payment) => total + payment.amountCents, 0);
+  const unresolved = (state: FinancialBalanceSnapshot["state"]): FinancialBalanceSnapshot => ({
+    currency: options.currency,
+    chargedCents,
+    settledPaymentCents,
+    pendingCents: null,
+    state,
+    refunds: { status: "UNRESOLVED", amountCents: null },
+    observedAt: options.observedAt
+  });
+  if (currencies.size > 1) return unresolved("UNKNOWN");
+  const refundedPayments = relevant.filter((payment) => payment.status === "REFUNDED");
+  if (refundedPayments.length > 0) return unresolved("REQUIRES_POLICY");
+  if (charges.some((charge) => charge.status === "REFUNDED")) return unresolved("UNKNOWN");
+  const settledByCharge = new Map<OpaqueId, number>();
+  for (const payment of relevant) {
+    if (payment.status !== "SETTLED") continue;
+    settledByCharge.set(payment.chargeId, (settledByCharge.get(payment.chargeId) ?? 0) + payment.amountCents);
+  }
+  let pendingCents = 0;
+  for (const charge of charges) {
+    if (charge.status === "PAID") continue;
+    pendingCents += Math.max(0, charge.amountCents - (settledByCharge.get(charge.id) ?? 0));
+  }
+  const state: FinancialBalanceSnapshot["state"] = pendingCents === 0 ? "PAID" : settledPaymentCents === 0 ? "OPEN" : "PARTIALLY_PAID";
+  return {
+    currency: currencies.values().next().value ?? options.currency,
+    chargedCents,
+    settledPaymentCents,
+    pendingCents,
+    state,
+    refunds: { status: "NOT_APPLICABLE", amountCents: null },
+    observedAt: options.observedAt
+  };
 }
 
 export function publicUser(user: User): Omit<User, "passwordDigest" | "security"> {

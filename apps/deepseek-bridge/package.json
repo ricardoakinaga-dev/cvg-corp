@@ -3,6 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "scripts": {"start": "tsx src/server.ts"},
-  "dependencies": {"@cvg/deepseek-bridge": "*", "@cvg/integrations": "*", "@cvg/ops": "*"}
+  "scripts": {
+    "start": "tsx src/server.ts"
+  },
+  "dependencies": {
+    "@cvg/deepseek-bridge": "*",
+    "@cvg/harness-adapters": "*",
+    "@cvg/integrations": "*",
+    "@cvg/ops": "*"
+  }
 }

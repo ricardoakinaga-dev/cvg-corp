@@ -1,0 +1,80 @@
+{
+  "schema_version": 1,
+  "gate_id": "GATE-CVG-AUD13-18",
+  "task_id": "AUD13-18",
+  "status": "PASS_COM_RESSALVAS",
+  "decision": "PARTIAL_PASS",
+  "score": 8.0,
+  "critic_artifact": null,
+  "subject": {
+    "head_sha": "1c22c5dc79c52151f4c7c94c4402dfdc86812cbc",
+    "worktree": "MODIFIED",
+    "task_owned_paths": [
+      "apps/web/src/features/finance/",
+      "apps/api/src/application/",
+      "packages/domain/src/",
+      "packages/persistence/",
+      "docs/adr/",
+      "tests/"
+    ],
+    "blocked_slice": "orcamento/aprovacao e conciliacao (contrato) + semantica de estorno (D-01) -> AUD13-18A / AUD13-28",
+    "registered_surface_extension": "apps/web/src/api/validation.ts e client.ts: registro de validacao passa a ser por metodo+path (POST /finance/charges != GET /finance/charges)"
+  },
+  "bar": {
+    "path": ".gauntlet/bar-v4.json",
+    "sha256": "2093461a8d6103641a555ad45371dde4649e5f144c32260b80244e219fa70697"
+  },
+  "checks": [
+    {
+      "command": "npm test",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "363 testes: 362 pass, 1 skip, 0 fail"
+    },
+    {
+      "command": "npm run test:database",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "61 testes"
+    },
+    {
+      "command": "npm run verify:pdp",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "catalogo+inventario e 26 runtime"
+    },
+    {
+      "command": "npx playwright test app.spec.ts (375/768/1440)",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "103 passed, 8 skipped"
+    },
+    {
+      "command": "npm run typecheck",
+      "exit_code": 0,
+      "result": "PASS"
+    },
+    {
+      "command": "npm run lint",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "173 arquivos"
+    }
+  ],
+  "residuals": [
+    "D-01: semantica de estorno/credito/reabertura aguarda decisao do responsavel financeiro; saldo permanece REQUIRES_POLICY",
+    "orcamento/aprovacao formal e conciliacao com provedor externo -> AUD13-18A/AUD13-28",
+    "exportacao financeira bloqueada (AUD13-24)"
+  ],
+  "verification_refs": [
+    "VER-CVG-AUD13-18-001"
+  ],
+  "artifact_digests": {
+    "apps/web/src/features/finance/Finance.tsx": "6f4fd69c04687708104440935ba3cd33e4db44464aff807815dd9d07bef7e247",
+    "apps/web/src/api/validation.ts": "78aaef618e31a887b4c79db5fc0694275a82b6b035ace6b87141095f1834f17c",
+    "apps/web/src/api/client.ts": "ba708bfeb7b958e45d605e38ca7d75d6ee8abd551d3aee9865f984b5d2e68c69",
+    "tests/e2e/app.spec.ts": "5fb2876d15d002939e765df7f313de56c783954fe911d6c02570cc82619c0966",
+    "tests/integration/api.test.ts": "ba8595e0a56eb818c325ed3f772610ce5a4229fd48b73b0d5ad548868590ba85"
+  },
+  "recorded_at": "2026-09-13T13:02:00-03:00"
+}

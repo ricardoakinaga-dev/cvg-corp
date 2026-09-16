@@ -1,0 +1,3013 @@
+{
+  "schema_version": 1,
+  "kind": "planning_contract_catalog",
+  "created_date": "2026-09-12",
+  "baseline_sha": "1c22c5dc79c52151f4c7c94c4402dfdc86812cbc",
+  "source_audit": "docs/auditoria-2026-09-12.md",
+  "active_quality_bar": ".gauntlet/bar-v4.json",
+  "active_quality_bar_sha256": "2093461a8d6103641a555ad45371dde4649e5f144c32260b80244e219fa70697",
+  "canonical_execution_backlog": ".agent/backlog.json",
+  "execution_status_policy": "Este catálogo contém contratos planejados, não status de execução. AAA-000 importa IDs idempotentemente; somente .agent/backlog.json mantém status, owner real, próxima ação e evidências.",
+  "areas": [
+    {
+      "id": "ARC",
+      "name": "Arquitetura e manutenção",
+      "baseline": 72,
+      "dimensions": [
+        "architecture"
+      ],
+      "findings": [
+        "A07",
+        "A09"
+      ],
+      "role": "Arquitetura",
+      "outcome": "Fronteiras pequenas e testáveis, sem regressão de comportamento nem reescrita geral.",
+      "target": 97
+    },
+    {
+      "id": "CON",
+      "name": "Contratos e validação de entrada",
+      "baseline": 88,
+      "dimensions": [
+        "domainIntegrity",
+        "authorization"
+      ],
+      "findings": [],
+      "role": "Contratos",
+      "outcome": "Contratos executáveis e compatíveis, validados em cada fronteira de confiança.",
+      "target": 97
+    },
+    {
+      "id": "SEC",
+      "name": "Autenticação, autorização e sessão",
+      "baseline": 76,
+      "dimensions": [
+        "security",
+        "authentication",
+        "authorization",
+        "pdp"
+      ],
+      "findings": [
+        "A01",
+        "A08"
+      ],
+      "role": "Segurança",
+      "outcome": "Identidade, escopo e revogação corretos sob falha; nenhuma autorização implícita.",
+      "target": 97
+    },
+    {
+      "id": "AIG",
+      "name": "Governança de IA",
+      "baseline": 86,
+      "dimensions": [
+        "aiGovernance",
+        "toolGateway",
+        "deepseek"
+      ],
+      "findings": [
+        "A08"
+      ],
+      "role": "IA",
+      "outcome": "Motor real governado, sem promoção de rascunho ou efeito sem autoridade.",
+      "target": 97
+    },
+    {
+      "id": "DAT",
+      "name": "Persistência e integridade",
+      "baseline": 78,
+      "dimensions": [
+        "database",
+        "domainIntegrity"
+      ],
+      "findings": [
+        "A07",
+        "A08"
+      ],
+      "role": "Dados",
+      "outcome": "Isolamento, fonte transacional, concorrência e integridade provados com PostgreSQL real.",
+      "target": 97
+    },
+    {
+      "id": "WRK",
+      "name": "Worker e resiliência",
+      "baseline": 80,
+      "dimensions": [
+        "workers",
+        "reliability",
+        "providerIntegration"
+      ],
+      "findings": [
+        "A08"
+      ],
+      "role": "Worker e integrações",
+      "outcome": "Efeitos reconciliáveis, fila limitada e retomada segura com processos reais.",
+      "target": 97
+    },
+    {
+      "id": "FUN",
+      "name": "Completude funcional",
+      "baseline": 58,
+      "dimensions": [
+        "domainIntegrity",
+        "frontend"
+      ],
+      "findings": [
+        "A06"
+      ],
+      "role": "Produto e jornadas",
+      "outcome": "Cada jornada acordada completa o ciclo interface, autorização, commit e recibo.",
+      "target": 97
+    },
+    {
+      "id": "FIN",
+      "name": "Correção do financeiro",
+      "baseline": 50,
+      "dimensions": [
+        "domainIntegrity",
+        "reliability"
+      ],
+      "findings": [
+        "A02"
+      ],
+      "role": "Financeiro",
+      "outcome": "Saldo, pagamentos, estornos e apresentação concordam com o ledger.",
+      "target": 97
+    },
+    {
+      "id": "UX",
+      "name": "Interface e usabilidade",
+      "baseline": 84,
+      "dimensions": [
+        "frontend"
+      ],
+      "findings": [
+        "A01",
+        "A06"
+      ],
+      "role": "Frontend",
+      "outcome": "Ações claras, estados honestos e jornadas verificadas por usuários representativos.",
+      "target": 95
+    },
+    {
+      "id": "A11Y",
+      "name": "Acessibilidade",
+      "baseline": 90,
+      "dimensions": [
+        "accessibility"
+      ],
+      "findings": [
+        "A09"
+      ],
+      "role": "Acessibilidade",
+      "outcome": "Jornadas utilizáveis por teclado, zoom, toque e tecnologia assistiva.",
+      "target": 95
+    },
+    {
+      "id": "QUA",
+      "name": "Testes e confiabilidade das verificações",
+      "baseline": 72,
+      "dimensions": [
+        "testing"
+      ],
+      "findings": [
+        "A03",
+        "A04"
+      ],
+      "role": "Qualidade",
+      "outcome": "Gates determinísticos que rejeitam o candidato incorreto e vinculam prova ao correto.",
+      "target": 97
+    },
+    {
+      "id": "PER",
+      "name": "Desempenho e escalabilidade",
+      "baseline": 58,
+      "dimensions": [
+        "performance",
+        "reliability"
+      ],
+      "findings": [
+        "A07",
+        "A08"
+      ],
+      "role": "Performance",
+      "outcome": "Caudas, contenção e capacidade medidas com workload e ambiente definidos.",
+      "target": 97
+    },
+    {
+      "id": "OPS",
+      "name": "Observabilidade e recuperação",
+      "baseline": 72,
+      "dimensions": [
+        "observability",
+        "recovery"
+      ],
+      "findings": [
+        "A08"
+      ],
+      "role": "SRE e recuperação",
+      "outcome": "Incidentes detectados, alertas recebidos e restauração medida sem perda de autoridade.",
+      "target": 97
+    },
+    {
+      "id": "SUP",
+      "name": "Dependências e cadeia de fornecimento",
+      "baseline": 85,
+      "dimensions": [
+        "supplyChain"
+      ],
+      "findings": [
+        "A05"
+      ],
+      "role": "Supply chain",
+      "outcome": "Dependências, SBOM, imagens e proveniência correspondem ao artefato entregue.",
+      "target": 95
+    },
+    {
+      "id": "DEV",
+      "name": "CI/CD e prontidão para produção",
+      "baseline": 45,
+      "dimensions": [
+        "devOps",
+        "productionReadiness"
+      ],
+      "findings": [
+        "A04",
+        "A05",
+        "A08"
+      ],
+      "role": "Plataforma e release",
+      "outcome": "Mesmo candidato atravessa CI, staging, smoke, promoção e decisão humana.",
+      "target": 96
+    },
+    {
+      "id": "DOC",
+      "name": "Documentação e rastreabilidade",
+      "baseline": 60,
+      "dimensions": [
+        "productionReadiness"
+      ],
+      "findings": [
+        "A04"
+      ],
+      "role": "Documentação e coordenação",
+      "outcome": "Uma fonte canônica de estado; decisões, tarefas e evidências recuperáveis por outro agente.",
+      "target": 95
+    }
+  ],
+  "gate_phases": {
+    "universalPdp": [
+      "F1",
+      "F27"
+    ],
+    "authoritativeWrites": [
+      "F2",
+      "F25"
+    ],
+    "deepseek": [
+      "F3",
+      "F4"
+    ],
+    "provider": [
+      "F5",
+      "F6",
+      "F26"
+    ],
+    "secretAuthority": [
+      "F11"
+    ],
+    "postgresConcurrency": [
+      "F7",
+      "F8"
+    ],
+    "webauthnBreakGlass": [
+      "F12"
+    ],
+    "staging": [
+      "F13"
+    ],
+    "observability": [
+      "F14",
+      "F15"
+    ],
+    "browserMatrix": [
+      "F21",
+      "F22"
+    ],
+    "load": [
+      "F16"
+    ],
+    "chaos": [
+      "F17"
+    ],
+    "recovery": [
+      "F18"
+    ],
+    "restore": [
+      "F20"
+    ],
+    "rtoRpo": [
+      "F19"
+    ],
+    "ciSameSha": [
+      "F28",
+      "F29"
+    ],
+    "resourcePressure": [
+      "F9",
+      "F10",
+      "F31"
+    ],
+    "securityHeaders": [
+      "F32"
+    ],
+    "productionConfig": [
+      "F33"
+    ],
+    "containerSmoke": [
+      "F30"
+    ],
+    "stagingPromotion": [
+      "F34"
+    ],
+    "runbookExecution": [
+      "F35"
+    ],
+    "critics": [
+      "F0",
+      "F23",
+      "F24",
+      "F36"
+    ],
+    "repairLoop": [
+      "F37"
+    ],
+    "humanApproval": [
+      "F38"
+    ]
+  },
+  "tasks": [
+    {
+      "id": "AAA-000",
+      "area": "DOC",
+      "title": "Ativar o plano e reconciliar o estado existente",
+      "milestone": "M0",
+      "priority": "P1",
+      "size": "S",
+      "depends_on": [],
+      "inputs": [
+        "docs/auditoria-2026-09-12.md",
+        ".gauntlet/bar-v4.json",
+        ".agent/state.json",
+        ".agent/backlog.json",
+        ".agent/plans/",
+        ".agent/execution-log.jsonl",
+        ".agent/verification.jsonl"
+      ],
+      "owned_paths": [
+        ".agent/state.json",
+        ".agent/backlog.json",
+        ".agent/plans/",
+        ".agent/execution-log.jsonl",
+        ".agent/verification.jsonl"
+      ],
+      "exclusive_resources": [
+        "control-plane"
+      ],
+      "objective": "Preparar execução retomável sem apagar os dois itens históricos ou registrar melhoria inexistente.",
+      "acceptance": [
+        "SHA e dirty tree reais registrados; snapshot histórico marcado como antecedente",
+        "IDs deste catálogo incorporados uma única vez no backlog canônico sob CVG-FULL-STATE-OF-THE-ART",
+        "Plano ativo, next_action, dependências e log concordam; nenhum item de implementação vira DONE por planejamento"
+      ],
+      "validation": [
+        "Inspecionar git status --short e git rev-parse HEAD",
+        "Validar invariantes do control plane com a versão da skill disponível e registrar comando/resultado"
+      ],
+      "phases": [
+        "F0"
+      ],
+      "external_prerequisites": [],
+      "deliverable": "Plano de execução ativo em .agent/plans e importação idempotente de IDs, com decisões de reconciliação.",
+      "owner_role": "Documentação e coordenação",
+      "risk": "R2",
+      "next_action": "Ler o contrato AAA-000, validar dependências e reproduzir o comportamento atual antes de editar.",
+      "review": "Crítico de contexto novo, somente leitura; integrador decide aceite."
+    },
+    {
+      "id": "ARC-01",
+      "area": "ARC",
+      "title": "Mapear fronteiras e reservar arquivos compartilhados",
+      "milestone": "M0",
+      "priority": "P2",
+      "size": "S",
+      "depends_on": [
+        "AAA-000"
+      ],
+      "inputs": [
+        "docs/auditoria-2026-09-12.md",
+        ".gauntlet/bar-v4.json",
+        "docs/adr/",
+        "docs/architecture-audit-vNext.md"
+      ],
+      "owned_paths": [
+        "docs/adr/",
+        "docs/architecture-audit-vNext.md"
+      ],
+      "exclusive_resources": [
+        "architecture-docs"
+      ],
+      "objective": "Definir recortes por domínio e uma matriz de donos para API, store, persistência, contratos e lockfile.",
+      "acceptance": [
+        "Inventário cita callers, rotas e testes reais",
+        "Cada extração tem comportamento observável preservado e estratégia de compatibilidade",
+        "Nenhuma extração obrigatória motivada apenas por número de linhas"
+      ],
+      "validation": [
+        "Revisão de imports e consumidores com rg",
+        "Revisão independente do mapa e de um exemplo de fluxo transacional"
+      ],
+      "phases": [],
+      "external_prerequisites": [],
+      "deliverable": "Entrega revisável de ARC-01: diff/decisão, reprodução e manifesto de evidências.",
+      "owner_role": "Arquitetura",
+      "risk": "R2",
+      "next_action": "Ler o contrato ARC-01, validar dependências e reproduzir o comportamento atual antes de editar.",
+      "review": "Crítico de contexto novo, somente leitura; integrador decide aceite."
+    },
+    {
+      "id": "ARC-02",
+      "area": "ARC",
+      "title": "Extrair composição da API e serviços por domínio",
+      "milestone": "M2",
+      "priority": "P2",
+      "size": "L",
+      "depends_on": [
+        "ARC-01",
+        "SEC-01",
+        "FIN-02",
+        "FUN-02",
+        "FUN-03"
+      ],
+      "inputs": [
+        "docs/auditoria-2026-09-12.md",
+        ".gauntlet/bar-v4.json",
+        "apps/api/src/",
+        "packages/domain/src/",
+        "tests/integration/api.test.ts"
+      ],
+      "owned_paths": [
+        "apps/api/src/",
+        "packages/domain/src/",
+        "tests/integration/api.test.ts"
+      ],
+      "exclusive_resources": [
+        "api-root",
+        "domain-core"
+      ],
+      "objective": "Reduzir concentração preservando endpoints, autorização, idempotência e transações.",
+      "acceptance": [
+        "Inventário HTTP e envelopes antes/depois equivalentes para contratos preservados",
+        "Nenhuma mutação contorna application service",
+        "Testes negativos e jornadas continuam aprovados"
+      ],
+      "validation": [
+        "npm run typecheck",
+        "npm run verify:pdp-universal",
+        "npm test",
+        "npm run test:e2e"
+      ],
+      "phases": [],
+      "external_prerequisites": [],
+      "deliverable": "Entrega revisável de ARC-02: diff/decisão, reprodução e manifesto de evidências.",
+      "owner_role": "Arquitetura",
+      "risk": "R2",
+      "next_action": "Ler o contrato ARC-02, validar dependências e reproduzir o comportamento atual antes de editar.",
+      "review": "Crítico de contexto novo, somente leitura; integrador decide aceite."
+    },
+    {
+      "id": "ARC-03",
+      "area": "ARC",
+      "title": "Separar persistência por responsabilidade",
+      "milestone": "M2",
+      "priority": "P2",
+      "size": "L",
+      "depends_on": [
+        "ARC-01",
+        "DAT-03",
+        "WRK-02"
+      ],
+      "inputs": [
+        "docs/auditoria-2026-09-12.md",
+        ".gauntlet/bar-v4.json",
+        "packages/persistence/src/",
+        "tests/integration/persistence.test.ts"
+      ],
+      "owned_paths": [
+        "packages/persistence/src/",
+        "tests/integration/persistence.test.ts"
+      ],
+      "exclusive_resources": [
+        "persistence-core"
+      ],
+      "objective": "Extrair módulos de transação, repositories, fila e recuperação sem mudar atomicidade.",
+      "acceptance": [
+        "Interface pública compatível ou migração explícita dos consumidores",
+        "Rollback e CAS continuam atravessando a mesma transação",
+        "Código extraído é alcançado em prova real de PostgreSQL"
+      ],
+      "validation": [
+        "npm run test:database",
+        "npm run verify:authoritative-writes",
+        "npm run verify:postgres",
+        "npm run verify:postgres:concurrency"
+      ],
+      "phases": [],
+      "external_prerequisites": [],
+      "deliverable": "Entrega revisável de ARC-03: diff/decisão, reprodução e manifesto de evidências.",
+      "owner_role": "Arquitetura",
+      "risk": "R2",
+      "next_action": "Ler o contrato ARC-03, validar dependências e reproduzir o comportamento atual antes de editar.",
+      "review": "Crítico de contexto novo, somente leitura; integrador decide aceite."
+    },
+    {
+      "id": "CON-01",
+      "area": "CON",
+      "title": "Congelar contratos necessários às primeiras jornadas",
+      "milestone": "M0",
+      "priority": "P1",
+      "size": "S",
+      "depends_on": [
+        "AAA-000"
+      ],
+      "inputs": [
+        "docs/auditoria-2026-09-12.md",
+        ".gauntlet/bar-v4.json",
+        "docs/adr/",
+        "packages/contracts/src/"
+      ],
+      "owned_paths": [
+        "docs/adr/",
+        "packages/contracts/src/"
+      ],
+      "exclusive_resources": [
+        "contracts"
+      ],
+      "objective": "Definir compatibilidade, erros, recibos e ciclo de sessão/saldo antes dos consumidores paralelos.",
+      "acceptance": [
+        "Versão e exemplos de sucesso/erro/estado parcial registrados",
+        "Logout não promete revogação sem servidor",
+        "Saldo pendente e estados financeiros têm contrato sem regra de estorno inventada"
+      ],
+      "validation": [
+        "npm run test:contract",
+        "Revisão de schemas, consumidores e decisões pendentes com donos SEC e FIN"
+      ],
+      "phases": [],
+      "external_prerequisites": [],
+      "deliverable": "Entrega revisável de CON-01: diff/decisão, reprodução e manifesto de evidências.",
+      "owner_role": "Contratos",
+      "risk": "R2",
+      "next_action": "Ler o contrato CON-01, validar dependências e reproduzir o comportamento atual antes de editar.",
+      "review": "Crítico de contexto novo, somente leitura; integrador decide aceite."
+    },
+    {
+      "id": "CON-02",
+      "area": "CON",
+      "title": "Validar payloads também no cliente",
+      "milestone": "M1",
+      "priority": "P2",
+      "size": "M",
+      "depends_on": [
+        "CON-01",
+        "SEC-01",
+        "FIN-01"
+      ],
+      "inputs": [
+        "docs/auditoria-2026-09-12.md",
+        ".gauntlet/bar-v4.json",
+        "apps/web/src/api/",
+        "packages/contracts/src/",
+        "tests/unit/contracts.test.ts"
+      ],
+      "owned_paths": [
+        "apps/web/src/api/",
+        "packages/contracts/src/",
+        "tests/unit/contracts.test.ts"
+      ],
+      "exclusive_resources": [
+        "web-client",
+        "contracts"
+      ],
+      "objective": "Rejeitar payload semanticamente inválido mesmo dentro de envelope válido.",
+      "acceptance": [
+        "Respostas incorretas de sessão, contexto e financeiro não chegam ao estado da UI",
+        "Erros preservam correlationId e feedback sem expor payload sensível",
+        "Fluxos válidos compatíveis continuam funcionando"
+      ],
+      "validation": [
+        "npm run test:contract",
+        "npm run typecheck",
+        "E2E com interceptações malformadas por recurso e versão"
+      ],
+      "phases": [],
+      "external_prerequisites": [],
+      "deliverable": "Entrega revisável de CON-02: diff/decisão, reprodução e manifesto de evidências.",
+      "owner_role": "Contratos",
+      "risk": "R2",
+      "next_action": "Ler o contrato CON-02, validar dependências e reproduzir o comportamento atual antes de editar.",
+      "review": "Crítico de contexto novo, somente leitura; integrador decide aceite."
+    },
+    {
+      "id": "CON-03",
+      "area": "CON",
+      "title": "Provar compatibilidade e catálogo após integração",
+      "milestone": "M2",
+      "priority": "P2",
+      "size": "M",
+      "depends_on": [
+        "CON-02",
+        "ARC-02",
+        "ARC-03"
+      ],
+      "inputs": [
+        "docs/auditoria-2026-09-12.md",
+        ".gauntlet/bar-v4.json",
+        "packages/contracts/src/",
+        "tests/integration/route-catalog.test.ts",
+        "docs/api-compatibility-proof.md"
+      ],
+      "owned_paths": [
+        "packages/contracts/src/",
+        "tests/integration/route-catalog.test.ts",
+        "docs/api-compatibility-proof.md"
+      ],
+      "exclusive_resources": [
+        "contracts",
+        "route-catalog"
+      ],
+      "objective": "Versionar contratos e impedir divergência entre schemas, rotas e clientes.",
+      "acceptance": [
+        "Catálogo runtime completo e sem rota sensível sem policy",
+        "Consumidor versão anterior suportada tem prova real de compatibilidade",
+        "Versões não suportadas falham explicitamente"
+      ],
+      "validation": [
+        "npm run test:contract",
+        "npm run verify:pdp:runtime",
+        "npm run verify:pdp-universal"
+      ],
+      "phases": [],
+      "external_prerequisites": [],
+      "deliverable": "Entrega revisável de CON-03: diff/decisão, reprodução e manifesto de evidências.",
+      "owner_role": "Contratos",
+      "risk": "R2",
+      "next_action": "Ler o contrato CON-03, validar dependências e reproduzir o comportamento atual antes de editar.",
+      "review": "Crítico de contexto novo, somente leitura; integrador decide aceite."
+    },
+    {
+      "id": "SEC-01",
+      "area": "SEC",
+      "title": "Corrigir logout sob falha e reconexão",
+      "milestone": "M1",
+      "priority": "P1",
+      "size": "M",
+      "depends_on": [
+        "CON-01"
+      ],
+      "inputs": [
+        "docs/auditoria-2026-09-12.md",
+        ".gauntlet/bar-v4.json",
+        "apps/web/src/hooks/use-session.ts",
+        "apps/web/src/app-shell/App.tsx",
+        "apps/web/src/state/",
+        "apps/web/src/components/SessionBlockedState.tsx",
+        "tests/e2e/"
+      ],
+      "owned_paths": [
+        "apps/web/src/hooks/use-session.ts",
+        "apps/web/src/app-shell/App.tsx",
+        "apps/web/src/state/",
+        "apps/web/src/components/SessionBlockedState.tsx",
+        "tests/e2e/"
+      ],
+      "exclusive_resources": [
+        "web-session",
+        "e2e-shared"
+      ],
+      "objective": "Informar saída local e revogação pendente com honestidade, sem recuperar conteúdo como se logout confirmado tivesse ocorrido.",
+      "acceptance": [
+        "Reprodução A01 falha no candidato antigo e regressão correta passa no novo",
+        "Sucesso revoga cookie/sessão; erro, offline, recarga e reconexão têm comportamento explícito",
+        "Sem unhandled rejection, persistência de rascunho sensível ou remoção de CSRF"
+      ],
+      "validation": [
+        "npm run test:security",
+        "npm run typecheck",
+        "E2E dedicado de logout: sucesso, abort, 5xx, offline, recarga e reconexão"
+      ],
+      "phases": [],
+      "external_prerequisites": [],
+      "deliverable": "Entrega revisável de SEC-01: diff/decisão, reprodução e manifesto de evidências.",
+      "owner_role": "Segurança",
+      "risk": "R2",
+      "next_action": "Ler o contrato SEC-01, validar dependências e reproduzir o comportamento atual antes de editar.",
+      "review": "Crítico de contexto novo, somente leitura; integrador decide aceite."
+    },
+    {
+      "id": "SEC-02",
+      "area": "SEC",
+      "title": "Provar matriz de autorização e revogação",
+      "milestone": "M2",
+      "priority": "P1",
+      "size": "M",
+      "depends_on": [
+        "SEC-01",
+        "DAT-01"
+      ],
+      "inputs": [
+        "docs/auditoria-2026-09-12.md",
+        ".gauntlet/bar-v4.json",
+        "packages/auth/",
+        "packages/agent-policy/",
+        "apps/api/src/application/break-glass-service.ts",
+        "tests/unit/auth.test.ts",
+        "tests/integration/faults.test.ts"
+      ],
+      "owned_paths": [
+        "packages/auth/",
+        "packages/agent-policy/",
+        "apps/api/src/application/break-glass-service.ts",
+        "tests/unit/auth.test.ts",
+        "tests/integration/faults.test.ts"
+      ],
+      "exclusive_resources": [
+        "auth-core",
+        "pdp"
+      ],
+      "objective": "Cobrir actor/action/resource/context, MFA, revogação e tentativas entre organizações/unidades.",
+      "acceptance": [
+        "Todos os negativos registrados negam sem efeito nem vazamento de existência",
+        "Revogação vale no próximo boundary online antes de leitura/escrita",
+        "Rotas, tools, services e repositories respeitam admissão"
+      ],
+      "validation": [
+        "npm run test:security",
+        "npm run verify:pdp-universal",
+        "npm run verify:postgres"
+      ],
+      "phases": [
+        "F1"
+      ],
+      "external_prerequisites": [],
+      "deliverable": "Entrega revisável de SEC-02: diff/decisão, reprodução e manifesto de evidências.",
+      "owner_role": "Segurança",
+      "risk": "R2",
+      "next_action": "Ler o contrato SEC-02, validar dependências e reproduzir o comportamento atual antes de editar.",
+      "review": "Crítico de contexto novo, somente leitura; integrador decide aceite."
+    },
+    {
+      "id": "SEC-03",
+      "area": "SEC",
+      "title": "Integrar autoridade de segredo e WebAuthn reais",
+      "milestone": "M3",
+      "priority": "P1",
+      "size": "L",
+      "depends_on": [
+        "SEC-02",
+        "DEV-02"
+      ],
+      "inputs": [
+        "docs/auditoria-2026-09-12.md",
+        ".gauntlet/bar-v4.json",
+        "packages/auth/",
+        "packages/integrations/",
+        "packages/config/",
+        "apps/api/src/application/break-glass-service.ts"
+      ],
+      "owned_paths": [
+        "packages/auth/",
+        "packages/integrations/",
+        "packages/config/",
+        "apps/api/src/application/break-glass-service.ts"
+      ],
+      "exclusive_resources": [
+        "auth-core",
+        "integrations",
+        "config",
+        "external-identity"
+      ],
+      "objective": "Exercitar referências de segredo, rotação/revogação e break-glass com identidade real autorizada.",
+      "acceptance": [
+        "Chave nunca entra no frontend, prompt ou logs",
+        "WebAuthn prova registro/assertion, challenge, origem, rpId, replay e revogação",
+        "Break-glass tem escopo, expiração, justificativa, decisão independente e trilha durável"
+      ],
+      "validation": [
+        "npm run test:security",
+        "Drill em staging de indisponibilidade/rotação do secret provider e replay de assertion"
+      ],
+      "phases": [
+        "F11",
+        "F12"
+      ],
+      "external_prerequisites": [
+        "Ambiente e tenant de teste autorizados",
+        "Secret provider e identidade WebAuthn com responsáveis; referências injetadas fora dos documentos"
+      ],
+      "deliverable": "Entrega revisável de SEC-03: diff/decisão, reprodução e manifesto de evidências.",
+      "owner_role": "Segurança",
+      "risk": "R3",
+      "next_action": "Ler o contrato SEC-03, validar dependências e reproduzir o comportamento atual antes de editar.",
+      "review": "Crítico de contexto novo, somente leitura; integrador decide aceite."
+    },
+    {
+      "id": "SEC-04",
+      "area": "SEC",
+      "title": "Executar red-team da aplicação e do banco",
+      "milestone": "M4",
+      "priority": "P1",
+      "size": "L",
+      "depends_on": [
+        "SEC-03",
+        "DAT-04",
+        "AIG-03",
+        "DEV-03"
+      ],
+      "inputs": [
+        "docs/auditoria-2026-09-12.md",
+        ".gauntlet/bar-v4.json",
+        "tests/integration/",
+        "tests/unit/edge-security.test.ts",
+        "docs/security-red-team-final.md"
+      ],
+      "owned_paths": [
+        "tests/integration/",
+        "tests/unit/edge-security.test.ts",
+        "docs/security-red-team-final.md"
+      ],
+      "exclusive_resources": [
+        "red-team-suite",
+        "staging-db"
+      ],
+      "objective": "Produzir provas separadas F23/F24 e fechar falhas exploráveis no candidato integrado.",
+      "acceptance": [
+        "F23-01 a F23-16 e F24-01 a F24-08 possuem execução e achados rastreados",
+        "Sem CRITICAL/HIGH aberto; correções reexecutam ataques originais",
+        "Review assinado independente e artefatos separados não são substituídos por fixtures locais"
+      ],
+      "validation": [
+        "npm run verify:security-red-team",
+        "Executar matriz hostil em staging isolado e PostgreSQL com role não privilegiada"
+      ],
+      "phases": [
+        "F23",
+        "F24"
+      ],
+      "external_prerequisites": [
+        "Escopo de ataque e ambientes autorizados; revisor independente disponível"
+      ],
+      "deliverable": "Entrega revisável de SEC-04: diff/decisão, reprodução e manifesto de evidências.",
+      "owner_role": "Segurança",
+      "risk": "R3",
+      "next_action": "Ler o contrato SEC-04, validar dependências e reproduzir o comportamento atual antes de editar.",
+      "review": "Crítico de contexto novo, somente leitura; integrador decide aceite."
+    },
+    {
+      "id": "AIG-01",
+      "area": "AIG",
+      "title": "Fechar PDP, tools, budgets e efeitos locais",
+      "milestone": "M1",
+      "priority": "P1",
+      "size": "M",
+      "depends_on": [
+        "CON-01"
+      ],
+      "inputs": [
+        "docs/auditoria-2026-09-12.md",
+        ".gauntlet/bar-v4.json",
+        "packages/agent-policy/",
+        "packages/agent-tools/",
+        "packages/harness/",
+        "tests/unit/vnext.test.ts"
+      ],
+      "owned_paths": [
+        "packages/agent-policy/",
+        "packages/agent-tools/",
+        "packages/harness/",
+        "tests/unit/vnext.test.ts"
+      ],
+      "exclusive_resources": [
+        "pdp",
+        "tools",
+        "harness"
+      ],
+      "objective": "Provar negação por padrão, reserva de budget e separação entre resposta/draft/efeito.",
+      "acceptance": [
+        "Prompt injection, retry e nested calls não ampliam autoridade",
+        "Aprovação vencida/revogada e budget esgotado impedem dispatch",
+        "Nenhum texto do modelo é fonte transacional ou assinatura clínica"
+      ],
+      "validation": [
+        "npm run verify:pdp-universal",
+        "npm run test:security",
+        "Testes de orçamento, replay, cancelamento e aprovação com casos bons e ruins"
+      ],
+      "phases": [
+        "F1"
+      ],
+      "external_prerequisites": [],
+      "deliverable": "Entrega revisável de AIG-01: diff/decisão, reprodução e manifesto de evidências.",
+      "owner_role": "IA",
+      "risk": "R2",
+      "next_action": "Ler o contrato AIG-01, validar dependências e reproduzir o comportamento atual antes de editar.",
+      "review": "Crítico de contexto novo, somente leitura; integrador decide aceite."
+    },
+    {
+      "id": "AIG-02",
+      "area": "AIG",
+      "title": "Executar vertical DeepSeek real",
+      "milestone": "M3",
+      "priority": "P1",
+      "size": "L",
+      "depends_on": [
+        "AIG-01",
+        "SEC-03",
+        "DEV-02"
+      ],
+      "inputs": [
+        "docs/auditoria-2026-09-12.md",
+        ".gauntlet/bar-v4.json",
+        "packages/deepseek-bridge/",
+        "packages/harness-adapters/",
+        "packages/agent-runtime/",
+        "apps/deepseek-bridge/"
+      ],
+      "owned_paths": [
+        "packages/deepseek-bridge/",
+        "packages/harness-adapters/",
+        "packages/agent-runtime/",
+        "apps/deepseek-bridge/"
+      ],
+      "exclusive_resources": [
+        "deepseek",
+        "external-ai"
+      ],
+      "objective": "Conectar engine identificado ao bridge, runtime e tools CVG sem fallback silencioso.",
+      "acceptance": [
+        "Engine commit, manifest, toolset, modelo e configuração ligados ao candidato",
+        "Turno real atravessa sessão, tool governada, aprovação e replay",
+        "Sem credencial/endpoints: BLOCKED, nunca fixture promovida como real"
+      ],
+      "validation": [
+        "npm run verify:deepseek-acp",
+        "npm run verify:deepseek-real",
+        "Executar vertical com dados sintéticos e recibos reais"
+      ],
+      "phases": [
+        "F3"
+      ],
+      "external_prerequisites": [
+        "Endpoint DeepSeek e runtime reais autorizados",
+        "Teto de custo, modelo/versão e referências de segredo definidos"
+      ],
+      "deliverable": "Entrega revisável de AIG-02: diff/decisão, reprodução e manifesto de evidências.",
+      "owner_role": "IA",
+      "risk": "R3",
+      "next_action": "Ler o contrato AIG-02, validar dependências e reproduzir o comportamento atual antes de editar.",
+      "review": "Crítico de contexto novo, somente leitura; integrador decide aceite."
+    },
+    {
+      "id": "AIG-03",
+      "area": "AIG",
+      "title": "Provar falhas do motor e settlement de uso",
+      "milestone": "M4",
+      "priority": "P1",
+      "size": "L",
+      "depends_on": [
+        "AIG-02",
+        "WRK-03"
+      ],
+      "inputs": [
+        "docs/auditoria-2026-09-12.md",
+        ".gauntlet/bar-v4.json",
+        "packages/deepseek-bridge/",
+        "packages/agent-runtime/",
+        "packages/harness-adapters/",
+        "tests/unit/deepseek-acp.test.ts"
+      ],
+      "owned_paths": [
+        "packages/deepseek-bridge/",
+        "packages/agent-runtime/",
+        "packages/harness-adapters/",
+        "tests/unit/deepseek-acp.test.ts"
+      ],
+      "exclusive_resources": [
+        "deepseek",
+        "external-ai",
+        "usage-ledger"
+      ],
+      "objective": "Tratar queda, timeout, cancellation, restart e usage tardio sem efeito ou cobrança duplicada.",
+      "acceptance": [
+        "Matriz de falhas real cobre antes/depois de dispatch e retorno perdido",
+        "Reserva, usage e settlement conciliam eventos duplicados/fora de ordem",
+        "Usage ausente não se transforma em custo zero ou sucesso fictício"
+      ],
+      "validation": [
+        "npm run verify:deepseek-real",
+        "Exercitar falhas e reconciliar ledger de uso com recibos do provider"
+      ],
+      "phases": [
+        "F4",
+        "F26"
+      ],
+      "external_prerequisites": [
+        "Motor/provider e teto de custo autorizados; fault injection no ambiente de teste"
+      ],
+      "deliverable": "Entrega revisável de AIG-03: diff/decisão, reprodução e manifesto de evidências.",
+      "owner_role": "IA",
+      "risk": "R3",
+      "next_action": "Ler o contrato AIG-03, validar dependências e reproduzir o comportamento atual antes de editar.",
+      "review": "Crítico de contexto novo, somente leitura; integrador decide aceite."
+    },
+    {
+      "id": "DAT-01",
+      "area": "DAT",
+      "title": "Revalidar migrations e RLS em PostgreSQL efêmero",
+      "milestone": "M1",
+      "priority": "P1",
+      "size": "M",
+      "depends_on": [
+        "SUP-01"
+      ],
+      "inputs": [
+        "docs/auditoria-2026-09-12.md",
+        ".gauntlet/bar-v4.json",
+        "tests/integration/persistence.test.ts",
+        "scripts/verify-postgres.ts",
+        "db/migrations/"
+      ],
+      "owned_paths": [
+        "tests/integration/persistence.test.ts",
+        "scripts/verify-postgres.ts",
+        "db/migrations/"
+      ],
+      "exclusive_resources": [
+        "db-schema",
+        "staging-db"
+      ],
+      "objective": "Demonstrar banco real, role runtime sem privilégios elevados e isolamento de tenant/unidade/workspace.",
+      "acceptance": [
+        "Migrations existentes aplicadas em ordem sem reescrever as já publicadas",
+        "Runtime sem superuser/BYPASSRLS; schema_migrations sem DML",
+        "Casos negativos diretos SQL e via API negam, com banco descartável próprio"
+      ],
+      "validation": [
+        "npm run db:migrate",
+        "npm run verify:postgres",
+        "npm run test:database"
+      ],
+      "phases": [
+        "F8"
+      ],
+      "external_prerequisites": [],
+      "deliverable": "Entrega revisável de DAT-01: diff/decisão, reprodução e manifesto de evidências.",
+      "owner_role": "Dados",
+      "risk": "R2",
+      "next_action": "Ler o contrato DAT-01, validar dependências e reproduzir o comportamento atual antes de editar.",
+      "review": "Crítico de contexto novo, somente leitura; integrador decide aceite."
+    },
+    {
+      "id": "DAT-02",
+      "area": "DAT",
+      "title": "Fechar fonte authoritative e concorrência multiprocesso",
+      "milestone": "M2",
+      "priority": "P1",
+      "size": "L",
+      "depends_on": [
+        "DAT-01",
+        "FIN-01"
+      ],
+      "inputs": [
+        "docs/auditoria-2026-09-12.md",
+        ".gauntlet/bar-v4.json",
+        "packages/persistence/src/",
+        "apps/api/src/application/idempotency-service.ts",
+        "db/migrations/",
+        "scripts/verify-postgres-concurrency.ts"
+      ],
+      "owned_paths": [
+        "packages/persistence/src/",
+        "apps/api/src/application/idempotency-service.ts",
+        "db/migrations/",
+        "scripts/verify-postgres-concurrency.ts"
+      ],
+      "exclusive_resources": [
+        "persistence-core",
+        "db-schema",
+        "idempotency"
+      ],
+      "objective": "Eliminar caminhos de escrita fora do contrato transacional e comprovar CAS/idempotência.",
+      "acceptance": [
+        "Cada coleção relevante tem dono de escrita e invariantes exercitadas",
+        "Mesmo comando em dois processos gera um efeito; payload diferente conflita",
+        "Crash em fronteiras commit/receipt deixa estado reconciliável sem sucesso falso"
+      ],
+      "validation": [
+        "npm run verify:authoritative-writes",
+        "npm run verify:postgres:concurrency",
+        "npm run test:fault"
+      ],
+      "phases": [
+        "F2",
+        "F7",
+        "F8"
+      ],
+      "external_prerequisites": [],
+      "deliverable": "Entrega revisável de DAT-02: diff/decisão, reprodução e manifesto de evidências.",
+      "owner_role": "Dados",
+      "risk": "R2",
+      "next_action": "Ler o contrato DAT-02, validar dependências e reproduzir o comportamento atual antes de editar.",
+      "review": "Crítico de contexto novo, somente leitura; integrador decide aceite."
+    },
+    {
+      "id": "DAT-03",
+      "area": "DAT",
+      "title": "Endurecer auditoria imutável e exportação",
+      "milestone": "M2",
+      "priority": "P1",
+      "size": "M",
+      "depends_on": [
+        "DAT-02",
+        "SEC-02"
+      ],
+      "inputs": [
+        "docs/auditoria-2026-09-12.md",
+        ".gauntlet/bar-v4.json",
+        "packages/persistence/src/",
+        "apps/api/src/application/export-service.ts",
+        "db/migrations/",
+        "tests/unit/audit-chain.test.ts"
+      ],
+      "owned_paths": [
+        "packages/persistence/src/",
+        "apps/api/src/application/export-service.ts",
+        "db/migrations/",
+        "tests/unit/audit-chain.test.ts"
+      ],
+      "exclusive_resources": [
+        "persistence-core",
+        "db-schema",
+        "export"
+      ],
+      "objective": "Provar trilha resistente a alteração e exportação mínima, autorizada e rastreável.",
+      "acceptance": [
+        "Alterar/remover/reordenar ledger falha ou é detectado inclusive via SQL",
+        "Exportação exige finalidade, escopo, TTL, idempotência e chave referenciada",
+        "Falha de auditoria ou cifra impede confirmação e artefato utilizável"
+      ],
+      "validation": [
+        "npm run verify:audit-chain",
+        "npm run verify:authoritative-writes",
+        "Teste API + SQL de exportação, tamper e escopo"
+      ],
+      "phases": [
+        "F25",
+        "F27"
+      ],
+      "external_prerequisites": [],
+      "deliverable": "Entrega revisável de DAT-03: diff/decisão, reprodução e manifesto de evidências.",
+      "owner_role": "Dados",
+      "risk": "R2",
+      "next_action": "Ler o contrato DAT-03, validar dependências e reproduzir o comportamento atual antes de editar.",
+      "review": "Crítico de contexto novo, somente leitura; integrador decide aceite."
+    },
+    {
+      "id": "DAT-04",
+      "area": "DAT",
+      "title": "Provar restore sem ressuscitar dados ou privilégios",
+      "milestone": "M3",
+      "priority": "P1",
+      "size": "L",
+      "depends_on": [
+        "DAT-03",
+        "OPS-02",
+        "ARC-03"
+      ],
+      "inputs": [
+        "docs/auditoria-2026-09-12.md",
+        ".gauntlet/bar-v4.json",
+        "packages/persistence/src/",
+        "scripts/verify-postgres-restore.ts",
+        "tests/integration/restore.test.ts"
+      ],
+      "owned_paths": [
+        "packages/persistence/src/",
+        "scripts/verify-postgres-restore.ts",
+        "tests/integration/restore.test.ts"
+      ],
+      "exclusive_resources": [
+        "persistence-core",
+        "recovery-db"
+      ],
+      "objective": "Restaurar checkpoint e decisões posteriores preservando revogação/restrição, ledger e efeitos desconhecidos.",
+      "acceptance": [
+        "Backup → revogação/restrição → restore não reabilita autoridade antiga",
+        "Contagens, hashes, vínculos, leases e watermark reconciliados",
+        "Origem intacta; destino próprio em quarentena e sem reenvio cego"
+      ],
+      "validation": [
+        "npm run verify:postgres:restore",
+        "npm run test:restore",
+        "Drill de perda do store local de decisões e replay pós-watermark"
+      ],
+      "phases": [
+        "F18"
+      ],
+      "external_prerequisites": [
+        "Destino isolado e conexão administrativa dedicada ao drill autorizados"
+      ],
+      "deliverable": "Entrega revisável de DAT-04: diff/decisão, reprodução e manifesto de evidências.",
+      "owner_role": "Dados",
+      "risk": "R3",
+      "next_action": "Ler o contrato DAT-04, validar dependências e reproduzir o comportamento atual antes de editar.",
+      "review": "Crítico de contexto novo, somente leitura; integrador decide aceite."
+    },
+    {
+      "id": "WRK-01",
+      "area": "WRK",
+      "title": "Exercitar handlers reais e admissão",
+      "milestone": "M2",
+      "priority": "P1",
+      "size": "M",
+      "depends_on": [
+        "DAT-02",
+        "AIG-01"
+      ],
+      "inputs": [
+        "docs/auditoria-2026-09-12.md",
+        ".gauntlet/bar-v4.json",
+        "apps/worker/src/",
+        "tests/integration/worker-jobs.test.ts"
+      ],
+      "owned_paths": [
+        "apps/worker/src/",
+        "tests/integration/worker-jobs.test.ts"
+      ],
+      "exclusive_resources": [
+        "worker",
+        "jobs"
+      ],
+      "objective": "Executar jobs tipados com policy, auditoria, heartbeat e limites reais de fila.",
+      "acceptance": [
+        "Cinco handlers existentes percorrem efeitos reais locais esperados",
+        "Job inválido/sem policy/sem auditoria não recebe acknowledge",
+        "Backlog cheio bloqueia admissão antes do claim ou dispatch"
+      ],
+      "validation": [
+        "npm run verify:worker-runtime",
+        "npm run test:database",
+        "Executar API e worker separados com banco efêmero"
+      ],
+      "phases": [
+        "F9",
+        "F10"
+      ],
+      "external_prerequisites": [],
+      "deliverable": "Entrega revisável de WRK-01: diff/decisão, reprodução e manifesto de evidências.",
+      "owner_role": "Worker e integrações",
+      "risk": "R2",
+      "next_action": "Ler o contrato WRK-01, validar dependências e reproduzir o comportamento atual antes de editar.",
+      "review": "Crítico de contexto novo, somente leitura; integrador decide aceite."
+    },
+    {
+      "id": "WRK-02",
+      "area": "WRK",
+      "title": "Provar lease, retry, fencing e shutdown",
+      "milestone": "M2",
+      "priority": "P1",
+      "size": "M",
+      "depends_on": [
+        "WRK-01"
+      ],
+      "inputs": [
+        "docs/auditoria-2026-09-12.md",
+        ".gauntlet/bar-v4.json",
+        "apps/worker/src/",
+        "packages/persistence/src/",
+        "tests/unit/worker.test.ts"
+      ],
+      "owned_paths": [
+        "apps/worker/src/",
+        "packages/persistence/src/",
+        "tests/unit/worker.test.ts"
+      ],
+      "exclusive_resources": [
+        "worker",
+        "persistence-core",
+        "jobs"
+      ],
+      "objective": "Sobreviver a dois consumidores, perda de lease, poison message e encerramento em andamento.",
+      "acceptance": [
+        "Lease vencido/fence antigo não conclui job",
+        "Retry limitado com quarentena; redrive exige ação explícita",
+        "Shutdown e restart não duplicam efeito nem perdem trabalho confirmado"
+      ],
+      "validation": [
+        "npm run test:fault",
+        "npm run verify:postgres:concurrency",
+        "Drill multiprocesso de kill/restart, saturation e redrive"
+      ],
+      "phases": [
+        "F9",
+        "F10",
+        "F31"
+      ],
+      "external_prerequisites": [],
+      "deliverable": "Entrega revisável de WRK-02: diff/decisão, reprodução e manifesto de evidências.",
+      "owner_role": "Worker e integrações",
+      "risk": "R2",
+      "next_action": "Ler o contrato WRK-02, validar dependências e reproduzir o comportamento atual antes de editar.",
+      "review": "Crítico de contexto novo, somente leitura; integrador decide aceite."
+    },
+    {
+      "id": "WRK-03",
+      "area": "WRK",
+      "title": "Concluir provider externo, receipt e reconciliação",
+      "milestone": "M3",
+      "priority": "P1",
+      "size": "L",
+      "depends_on": [
+        "WRK-02",
+        "SEC-03",
+        "DEV-02"
+      ],
+      "inputs": [
+        "docs/auditoria-2026-09-12.md",
+        ".gauntlet/bar-v4.json",
+        "packages/integrations/",
+        "apps/api/src/application/integration-service.ts",
+        "scripts/verify-provider-real.ts"
+      ],
+      "owned_paths": [
+        "packages/integrations/",
+        "apps/api/src/application/integration-service.ts",
+        "scripts/verify-provider-real.ts"
+      ],
+      "exclusive_resources": [
+        "integrations",
+        "external-provider"
+      ],
+      "objective": "Provar vertical externa outbox → provider → receipt/callback → reconciliação.",
+      "acceptance": [
+        "Aceite seguido de perda de resposta permanece OUTCOME_UNKNOWN até consulta real",
+        "Callback inválido/repetido/fora de ordem não duplica efeito",
+        "Recibo externo e idempotency key ligam provider, organização e comando"
+      ],
+      "validation": [
+        "npm run verify:provider-sandbox",
+        "npm run verify:provider-real",
+        "Executar matriz real de falhas e consulta externa por idempotência"
+      ],
+      "phases": [
+        "F5",
+        "F6"
+      ],
+      "external_prerequisites": [
+        "Tenant/provider sandbox externo autorizado, destinatários sintéticos e referência de segredo",
+        "Fault injection e eventual custo autorizados"
+      ],
+      "deliverable": "Entrega revisável de WRK-03: diff/decisão, reprodução e manifesto de evidências.",
+      "owner_role": "Worker e integrações",
+      "risk": "R3",
+      "next_action": "Ler o contrato WRK-03, validar dependências e reproduzir o comportamento atual antes de editar.",
+      "review": "Crítico de contexto novo, somente leitura; integrador decide aceite."
+    },
+    {
+      "id": "FUN-01",
+      "area": "FUN",
+      "title": "Fechar inventário de jornadas e ações incompletas",
+      "milestone": "M0",
+      "priority": "P1",
+      "size": "S",
+      "depends_on": [
+        "AAA-000"
+      ],
+      "inputs": [
+        "docs/auditoria-2026-09-12.md",
+        ".gauntlet/bar-v4.json",
+        "docs/01-prd-cvg.md",
+        "docs/adr/"
+      ],
+      "owned_paths": [
+        "docs/01-prd-cvg.md",
+        "docs/adr/"
+      ],
+      "exclusive_resources": [
+        "product-contracts"
+      ],
+      "objective": "Mapear cada CTA e jornada essencial da clínica a um resultado, policy, API e prova.",
+      "acceptance": [
+        "Recepção, atendimento, diagnóstico, internação, estoque, financeiro, comunicação e admin classificados",
+        "Cada aviso sem execução tem decisão implementar/restrição legítima com razão",
+        "Dúvidas de clínica/estorno/alçada têm dono e condição de decisão; ausência não vira escopo eliminado"
+      ],
+      "validation": [
+        "Inventário de controles e rotas com rg e inspeção navegável",
+        "Revisão do inventário contra PRD e auditoria A06"
+      ],
+      "phases": [],
+      "external_prerequisites": [],
+      "deliverable": "Entrega revisável de FUN-01: diff/decisão, reprodução e manifesto de evidências.",
+      "owner_role": "Produto e jornadas",
+      "risk": "R2",
+      "next_action": "Ler o contrato FUN-01, validar dependências e reproduzir o comportamento atual antes de editar.",
+      "review": "Crítico de contexto novo, somente leitura; integrador decide aceite."
+    },
+    {
+      "id": "FUN-02",
+      "area": "FUN",
+      "title": "Completar entrada de estoque e inventário",
+      "milestone": "M2",
+      "priority": "P1",
+      "size": "L",
+      "depends_on": [
+        "FUN-01",
+        "CON-02",
+        "DAT-01"
+      ],
+      "inputs": [
+        "docs/auditoria-2026-09-12.md",
+        ".gauntlet/bar-v4.json",
+        "apps/web/src/features/stock/",
+        "apps/api/src/application/",
+        "packages/contracts/src/",
+        "packages/domain/src/",
+        "tests/e2e/"
+      ],
+      "owned_paths": [
+        "apps/web/src/features/stock/",
+        "apps/api/src/application/",
+        "packages/contracts/src/",
+        "packages/domain/src/",
+        "tests/e2e/"
+      ],
+      "exclusive_resources": [
+        "stock",
+        "domain-core",
+        "contracts",
+        "e2e-shared"
+      ],
+      "objective": "Trocar avisos por fluxo autorizado de lote, validade, motivo e lançamento durável.",
+      "acceptance": [
+        "Entrada válida altera saldo uma vez e produz audit/receipt",
+        "Saldo negativo, lote inválido, sem alçada e replay conflitante negados",
+        "UI cobre salvar, erro, conflito, cancelamento e reconexão sem confirmação falsa"
+      ],
+      "validation": [
+        "npm run test:contract",
+        "npm run test:database",
+        "E2E da entrada e inventário através de API real; teste concorrente de estoque"
+      ],
+      "phases": [],
+      "external_prerequisites": [],
+      "deliverable": "Entrega revisável de FUN-02: diff/decisão, reprodução e manifesto de evidências.",
+      "owner_role": "Produto e jornadas",
+      "risk": "R2",
+      "next_action": "Ler o contrato FUN-02, validar dependências e reproduzir o comportamento atual antes de editar.",
+      "review": "Crítico de contexto novo, somente leitura; integrador decide aceite."
+    },
+    {
+      "id": "FUN-03",
+      "area": "FUN",
+      "title": "Completar jornadas clínicas e operacionais essenciais",
+      "milestone": "M2",
+      "priority": "P1",
+      "size": "L",
+      "depends_on": [
+        "FUN-01",
+        "CON-02",
+        "FIN-02",
+        "DAT-01"
+      ],
+      "inputs": [
+        "docs/auditoria-2026-09-12.md",
+        ".gauntlet/bar-v4.json",
+        "apps/web/src/features/clinical/",
+        "apps/web/src/features/agenda/",
+        "apps/web/src/features/patients/",
+        "apps/api/src/application/",
+        "packages/domain/src/",
+        "tests/e2e/"
+      ],
+      "owned_paths": [
+        "apps/web/src/features/clinical/",
+        "apps/web/src/features/agenda/",
+        "apps/web/src/features/patients/",
+        "apps/api/src/application/",
+        "packages/domain/src/",
+        "tests/e2e/"
+      ],
+      "exclusive_resources": [
+        "clinical",
+        "domain-core",
+        "e2e-shared"
+      ],
+      "objective": "Entregar as jornadas acordadas no inventário, sem CTAs habilitados que terminem em aviso genérico.",
+      "acceptance": [
+        "Cada jornada essencial registrada em FUN-01 possui teste UI→API→commit→receipt",
+        "Rascunho, assinatura, addendum, diagnóstico/internação e comunicações preservam alçadas",
+        "Capacidade indisponível por provider tem estado explícito; fallback manual continua útil"
+      ],
+      "validation": [
+        "npm run test:security",
+        "npm run test:database",
+        "E2E por jornada com erros, conflito, aprovação e replay"
+      ],
+      "phases": [],
+      "external_prerequisites": [
+        "Responsável clínico valida regras ambíguas antes de novos atos de alto impacto; parte técnica já especificada pode avançar"
+      ],
+      "deliverable": "Entrega revisável de FUN-03: diff/decisão, reprodução e manifesto de evidências.",
+      "owner_role": "Produto e jornadas",
+      "risk": "R3",
+      "next_action": "Ler o contrato FUN-03, validar dependências e reproduzir o comportamento atual antes de editar.",
+      "review": "Crítico de contexto novo, somente leitura; integrador decide aceite."
+    },
+    {
+      "id": "FIN-01",
+      "area": "FIN",
+      "title": "Definir saldo e mapear semântica financeira existente",
+      "milestone": "M0",
+      "priority": "P1",
+      "size": "S",
+      "depends_on": [
+        "CON-01",
+        "FUN-01"
+      ],
+      "inputs": [
+        "docs/auditoria-2026-09-12.md",
+        ".gauntlet/bar-v4.json",
+        "docs/adr/",
+        "packages/contracts/src/"
+      ],
+      "owned_paths": [
+        "docs/adr/",
+        "packages/contracts/src/"
+      ],
+      "exclusive_resources": [
+        "financial-contract",
+        "contracts"
+      ],
+      "objective": "Especificar saldo pendente e interpretação de estorno sem deduzir política contábil de um badge.",
+      "acceptance": [
+        "Tabela de exemplos em centavos cobre OPEN, parcial, PAID e casos de estorno já especificados",
+        "Semântica não especificada fica registrada para FIN-04; não bloqueia correção de PAID",
+        "API e UI compartilham contrato e regra de arredondamento; nenhum float monetário"
+      ],
+      "validation": [
+        "npm run test:contract",
+        "Confrontar exemplos com ledger e contratos existentes; encaminhar ambiguidades para FIN-04"
+      ],
+      "phases": [],
+      "external_prerequisites": [],
+      "deliverable": "Entrega revisável de FIN-01: diff/decisão, reprodução e manifesto de evidências.",
+      "owner_role": "Financeiro",
+      "risk": "R2",
+      "next_action": "Ler o contrato FIN-01, validar dependências e reproduzir o comportamento atual antes de editar.",
+      "review": "Crítico de contexto novo, somente leitura; integrador decide aceite."
+    },
+    {
+      "id": "FIN-02",
+      "area": "FIN",
+      "title": "Corrigir resumo e completar cobrança",
+      "milestone": "M1",
+      "priority": "P1",
+      "size": "M",
+      "depends_on": [
+        "FIN-01"
+      ],
+      "inputs": [
+        "docs/auditoria-2026-09-12.md",
+        ".gauntlet/bar-v4.json",
+        "apps/web/src/features/finance/",
+        "apps/api/src/application/read-services.ts",
+        "apps/api/src/app.ts",
+        "packages/domain/src/",
+        "tests/e2e/"
+      ],
+      "owned_paths": [
+        "apps/web/src/features/finance/",
+        "apps/api/src/application/read-services.ts",
+        "apps/api/src/app.ts",
+        "packages/domain/src/",
+        "tests/e2e/"
+      ],
+      "exclusive_resources": [
+        "finance",
+        "api-root",
+        "domain-core",
+        "e2e-shared"
+      ],
+      "objective": "Mostrar saldo devido correto e oferecer criação autorizada de cobrança com recibo.",
+      "acceptance": [
+        "Cobrança PAID de R$100 resulta em zero aberto no caso A02",
+        "Parcial usa restante; REFUNDED é identificado sem fingir saldo conhecido quando faltar regra de FIN-04",
+        "Criação/double-click/retry não duplica cobrança; UI mostra erro ou confirmação real"
+      ],
+      "validation": [
+        "npm run test:contract",
+        "npm run test:database",
+        "E2E financeiro com API e dados reais de teste: pago, parcial, estorno, retry"
+      ],
+      "phases": [],
+      "external_prerequisites": [],
+      "deliverable": "Entrega revisável de FIN-02: diff/decisão, reprodução e manifesto de evidências.",
+      "owner_role": "Financeiro",
+      "risk": "R2",
+      "next_action": "Ler o contrato FIN-02, validar dependências e reproduzir o comportamento atual antes de editar.",
+      "review": "Crítico de contexto novo, somente leitura; integrador decide aceite."
+    },
+    {
+      "id": "FIN-03",
+      "area": "FIN",
+      "title": "Provar invariantes financeiras e reconciliação",
+      "milestone": "M4",
+      "priority": "P1",
+      "size": "M",
+      "depends_on": [
+        "FIN-02",
+        "FIN-04",
+        "DAT-02",
+        "WRK-03"
+      ],
+      "inputs": [
+        "docs/auditoria-2026-09-12.md",
+        ".gauntlet/bar-v4.json",
+        "tests/unit/domain.test.ts",
+        "tests/integration/",
+        "docs/usage-settlement-proof.md"
+      ],
+      "owned_paths": [
+        "tests/unit/domain.test.ts",
+        "tests/integration/",
+        "docs/usage-settlement-proof.md"
+      ],
+      "exclusive_resources": [
+        "financial-tests",
+        "staging-db"
+      ],
+      "objective": "Validar ledger e saldo sob sequência aleatória, pagamento duplicado, estorno e crash.",
+      "acceptance": [
+        "Sequências reproduzíveis preservam equações financeiras e limites em centavos",
+        "Dois processos e callback repetido não duplicam liquidação",
+        "API, resumo, ledger e export concordam após restart"
+      ],
+      "validation": [
+        "npm run verify:postgres:concurrency",
+        "Teste de propriedades financeiras com seed e falha mínima preservados",
+        "Drill com receipt externo e reconciliação"
+      ],
+      "phases": [
+        "F7",
+        "F26"
+      ],
+      "external_prerequisites": [
+        "Provider de teste e cenários financeiros externos autorizados"
+      ],
+      "deliverable": "Entrega revisável de FIN-03: diff/decisão, reprodução e manifesto de evidências.",
+      "owner_role": "Financeiro",
+      "risk": "R3",
+      "next_action": "Ler o contrato FIN-03, validar dependências e reproduzir o comportamento atual antes de editar.",
+      "review": "Crítico de contexto novo, somente leitura; integrador decide aceite."
+    },
+    {
+      "id": "FIN-04",
+      "area": "FIN",
+      "title": "Resolver e implementar regras ambíguas de estorno",
+      "milestone": "M2",
+      "priority": "P1",
+      "size": "M",
+      "depends_on": [
+        "FIN-01",
+        "FIN-02"
+      ],
+      "inputs": [
+        "docs/auditoria-2026-09-12.md",
+        ".gauntlet/bar-v4.json",
+        "docs/adr/",
+        "packages/contracts/src/",
+        "packages/domain/src/",
+        "apps/web/src/features/finance/"
+      ],
+      "owned_paths": [
+        "docs/adr/",
+        "packages/contracts/src/",
+        "packages/domain/src/",
+        "apps/web/src/features/finance/"
+      ],
+      "exclusive_resources": [
+        "financial-contract",
+        "contracts",
+        "domain-core",
+        "finance"
+      ],
+      "objective": "Fechar decisão de dívida reaberta/cancelada, parcialidade e alçadas antes do aceite financeiro integral.",
+      "acceptance": [
+        "Responsável financeiro resolve casos abertos com exemplos e decisão rastreável",
+        "Implementação e UI respeitam a decisão; migration somente se necessária e forward",
+        "Todas as combinações de pagamento e estorno conciliam saldo e ledger"
+      ],
+      "validation": [
+        "npm run test:contract",
+        "npm run test:database",
+        "Revisão dos exemplos pelo responsável e E2E das regras decididas"
+      ],
+      "phases": [],
+      "external_prerequisites": [
+        "Decisão do responsável financeiro apenas para regras não definidas no produto; A02 pode ser corrigido antes desta tarefa"
+      ],
+      "deliverable": "Entrega revisável de FIN-04: diff/decisão, reprodução e manifesto de evidências.",
+      "owner_role": "Financeiro",
+      "risk": "R3",
+      "next_action": "Ler o contrato FIN-04, validar dependências e reproduzir o comportamento atual antes de editar.",
+      "review": "Crítico de contexto novo, somente leitura; integrador decide aceite."
+    },
+    {
+      "id": "UX-01",
+      "area": "UX",
+      "title": "Unificar estados e feedback da sessão",
+      "milestone": "M1",
+      "priority": "P2",
+      "size": "M",
+      "depends_on": [
+        "SEC-01",
+        "CON-02"
+      ],
+      "inputs": [
+        "docs/auditoria-2026-09-12.md",
+        ".gauntlet/bar-v4.json",
+        "apps/web/src/components/",
+        "apps/web/src/state/",
+        "apps/web/src/app-shell/"
+      ],
+      "owned_paths": [
+        "apps/web/src/components/",
+        "apps/web/src/state/",
+        "apps/web/src/app-shell/"
+      ],
+      "exclusive_resources": [
+        "web-session",
+        "shared-ui"
+      ],
+      "objective": "Tornar loading, vazio, erro, permissão, offline, stale e revogação distinguíveis e recuperáveis.",
+      "acceptance": [
+        "Matriz estado×ação sem sucesso falso nem retry infinito",
+        "Buffer clínico não persiste ou reaparece após perda de contexto",
+        "Foco e anúncio acompanham transições e recuperação"
+      ],
+      "validation": [
+        "npm run typecheck",
+        "E2E de transições 401/403/409/5xx/offline e revogação"
+      ],
+      "phases": [],
+      "external_prerequisites": [],
+      "deliverable": "Entrega revisável de UX-01: diff/decisão, reprodução e manifesto de evidências.",
+      "owner_role": "Frontend",
+      "risk": "R2",
+      "next_action": "Ler o contrato UX-01, validar dependências e reproduzir o comportamento atual antes de editar.",
+      "review": "Crítico de contexto novo, somente leitura; integrador decide aceite."
+    },
+    {
+      "id": "UX-02",
+      "area": "UX",
+      "title": "Consolidar componentes e tokens por uso",
+      "milestone": "M2",
+      "priority": "P3",
+      "size": "M",
+      "depends_on": [
+        "UX-01",
+        "FUN-02",
+        "FUN-03"
+      ],
+      "inputs": [
+        "docs/auditoria-2026-09-12.md",
+        ".gauntlet/bar-v4.json",
+        "apps/web/src/components/ui.tsx",
+        "apps/web/src/styles.css",
+        "apps/web/src/features/"
+      ],
+      "owned_paths": [
+        "apps/web/src/components/ui.tsx",
+        "apps/web/src/styles.css",
+        "apps/web/src/features/"
+      ],
+      "exclusive_resources": [
+        "shared-ui",
+        "design-tokens",
+        "all-features"
+      ],
+      "objective": "Reduzir inconsistência visual sem reestilizar arbitrariamente ou ocultar indisponibilidades.",
+      "acceptance": [
+        "Amostras antes/depois de todos os estados e viewports",
+        "Pares de cores similares julgados por função, não eliminados cegamente",
+        "Sem regressão de contraste, foco, responsividade ou legibilidade"
+      ],
+      "validation": [
+        "npm run audit:tokens",
+        "npm run audit:contrast",
+        "npm run test:e2e:full"
+      ],
+      "phases": [],
+      "external_prerequisites": [],
+      "deliverable": "Entrega revisável de UX-02: diff/decisão, reprodução e manifesto de evidências.",
+      "owner_role": "Frontend",
+      "risk": "R2",
+      "next_action": "Ler o contrato UX-02, validar dependências e reproduzir o comportamento atual antes de editar.",
+      "review": "Crítico de contexto novo, somente leitura; integrador decide aceite."
+    },
+    {
+      "id": "UX-03",
+      "area": "UX",
+      "title": "Validar jornadas com usuários representativos",
+      "milestone": "M4",
+      "priority": "P2",
+      "size": "M",
+      "depends_on": [
+        "UX-02",
+        "A11Y-02"
+      ],
+      "inputs": [
+        "docs/auditoria-2026-09-12.md",
+        ".gauntlet/bar-v4.json",
+        "docs/visual-qa-vNext.md",
+        "docs/adr/"
+      ],
+      "owned_paths": [
+        "docs/visual-qa-vNext.md",
+        "docs/adr/"
+      ],
+      "exclusive_resources": [
+        "ux-research"
+      ],
+      "objective": "Observar conclusão de tarefas críticas e corrigir fricções medidas.",
+      "acceptance": [
+        "Roteiro, participantes/papéis, taxas de conclusão e erros anonimizados",
+        "Recepção, clínico e financeiro completam tarefas sem erro crítico induzido",
+        "Achados recebem tarefa e reteste; avaliações de agentes não fingem sessão com usuário"
+      ],
+      "validation": [
+        "Sessão observada com dados sintéticos e comparação de jornadas antes/depois"
+      ],
+      "phases": [],
+      "external_prerequisites": [
+        "Disponibilidade de usuários representativos e autorização de pesquisa sem dados reais"
+      ],
+      "deliverable": "Entrega revisável de UX-03: diff/decisão, reprodução e manifesto de evidências.",
+      "owner_role": "Frontend",
+      "risk": "R3",
+      "next_action": "Ler o contrato UX-03, validar dependências e reproduzir o comportamento atual antes de editar.",
+      "review": "Crítico de contexto novo, somente leitura; integrador decide aceite."
+    },
+    {
+      "id": "A11Y-01",
+      "area": "A11Y",
+      "title": "Fechar matriz automatizada de acessibilidade",
+      "milestone": "M2",
+      "priority": "P2",
+      "size": "M",
+      "depends_on": [
+        "UX-01",
+        "QUA-03"
+      ],
+      "inputs": [
+        "docs/auditoria-2026-09-12.md",
+        ".gauntlet/bar-v4.json",
+        "tests/e2e/accessibility.spec.ts",
+        "tests/e2e/accessibility-stress.spec.ts",
+        "playwright.config.ts"
+      ],
+      "owned_paths": [
+        "tests/e2e/accessibility.spec.ts",
+        "tests/e2e/accessibility-stress.spec.ts",
+        "playwright.config.ts"
+      ],
+      "exclusive_resources": [
+        "a11y-suite",
+        "browser-config"
+      ],
+      "objective": "Exercitar jornadas e erros em Chromium, Firefox e WebKit desktop/tablet/mobile.",
+      "acceptance": [
+        "Zero achado sério/crítico do axe nas jornadas essenciais e estados críticos",
+        "Teclado, foco, nome/papel/valor e erros funcionam",
+        "Skip tem razão verificável; requisito sem engine/dispositivo equivalente permanece não provado"
+      ],
+      "validation": [
+        "npm run test:e2e:full",
+        "npm run audit:contrast"
+      ],
+      "phases": [
+        "F21"
+      ],
+      "external_prerequisites": [],
+      "deliverable": "Entrega revisável de A11Y-01: diff/decisão, reprodução e manifesto de evidências.",
+      "owner_role": "Acessibilidade",
+      "risk": "R2",
+      "next_action": "Ler o contrato A11Y-01, validar dependências e reproduzir o comportamento atual antes de editar.",
+      "review": "Crítico de contexto novo, somente leitura; integrador decide aceite."
+    },
+    {
+      "id": "A11Y-02",
+      "area": "A11Y",
+      "title": "Executar tecnologia assistiva e zoom real",
+      "milestone": "M4",
+      "priority": "P2",
+      "size": "M",
+      "depends_on": [
+        "A11Y-01",
+        "UX-02"
+      ],
+      "inputs": [
+        "docs/auditoria-2026-09-12.md",
+        ".gauntlet/bar-v4.json",
+        "docs/accessibility-proof.md",
+        "docs/visual-qa-vNext.md"
+      ],
+      "owned_paths": [
+        "docs/accessibility-proof.md",
+        "docs/visual-qa-vNext.md"
+      ],
+      "exclusive_resources": [
+        "assistive-lab"
+      ],
+      "objective": "Complementar axe com leitor de tela, teclado, toque e zoom do navegador/dispositivo.",
+      "acceptance": [
+        "Operador percorre login, contexto, busca, formulários, erros, cobrança e saída",
+        "Zoom real 200%/400% e reflow sem perda de informação ou ação",
+        "Gravação/notas e ambiente identificam limitações; ausência de hardware não vira PASS"
+      ],
+      "validation": [
+        "Roteiro humano com leitor de tela disponível, zoom nativo e dispositivo touch real"
+      ],
+      "phases": [
+        "F22"
+      ],
+      "external_prerequisites": [
+        "Operador assistivo, browser/dispositivo reais e janela de validação disponíveis"
+      ],
+      "deliverable": "Entrega revisável de A11Y-02: diff/decisão, reprodução e manifesto de evidências.",
+      "owner_role": "Acessibilidade",
+      "risk": "R3",
+      "next_action": "Ler o contrato A11Y-02, validar dependências e reproduzir o comportamento atual antes de editar.",
+      "review": "Crítico de contexto novo, somente leitura; integrador decide aceite."
+    },
+    {
+      "id": "A11Y-03",
+      "area": "A11Y",
+      "title": "Fixar regressões e prova visual independente",
+      "milestone": "M4",
+      "priority": "P2",
+      "size": "M",
+      "depends_on": [
+        "A11Y-02",
+        "UX-03"
+      ],
+      "inputs": [
+        "docs/auditoria-2026-09-12.md",
+        ".gauntlet/bar-v4.json",
+        "tests/e2e/",
+        "apps/web/src/styles.css",
+        "apps/web/src/components/",
+        "docs/accessibility-proof.md"
+      ],
+      "owned_paths": [
+        "tests/e2e/",
+        "apps/web/src/styles.css",
+        "apps/web/src/components/",
+        "docs/accessibility-proof.md"
+      ],
+      "exclusive_resources": [
+        "e2e-shared",
+        "design-tokens",
+        "shared-ui"
+      ],
+      "objective": "Fechar defeitos assistivos e comparar candidato/referência com críticos independentes.",
+      "acceptance": [
+        "Cada defeito observado tem reteste equivalente",
+        "Duas avaliações visuais cegas sobre critérios fixos, com desempate se material",
+        "Screenshots não substituem uso assistivo; baseline não é atualizado para esconder regressão"
+      ],
+      "validation": [
+        "npm run test:e2e:full",
+        "Revisão visual A/B com seed, viewports e artefatos identificados"
+      ],
+      "phases": [
+        "F21",
+        "F22"
+      ],
+      "external_prerequisites": [],
+      "deliverable": "Entrega revisável de A11Y-03: diff/decisão, reprodução e manifesto de evidências.",
+      "owner_role": "Acessibilidade",
+      "risk": "R2",
+      "next_action": "Ler o contrato A11Y-03, validar dependências e reproduzir o comportamento atual antes de editar.",
+      "review": "Crítico de contexto novo, somente leitura; integrador decide aceite."
+    },
+    {
+      "id": "QUA-01",
+      "area": "QUA",
+      "title": "Tornar teste de snapshot determinístico",
+      "milestone": "M0",
+      "priority": "P1",
+      "size": "S",
+      "depends_on": [
+        "AAA-000"
+      ],
+      "inputs": [
+        "docs/auditoria-2026-09-12.md",
+        ".gauntlet/bar-v4.json",
+        "tests/unit/evidence-snapshot.test.ts",
+        "scripts/verify-evidence-snapshot.ts"
+      ],
+      "owned_paths": [
+        "tests/unit/evidence-snapshot.test.ts",
+        "scripts/verify-evidence-snapshot.ts"
+      ],
+      "exclusive_resources": [
+        "evidence-harness"
+      ],
+      "objective": "Desacoplar o teste negativo A03 de HEAD, dirty tree, relógio e mtimes históricos.",
+      "acceptance": [
+        "Fixture temporária passa em checkout limpo e modificado",
+        "Adulteração de SHA, estado, bytes, inventário e tempo é rejeitada",
+        "Teste passa por razão correta, sem remover verificação de integridade"
+      ],
+      "validation": [
+        "node --import tsx --test tests/unit/evidence-snapshot.test.ts",
+        "Executar mesma suíte em cópias clean/dirty com clock e fixture controlados"
+      ],
+      "phases": [],
+      "external_prerequisites": [],
+      "deliverable": "Entrega revisável de QUA-01: diff/decisão, reprodução e manifesto de evidências.",
+      "owner_role": "Qualidade",
+      "risk": "R2",
+      "next_action": "Ler o contrato QUA-01, validar dependências e reproduzir o comportamento atual antes de editar.",
+      "review": "Crítico de contexto novo, somente leitura; integrador decide aceite."
+    },
+    {
+      "id": "QUA-02",
+      "area": "QUA",
+      "title": "Produzir evidência portátil do candidato",
+      "milestone": "M0",
+      "priority": "P1",
+      "size": "M",
+      "depends_on": [
+        "QUA-01",
+        "SUP-01"
+      ],
+      "inputs": [
+        "docs/auditoria-2026-09-12.md",
+        ".gauntlet/bar-v4.json",
+        "scripts/verify-evidence-snapshot.ts",
+        "scripts/verify-static.ts",
+        "tests/unit/evidence-snapshot.test.ts",
+        "docs/release-provenance.md"
+      ],
+      "owned_paths": [
+        "scripts/verify-evidence-snapshot.ts",
+        "scripts/verify-static.ts",
+        "tests/unit/evidence-snapshot.test.ts",
+        "docs/release-provenance.md"
+      ],
+      "exclusive_resources": [
+        "evidence-harness"
+      ],
+      "objective": "Separar identidade de conteúdo, procedência e freshness de timestamps locais do checkout.",
+      "acceptance": [
+        "Prova rejeita artefato alterado e SHA diferente",
+        "Checkout/cópia preservando bytes não invalida prova só por mtime recriado",
+        "Receipts exigem execução real no candidato; não recapturam sucesso histórico sem executar"
+      ],
+      "validation": [
+        "node --import tsx --test tests/unit/evidence-snapshot.test.ts",
+        "npm run verify:static",
+        "Experimento de exportar/reimportar bundle e adulterar bytes"
+      ],
+      "phases": [
+        "F29"
+      ],
+      "external_prerequisites": [],
+      "deliverable": "Entrega revisável de QUA-02: diff/decisão, reprodução e manifesto de evidências.",
+      "owner_role": "Qualidade",
+      "risk": "R2",
+      "next_action": "Ler o contrato QUA-02, validar dependências e reproduzir o comportamento atual antes de editar.",
+      "review": "Crítico de contexto novo, somente leitura; integrador decide aceite."
+    },
+    {
+      "id": "QUA-03",
+      "area": "QUA",
+      "title": "Isolar suites e complementar lint semântico",
+      "milestone": "M1",
+      "priority": "P2",
+      "size": "M",
+      "depends_on": [
+        "QUA-02",
+        "SUP-01"
+      ],
+      "inputs": [
+        "docs/auditoria-2026-09-12.md",
+        ".gauntlet/bar-v4.json",
+        "scripts/lint.ts",
+        "playwright.config.ts",
+        "tests/e2e/",
+        "package.json",
+        "package-lock.json"
+      ],
+      "owned_paths": [
+        "scripts/lint.ts",
+        "playwright.config.ts",
+        "tests/e2e/",
+        "package.json",
+        "package-lock.json"
+      ],
+      "exclusive_resources": [
+        "e2e-shared",
+        "browser-config",
+        "dependencies",
+        "lint"
+      ],
+      "objective": "Evitar colisão de portas/dados e detectar promessas esquecidas e erros de fronteira também em testes.",
+      "acceptance": [
+        "Cada job tem portas, origem, banco, diretório de output e seed próprios",
+        "Lint cobre testes e regras úteis com casos conhecidos bons/ruins",
+        "Suite obrigatória distingue skip legítimo de capability não provada; nenhuma exclusão para obter verde"
+      ],
+      "validation": [
+        "npm run lint",
+        "npm test",
+        "npm run test:e2e:full",
+        "Executar dois jobs isolados em paralelo sem estado compartilhado"
+      ],
+      "phases": [],
+      "external_prerequisites": [],
+      "deliverable": "Entrega revisável de QUA-03: diff/decisão, reprodução e manifesto de evidências.",
+      "owner_role": "Qualidade",
+      "risk": "R2",
+      "next_action": "Ler o contrato QUA-03, validar dependências e reproduzir o comportamento atual antes de editar.",
+      "review": "Crítico de contexto novo, somente leitura; integrador decide aceite."
+    },
+    {
+      "id": "PER-01",
+      "area": "PER",
+      "title": "Congelar workload, capacidade e targets medidos",
+      "milestone": "M1",
+      "priority": "P1",
+      "size": "M",
+      "depends_on": [
+        "SUP-01",
+        "DAT-01"
+      ],
+      "inputs": [
+        "docs/auditoria-2026-09-12.md",
+        ".gauntlet/bar-v4.json",
+        "tests/load/",
+        "docs/load-and-chaos.md",
+        "docs/06-operacao-qualidade-e-recuperacao.md"
+      ],
+      "owned_paths": [
+        "tests/load/",
+        "docs/load-and-chaos.md",
+        "docs/06-operacao-qualidade-e-recuperacao.md"
+      ],
+      "exclusive_resources": [
+        "load-suite",
+        "slo-contract"
+      ],
+      "objective": "Transformar hipóteses PERF/REL existentes em protocolo reproduzível com hardware, dados e concorrência.",
+      "acceptance": [
+        "W-A…W-H têm dataset/seed, cold/warm, ramp, steady-state e métrica p50/p95/p99",
+        "Baseline mede login/hash, commit, RLS, fila, memória e event-loop lag",
+        "Targets propostos continuam rotulados até decisão fundamentada; nenhum relaxamento para caber resultado"
+      ],
+      "validation": [
+        "npm run benchmark:local",
+        "Executar carga local em PostgreSQL isolado e registrar baseline por operação"
+      ],
+      "phases": [],
+      "external_prerequisites": [],
+      "deliverable": "Contrato de benchmark e proposta fundamentada de SLO/capacidade com hardware e custo estimado; decisão necessária antes do teste final.",
+      "owner_role": "Performance",
+      "risk": "R2",
+      "next_action": "Ler o contrato PER-01, validar dependências e reproduzir o comportamento atual antes de editar.",
+      "review": "Crítico de contexto novo, somente leitura; integrador decide aceite."
+    },
+    {
+      "id": "PER-02",
+      "area": "PER",
+      "title": "Reduzir gargalos demonstrados",
+      "milestone": "M3",
+      "priority": "P2",
+      "size": "L",
+      "depends_on": [
+        "PER-01",
+        "ARC-02",
+        "ARC-03"
+      ],
+      "inputs": [
+        "docs/auditoria-2026-09-12.md",
+        ".gauntlet/bar-v4.json",
+        "packages/domain/src/",
+        "packages/persistence/src/",
+        "apps/api/src/",
+        "tests/load/"
+      ],
+      "owned_paths": [
+        "packages/domain/src/",
+        "packages/persistence/src/",
+        "apps/api/src/",
+        "tests/load/"
+      ],
+      "exclusive_resources": [
+        "domain-core",
+        "persistence-core",
+        "api-root",
+        "load-suite"
+      ],
+      "objective": "Otimizar hashing, queries, snapshots ou locks somente onde perfil atribuir causa.",
+      "acceptance": [
+        "Antes/depois com mesma carga e equipamento identifica ganho e cauda",
+        "Hash mantém segurança/formato de credencial; filas têm limite",
+        "Nenhum ganho degrada isolamento, atomicidade, audit ou correção"
+      ],
+      "validation": [
+        "npm run test:security",
+        "npm run verify:postgres:concurrency",
+        "Comparar perfis CPU/heap/event-loop e p95/p99 por operação"
+      ],
+      "phases": [],
+      "external_prerequisites": [],
+      "deliverable": "Entrega revisável de PER-02: diff/decisão, reprodução e manifesto de evidências.",
+      "owner_role": "Performance",
+      "risk": "R2",
+      "next_action": "Ler o contrato PER-02, validar dependências e reproduzir o comportamento atual antes de editar.",
+      "review": "Crítico de contexto novo, somente leitura; integrador decide aceite."
+    },
+    {
+      "id": "PER-03",
+      "area": "PER",
+      "title": "Provar carga, pressão e chaos em staging",
+      "milestone": "M4",
+      "priority": "P1",
+      "size": "L",
+      "depends_on": [
+        "PER-02",
+        "DEV-03",
+        "WRK-03",
+        "OPS-01"
+      ],
+      "inputs": [
+        "docs/auditoria-2026-09-12.md",
+        ".gauntlet/bar-v4.json",
+        "tests/load/",
+        "scripts/verify-load.ts",
+        "scripts/verify-resource-pressure.ts",
+        "docs/load-proof.md",
+        "docs/chaos-proof.md"
+      ],
+      "owned_paths": [
+        "tests/load/",
+        "scripts/verify-load.ts",
+        "scripts/verify-resource-pressure.ts",
+        "docs/load-proof.md",
+        "docs/chaos-proof.md"
+      ],
+      "exclusive_resources": [
+        "load-suite",
+        "staging-load"
+      ],
+      "objective": "Medir capacidade sustentada, backlog, indisponibilidade e recuperação sob recursos limitados.",
+      "acceptance": [
+        "Targets congelados antes da execução final; relatório inclui todas as amostras/falhas",
+        "Limites de CPU/memória/pool/queue não causam confirmação falsa ou perda de integridade",
+        "Chaos isolado prova degradação e retorno; disponibilidade mensal não é deduzida de benchmark curto"
+      ],
+      "validation": [
+        "npm run verify:load",
+        "npm run verify:resource-pressure",
+        "Executar tests/load/cvg-staging.k6.js conforme contrato de carga e cenários de caos"
+      ],
+      "phases": [
+        "F10",
+        "F15",
+        "F16",
+        "F17",
+        "F31"
+      ],
+      "external_prerequisites": [
+        "Staging isolado, workload/capacidade/custo e fault injection autorizados; alvo não produtivo confirmado"
+      ],
+      "deliverable": "Entrega revisável de PER-03: diff/decisão, reprodução e manifesto de evidências.",
+      "owner_role": "Performance",
+      "risk": "R3",
+      "next_action": "Ler o contrato PER-03, validar dependências e reproduzir o comportamento atual antes de editar.",
+      "review": "Crítico de contexto novo, somente leitura; integrador decide aceite."
+    },
+    {
+      "id": "OPS-01",
+      "area": "OPS",
+      "title": "Provar traces, métricas e entrega de alertas",
+      "milestone": "M3",
+      "priority": "P1",
+      "size": "M",
+      "depends_on": [
+        "DEV-02",
+        "WRK-01"
+      ],
+      "inputs": [
+        "docs/auditoria-2026-09-12.md",
+        ".gauntlet/bar-v4.json",
+        "packages/ops/",
+        "docker/observability/",
+        "docs/observability-production.md"
+      ],
+      "owned_paths": [
+        "packages/ops/",
+        "docker/observability/",
+        "docs/observability-production.md"
+      ],
+      "exclusive_resources": [
+        "observability",
+        "staging-observability"
+      ],
+      "objective": "Detectar falhas reais do processo até o destinatário de teste com correlação e redaction.",
+      "acceptance": [
+        "HTTP→job→provider compartilha correlação consultável sem payload sensível",
+        "Indisponibilidade do collector e fila de export não quebram domínio",
+        "Alerta dispara, chega ao canal de teste autorizado, resolve e aponta runbook"
+      ],
+      "validation": [
+        "node --import tsx --test tests/unit/ops.test.ts",
+        "Drill de falha com collector, dashboard e receptor de alerta reais"
+      ],
+      "phases": [
+        "F13",
+        "F14"
+      ],
+      "external_prerequisites": [
+        "Collector/staging e canal de alerta de teste autorizados; não enviar mensagens a pessoas sem autorização"
+      ],
+      "deliverable": "Entrega revisável de OPS-01: diff/decisão, reprodução e manifesto de evidências.",
+      "owner_role": "SRE e recuperação",
+      "risk": "R3",
+      "next_action": "Ler o contrato OPS-01, validar dependências e reproduzir o comportamento atual antes de editar.",
+      "review": "Crítico de contexto novo, somente leitura; integrador decide aceite."
+    },
+    {
+      "id": "OPS-02",
+      "area": "OPS",
+      "title": "Operar backup criptografado e retenção",
+      "milestone": "M3",
+      "priority": "P1",
+      "size": "M",
+      "depends_on": [
+        "DAT-02",
+        "DEV-02",
+        "SEC-03"
+      ],
+      "inputs": [
+        "docs/auditoria-2026-09-12.md",
+        ".gauntlet/bar-v4.json",
+        "apps/worker/src/operational-backup.ts",
+        "scripts/verify-backup-retention.ts",
+        "docs/runbooks/backup.md"
+      ],
+      "owned_paths": [
+        "apps/worker/src/operational-backup.ts",
+        "scripts/verify-backup-retention.ts",
+        "docs/runbooks/backup.md"
+      ],
+      "exclusive_resources": [
+        "backup",
+        "recovery-storage"
+      ],
+      "objective": "Executar agendamento real de backup, retenção e restauração de objetos com autoridade de chave.",
+      "acceptance": [
+        "Backup automático atômico inclui manifest, watermark e digests",
+        "Chave errada/tamper recusados; rotação/retention preservam cópias elegíveis",
+        "Destino governado e acesso mínimo; nenhuma chave ou dump real no Git"
+      ],
+      "validation": [
+        "npm run verify:backup-retention",
+        "Drill de backup agendado, retenção e recuperação de chave em destino de teste"
+      ],
+      "phases": [
+        "F20"
+      ],
+      "external_prerequisites": [
+        "Storage de backup e chave gerenciada de teste autorizados; política de retenção e custos definidos"
+      ],
+      "deliverable": "Entrega revisável de OPS-02: diff/decisão, reprodução e manifesto de evidências.",
+      "owner_role": "SRE e recuperação",
+      "risk": "R3",
+      "next_action": "Ler o contrato OPS-02, validar dependências e reproduzir o comportamento atual antes de editar.",
+      "review": "Crítico de contexto novo, somente leitura; integrador decide aceite."
+    },
+    {
+      "id": "OPS-03",
+      "area": "OPS",
+      "title": "Medir RTO/RPO e executar runbooks",
+      "milestone": "M4",
+      "priority": "P1",
+      "size": "L",
+      "depends_on": [
+        "OPS-01",
+        "OPS-02",
+        "DAT-04",
+        "DEV-03"
+      ],
+      "inputs": [
+        "docs/auditoria-2026-09-12.md",
+        ".gauntlet/bar-v4.json",
+        "docs/runbooks/",
+        "scripts/verify-runbook-execution.ts",
+        "docs/recovery-proof-final.md"
+      ],
+      "owned_paths": [
+        "docs/runbooks/",
+        "scripts/verify-runbook-execution.ts",
+        "docs/recovery-proof-final.md"
+      ],
+      "exclusive_resources": [
+        "runbooks",
+        "recovery-db"
+      ],
+      "objective": "Provar recuperação por operador que não escreveu o procedimento e medir o tempo real.",
+      "acceptance": [
+        "RTO e RPO medidos por relógio/eventos com dataset completo e limites decididos",
+        "Cenários F35 exigidos executados, inclusive rollback/quarentena/credencial/outage",
+        "Erro de procedimento gera correção e repetição; dry-run não substitui o efeito requerido"
+      ],
+      "validation": [
+        "npm run verify:runbook-execution",
+        "npm run verify:postgres:restore",
+        "Drill cronometrado com operador independente e eventos pós-backup"
+      ],
+      "phases": [
+        "F18",
+        "F19",
+        "F35"
+      ],
+      "external_prerequisites": [
+        "Operador independente, ambiente de recuperação e intervenções autorizados; janelas e metas operacionais definidas"
+      ],
+      "deliverable": "Entrega revisável de OPS-03: diff/decisão, reprodução e manifesto de evidências.",
+      "owner_role": "SRE e recuperação",
+      "risk": "R3",
+      "next_action": "Ler o contrato OPS-03, validar dependências e reproduzir o comportamento atual antes de editar.",
+      "review": "Crítico de contexto novo, somente leitura; integrador decide aceite."
+    },
+    {
+      "id": "SUP-01",
+      "area": "SUP",
+      "title": "Padronizar instalação limpa e inventário",
+      "milestone": "M0",
+      "priority": "P1",
+      "size": "S",
+      "depends_on": [
+        "AAA-000"
+      ],
+      "inputs": [
+        "docs/auditoria-2026-09-12.md",
+        ".gauntlet/bar-v4.json",
+        "package.json",
+        "package-lock.json",
+        "apps/*/package.json",
+        "packages/*/package.json",
+        "docs/deployment-vNext.md"
+      ],
+      "owned_paths": [
+        "package.json",
+        "package-lock.json",
+        "apps/*/package.json",
+        "packages/*/package.json",
+        "docs/deployment-vNext.md"
+      ],
+      "exclusive_resources": [
+        "dependencies"
+      ],
+      "objective": "Garantir que todas as provas usem a mesma árvore resolvida, corrigindo A05 sem update indiscriminado.",
+      "acceptance": [
+        "npm ci e npm ls funcionam em checkout novo com Node/npm declarados",
+        "Build usa versões do lockfile; todos os workspaces têm dependências corretas",
+        "Inventário e licença refletem árvore real; nenhuma mudança de versão sem motivo"
+      ],
+      "validation": [
+        "npm ci --ignore-scripts",
+        "npm ls --depth=0",
+        "npm run build",
+        "npm audit --json",
+        "npm run audit:licenses"
+      ],
+      "phases": [],
+      "external_prerequisites": [],
+      "deliverable": "Entrega revisável de SUP-01: diff/decisão, reprodução e manifesto de evidências.",
+      "owner_role": "Supply chain",
+      "risk": "R2",
+      "next_action": "Ler o contrato SUP-01, validar dependências e reproduzir o comportamento atual antes de editar.",
+      "review": "Crítico de contexto novo, somente leitura; integrador decide aceite."
+    },
+    {
+      "id": "SUP-02",
+      "area": "SUP",
+      "title": "Gerar SBOM e escanear artefatos construídos",
+      "milestone": "M2",
+      "priority": "P1",
+      "size": "M",
+      "depends_on": [
+        "SUP-01",
+        "QUA-03"
+      ],
+      "inputs": [
+        "docs/auditoria-2026-09-12.md",
+        ".gauntlet/bar-v4.json",
+        ".github/dependabot.yml",
+        "Dockerfile.api",
+        "Dockerfile.web",
+        "scripts/verify-release-provenance.ts"
+      ],
+      "owned_paths": [
+        ".github/dependabot.yml",
+        "Dockerfile.api",
+        "Dockerfile.web",
+        "scripts/verify-release-provenance.ts"
+      ],
+      "exclusive_resources": [
+        "containers",
+        "supply-chain"
+      ],
+      "objective": "Vincular dependências e scan aos bytes finais da API/web e não ao workspace divergente.",
+      "acceptance": [
+        "SBOM e digests correspondem às imagens executadas",
+        "Scan inclui vulnerabilidades e política de licenças; achados altos/críticos tratados",
+        "Runtime contém somente dependências necessárias; provenance não autodeclara CI não executado"
+      ],
+      "validation": [
+        "npm sbom --sbom-format cyclonedx",
+        "npm run audit:licenses",
+        "Build e scan das imagens pelos comandos fixados no CI"
+      ],
+      "phases": [
+        "F29"
+      ],
+      "external_prerequisites": [],
+      "deliverable": "Entrega revisável de SUP-02: diff/decisão, reprodução e manifesto de evidências.",
+      "owner_role": "Supply chain",
+      "risk": "R2",
+      "next_action": "Ler o contrato SUP-02, validar dependências e reproduzir o comportamento atual antes de editar.",
+      "review": "Crítico de contexto novo, somente leitura; integrador decide aceite."
+    },
+    {
+      "id": "SUP-03",
+      "area": "SUP",
+      "title": "Verificar proveniência e adulteração da promoção",
+      "milestone": "M5",
+      "priority": "P1",
+      "size": "M",
+      "depends_on": [
+        "SUP-02",
+        "DEV-01",
+        "DEV-03"
+      ],
+      "inputs": [
+        "docs/auditoria-2026-09-12.md",
+        ".gauntlet/bar-v4.json",
+        "scripts/verify-release-provenance.ts",
+        "scripts/verify-promotion-invariant.ts",
+        "tests/unit/release-provenance.test.ts",
+        "tests/unit/promotion-invariant.test.ts"
+      ],
+      "owned_paths": [
+        "scripts/verify-release-provenance.ts",
+        "scripts/verify-promotion-invariant.ts",
+        "tests/unit/release-provenance.test.ts",
+        "tests/unit/promotion-invariant.test.ts"
+      ],
+      "exclusive_resources": [
+        "release-provenance"
+      ],
+      "objective": "Rejeitar troca de SHA/imagem/SBOM/receipts entre CI, staging e promoção.",
+      "acceptance": [
+        "Mesmo SHA e digests em todos os sujeitos da promoção",
+        "Bundle incompleto/adulterado/symlink/reviewer inválido falha",
+        "Assinaturas e artefatos de execução são verificados, não só existência de campos"
+      ],
+      "validation": [
+        "npm run verify:release-provenance -- --manifest artifacts/release-provenance.json",
+        "npm run verify:promotion-invariant -- --manifest promotion.json",
+        "Testes negativos de troca de sujeito e digests"
+      ],
+      "phases": [
+        "F28",
+        "F29",
+        "F34"
+      ],
+      "external_prerequisites": [
+        "Artefatos reais do CI/staging e autoridade independente de atestação disponíveis"
+      ],
+      "deliverable": "Entrega revisável de SUP-03: diff/decisão, reprodução e manifesto de evidências.",
+      "owner_role": "Supply chain",
+      "risk": "R3",
+      "next_action": "Ler o contrato SUP-03, validar dependências e reproduzir o comportamento atual antes de editar.",
+      "review": "Crítico de contexto novo, somente leitura; integrador decide aceite."
+    },
+    {
+      "id": "DEV-01",
+      "area": "DEV",
+      "title": "Restaurar CI verde e gate local reproduzível",
+      "milestone": "M1",
+      "priority": "P1",
+      "size": "M",
+      "depends_on": [
+        "QUA-02",
+        "SUP-01"
+      ],
+      "inputs": [
+        "docs/auditoria-2026-09-12.md",
+        ".gauntlet/bar-v4.json",
+        ".github/workflows/ci.yml",
+        "scripts/verify-production.ts",
+        "scripts/verify-static.ts"
+      ],
+      "owned_paths": [
+        ".github/workflows/ci.yml",
+        "scripts/verify-production.ts",
+        "scripts/verify-static.ts"
+      ],
+      "exclusive_resources": [
+        "ci",
+        "evidence-harness"
+      ],
+      "objective": "Passar gates no checkout limpo sem mascarar teste falho ou fazer recaptura histórica.",
+      "acceptance": [
+        "CI executa instalação, lint, typecheck, testes, build, banco efêmero e browsers",
+        "Falha é atribuída a procedimento/ambiente e impede promoção",
+        "Gates e SBOM do mesmo SHA com logs sanitizados; baseline 330 não vira quota artificial"
+      ],
+      "validation": [
+        "npm run lint",
+        "npm run build",
+        "npm test",
+        "npm run verify:static",
+        "npm run verify:production",
+        "Executar workflow remoto no candidato quando conexão estiver autorizada"
+      ],
+      "phases": [
+        "F28"
+      ],
+      "external_prerequisites": [],
+      "deliverable": "Entrega revisável de DEV-01: diff/decisão, reprodução e manifesto de evidências.",
+      "owner_role": "Plataforma e release",
+      "risk": "R2",
+      "next_action": "Ler o contrato DEV-01, validar dependências e reproduzir o comportamento atual antes de editar.",
+      "review": "Crítico de contexto novo, somente leitura; integrador decide aceite."
+    },
+    {
+      "id": "DEV-02",
+      "area": "DEV",
+      "title": "Preparar ambiente alvo e contratos operacionais",
+      "milestone": "M0",
+      "priority": "P1",
+      "size": "M",
+      "depends_on": [
+        "AAA-000"
+      ],
+      "inputs": [
+        "docs/auditoria-2026-09-12.md",
+        ".gauntlet/bar-v4.json",
+        "docs/staging.md",
+        "docs/adr/",
+        "docker/.env.example"
+      ],
+      "owned_paths": [
+        "docs/staging.md",
+        "docs/adr/",
+        "docker/.env.example"
+      ],
+      "exclusive_resources": [
+        "environment-contracts"
+      ],
+      "objective": "Identificar cedo capacidade, endpoints, identidades, serviços e donos que condicionam provas externas.",
+      "acceptance": [
+        "Inventário contém responsáveis e referências, nunca segredos",
+        "Especifica staging isolado, PostgreSQL compatível, TLS, storage, OTLP, provider/DeepSeek e teto de custo",
+        "Preparação técnica concluída pode ser entregue; parte sem acesso fica BLOCKED até disponibilidade real"
+      ],
+      "validation": [
+        "Revisão do inventário contra docker-compose.production.yml e scripts de verificação",
+        "Inspeção read-only de ferramentas e recursos disponíveis"
+      ],
+      "phases": [],
+      "external_prerequisites": [
+        "Autoridade de infraestrutura define/provisiona recursos e acessos externos; não pressupor credenciais ou orçamento"
+      ],
+      "deliverable": "Entrega revisável de DEV-02: diff/decisão, reprodução e manifesto de evidências.",
+      "owner_role": "Plataforma e release",
+      "risk": "R3",
+      "next_action": "Ler o contrato DEV-02, validar dependências e reproduzir o comportamento atual antes de editar.",
+      "review": "Crítico de contexto novo, somente leitura; integrador decide aceite."
+    },
+    {
+      "id": "DEV-03",
+      "area": "DEV",
+      "title": "Executar staging e container smoke integral",
+      "milestone": "M3",
+      "priority": "P1",
+      "size": "L",
+      "depends_on": [
+        "DEV-01",
+        "DEV-02",
+        "SUP-02",
+        "ARC-02",
+        "ARC-03"
+      ],
+      "inputs": [
+        "docs/auditoria-2026-09-12.md",
+        ".gauntlet/bar-v4.json",
+        "docker-compose.production.yml",
+        "docker/nginx/",
+        "scripts/verify-container-smoke.ts",
+        "scripts/verify-staging.ts"
+      ],
+      "owned_paths": [
+        "docker-compose.production.yml",
+        "docker/nginx/",
+        "scripts/verify-container-smoke.ts",
+        "scripts/verify-staging.ts"
+      ],
+      "exclusive_resources": [
+        "staging-deploy",
+        "containers"
+      ],
+      "objective": "Rodar o artefato de CI com TLS/configuração real de teste e comprovar lifecycle completo.",
+      "acceptance": [
+        "Config inválida/segredo ausente falha fechado; health não substitui jornada autenticada",
+        "Login/MFA, leitura/escrita, heartbeat/outbox, replay, shutdown e restart comprovados",
+        "Headers observados no endpoint TLS; readiness e rollback documentados"
+      ],
+      "validation": [
+        "npm run verify:production",
+        "npm run verify:container-smoke -- --url https://ALVO_AUTORIZADO --release-sha SHA_CANDIDATO --artifact-digest DIGEST_CANDIDATO",
+        "npm run verify:staging"
+      ],
+      "phases": [
+        "F30",
+        "F32",
+        "F33"
+      ],
+      "external_prerequisites": [
+        "Deploy somente em staging autorizado com TLS, configurações e serviços de teste; placeholders do comando devem ser substituídos por referências reais"
+      ],
+      "deliverable": "Entrega revisável de DEV-03: diff/decisão, reprodução e manifesto de evidências.",
+      "owner_role": "Plataforma e release",
+      "risk": "R3",
+      "next_action": "Ler o contrato DEV-03, validar dependências e reproduzir o comportamento atual antes de editar.",
+      "review": "Crítico de contexto novo, somente leitura; integrador decide aceite."
+    },
+    {
+      "id": "DEV-04",
+      "area": "DEV",
+      "title": "Congelar candidato e obter Gauntlet final",
+      "milestone": "M5",
+      "priority": "P1",
+      "size": "L",
+      "depends_on": [
+        "CON-03",
+        "FIN-03",
+        "A11Y-03",
+        "SEC-04",
+        "PER-03",
+        "OPS-03",
+        "SUP-03",
+        "DOC-03"
+      ],
+      "inputs": [
+        "docs/auditoria-2026-09-12.md",
+        ".gauntlet/bar-v4.json",
+        "docs/final-closure-audit.md",
+        "docs/triple-aaa-final-scorecard.md"
+      ],
+      "owned_paths": [
+        "docs/final-closure-audit.md",
+        "docs/triple-aaa-final-scorecard.md"
+      ],
+      "exclusive_resources": [
+        "release-candidate"
+      ],
+      "objective": "Consolidar F0–F38, 25 gates e 22 dimensões; executar críticos e reparar até critérios objetivos.",
+      "acceptance": [
+        "Roster das 15 especialidades completo com contexto novo e artefatos imutáveis",
+        "Cada reparo cria candidato/evidência novos e invalida prova afetada",
+        "Zero CRITICAL/HIGH e todos os gates técnicos PASS; score não é concedido pelo builder"
+      ],
+      "validation": [
+        "npm run verify:triplo-aaa",
+        "Revisão independente da matriz F0–F38, receipts, fases e sujeito",
+        "Reprodução de achados e execução integrada após cada alteração"
+      ],
+      "phases": [
+        "F0",
+        "F36",
+        "F37"
+      ],
+      "external_prerequisites": [
+        "Revisores independentes e evidências externas reais disponíveis; humanApproval permanece pendente até DEV-05"
+      ],
+      "deliverable": "Entrega revisável de DEV-04: diff/decisão, reprodução e manifesto de evidências.",
+      "owner_role": "Plataforma e release",
+      "risk": "R3",
+      "next_action": "Ler o contrato DEV-04, validar dependências e reproduzir o comportamento atual antes de editar.",
+      "review": "Crítico de contexto novo, somente leitura; integrador decide aceite."
+    },
+    {
+      "id": "DEV-05",
+      "area": "DEV",
+      "title": "Decisão humana e promoção controlada",
+      "milestone": "M5",
+      "priority": "P1",
+      "size": "S",
+      "depends_on": [
+        "DEV-04"
+      ],
+      "inputs": [
+        "docs/auditoria-2026-09-12.md",
+        ".gauntlet/bar-v4.json",
+        "docs/11-transicao-para-producao.md"
+      ],
+      "owned_paths": [
+        "docs/11-transicao-para-producao.md"
+      ],
+      "exclusive_resources": [
+        "human-approval",
+        "promotion"
+      ],
+      "objective": "Apresentar candidato concreto, riscos e rollback para decisão humana verificável.",
+      "acceptance": [
+        "Aprovação humana real assinada ligada ao candidato exato; não fabricada pelo agente",
+        "25 gates, 39 fases e 22 dimensões satisfazem verificador incluindo F38",
+        "Produção só ocorre se explicitamente autorizada; rejeição não é convertida em PASS"
+      ],
+      "validation": [
+        "npm run verify:triplo-aaa",
+        "npm run verify:promotion-invariant -- --manifest promotion.json",
+        "Conferir identidade, escopo, validade e assinatura da decisão humana"
+      ],
+      "phases": [
+        "F34",
+        "F38"
+      ],
+      "external_prerequisites": [
+        "Decisor humano independente emite atestação válida",
+        "Implantação em produção requer autorização explícita para aquele candidato"
+      ],
+      "deliverable": "Entrega revisável de DEV-05: diff/decisão, reprodução e manifesto de evidências.",
+      "owner_role": "Plataforma e release",
+      "risk": "R3",
+      "next_action": "Ler o contrato DEV-05, validar dependências e reproduzir o comportamento atual antes de editar.",
+      "review": "Crítico de contexto novo, somente leitura; integrador decide aceite."
+    },
+    {
+      "id": "DOC-01",
+      "area": "DOC",
+      "title": "Conciliar catálogo novo com histórico e fontes",
+      "milestone": "M0",
+      "priority": "P1",
+      "size": "S",
+      "depends_on": [
+        "AAA-000"
+      ],
+      "inputs": [
+        "docs/auditoria-2026-09-12.md",
+        ".gauntlet/bar-v4.json",
+        "docs/README.md",
+        "docs/12-estado-da-implementacao.md",
+        "docs/08-rastreabilidade-e-decisoes.md"
+      ],
+      "owned_paths": [
+        "docs/README.md",
+        "docs/12-estado-da-implementacao.md",
+        "docs/08-rastreabilidade-e-decisoes.md"
+      ],
+      "exclusive_resources": [
+        "docs-index"
+      ],
+      "objective": "Impedir que notas locais substituam scorecard de promoção ou que histórico seja tratado como prova atual.",
+      "acceptance": [
+        "Índice aponta auditoria, plano, dono do status e barra ativa",
+        "F0–F38 usam numeração do prompt final, sem misturar versão anterior",
+        "Histórico preservado com vínculo ao SHA observado e limitações"
+      ],
+      "validation": [
+        "Verificar links locais, IDs e referências normativas",
+        "Comparar catálogo com .agent/backlog.json sem duplicar status mutáveis"
+      ],
+      "phases": [
+        "F0"
+      ],
+      "external_prerequisites": [],
+      "deliverable": "Entrega revisável de DOC-01: diff/decisão, reprodução e manifesto de evidências.",
+      "owner_role": "Documentação e coordenação",
+      "risk": "R2",
+      "next_action": "Ler o contrato DOC-01, validar dependências e reproduzir o comportamento atual antes de editar.",
+      "review": "Crítico de contexto novo, somente leitura; integrador decide aceite."
+    },
+    {
+      "id": "DOC-02",
+      "area": "DOC",
+      "title": "Manter decisões e manual de operação por tarefa",
+      "milestone": "M2",
+      "priority": "P2",
+      "size": "M",
+      "depends_on": [
+        "DOC-01",
+        "FUN-01",
+        "CON-01"
+      ],
+      "inputs": [
+        "docs/auditoria-2026-09-12.md",
+        ".gauntlet/bar-v4.json",
+        "docs/adr/",
+        "docs/README.md",
+        "docs/08-rastreabilidade-e-decisoes.md"
+      ],
+      "owned_paths": [
+        "docs/adr/",
+        "docs/README.md",
+        "docs/08-rastreabilidade-e-decisoes.md"
+      ],
+      "exclusive_resources": [
+        "docs-index",
+        "product-contracts"
+      ],
+      "objective": "Atualizar instruções a partir dos contratos integrados e deixar handoff recuperável.",
+      "acceptance": [
+        "Cada mudança pública possui exemplo, erro, compatibilidade e procedimento de recuperação",
+        "Decisões pendentes têm dono, alternativa e condição de resolução",
+        "Outro agente retoma um item pelo pacote sem histórico de conversa"
+      ],
+      "validation": [
+        "Exercício de handoff com agente de contexto novo",
+        "Verificação de links, comandos disponíveis e rastreabilidade por IDs"
+      ],
+      "phases": [],
+      "external_prerequisites": [],
+      "deliverable": "Entrega revisável de DOC-02: diff/decisão, reprodução e manifesto de evidências.",
+      "owner_role": "Documentação e coordenação",
+      "risk": "R2",
+      "next_action": "Ler o contrato DOC-02, validar dependências e reproduzir o comportamento atual antes de editar.",
+      "review": "Crítico de contexto novo, somente leitura; integrador decide aceite."
+    },
+    {
+      "id": "DOC-03",
+      "area": "DOC",
+      "title": "Auditar evidência final e eliminar contradições",
+      "milestone": "M5",
+      "priority": "P1",
+      "size": "M",
+      "depends_on": [
+        "DOC-02",
+        "QUA-03",
+        "DEV-03"
+      ],
+      "inputs": [
+        "docs/auditoria-2026-09-12.md",
+        ".gauntlet/bar-v4.json",
+        "docs/README.md",
+        "docs/12-estado-da-implementacao.md",
+        "docs/final-operational-proof-audit.md"
+      ],
+      "owned_paths": [
+        "docs/README.md",
+        "docs/12-estado-da-implementacao.md",
+        "docs/final-operational-proof-audit.md"
+      ],
+      "exclusive_resources": [
+        "docs-index"
+      ],
+      "objective": "Produzir dossiê do candidato com conclusões reproduzíveis e limitações explícitas.",
+      "acceptance": [
+        "Nenhuma afirmação de execução sem receipt válido do sujeito",
+        "Todas as 16 áreas ligadas às 22 dimensões e todos A01–A09 têm resolução ou risco explícito",
+        "Notas da auditoria histórica não são sobrescritas ou usadas como nota AAA atual"
+      ],
+      "validation": [
+        "Auditar matriz tarefa→fase→gate→artefato→digest→SHA",
+        "Conferir comandos e outputs por amostragem orientada a risco"
+      ],
+      "phases": [],
+      "external_prerequisites": [],
+      "deliverable": "Entrega revisável de DOC-03: diff/decisão, reprodução e manifesto de evidências.",
+      "owner_role": "Documentação e coordenação",
+      "risk": "R2",
+      "next_action": "Ler o contrato DOC-03, validar dependências e reproduzir o comportamento atual antes de editar.",
+      "review": "Crítico de contexto novo, somente leitura; integrador decide aceite."
+    }
+  ]
+}

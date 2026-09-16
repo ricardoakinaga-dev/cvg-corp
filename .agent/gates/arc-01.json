@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "gate_id": "GATE-CVG-ARC-01-001",
+  "task_id": "ARC-01",
+  "status": "PASS",
+  "decision": "PASS",
+  "score": 9.5,
+  "critic_artifact": ".gauntlet/critique-arc-01-final.md",
+  "subject": {
+    "head_sha": "1c22c5dc79c52151f4c7c94c4402dfdc86812cbc",
+    "worktree": "MODIFIED_OVERLAY",
+    "task_owned_paths": [
+      "docs/adr/029-architecture-boundaries-and-ownership.md",
+      "docs/architecture-audit-vNext.md"
+    ],
+    "exclusive_resource": "architecture-docs"
+  },
+  "bar": {
+    "path": ".gauntlet/bar-v4.json",
+    "sha256": "2093461a8d6103641a555ad45371dde4649e5f144c32260b80244e219fa70697"
+  },
+  "scope_observation": {
+    "command": "git status --short --untracked-files=all",
+    "exit_code": 0,
+    "task_paths_observed": [
+      "M docs/architecture-audit-vNext.md",
+      "?? docs/adr/029-architecture-boundaries-and-ownership.md"
+    ],
+    "preexisting_or_control_plane_paths_observed": [
+      ".agent/backlog.json",
+      ".agent/execution-log.jsonl",
+      ".agent/state.json",
+      ".agent/verification.jsonl",
+      ".agent/plans/2026-09-13-aaa-2026-09-12.md",
+      ".agent/plans/2026-09-13-arc-01.md",
+      ".agent/gates/arc-01.json",
+      "docs/README.md",
+      ".opencode/",
+      "artifacts/audit-2026-09-12/",
+      "docs/auditoria-2026-09-12.md",
+      "docs/plano-aaa-2026-09-12/"
+    ],
+    "interpretation": "Os caminhos de produto de ARC-01 sao somente os dois task_paths; os demais pertencem ao estado/control-plane ou ja existiam antes desta tarefa. O ADR e um arquivo novo no overlay, portanto nao aparece em git diff sem --no-index."
+  },
+  "checks": [
+    {"command":"npm run test:database","exit_code":0,"result":"PASS","summary":"61 tests, 61 pass, 0 fail, 0 skipped"},
+    {"command":"npm run test:contract","exit_code":0,"result":"PASS","summary":"5 tests, 5 pass, 0 fail, 0 skipped"},
+    {"command":"npm run verify:pdp:runtime","exit_code":0,"result":"PASS","summary":"26 tests, 26 pass, 0 fail"},
+    {"command":"npm run typecheck","exit_code":0,"result":"PASS"},
+    {"command":"python3 docs/plano-aaa-2026-09-12/validar-plano.py","exit_code":0,"result":"PASS","summary":"54 tarefas, 16 areas, 22 dimensoes, 25 gates, 39 fases, DAG aciclico"},
+    {"command":"git diff --check","exit_code":0,"result":"PASS"}
+  ],
+  "artifacts": {
+    "docs/adr/029-architecture-boundaries-and-ownership.md": "644085a05011bc06b589be0c87cb20f6708e26618c45ed2a39d71989d2998503",
+    "docs/architecture-audit-vNext.md": "2b329a9dc0fb9fa82812d65ea5a507cbb13c7c5d928316d64b480e64615fe82f",
+    ".gauntlet/bar-v4.json": "2093461a8d6103641a555ad45371dde4649e5f144c32260b80244e219fa70697"
+  },
+  "limitations": [
+    "A evidencia e local e do overlay de worktree; nao e evidencia de release same-SHA.",
+    "O teste de appointment usa fakePool e nao prova PostgreSQL staging.",
+    "Provider externo, staging e aprovacao humana continuam AAA_NOT_PROVEN."
+  ],
+  "review": {
+    "required": true,
+    "independence": "I1",
+    "fresh_context": true,
+    "mutating_agent": false,
+    "minimum_score": 9
+  }
+}

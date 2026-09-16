@@ -34,6 +34,11 @@ test("login, dashboard and every primary route remain axe-clean", async ({ page 
   await navigate("Farmácia", "Estoque", "stock");
   await navigate("Financeiro", "Financeiro", "finance");
   await navigate("Copiloto", "Copiloto", "copilot");
+  await navigate("Exames", "Pedidos, amostras e resultados", "exams");
+  await navigate("Internação", "Internações em andamento", "hospital");
+  await navigate("Comunicações", "Mensagens e aprovações", "communications");
+  await navigate("Conhecimento", "Conhecimento governado", "knowledge");
+  await navigate("Relatórios", "Relatórios", "reports");
   const menu = page.getByRole("button", { name: "Abrir menu" });
   if (await menu.isVisible()) await menu.click();
   await page.getByRole("button", { name: "Administração", exact: true }).click();

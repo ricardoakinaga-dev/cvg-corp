@@ -1,0 +1,85 @@
+{
+  "schema_version": 1,
+  "gate_id": "GATE-CVG-AUD13-20",
+  "task_id": "AUD13-20",
+  "status": "PASS_COM_RESSALVAS",
+  "decision": "PARTIAL_PASS",
+  "score": 8.0,
+  "critic_artifact": null,
+  "subject": {
+    "head_sha": "1c22c5dc79c52151f4c7c94c4402dfdc86812cbc",
+    "worktree": "MODIFIED",
+    "task_owned_paths": [
+      "packages/harness/",
+      "packages/agent-policy/",
+      "packages/agent-tools/",
+      "packages/persistence/",
+      "apps/web/src/features/",
+      "docs/adr/",
+      "tests/"
+    ],
+    "registered_surface_extensions": [
+      "apps/api/src/app.ts",
+      "packages/contracts/src/api-catalog.ts",
+      "packages/domain/src/authorization.ts",
+      "packages/agent-policy/src/index.ts",
+      "apps/api/src/application/read-services.ts",
+      "apps/api/src/application/domain-command-service.ts"
+    ],
+    "blocked_slice": "registry GovernedArtifact (revogacao/expiry/rollback/kill switch e admissao) -> AUD13-20A"
+  },
+  "bar": {
+    "path": ".gauntlet/bar-v4.json",
+    "sha256": "2093461a8d6103641a555ad45371dde4649e5f144c32260b80244e219fa70697"
+  },
+  "checks": [
+    {
+      "command": "npm test",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "365 testes: 364 pass, 1 skip, 0 fail"
+    },
+    {
+      "command": "npm run test:database",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "61 testes"
+    },
+    {
+      "command": "npm run verify:pdp",
+      "exit_code": 0,
+      "result": "PASS"
+    },
+    {
+      "command": "npx playwright test app.spec.ts (375/768/1440)",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "109 passed, 8 skipped"
+    },
+    {
+      "command": "npm run typecheck",
+      "exit_code": 0,
+      "result": "PASS"
+    },
+    {
+      "command": "npm run lint",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "174 arquivos"
+    }
+  ],
+  "residuals": [
+    "registry GovernedArtifact com revogacao/expiry/rollback/kill switch (AUD13-20A)",
+    "flake raro do teste MFA sob carga paralela (estabilidade em AUD13-36)"
+  ],
+  "verification_refs": [
+    "VER-CVG-AUD13-20-001"
+  ],
+  "artifact_digests": {
+    "apps/web/src/features/knowledge/Knowledge.tsx": "485dff4a2fa5770178d0f0874d67faf392e286ea00a1831e187dfddd10f48f5c",
+    "packages/domain/src/index.ts": "7ee8d5bd7ffa50f34298a318ccf01607b0b13017cf60581c0b960af29ded622f",
+    "apps/api/src/application/read-services.ts": "cfd03e72bbe49b71beb1467f599a65d4e558c3eee606c9997eee32972654a97b",
+    "tests/e2e/app.spec.ts": "8bf0d21c89eac5acf4199c13aef680ec3528c2c2e5daf9aea4530192aba995e0"
+  },
+  "recorded_at": "2026-09-13T13:54:58-03:00"
+}

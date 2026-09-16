@@ -5,7 +5,65 @@ import { Pool, type PoolClient, type PoolConfig } from "pg";
 import type { AiSession, AnimalPatient, Appointment, AuditRecord, Bed, Charge, ClinicalDocument, CommunicationMessage, CommandReceipt, CvgContext, DiagnosticRequest, DiagnosticResult, Encounter, Guardian, HospitalEpisode, KnowledgeDocument, LedgerEntry, Lot, MedicationOrder, OpaqueId, Payment, Product, QueueEntry, ScopeType, Specimen, StockLocation } from "@cvg/contracts";
 import { id, scopeTypes } from "@cvg/contracts";
 export { AUTHORITATIVE_DOMAIN_REGISTRY } from "@cvg/contracts";
-import { auditRecordHash, digest, idempotencyLookup, newCommandReceipt, now, parseSnapshot, serializeSnapshot, validateSnapshotSemantics, verifyAuditChain, type IdempotencyInput, type StoreSnapshot } from "@cvg/domain";
+
+/**
+ * Per-command authoritative write inventory (audit H11). Each entry binds a
+ * command-owned normalized write to its SQL table, the owning module and the
+ * invariants enforced inside the same durable transaction.
+ */
+import { AUTHORITATIVE_DOMAIN_REGISTRY as AUTHORITATIVE_COLLECTIONS } from "@cvg/contracts";
+
+export const AUTHORITATIVE_COMMAND_REGISTRY = [
+  { operation: "patients.create", inputField: "normalizedPatientWrite", snapshotKey: "patients", table: "patients", owner: "application/patient-service", invariants: ["organization", "parent", "scope", "child"] },
+  { operation: "appointments.create", inputField: "normalizedAppointmentWrite", snapshotKey: "appointments", table: "appointments", owner: "application/appointment-service", invariants: ["organization", "parent", "scope"] },
+  { operation: "encounters.create", inputField: "normalizedEncounterWrite", snapshotKey: "encounters", table: "encounters", owner: "application/encounter-service", invariants: ["organization", "parent", "scope"] },
+  { operation: "clinical.sign", inputField: "normalizedClinicalSignWrite", snapshotKey: "clinicalDocuments", table: "clinical_documents", owner: "application/clinical-command-service", invariants: ["organization", "parent", "scope", "cas"] },
+  { operation: "guardians.create", inputField: "normalizedGuardianWrite", snapshotKey: "guardians", table: "guardians", owner: "application/guardian-service", invariants: ["organization", "parent", "scope"] },
+  { operation: "diagnostics.create", inputField: "normalizedDiagnosticRequestWrite", snapshotKey: "diagnosticRequests", table: "diagnostic_requests", owner: "application/diagnostic-service", invariants: ["organization", "parent", "scope", "child"] },
+  { operation: "diagnostics.specimen", inputField: "normalizedSpecimenWrite", snapshotKey: "specimens", table: "specimens", owner: "application/diagnostic-service", invariants: ["organization", "parent", "scope", "child"] },
+  { operation: "diagnostics.result", inputField: "normalizedDiagnosticResultWrite", snapshotKey: "diagnosticResults", table: "diagnostic_results", owner: "application/diagnostic-service", invariants: ["organization", "parent", "scope", "child", "quarantine"] }
+] as const;
+
+/**
+ * Collections still written primarily through the snapshot projector. They are
+ * explicit debt for AUD13-23/24: a command-owned path plus CAS must exist
+ * before the snapshot stops being the primary operational source.
+ */
+export const SNAPSHOT_PRIMARY_ENTITIES = [
+  { snapshotKey: "providers", owner: "catalog" },
+  { snapshotKey: "services", owner: "catalog" },
+  { snapshotKey: "resources", owner: "catalog" },
+  { snapshotKey: "queueEntries", owner: "agenda" },
+  { snapshotKey: "clinicalAddenda", owner: "clinical" },
+  { snapshotKey: "beds", owner: "hospital" },
+  { snapshotKey: "hospitalEpisodes", owner: "hospital" },
+  { snapshotKey: "products", owner: "stock" },
+  { snapshotKey: "stockLocations", owner: "stock" },
+  { snapshotKey: "lots", owner: "stock" },
+  { snapshotKey: "stockMovements", owner: "stock" },
+  { snapshotKey: "medicationOrders", owner: "hospital" },
+  { snapshotKey: "dispensations", owner: "hospital" },
+  { snapshotKey: "administrationOccurrences", owner: "hospital" },
+  { snapshotKey: "charges", owner: "finance" },
+  { snapshotKey: "payments", owner: "finance" },
+  { snapshotKey: "ledgerEntries", owner: "finance" },
+  { snapshotKey: "messages", owner: "communication" },
+  { snapshotKey: "knowledgeDocuments", owner: "knowledge" },
+  { snapshotKey: "aiSessions", owner: "ai" },
+  { snapshotKey: "aiTurns", owner: "ai" },
+  { snapshotKey: "aiDrafts", owner: "ai" },
+  { snapshotKey: "aiApprovals", owner: "ai" },
+  { snapshotKey: "budgetReservations", owner: "ai" }
+] as const;
+
+export function authoritativeCoverage(): { snapshotKeys: string[]; commandOwned: string[]; snapshotPrimary: string[]; uncovered: string[] } {
+  const snapshotKeys = AUTHORITATIVE_COLLECTIONS.map((entry) => entry.snapshotKey).sort();
+  const commandOwned = [...new Set(AUTHORITATIVE_COMMAND_REGISTRY.map((entry) => entry.snapshotKey))].sort();
+  const snapshotPrimary = SNAPSHOT_PRIMARY_ENTITIES.map((entry) => entry.snapshotKey).sort();
+  const covered = new Set([...commandOwned, ...snapshotPrimary]);
+  return { snapshotKeys, commandOwned, snapshotPrimary, uncovered: snapshotKeys.filter((key) => !covered.has(key)) };
+}
+import { auditRecordHash, commandReceiptLookups, digest, idempotencyLookup, newCommandReceipt, now, parseSnapshot, serializeSnapshot, validateSnapshotSemantics, verifyAuditChain, type IdempotencyInput, type StoreSnapshot } from "@cvg/domain";
 
 const LOCK_KEY = "cvg-corp:canonical-state:v1";
 
@@ -1334,6 +1392,10 @@ interface CommandReceiptRow {
   result: unknown;
   created_at: SqlTimestamp;
   completed_at: SqlTimestamp;
+  claim_epoch?: number | string | null;
+  claim_expires_at?: SqlTimestamp;
+  dispatch_state?: string | null;
+  failure_phase?: string | null;
 }
 
 interface MigrationRow {
@@ -1817,7 +1879,11 @@ function mapCommandReceiptRow(row: CommandReceiptRow): CommandReceipt {
     status: sqlEnum(row.status, ["IN_FLIGHT", "SUCCEEDED", "FAILED", "OUTCOME_UNKNOWN"] as const, "command receipt.status"),
     result: row.result === undefined ? null : row.result,
     createdAt: sqlTimestamp(row.created_at, "command receipt.created_at"),
-    completedAt: sqlNullableTimestamp(row.completed_at)
+    completedAt: sqlNullableTimestamp(row.completed_at),
+    claimEpoch: row.claim_epoch === undefined || row.claim_epoch === null ? 1 : sqlInteger(Number(row.claim_epoch), "command receipt.claim_epoch"),
+    claimExpiresAt: row.claim_expires_at === undefined ? null : sqlNullableTimestamp(row.claim_expires_at),
+    dispatchState: row.dispatch_state === "DISPATCHED" ? "DISPATCHED" : "NOT_STARTED",
+    failurePhase: row.failure_phase === "PRE_DISPATCH" ? "PRE_DISPATCH" : row.failure_phase === "POST_DISPATCH" ? "POST_DISPATCH" : null
   };
 }
 
@@ -2857,11 +2923,11 @@ export class PostgresPersistence {
 
   async assertSchema(): Promise<void> {
     try {
-      const result = await this.pool.query<{ snapshots: boolean; journal: boolean; audit: boolean; receipts: boolean; communications: boolean; outbox: boolean; usage_ledger: boolean; inbox: boolean; external_effects: boolean; rate_limit_buckets: boolean; break_glass_grants: boolean; break_glass_lifecycle: boolean; break_glass_scope_schema: boolean; runtime_role: boolean; runtime_migration_metadata: boolean; runtime_scope_guards: boolean; auth_security: boolean; ai_turn_scope: boolean; ai_draft_scope: boolean; ai_turn_provenance_usage: boolean; audit_tamper_evident_chain: boolean; append_only_audit_guard: boolean; append_only_lock_privileges: boolean; worker_jobs: boolean; worker_heartbeats: boolean; worker_lane_schema: boolean }>("select to_regclass('public.cvg_state_snapshots') is not null as snapshots, to_regclass('public.cvg_event_journal') is not null as journal, to_regclass('public.cvg_audit_ledger') is not null as audit, to_regclass('public.cvg_command_receipt_ledger') is not null as receipts, to_regclass('public.communication_messages') is not null as communications, to_regclass('public.outbox_records') is not null as outbox, to_regclass('public.ai_usage_ledger') is not null as usage_ledger, to_regclass('public.integration_inbox_records') is not null as inbox, to_regclass('public.external_effects') is not null as external_effects, to_regclass('public.cvg_rate_limit_buckets') is not null as rate_limit_buckets, to_regclass('public.break_glass_grants') is not null as break_glass_grants, exists (select 1 from schema_migrations where version = '035_break_glass_scope') and exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'break_glass_grants' and column_name = 'scope') and exists (select 1 from pg_constraint where conname = 'break_glass_grants_scope_check' and conrelid = 'break_glass_grants'::regclass) and exists (select 1 from pg_trigger where tgname = 'break_glass_grants_transition_guard' and tgrelid = 'break_glass_grants'::regclass) as break_glass_scope_schema, exists (select 1 from pg_roles where rolname = current_user and rolsuper = false and rolbypassrls = false and rolcreaterole = false and rolcreatedb = false) as runtime_role, exists (select 1 from schema_migrations where version = '036_runtime_migration_metadata_privileges') and has_table_privilege(current_user, 'public.schema_migrations', 'SELECT') and not has_table_privilege(current_user, 'public.schema_migrations', 'INSERT') and not has_table_privilege(current_user, 'public.schema_migrations', 'UPDATE') and not has_table_privilege(current_user, 'public.schema_migrations', 'DELETE') as runtime_migration_metadata, exists (select 1 from schema_migrations where version = '019_runtime_scope_guards') as runtime_scope_guards, exists (select 1 from schema_migrations where version = '020_auth_security_boundary') and to_regclass('public.auth_challenges') is not null and exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'users' and column_name = 'mfa_secret_ref') and exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'sessions' and column_name = 'device_id_digest') as auth_security, exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'ai_turns' and column_name in ('organization_id', 'unit_id', 'workspace_id') group by table_schema, table_name having count(*) = 3) as ai_turn_scope, exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'ai_drafts' and column_name in ('organization_id', 'unit_id', 'workspace_id') group by table_schema, table_name having count(*) = 3) as ai_draft_scope, exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'ai_turns' and column_name in ('usage_record_id', 'provenance_json') group by table_schema, table_name having count(*) = 2) and exists (select 1 from schema_migrations where version = '029_ai_turn_provenance_usage_and_dml_scope') as ai_turn_provenance_usage, exists (select 1 from schema_migrations where version = '026_audit_tamper_evident_chain') as audit_tamper_evident_chain, exists (select 1 from schema_migrations where version = '027_append_only_audit_guard') as append_only_audit_guard, exists (select 1 from schema_migrations where version = '028_append_only_lock_privileges') as append_only_lock_privileges, exists (select 1 from schema_migrations where version = '030_break_glass_durable_lifecycle') as break_glass_lifecycle, to_regclass('public.cvg_worker_jobs') is not null as worker_jobs, to_regclass('public.cvg_worker_heartbeats') is not null as worker_heartbeats, exists (select 1 from schema_migrations where version = '031_worker_jobs_and_heartbeats') and exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'cvg_worker_jobs' and column_name in ('lane', 'job_type', 'idempotency_key', 'fence_token', 'record_digest') group by table_schema, table_name having count(*) = 5) and exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'cvg_worker_heartbeats' and column_name in ('worker_id', 'status', 'last_seen_at', 'expires_at') group by table_schema, table_name having count(*) = 4) as worker_lane_schema");
+      const result = await this.pool.query<{ snapshots: boolean; journal: boolean; audit: boolean; receipts: boolean; communications: boolean; outbox: boolean; usage_ledger: boolean; inbox: boolean; external_effects: boolean; rate_limit_buckets: boolean; break_glass_grants: boolean; break_glass_lifecycle: boolean; break_glass_scope_schema: boolean; runtime_role: boolean; runtime_migration_metadata: boolean; runtime_scope_guards: boolean; auth_security: boolean; ai_turn_scope: boolean; ai_draft_scope: boolean; ai_turn_provenance_usage: boolean; audit_tamper_evident_chain: boolean; append_only_audit_guard: boolean; append_only_lock_privileges: boolean; worker_jobs: boolean; worker_heartbeats: boolean; worker_lane_schema: boolean; command_receipt_claim_fence: boolean }>("select to_regclass('public.cvg_state_snapshots') is not null as snapshots, to_regclass('public.cvg_event_journal') is not null as journal, to_regclass('public.cvg_audit_ledger') is not null as audit, to_regclass('public.cvg_command_receipt_ledger') is not null as receipts, to_regclass('public.communication_messages') is not null as communications, to_regclass('public.outbox_records') is not null as outbox, to_regclass('public.ai_usage_ledger') is not null as usage_ledger, to_regclass('public.integration_inbox_records') is not null as inbox, to_regclass('public.external_effects') is not null as external_effects, to_regclass('public.cvg_rate_limit_buckets') is not null as rate_limit_buckets, to_regclass('public.break_glass_grants') is not null as break_glass_grants, exists (select 1 from schema_migrations where version = '035_break_glass_scope') and exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'break_glass_grants' and column_name = 'scope') and exists (select 1 from pg_constraint where conname = 'break_glass_grants_scope_check' and conrelid = 'break_glass_grants'::regclass) and exists (select 1 from pg_trigger where tgname = 'break_glass_grants_transition_guard' and tgrelid = 'break_glass_grants'::regclass) as break_glass_scope_schema, exists (select 1 from pg_roles where rolname = current_user and rolsuper = false and rolbypassrls = false and rolcreaterole = false and rolcreatedb = false) as runtime_role, exists (select 1 from schema_migrations where version = '036_runtime_migration_metadata_privileges') and has_table_privilege(current_user, 'public.schema_migrations', 'SELECT') and not has_table_privilege(current_user, 'public.schema_migrations', 'INSERT') and not has_table_privilege(current_user, 'public.schema_migrations', 'UPDATE') and not has_table_privilege(current_user, 'public.schema_migrations', 'DELETE') as runtime_migration_metadata, exists (select 1 from schema_migrations where version = '019_runtime_scope_guards') as runtime_scope_guards, exists (select 1 from schema_migrations where version = '020_auth_security_boundary') and to_regclass('public.auth_challenges') is not null and exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'users' and column_name = 'mfa_secret_ref') and exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'sessions' and column_name = 'device_id_digest') as auth_security, exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'ai_turns' and column_name in ('organization_id', 'unit_id', 'workspace_id') group by table_schema, table_name having count(*) = 3) as ai_turn_scope, exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'ai_drafts' and column_name in ('organization_id', 'unit_id', 'workspace_id') group by table_schema, table_name having count(*) = 3) as ai_draft_scope, exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'ai_turns' and column_name in ('usage_record_id', 'provenance_json') group by table_schema, table_name having count(*) = 2) and exists (select 1 from schema_migrations where version = '029_ai_turn_provenance_usage_and_dml_scope') as ai_turn_provenance_usage, exists (select 1 from schema_migrations where version = '026_audit_tamper_evident_chain') as audit_tamper_evident_chain, exists (select 1 from schema_migrations where version = '027_append_only_audit_guard') as append_only_audit_guard, exists (select 1 from schema_migrations where version = '028_append_only_lock_privileges') as append_only_lock_privileges, exists (select 1 from schema_migrations where version = '030_break_glass_durable_lifecycle') as break_glass_lifecycle, to_regclass('public.cvg_worker_jobs') is not null as worker_jobs, to_regclass('public.cvg_worker_heartbeats') is not null as worker_heartbeats, exists (select 1 from schema_migrations where version = '031_worker_jobs_and_heartbeats') and exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'cvg_worker_jobs' and column_name in ('lane', 'job_type', 'idempotency_key', 'fence_token', 'record_digest') group by table_schema, table_name having count(*) = 5) and exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'cvg_worker_heartbeats' and column_name in ('worker_id', 'status', 'last_seen_at', 'expires_at') group by table_schema, table_name having count(*) = 4) as worker_lane_schema, exists (select 1 from schema_migrations where version = '037_command_receipt_claim_fence') and exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'command_receipts' and column_name in ('claim_epoch', 'claim_expires_at', 'dispatch_state', 'failure_phase') group by table_schema, table_name having count(*) = 4) and exists (select 1 from pg_constraint where conname = 'command_receipts_claim_epoch_positive' and conrelid = 'command_receipts'::regclass) and exists (select 1 from pg_constraint where conname = 'command_receipts_dispatch_state_check' and conrelid = 'command_receipts'::regclass) as command_receipt_claim_fence");
       const snapshotKey = await this.pool.query<{ snapshot_scope_revision: boolean }>("select exists (select 1 from pg_constraint constraint_row join pg_class table_row on table_row.oid = constraint_row.conrelid join pg_namespace namespace_row on namespace_row.oid = table_row.relnamespace where namespace_row.nspname = 'public' and table_row.relname = 'cvg_state_snapshots' and constraint_row.contype = 'p' and pg_get_constraintdef(constraint_row.oid) = 'PRIMARY KEY (organization_id, revision)') as snapshot_scope_revision");
       const diagnosticChildScope = await this.pool.query<{ diagnostic_child_scope: boolean }>("select exists (select 1 from schema_migrations where version = '034_diagnostic_child_integrity_backstop') and exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'specimens' and column_name in ('unit_id', 'workspace_id') group by table_schema, table_name having count(*) = 2) and exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'diagnostic_results' and column_name in ('unit_id', 'workspace_id') group by table_schema, table_name having count(*) = 2) and exists (select 1 from pg_trigger where tgname = 'cvg_diagnostic_specimen_integrity_guard') and exists (select 1 from pg_trigger where tgname = 'cvg_diagnostic_result_integrity_guard') as diagnostic_child_scope");
       const row = result.rows[0];
-      if (!row?.snapshots || !row.journal || !row.audit || !row.receipts || !row.communications || !row.outbox || !row.usage_ledger || !row.inbox || !row.external_effects || !row.rate_limit_buckets || !row.break_glass_grants || !row.break_glass_lifecycle || !row.break_glass_scope_schema || !row.runtime_role || !row.runtime_migration_metadata || !row.runtime_scope_guards || !row.auth_security || !row.ai_turn_scope || !row.ai_draft_scope || !row.ai_turn_provenance_usage || !row.audit_tamper_evident_chain || !row.append_only_audit_guard || !row.append_only_lock_privileges || !row.worker_jobs || !row.worker_heartbeats || !row.worker_lane_schema || diagnosticChildScope.rows[0]?.diagnostic_child_scope !== true || snapshotKey.rows[0]?.snapshot_scope_revision !== true) throw new PersistenceUnavailableError("CVG persistence schema or runtime database role is not ready; run migrations with a non-superuser DATABASE_URL");
+      if (!row?.snapshots || !row.journal || !row.audit || !row.receipts || !row.communications || !row.outbox || !row.usage_ledger || !row.inbox || !row.external_effects || !row.rate_limit_buckets || !row.break_glass_grants || !row.break_glass_lifecycle || !row.break_glass_scope_schema || !row.runtime_role || !row.runtime_migration_metadata || !row.runtime_scope_guards || !row.auth_security || !row.ai_turn_scope || !row.ai_draft_scope || !row.ai_turn_provenance_usage || !row.audit_tamper_evident_chain || !row.append_only_audit_guard || !row.append_only_lock_privileges || !row.worker_jobs || !row.worker_heartbeats || !row.worker_lane_schema || !row.command_receipt_claim_fence || diagnosticChildScope.rows[0]?.diagnostic_child_scope !== true || snapshotKey.rows[0]?.snapshot_scope_revision !== true) throw new PersistenceUnavailableError("CVG persistence schema or runtime database role is not ready; run migrations with a non-superuser DATABASE_URL");
     } catch (error) {
       if (error instanceof PersistenceUnavailableError) throw error;
       throw new PersistenceUnavailableError("CVG persistence schema could not be checked", error);
@@ -2908,28 +2974,65 @@ export class PostgresPersistence {
    */
   async claimCommandReceipt(input: IdempotencyInput): Promise<DurableCommandReceiptClaim> {
     const proposed = newCommandReceipt(input);
+    const lookups = commandReceiptLookups(input);
     return this.organizationTransaction(input.organizationId, "command receipt claim", async (client) => {
-      const inserted = await client.query<CommandReceiptRow>(
-        "insert into command_receipts(id, organization_id, actor_id, unit_id, workspace_id, audit_record_id, operation, idempotency_lookup, body_digest, status, result, created_at, completed_at) values ($1, $2, $3, $4, $5, null, $6, $7, $8, 'IN_FLIGHT', null, $9, null) on conflict (idempotency_lookup) do nothing returning id::text as id, organization_id::text as organization_id, actor_id::text as actor_id, unit_id::text as unit_id, workspace_id::text as workspace_id, audit_record_id::text as audit_record_id, operation, idempotency_lookup, body_digest, status, result, created_at, completed_at",
-        [proposed.id, proposed.organizationId, proposed.actorId, proposed.unitId, proposed.workspaceId, proposed.operation, proposed.idempotencyLookup, proposed.bodyDigest, proposed.createdAt]
-      );
-      const row = inserted.rows[0] ?? (await client.query<CommandReceiptRow>(
-        "select id::text as id, organization_id::text as organization_id, actor_id::text as actor_id, unit_id::text as unit_id, workspace_id::text as workspace_id, audit_record_id::text as audit_record_id, operation, idempotency_lookup, body_digest, status, result, created_at, completed_at from command_receipts where organization_id = cvg_request_organization() and idempotency_lookup = $1 for update",
-        [proposed.idempotencyLookup]
-      )).rows[0];
-      if (!row) throw new PersistenceCorruptionError(`command receipt ${proposed.idempotencyLookup} disappeared after a unique conflict`);
-      const receipt = mapCommandReceiptRow(row);
-      if (receipt.organizationId !== proposed.organizationId || receipt.actorId !== proposed.actorId || receipt.unitId !== proposed.unitId || receipt.workspaceId !== proposed.workspaceId || receipt.operation !== proposed.operation || receipt.idempotencyLookup !== proposed.idempotencyLookup) throw new PersistenceCorruptionError(`command receipt ${receipt.id} immutable scope changed after it was durably recorded`);
-      if (receipt.bodyDigest !== proposed.bodyDigest) return { status: "CONFLICT", receipt };
-      if (inserted.rows[0]) {
-        if (receipt.status !== "IN_FLIGHT") throw new PersistenceCorruptionError(`new command receipt ${receipt.id} was not admitted as IN_FLIGHT`);
-        return { status: "CLAIMED", receipt };
+      const classify = (row: CommandReceiptRow, insertedNow: boolean): DurableCommandReceiptClaim => {
+        const receipt = mapCommandReceiptRow(row);
+        if (receipt.organizationId !== proposed.organizationId || receipt.actorId !== proposed.actorId || receipt.unitId !== proposed.unitId || receipt.workspaceId !== proposed.workspaceId || receipt.operation !== proposed.operation || !lookups.includes(receipt.idempotencyLookup)) throw new PersistenceCorruptionError(`command receipt ${receipt.id} immutable scope changed after it was durably recorded`);
+        if (receipt.bodyDigest !== proposed.bodyDigest) return { status: "CONFLICT", receipt };
+        if (insertedNow) {
+          if (receipt.status !== "IN_FLIGHT") throw new PersistenceCorruptionError(`new command receipt ${receipt.id} was not admitted as IN_FLIGHT`);
+          return { status: "CLAIMED", receipt };
+        }
+        if (receipt.status === "SUCCEEDED") return { status: "REPLAY", receipt };
+        if (receipt.status === "IN_FLIGHT") return { status: "IN_FLIGHT", receipt };
+        if (receipt.status === "OUTCOME_UNKNOWN") return { status: "OUTCOME_UNKNOWN", receipt };
+        return { status: "FAILED", receipt };
+      };
+      // Stable lookup first, then the legacy session-scoped lookup so receipts
+      // recorded before the identity change still replay.
+      for (const lookup of lookups) {
+        const existing = await client.query<CommandReceiptRow>(
+          "select id::text as id, organization_id::text as organization_id, actor_id::text as actor_id, unit_id::text as unit_id, workspace_id::text as workspace_id, audit_record_id::text as audit_record_id, operation, idempotency_lookup, body_digest, status, result, created_at, completed_at, claim_epoch, claim_expires_at, dispatch_state, failure_phase from command_receipts where organization_id = cvg_request_organization() and idempotency_lookup = $1 for update",
+          [lookup]
+        );
+        if (existing.rows[0]) return classify(existing.rows[0], false);
       }
-      if (receipt.status === "SUCCEEDED") return { status: "REPLAY", receipt };
-      if (receipt.status === "IN_FLIGHT") return { status: "IN_FLIGHT", receipt };
-      if (receipt.status === "OUTCOME_UNKNOWN") return { status: "OUTCOME_UNKNOWN", receipt };
-      return { status: "FAILED", receipt };
+      const inserted = await client.query<CommandReceiptRow>(
+        "insert into command_receipts(id, organization_id, actor_id, unit_id, workspace_id, audit_record_id, operation, idempotency_lookup, body_digest, status, result, created_at, completed_at, claim_epoch, claim_expires_at, dispatch_state, failure_phase) values ($1, $2, $3, $4, $5, null, $6, $7, $8, 'IN_FLIGHT', null, $9, null, $10, $11, $12, null) on conflict (idempotency_lookup) do nothing returning id::text as id, organization_id::text as organization_id, actor_id::text as actor_id, unit_id::text as unit_id, workspace_id::text as workspace_id, audit_record_id::text as audit_record_id, operation, idempotency_lookup, body_digest, status, result, created_at, completed_at, claim_epoch, claim_expires_at, dispatch_state, failure_phase",
+        [proposed.id, proposed.organizationId, proposed.actorId, proposed.unitId, proposed.workspaceId, proposed.operation, proposed.idempotencyLookup, proposed.bodyDigest, proposed.createdAt, proposed.claimEpoch ?? 1, proposed.claimExpiresAt ?? null, proposed.dispatchState ?? "NOT_STARTED"]
+      );
+      if (inserted.rows[0]) return classify(inserted.rows[0], true);
+      const raced = await client.query<CommandReceiptRow>(
+        "select id::text as id, organization_id::text as organization_id, actor_id::text as actor_id, unit_id::text as unit_id, workspace_id::text as workspace_id, audit_record_id::text as audit_record_id, operation, idempotency_lookup, body_digest, status, result, created_at, completed_at, claim_epoch, claim_expires_at, dispatch_state, failure_phase from command_receipts where organization_id = cvg_request_organization() and idempotency_lookup = $1 for update",
+        [proposed.idempotencyLookup]
+      );
+      if (!raced.rows[0]) throw new PersistenceCorruptionError(`command receipt ${proposed.idempotencyLookup} disappeared after a unique conflict`);
+      return classify(raced.rows[0], false);
     }, false, { unitId: input.unitId, workspaceId: input.workspaceId });
+  }
+
+  /** Fences the durable claim as dispatched so an expired lease is not treated as PRE_DISPATCH. */
+  async markCommandReceiptDispatched(organizationId: OpaqueId, receiptId: OpaqueId, claimEpoch: number): Promise<CommandReceipt | null> {
+    return this.organizationTransaction(organizationId, "command receipt dispatch fence", async (client) => {
+      const updated = await client.query<CommandReceiptRow>(
+        "update command_receipts set dispatch_state = 'DISPATCHED' where id = $1 and organization_id = cvg_request_organization() and status = 'IN_FLIGHT' and claim_epoch = $2 and claim_expires_at > now() returning id::text as id, organization_id::text as organization_id, actor_id::text as actor_id, unit_id::text as unit_id, workspace_id::text as workspace_id, audit_record_id::text as audit_record_id, operation, idempotency_lookup, body_digest, status, result, created_at, completed_at, claim_epoch, claim_expires_at, dispatch_state, failure_phase",
+        [receiptId, claimEpoch]
+      );
+      return updated.rows[0] ? mapCommandReceiptRow(updated.rows[0]) : null;
+    }, false);
+  }
+
+  /** Finalizes an expired claim under its fence: PRE_DISPATCH failure or OUTCOME_UNKNOWN. */
+  async reconcileCommandReceiptClaim(receipt: CommandReceipt): Promise<CommandReceipt | null> {
+    const notStarted = (receipt.dispatchState ?? "NOT_STARTED") === "NOT_STARTED";
+    return this.organizationTransaction(receipt.organizationId, "command receipt claim reconciliation", async (client) => {
+      const updated = await client.query<CommandReceiptRow>(
+        "update command_receipts set status = case when dispatch_state = 'DISPATCHED' then 'OUTCOME_UNKNOWN' else $3 end, result = null, completed_at = $4, claim_expires_at = null, failure_phase = case when dispatch_state = 'DISPATCHED' then 'POST_DISPATCH' else $5 end where id = $1 and organization_id = cvg_request_organization() and status = 'IN_FLIGHT' and claim_epoch = $2 and (claim_expires_at is null or claim_expires_at <= now()) returning id::text as id, organization_id::text as organization_id, actor_id::text as actor_id, unit_id::text as unit_id, workspace_id::text as workspace_id, audit_record_id::text as audit_record_id, operation, idempotency_lookup, body_digest, status, result, created_at, completed_at, claim_epoch, claim_expires_at, dispatch_state, failure_phase",
+        [receipt.id, receipt.claimEpoch ?? 1, notStarted ? "FAILED" : "OUTCOME_UNKNOWN", now(), notStarted ? "PRE_DISPATCH" : "POST_DISPATCH"]
+      );
+      return updated.rows[0] ? mapCommandReceiptRow(updated.rows[0]) : null;
+    }, false);
   }
 
   /** Settles a pre-admitted receipt when command execution fails before commit. */
@@ -2937,13 +3040,13 @@ export class PostgresPersistence {
     if ((receipt.status !== "FAILED" && receipt.status !== "OUTCOME_UNKNOWN") || receipt.result !== null || receipt.completedAt === null) throw new PersistenceStateError(`command receipt ${receipt.id} cannot be settled from its current state`);
     await this.organizationTransaction(receipt.organizationId, "command receipt settlement", async (client) => {
       const updated = await client.query<CommandReceiptRow>(
-        "update command_receipts set status = $1, result = null, completed_at = $2 where id = $3 and organization_id = cvg_request_organization() and actor_id = $4 and unit_id is not distinct from $5::uuid and workspace_id is not distinct from $6::uuid and operation = $7 and idempotency_lookup = $8 and body_digest = $9 and status = 'IN_FLIGHT' returning id::text as id, organization_id::text as organization_id, actor_id::text as actor_id, unit_id::text as unit_id, workspace_id::text as workspace_id, audit_record_id::text as audit_record_id, operation, idempotency_lookup, body_digest, status, result, created_at, completed_at",
-        [receipt.status, receipt.completedAt, receipt.id, receipt.actorId, receipt.unitId, receipt.workspaceId, receipt.operation, receipt.idempotencyLookup, receipt.bodyDigest]
+        "update command_receipts set status = case when dispatch_state = 'DISPATCHED' then 'OUTCOME_UNKNOWN' else $1 end, result = null, completed_at = $2, claim_expires_at = null, failure_phase = case when dispatch_state = 'DISPATCHED' then 'POST_DISPATCH' else $10 end where id = $3 and organization_id = cvg_request_organization() and actor_id = $4 and unit_id is not distinct from $5::uuid and workspace_id is not distinct from $6::uuid and operation = $7 and idempotency_lookup = $8 and body_digest = $9 and status = 'IN_FLIGHT' and claim_epoch = $11 returning id::text as id, organization_id::text as organization_id, actor_id::text as actor_id, unit_id::text as unit_id, workspace_id::text as workspace_id, audit_record_id::text as audit_record_id, operation, idempotency_lookup, body_digest, status, result, created_at, completed_at, claim_epoch, claim_expires_at, dispatch_state, failure_phase",
+        [receipt.status, receipt.completedAt, receipt.id, receipt.actorId, receipt.unitId, receipt.workspaceId, receipt.operation, receipt.idempotencyLookup, receipt.bodyDigest, receipt.failurePhase ?? null, receipt.claimEpoch ?? 1]
       );
       let durable = updated.rows[0];
       if (!durable) {
         durable = (await client.query<CommandReceiptRow>(
-          "select id::text as id, organization_id::text as organization_id, actor_id::text as actor_id, unit_id::text as unit_id, workspace_id::text as workspace_id, audit_record_id::text as audit_record_id, operation, idempotency_lookup, body_digest, status, result, created_at, completed_at from command_receipts where organization_id = cvg_request_organization() and id = $1 for update",
+          "select id::text as id, organization_id::text as organization_id, actor_id::text as actor_id, unit_id::text as unit_id, workspace_id::text as workspace_id, audit_record_id::text as audit_record_id, operation, idempotency_lookup, body_digest, status, result, created_at, completed_at, claim_epoch, claim_expires_at, dispatch_state, failure_phase from command_receipts where organization_id = cvg_request_organization() and id = $1 for update",
           [receipt.id]
         )).rows[0];
         if (!durable) throw new PersistenceCorruptionError(`command receipt ${receipt.id} disappeared before settlement`);
@@ -3077,8 +3180,8 @@ export class PostgresPersistence {
       }
       for (const receipt of input.commandReceipts ?? []) {
         const receiptResult = await client.query<{ id: string }>(
-          "insert into command_receipts(id, organization_id, actor_id, unit_id, workspace_id, audit_record_id, operation, idempotency_lookup, body_digest, status, result, created_at, completed_at) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12, $13) on conflict (id) do update set unit_id = excluded.unit_id, workspace_id = excluded.workspace_id, audit_record_id = excluded.audit_record_id, status = excluded.status, result = excluded.result, completed_at = excluded.completed_at where command_receipts.organization_id = excluded.organization_id and command_receipts.actor_id = excluded.actor_id and command_receipts.operation = excluded.operation and command_receipts.idempotency_lookup = excluded.idempotency_lookup and command_receipts.body_digest = excluded.body_digest and command_receipts.unit_id is not distinct from excluded.unit_id and command_receipts.workspace_id is not distinct from excluded.workspace_id returning id",
-          [receipt.id, receipt.organizationId, receipt.actorId, receipt.unitId, receipt.workspaceId, receipt.auditRecordId, receipt.operation, receipt.idempotencyLookup, receipt.bodyDigest, receipt.status, receipt.result === null ? null : JSON.stringify(receipt.result), receipt.createdAt, receipt.completedAt]
+          "insert into command_receipts(id, organization_id, actor_id, unit_id, workspace_id, audit_record_id, operation, idempotency_lookup, body_digest, status, result, created_at, completed_at, claim_epoch, claim_expires_at, dispatch_state, failure_phase) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12, $13, $14, $15, $16, $17) on conflict (id) do update set unit_id = excluded.unit_id, workspace_id = excluded.workspace_id, audit_record_id = excluded.audit_record_id, status = excluded.status, result = excluded.result, completed_at = excluded.completed_at, claim_epoch = excluded.claim_epoch, claim_expires_at = excluded.claim_expires_at, dispatch_state = excluded.dispatch_state, failure_phase = excluded.failure_phase where command_receipts.organization_id = excluded.organization_id and command_receipts.actor_id = excluded.actor_id and command_receipts.operation = excluded.operation and command_receipts.idempotency_lookup = excluded.idempotency_lookup and command_receipts.body_digest = excluded.body_digest and command_receipts.unit_id is not distinct from excluded.unit_id and command_receipts.workspace_id is not distinct from excluded.workspace_id and command_receipts.claim_epoch = excluded.claim_epoch and command_receipts.dispatch_state = excluded.dispatch_state and (command_receipts.status <> 'IN_FLIGHT' or command_receipts.claim_expires_at > now()) and ((command_receipts.status = 'IN_FLIGHT') or (command_receipts.status = excluded.status and command_receipts.result is not distinct from excluded.result)) returning id",
+          [receipt.id, receipt.organizationId, receipt.actorId, receipt.unitId, receipt.workspaceId, receipt.auditRecordId, receipt.operation, receipt.idempotencyLookup, receipt.bodyDigest, receipt.status, receipt.result === null ? null : JSON.stringify(receipt.result), receipt.createdAt, receipt.completedAt, receipt.claimEpoch ?? 1, receipt.claimExpiresAt ?? null, receipt.dispatchState ?? "NOT_STARTED", receipt.failurePhase ?? null]
         );
         if (!receiptResult.rows[0]) throw new PersistenceCorruptionError(`command receipt ${receipt.id} immutable fields changed after it was durably recorded`);
         await client.query(
@@ -4196,4 +4299,108 @@ export class PostgresPersistence {
   async close(): Promise<void> {
     if (this.ownsPool) await this.pool.end();
   }
+}
+
+export type RecoveryStoreState = "INTEGRATED" | "QUARANTINED" | "NOT_INTEGRATED";
+
+export interface RecoveryStoreCoverageEntry {
+  store: string;
+  state: RecoveryStoreState;
+  owner: string;
+  notes: string;
+}
+
+/**
+ * AUD13-24: explicit coverage of every store a restore must consider. A store
+ * that is not integrated stays declared (quarantine or not integrated) instead
+ * of being silently omitted from recovery.
+ */
+export const RECOVERY_STORE_COVERAGE: readonly RecoveryStoreCoverageEntry[] = [
+  { store: "database", state: "INTEGRATED", owner: "persistence/postgres", notes: "snapshot, journal, ledgers e inbox/outbox no bundle cifrado" },
+  { store: "object", state: "NOT_INTEGRATED", owner: "integrations/storage", notes: "sem storage de binarios; depende de D-03 (retencao/residencia)" },
+  { store: "vector", state: "QUARANTINED", owner: "knowledge", notes: "indice e derivado do conteudo; nenhum vetor persistido para ressuscitar" },
+  { store: "session", state: "INTEGRATED", owner: "domain/auth", notes: "restore entra em quarentena sem sessoes ativas e reconcilia revogacoes posteriores" },
+  { store: "cache", state: "NOT_INTEGRATED", owner: "api", notes: "cache e volativo e purgado; nao participa do restore" },
+  { store: "provider", state: "NOT_INTEGRATED", owner: "integrations", notes: "efeitos externos reconciliados por inbox/outbox; nunca retry cego" },
+  { store: "telemetry", state: "NOT_INTEGRATED", owner: "ops", notes: "buffers limitados locais; nao sao estado autoritativo" },
+  { store: "backup", state: "INTEGRATED", owner: "ops", notes: "manifest, watermark, retencao e digest verificados antes do restore" },
+  { store: "export", state: "INTEGRATED", owner: "application/export-service", notes: "purpose/TTL/escopo/cifra com envelope verificado" }
+];
+
+export function validateRecoveryStoreCoverage(entries: readonly RecoveryStoreCoverageEntry[] = RECOVERY_STORE_COVERAGE): void {
+  const required = ["database", "object", "vector", "session", "cache", "provider", "telemetry", "backup", "export"];
+  const seen = new Set<string>();
+  for (const entry of entries) {
+    if (seen.has(entry.store)) throw new PersistenceStateError(`recovery coverage contains duplicate store ${entry.store}`);
+    seen.add(entry.store);
+    if (!entry.owner || !entry.notes) throw new PersistenceStateError(`recovery coverage entry ${entry.store} requires owner and notes`);
+  }
+  const missing = required.filter((store) => !seen.has(store));
+  if (missing.length) throw new PersistenceStateError(`recovery coverage is missing stores: ${missing.join(",")}`);
+}
+
+export type RecoveryDecision = {
+  kind: "REVOKE_SESSION" | "REVOKE_ROLE" | "RESTRICT_PATIENT" | "QUARANTINE_DOCUMENT";
+  resourceId: string;
+  decidedAt: string;
+  authorityRef: string;
+};
+
+export interface RestoreReconciliationInput {
+  snapshot: StoreSnapshot;
+  decisions: readonly RecoveryDecision[];
+  backupWatermark: string;
+  authority: { id: string; role: string; authorized: boolean };
+}
+
+export interface RestoreReconciliationResult {
+  snapshot: StoreSnapshot;
+  state: "READY" | "QUARANTINED";
+  applied: string[];
+  pending: string[];
+}
+
+/**
+ * Reapplies every decision recorded after the backup watermark to a quarantined
+ * restore. The snapshot only returns to READY when every decision could be
+ * applied and the reconciling authority is independent from the decision
+ * authors; otherwise it stays quarantined with the pending list.
+ */
+export function reconcileRestoredSnapshot(input: RestoreReconciliationInput): RestoreReconciliationResult {
+  if (input.snapshot.healthStatus !== "QUARANTINED") throw new PersistenceStateError("restore reconciliation requires a quarantined snapshot");
+  if (!input.authority.authorized || input.authority.role !== "recovery_authority") throw new PersistenceStateError("restore reconciliation requires an authorized recovery authority");
+  if (input.decisions.some((decision) => decision.authorityRef === input.authority.id)) throw new PersistenceStateError("the reconciling authority must be independent from every recorded decision");
+  const watermark = Date.parse(input.backupWatermark);
+  if (!Number.isFinite(watermark)) throw new PersistenceStateError("backup watermark is invalid");
+  const snapshot = structuredClone(input.snapshot);
+  const applied: string[] = [];
+  const pending: string[] = [];
+  for (const decision of input.decisions) {
+    const decidedAt = Date.parse(decision.decidedAt);
+    if (!Number.isFinite(decidedAt)) throw new PersistenceStateError(`decision ${decision.kind}:${decision.resourceId} has an invalid timestamp`);
+    if (decidedAt <= watermark) continue;
+    const key = `${decision.kind}:${decision.resourceId}`;
+    if (decision.kind === "REVOKE_SESSION") {
+      const session = snapshot.sessions.find((candidate) => candidate.id === decision.resourceId);
+      if (!session) { pending.push(key); continue; }
+      if (!session.revokedAt) session.revokedAt = decision.decidedAt;
+    } else if (decision.kind === "REVOKE_ROLE") {
+      const assignment = snapshot.roleAssignments.find((candidate) => candidate.id === decision.resourceId);
+      if (!assignment) { pending.push(key); continue; }
+      if (!assignment.revokedAt) assignment.revokedAt = decision.decidedAt;
+    } else if (decision.kind === "RESTRICT_PATIENT") {
+      const patient = snapshot.patients.find((candidate) => candidate.id === decision.resourceId);
+      if (!patient) { pending.push(key); continue; }
+      patient.status = "INACTIVE";
+      patient.statusChangedAt = decision.decidedAt;
+    } else {
+      const document = snapshot.knowledgeDocuments.find((candidate) => candidate.id === decision.resourceId);
+      if (!document) { pending.push(key); continue; }
+      document.status = "QUARANTINED";
+    }
+    applied.push(key);
+  }
+  if (pending.length === 0) snapshot.healthStatus = "READY";
+  validateSnapshotSemantics(snapshot, (message) => { throw new PersistenceStateError(`reconciled snapshot is invalid: ${message}`); });
+  return { snapshot, state: snapshot.healthStatus, applied, pending };
 }

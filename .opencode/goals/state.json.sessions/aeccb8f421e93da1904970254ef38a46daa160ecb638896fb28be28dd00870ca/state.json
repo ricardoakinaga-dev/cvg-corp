@@ -1,0 +1,117 @@
+{
+  "version": 1,
+  "goals": [
+    {
+      "goalId": "88727d30-dc44-4116-bb0d-f3187d76bc00",
+      "runId": "c05a940b-e22b-480e-b408-f7cdc047e25a",
+      "condition": "Executar a rodada AAA3-01..12 e continuar requisitos AAA2 autorizados, começando por reconciliar AAA3-01 e avançar nas fatias locais executáveis, preservando E01 DONE_WITH_LIMITATION, estado canônico, testes, evidências e bloqueios honestos.",
+      "successCriteria": "AAA3-01 executado e validado; fatias AAA3/AAA2 independentes avançadas enquanto autorizadas; código, testes, documentação e control plane reconciliados; decisões externas/humanas registradas como bloqueios; nunca declarar Triplo AAA.",
+      "constraints": "Preservar alterações preexistentes; usar apenas dados/ambientes locais e reversíveis; não executar efeitos financeiros, provider real, produção, mensagens reais ou segredos; não inventar decisões clínicas/financeiras/políticas.",
+      "mode": "ordered",
+      "sessionID": "ses_f650ebccbffeKp9kdfw2zTCRgN",
+      "turnCount": 1,
+      "startedAt": 1789351432070,
+      "pausedAt": 0,
+      "totalTokens": 170977,
+      "usage": {
+        "input": 358154,
+        "output": 12962,
+        "reasoning": 19026,
+        "cacheRead": 3169792,
+        "cacheWrite": 0,
+        "cost": 0,
+        "costKnown": true
+      },
+      "options": {
+        "maxTurns": 80,
+        "maxDurationMs": 7200000,
+        "maxTokens": 120000,
+        "maxCostUsd": 0,
+        "minDelayMs": 1500,
+        "maxRecentMessages": 50,
+        "noProgressTokenThreshold": 50,
+        "noProgressTurnsBeforePause": 2,
+        "noToolCallTurnsBeforePause": 2,
+        "noInterruptOnUserMessage": false,
+        "noContinueWhileChildrenActive": false,
+        "budgetWrapupRatio": 0.8,
+        "warnTurnsRemaining": 3,
+        "warnDurationMsRemaining": 60000,
+        "warnTokensRemaining": 25000,
+        "maxPromptFailures": 3,
+        "resultRetentionMs": 604800000,
+        "maxStoredResults": 200
+      },
+      "lastStatus": "Goal paused after user interruption. Run /goal resume to continue.",
+      "lastAssistantText": "",
+      "lastAssistantMessageID": "msg_09da9807d001qkcJo02VFg9atE",
+      "lastContinueAt": 1789351622825,
+      "lastProgressAt": 1789351939213,
+      "noProgressTurns": 0,
+      "noToolCallTurns": 0,
+      "blockedReason": "",
+      "budgetWrapupSent": false,
+      "stopped": true,
+      "stopReason": "user interrupted",
+      "promptFailures": 0,
+      "formatFailures": 0,
+      "compactionEpoch": 1,
+      "stalledCompactions": 0,
+      "lastCompactionEventID": "evt_09daaf520001A4Gm2Q0oln5JL9",
+      "messageSeenSinceCompaction": true,
+      "compactionSourceAssistantMessageID": "",
+      "executionContext": {
+        "agent": "build",
+        "model": {
+          "providerID": "openai",
+          "modelID": "gpt-5.6-luna-fast"
+        },
+        "variant": "max"
+      },
+      "continuationClaim": null,
+      "messageIDs": [
+        "msg_09daafa41001n14m97EZrymKio",
+        "msg_09dab221600161O2U9vtqi7SGJ",
+        "msg_09dab47e5001uIocq0yG4tc0B9",
+        "msg_09dab7658001Vp9HjsFSNndm9T",
+        "msg_09daba245001p2l4WQR73crpmQ",
+        "msg_09dabf2cd00192U0WFRUpUO6qD",
+        "msg_09dac54fd001bczZpR2YjAfEyE",
+        "msg_09dac6c42001S0nf2BszMyFLEe",
+        "msg_09dad44e9001e2WxtYcUd2tWse",
+        "msg_09dad6d26001n9gUWkskZKkuFq",
+        "msg_09dad945500134gXfTC3L88RLI",
+        "msg_09dadb02a001RuMUz5SJMnOxhr",
+        "msg_09dadc64b001ay6AA0X3sHIyai",
+        "msg_09dadec0a001FGqAL63MOdRtO7",
+        "msg_09dae093c001Z82bu2sxWfXmwl",
+        "msg_09dae7769001GKUrWVG3xGy2X0",
+        "msg_09dafb65a001f0ykvTunvjaXsP"
+      ],
+      "history": [
+        {
+          "type": "set",
+          "detail": "Goal created via agent tool with limits: 80 auto-continues, 7200s, 120,000 context tokens.",
+          "timestamp": 1789351432077
+        },
+        {
+          "type": "auto-continue",
+          "detail": "Sent auto-continue prompt 1/80.",
+          "timestamp": 1789351622848
+        },
+        {
+          "type": "paused",
+          "detail": "Paused after OpenCode reported that the active turn was aborted.",
+          "timestamp": 1789351978835
+        }
+      ],
+      "checkpoints": [],
+      "lastCheckpoint": null,
+      "skipNextTerminalCheck": false,
+      "focused": true
+    }
+  ],
+  "results": [],
+  "archives": [],
+  "orderedSessions": []
+}

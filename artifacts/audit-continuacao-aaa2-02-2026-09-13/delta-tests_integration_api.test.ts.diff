@@ -1,0 +1,116 @@
+--- prior/tests/integration/api.test.ts
++++ current/tests/integration/api.test.ts
+@@ -225,6 +225,91 @@
+   const paymentId = (payment.body.data as { payment: { id: string } }).payment.id;
+   assert.equal((await finance.request("/finance/refunds", { method: "POST", headers: { "idempotency-key": "api-finance-refund-1" }, payload: { paymentId, reason: "estorno de teste" } })).statusCode, 202);
+   assert.equal((await vet.request("/knowledge", { method: "POST", headers: { "idempotency-key": "api-knowledge-1" }, payload: { title: "Fonte sintética", source: "fixture aprovada para revisão", dataClass: "D1", content: "Conteúdo não confiável até validação humana." } })).statusCode, 201);
++});
++
++test("API protects terminal prescriptions and keeps medication dispense idempotent under concurrency", async () => {
++  const vet = makeClient();
++  await vet.login("ana.vet@cvg.local", "veterinario-synthetic-0002");
++  const patient = (await vet.request("/patients")).body.data as { items: Array<{ id: string }> };
++  const stock = (await vet.request("/stock")).body.data as { items: Array<{ id: string; product: { id: string } | null; location: { id: string } | null; quantity: number }> };
++  const stockItem = stock.items.find((item) => item.product && item.location);
++  assert.ok(patient.items[0] && stockItem?.product && stockItem.location);
++
++  const encounterResponse = await vet.request("/encounters", { method: "POST", headers: { "idempotency-key": "api-aaa2-02-encounter-1" }, payload: { patientId: patient.items[0].id, appointmentId: null, chiefComplaint: "proteção E01", urgency: "ROUTINE" } });
++  assert.equal(encounterResponse.statusCode, 201);
++  const encounterId = (encounterResponse.body.data as { encounter: { id: string } }).encounter.id;
++  const orderResponse = await vet.request("/medications/orders", { method: "POST", headers: { "idempotency-key": "api-aaa2-02-order-terminal-1" }, payload: { patientId: patient.items[0].id, encounterId, productId: stockItem.product.id, dose: "1 comprimido", route: "oral", frequency: "12/12h" } });
++  assert.equal(orderResponse.statusCode, 201);
++  const terminalOrderId = (orderResponse.body.data as { order: { id: string } }).order.id;
++  const stockUser = makeClient();
++  await stockUser.login("leo.estoque@cvg.local", "estoque-synthetic-0004");
++
++  const readState = async () => {
++    const [stockResponse, dispensationsResponse, movementsResponse] = await Promise.all([stockUser.request("/stock"), stockUser.request("/medications/dispensations"), stockUser.request("/stock/movements")]);
++    assert.equal(stockResponse.statusCode, 200);
++    assert.equal(dispensationsResponse.statusCode, 200);
++    assert.equal(movementsResponse.statusCode, 200);
++    const lots = (stockResponse.body.data as { items: Array<{ id: string; quantity: number }> }).items;
++    const dispensations = (dispensationsResponse.body.data as { items: Array<{ medicationOrderId: string }> }).items;
++    const movements = (movementsResponse.body.data as { items: Array<{ movementType: string; referenceId: string | null }> }).items;
++    return { quantity: lots.find((item) => item.id === stockItem.id)?.quantity, dispensations: dispensations.filter((item) => item.medicationOrderId === terminalOrderId).length, movements: movements.filter((item) => item.referenceId === terminalOrderId).length };
++  };
++
++  const beforeTerminal = await readState();
++  assert.equal((await vet.request(`/medications/orders/${terminalOrderId}/status`, { method: "POST", headers: { "idempotency-key": "api-aaa2-02-terminal-status-1" }, payload: { status: "SUSPENDED" } })).statusCode, 200);
++  const suspendedDenied = await stockUser.request(`/medications/orders/${terminalOrderId}/dispense`, { method: "POST", headers: { "idempotency-key": "api-aaa2-02-suspended-dispense-1" }, payload: { lotId: stockItem.id, quantity: 1 } });
++  assert.equal(suspendedDenied.statusCode, 409);
++  assert.equal(suspendedDenied.body.error?.code, "INVALID_STATE");
++  assert.deepEqual(await readState(), beforeTerminal);
++
++  assert.equal((await vet.request(`/medications/orders/${terminalOrderId}/status`, { method: "POST", headers: { "idempotency-key": "api-aaa2-02-terminal-reactivate-1" }, payload: { status: "ACTIVE" } })).statusCode, 200);
++  assert.equal((await vet.request(`/medications/orders/${terminalOrderId}/status`, { method: "POST", headers: { "idempotency-key": "api-aaa2-02-terminal-complete-1" }, payload: { status: "COMPLETED" } })).statusCode, 200);
++  const completedDenied = await stockUser.request(`/medications/orders/${terminalOrderId}/dispense`, { method: "POST", headers: { "idempotency-key": "api-aaa2-02-completed-dispense-1" }, payload: { lotId: stockItem.id, quantity: 1 } });
++  assert.equal(completedDenied.statusCode, 409);
++  assert.equal(completedDenied.body.error?.code, "INVALID_STATE");
++  const reopenDenied = await vet.request(`/medications/orders/${terminalOrderId}/status`, { method: "POST", headers: { "idempotency-key": "api-aaa2-02-completed-reopen-1" }, payload: { status: "SUSPENDED" } });
++  assert.equal(reopenDenied.statusCode, 409);
++  assert.equal(reopenDenied.body.error?.code, "INVALID_STATE");
++  const indirectDenied = await stockUser.request("/stock/movements", { method: "POST", headers: { "idempotency-key": "api-aaa2-02-indirect-dispense-1" }, payload: { productId: stockItem.product.id, lotId: stockItem.id, locationId: stockItem.location.id, quantity: 1, movementType: "DISPENSE", reason: "saída indireta de prescrição concluída", referenceId: terminalOrderId } });
++  assert.equal(indirectDenied.statusCode, 409);
++  assert.equal(indirectDenied.body.error?.code, "INVALID_STATE");
++  for (const [movementType, key] of [["ADJUSTMENT_OUT", "api-aaa2-02-adjustment-reference-1"], ["TRANSFER_OUT", "api-aaa2-02-transfer-reference-1"]] as const) {
++    const alternativeExitDenied = await stockUser.request("/stock/movements", { method: "POST", headers: { "idempotency-key": key }, payload: { productId: stockItem.product.id, lotId: stockItem.id, locationId: stockItem.location.id, quantity: 1, movementType, reason: "saída alternativa de prescrição concluída", referenceId: terminalOrderId } });
++    assert.equal(alternativeExitDenied.statusCode, 409);
++    assert.equal(alternativeExitDenied.body.error?.code, "INVALID_STATE");
++    const unknownAlternativeExitDenied = await stockUser.request("/stock/movements", { method: "POST", headers: { "idempotency-key": `${key}-unknown` }, payload: { productId: stockItem.product.id, lotId: stockItem.id, locationId: stockItem.location.id, quantity: 1, movementType, reason: "saída alternativa sem referência", referenceId: "00000000-0000-4000-8000-000000009996" } });
++    assert.equal(unknownAlternativeExitDenied.statusCode, 404);
++    assert.equal(unknownAlternativeExitDenied.body.error?.code, "NOT_FOUND");
++  }
++  const unknownReferenceDenied = await stockUser.request("/stock/movements", { method: "POST", headers: { "idempotency-key": "api-aaa2-02-indirect-unknown-reference-1" }, payload: { productId: stockItem.product.id, lotId: stockItem.id, locationId: stockItem.location.id, quantity: 1, movementType: "DISPENSE", reason: "saída com referência ausente", referenceId: "00000000-0000-4000-8000-000000009998" } });
++  assert.equal(unknownReferenceDenied.statusCode, 404);
++  assert.equal(unknownReferenceDenied.body.error?.code, "NOT_FOUND");
++  assert.deepEqual(await readState(), beforeTerminal);
++
++  const activeOrderResponse = await vet.request("/medications/orders", { method: "POST", headers: { "idempotency-key": "api-aaa2-02-order-active-1" }, payload: { patientId: patient.items[0].id, encounterId, productId: stockItem.product.id, dose: "1 comprimido", route: "oral", frequency: "12/12h" } });
++  assert.equal(activeOrderResponse.statusCode, 201);
++  const activeOrderId = (activeOrderResponse.body.data as { order: { id: string } }).order.id;
++  const stockPeer = makeClient();
++  await stockPeer.login("leo.estoque@cvg.local", "estoque-synthetic-0004");
++  const beforeActive = await readState();
++  const dispenseRequest = (client: ReturnType<typeof makeClient>) => client.request(`/medications/orders/${activeOrderId}/dispense`, { method: "POST", headers: { "idempotency-key": "api-aaa2-02-concurrent-dispense-1" }, payload: { lotId: stockItem.id, quantity: 2 } });
++  const [first, second] = await Promise.all([dispenseRequest(stockUser), dispenseRequest(stockPeer)]);
++  assert.equal(first.statusCode, 201);
++  assert.equal(second.statusCode, 201);
++  const firstData = first.body.data as { dispensation: { id: string }; receiptId: string };
++  const secondData = second.body.data as { dispensation: { id: string }; receiptId: string };
++  assert.equal(secondData.receiptId, firstData.receiptId);
++  assert.equal(secondData.dispensation.id, firstData.dispensation.id);
++  const afterActive = await readState();
++  assert.equal(afterActive.quantity, (beforeActive.quantity ?? 0) - 2);
++  const activeDispensations = (await stockUser.request("/medications/dispensations")).body.data as { items: Array<{ medicationOrderId: string }> };
++  const activeMovements = (await stockUser.request("/stock/movements")).body.data as { items: Array<{ movementType: string; referenceId: string | null }> };
++  assert.equal(activeDispensations.items.filter((item) => item.medicationOrderId === activeOrderId).length, 1);
++  assert.equal(activeMovements.items.filter((item) => item.movementType === "DISPENSE" && item.referenceId === activeOrderId).length, 1);
++  const replay = await stockUser.request(`/medications/orders/${activeOrderId}/dispense`, { method: "POST", headers: { "idempotency-key": "api-aaa2-02-concurrent-dispense-1" }, payload: { lotId: stockItem.id, quantity: 2 } });
++  assert.equal(replay.statusCode, 201);
++  assert.equal((replay.body.data as { receiptId: string }).receiptId, firstData.receiptId);
++  assert.deepEqual(await readState(), afterActive);
+ });
+ 
+ test("AI approval is bound to the original request and consumed once", async () => {
+@@ -394,6 +479,7 @@
+ 
+ test("TOTP enrollment validates an external secret reference and revocation kills sessions", async () => {
+   const secret = "JBSWY3DPEHPK3PXP";
++  const code = fixtureTotpCode(secret);
+   const store = new CvgStore({ bootstrapPassword: password });
+   const mfaRuntime = await createRuntime({
+     store,
+@@ -425,11 +511,11 @@
+   try {
+     const login = await request("/auth/login", "POST", { login: "admin@cvg.local", password });
+     assert.equal(login.statusCode, 200);
+-    const enrolled = await request("/auth/mfa/enroll", "POST", { currentPassword: password, secretRef: "mfa.admin", code: fixtureTotpCode(secret) }, { "idempotency-key": "mfa-enroll-1" });
++    const enrolled = await request("/auth/mfa/enroll", "POST", { currentPassword: password, secretRef: "mfa.admin", code }, { "idempotency-key": "mfa-enroll-1" });
+     assert.equal(enrolled.statusCode, 201);
+     assert.equal(store.getUser(store.bootstrapCredentials.userId).security.mfaSecretRef, "mfa.admin");
+     assert.equal(store.getUser(store.bootstrapCredentials.userId).security.mfaRequired, true);
+-    const replay = await request("/auth/mfa/enroll", "POST", { currentPassword: password, secretRef: "mfa.admin", code: fixtureTotpCode(secret) }, { "idempotency-key": "mfa-enroll-1" });
++    const replay = await request("/auth/mfa/enroll", "POST", { currentPassword: password, secretRef: "mfa.admin", code }, { "idempotency-key": "mfa-enroll-1" });
+     assert.equal(replay.statusCode, 200);
+     const revoked = await request("/auth/mfa/revoke", "POST", { currentPassword: password }, { "idempotency-key": "mfa-revoke-1" });
+     assert.equal(revoked.statusCode, 200);

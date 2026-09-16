@@ -1,0 +1,5 @@
+
+> cvg-corp@0.1.0 audit:licenses
+> tsx scripts/verify-licenses.ts
+
+PASS license policy verified for 163 third-party packages; approved SPDX identifiers: MIT, ISC, Apache-2.0, BSD-3-Clause, CC-BY-4.0, MPL-2.0

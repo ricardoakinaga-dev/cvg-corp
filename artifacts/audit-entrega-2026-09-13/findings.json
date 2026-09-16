@@ -1,0 +1,403 @@
+[
+  {
+    "id": "E01",
+    "severity": "HIGH",
+    "priority": "P1",
+    "title": "Prescrição concluída ainda dispensa e pode ser reaberta",
+    "source_locations": [
+      "packages/domain/src/index.ts:1555",
+      "packages/domain/src/index.ts:1600"
+    ],
+    "observed": "O probe completou a prescrição, dispensou com redução de estoque e fez COMPLETED→SUSPENDED→ACTIVE. A UI ocultar a ação não protege o comando.",
+    "evidence_scope": "Domínio sintético executado; caminho HTTP identificado, ataque HTTP não reexecutado.",
+    "evidence": "backend/probe.log",
+    "legacy_tasks": [
+      "AUD13-16",
+      "AUD13-17"
+    ],
+    "new_tasks": [
+      "AAA2-02"
+    ],
+    "confidence": "HIGH"
+  },
+  {
+    "id": "E02",
+    "severity": "HIGH",
+    "priority": "P1",
+    "title": "Uso acima da reserva não entra integralmente no teto",
+    "source_locations": [
+      "packages/domain/src/index.ts:559",
+      "packages/domain/src/index.ts:575"
+    ],
+    "observed": "Reserva 100, uso real 900: consumedUnits fica 100; outra reserva 900 é aceita sob cap 1000. Excedente retorna como número sem hold efetivo.",
+    "evidence_scope": "Domínio sintético executado.",
+    "evidence": "backend/probe.log",
+    "legacy_tasks": [
+      "AUD13-21"
+    ],
+    "new_tasks": [
+      "AAA2-03"
+    ],
+    "confidence": "HIGH"
+  },
+  {
+    "id": "E03",
+    "severity": "HIGH",
+    "priority": "P1",
+    "title": "ACP admite sem budget e perde vínculo de reserva após recriação",
+    "source_locations": [
+      "packages/harness-adapters/src/index.ts:337",
+      "packages/harness-adapters/src/index.ts:506",
+      "packages/harness-adapters/src/index.ts:522"
+    ],
+    "observed": "Governance com store e sem budget retorna ALLOW/zero reservas. Recriar governance perde correlação; conclusão reporta SETTLED/reservationId null sem chamar settle.",
+    "evidence_scope": "Governance sintética; recriação de objeto, não prova de crash PostgreSQL ou provider real.",
+    "evidence": "backend/probe.log",
+    "legacy_tasks": [
+      "AUD13-21",
+      "AUD13-27"
+    ],
+    "new_tasks": [
+      "AAA2-04"
+    ],
+    "confidence": "HIGH"
+  },
+  {
+    "id": "E04",
+    "severity": "HIGH",
+    "priority": "P1",
+    "title": "Conclusão ACP aceita autoridade revogada durante a execução",
+    "source_locations": [
+      "packages/harness-adapters/src/index.ts:522",
+      "apps/api/src/application/agent-service.ts:60"
+    ],
+    "observed": "Após revokeAllSessions, validateContext rejeita o contexto, mas recordTurn aceita e persiste COMPLETED. Contabilidade deve ser preservada sem autorizar conclusão/divulgação clínica.",
+    "evidence_scope": "Governance sintética executada; saída remota real não executada.",
+    "evidence": "backend/probe.log",
+    "legacy_tasks": [
+      "AUD13-27"
+    ],
+    "new_tasks": [
+      "AAA2-05"
+    ],
+    "confidence": "HIGH"
+  },
+  {
+    "id": "E05",
+    "severity": "HIGH",
+    "priority": "P1",
+    "title": "Adendo de outro paciente permanece na linha do tempo",
+    "source_locations": [
+      "apps/web/src/features/clinical/Clinical.tsx:96"
+    ],
+    "observed": "Trocar A→B com resposta de B pendente mantém a correção de A sob o título Patient B. Estado não é limpo nem vinculado à geração/contexto da consulta.",
+    "evidence_scope": "Browser com componente real e ApiClient sintético; não é evidência de vazamento entre tenants no servidor.",
+    "evidence": "frontend/probe-results.json",
+    "legacy_tasks": [
+      "AUD13-14"
+    ],
+    "new_tasks": [
+      "AAA2-06"
+    ],
+    "confidence": "HIGH"
+  },
+  {
+    "id": "E06",
+    "severity": "HIGH",
+    "priority": "P1",
+    "title": "Histórico omite adendos de documentos assinados anteriores",
+    "source_locations": [
+      "apps/web/src/features/clinical/Clinical.tsx:105"
+    ],
+    "observed": "A consulta escolhe somente o documento assinado mais recente; probe confirma que a-old/addenda nunca é solicitado. Correções anteriores somem da visão de prontuário.",
+    "evidence_scope": "Browser com componente real e ApiClient sintético.",
+    "evidence": "frontend/probe-results.json",
+    "legacy_tasks": [
+      "AUD13-14"
+    ],
+    "new_tasks": [
+      "AAA2-06"
+    ],
+    "confidence": "HIGH"
+  },
+  {
+    "id": "E07",
+    "severity": "HIGH",
+    "priority": "P1",
+    "title": "Perfil estoque não alcança a dispensação disponível",
+    "source_locations": [
+      "apps/web/src/features/hospital/Internacao.tsx:106",
+      "apps/web/src/features/hospital/Internacao.tsx:299",
+      "apps/web/src/features/clinical/Clinical.tsx:82"
+    ],
+    "observed": "Dispensação fica em Internação; carregamento exige endpoints clínicos negados a estoque. Perfil pode listar prescrições/estoque no domínio, mas não leitos/episódios/atendimentos.",
+    "evidence_scope": "Inspeção conectada + probe de permissões do domínio; jornada autenticada completa de estoque não executada.",
+    "evidence": "",
+    "legacy_tasks": [
+      "AUD13-16",
+      "AUD13-17"
+    ],
+    "new_tasks": [
+      "AAA2-07"
+    ],
+    "confidence": "HIGH"
+  },
+  {
+    "id": "E08",
+    "severity": "HIGH",
+    "priority": "P1",
+    "title": "Internação planejada fica sem caminho de admissão",
+    "source_locations": [
+      "apps/web/src/features/hospital/Internacao.tsx:293",
+      "apps/web/src/features/hospital/Internacao.tsx:306"
+    ],
+    "observed": "Formulário permite criar sem leito; UI não oferece atribuir leito/admitir o episódio PLANNED existente. As transições visíveis começam em ADMITTED.",
+    "evidence_scope": "Inspeção do fluxo conectado, sem prova de indisponibilidade de eventual ferramenta administrativa externa.",
+    "evidence": "",
+    "legacy_tasks": [
+      "AUD13-16",
+      "AUD13-16A"
+    ],
+    "new_tasks": [
+      "AAA2-08"
+    ],
+    "confidence": "HIGH"
+  },
+  {
+    "id": "E09",
+    "severity": "MEDIUM",
+    "priority": "P2",
+    "title": "Leitura de documento assinado abre diálogo sem foco interno",
+    "source_locations": [
+      "apps/web/src/features/clinical/Clinical.tsx:280"
+    ],
+    "observed": "Campos disabled atraem a tentativa de foco inicial; activeElement permanece no botão Ver conteúdo atrás do diálogo.",
+    "evidence_scope": "Browser do componente real; leitor de tela humano não executado.",
+    "evidence": "frontend/probe-results.json",
+    "legacy_tasks": [
+      "AUD13-14",
+      "AUD13-35"
+    ],
+    "new_tasks": [
+      "AAA2-09"
+    ],
+    "confidence": "HIGH"
+  },
+  {
+    "id": "E10",
+    "severity": "HIGH",
+    "priority": "P1",
+    "title": "Gate estático e aceite independente não fecham o candidato atual",
+    "source_locations": [
+      "scripts/verify-static.ts:84",
+      ".agent/gates/aud13-21.json:7",
+      ".agent/gates/aud13-13.json:7"
+    ],
+    "observed": "verify:static falha por source SHA diferente. Gates 13/21 têm critic_artifact:null e notas 8.x; isso não prova critérios de promoção. DONE de AUD13-21 é contradito pelo probe de budget.",
+    "evidence_scope": "Gate estático executado; leitura dos registros feita pelo Lead após crítica técnica.",
+    "evidence": "static.log",
+    "legacy_tasks": [
+      "AUD13-03",
+      "AUD13-21",
+      "AUD13-34",
+      "AUD13-37"
+    ],
+    "new_tasks": [
+      "AAA2-01",
+      "AAA2-10",
+      "AAA2-31"
+    ],
+    "confidence": "HIGH"
+  },
+  {
+    "id": "E11",
+    "severity": "HIGH",
+    "priority": "P1",
+    "title": "Cobertura autoritativa continua com 24 coleções primárias em snapshot",
+    "source_locations": [
+      "scripts/verify-authoritative-writes.ts:30",
+      "packages/persistence/src/index.ts"
+    ],
+    "observed": "Verificador retorna domains=32 commands=8 snapshotPrimary=24. Validação de invariantes e inventário honestos não equivalem a escrita autoritativa universal com concorrência real.",
+    "evidence_scope": "Verificador local executado; novo banco multiprocesso não executado nesta auditoria.",
+    "evidence": "authoritative.log",
+    "legacy_tasks": [
+      "AUD13-22",
+      "AUD13-23"
+    ],
+    "new_tasks": [
+      "AAA2-11",
+      "AAA2-12"
+    ],
+    "confidence": "HIGH"
+  },
+  {
+    "id": "E12",
+    "severity": "HIGH",
+    "priority": "P1",
+    "title": "Readiness não discrimina capacidades e usa estados fixos",
+    "source_locations": [
+      "apps/api/src/routes/health.ts:41",
+      "apps/api/src/app.ts:580"
+    ],
+    "observed": "Probe retorna ready=true/HTTP200 com outbox NOT_CONFIGURED. Ao retirar IA, retorna503 com banco READY. Secrets são capturados na inicialização. Não se comprovou bloqueio de todas as APIs manuais.",
+    "evidence_scope": "Handler real com dependências controladas; sem falha de infraestrutura real.",
+    "evidence": "ops/probe.log",
+    "legacy_tasks": [
+      "AUD13-30"
+    ],
+    "new_tasks": [
+      "AAA2-19"
+    ],
+    "confidence": "HIGH"
+  },
+  {
+    "id": "E13",
+    "severity": "MEDIUM",
+    "priority": "P2",
+    "title": "Runbook marca EXECUTED_LOCAL a partir de texto",
+    "source_locations": [
+      "scripts/verify-runbook-execution.ts:81"
+    ],
+    "observed": "executeScenarioFixtures deriva estados com split da descrição e retorna sete EXECUTED_LOCAL sem operar dependências. A suíte adicional não vincula cada transição a um cenário operacional observado.",
+    "evidence_scope": "Probe executado; o próprio script distingue contrato local de drill externo, mas seu rótulo de execução é insuficiente.",
+    "evidence": "ops/probe.log",
+    "legacy_tasks": [
+      "AUD13-32"
+    ],
+    "new_tasks": [
+      "AAA2-22"
+    ],
+    "confidence": "HIGH"
+  },
+  {
+    "id": "E14",
+    "severity": "HIGH",
+    "priority": "P1",
+    "title": "Workload de carga não exercita as escritas exigidas",
+    "source_locations": [
+      "tests/load/cvg-staging.k6.js:34"
+    ],
+    "observed": "Helper usa somente GET; AI/provider são caminhos opcionais e thresholds globais. Não prova turno, efeito, settle e drenagem por jornada.",
+    "evidence_scope": "Inspeção estática; k6/staging não executados.",
+    "evidence": "",
+    "legacy_tasks": [
+      "AUD13-32",
+      "AUD13-36"
+    ],
+    "new_tasks": [
+      "AAA2-23"
+    ],
+    "confidence": "HIGH"
+  },
+  {
+    "id": "E15",
+    "severity": "HIGH",
+    "priority": "P1",
+    "title": "Configuração de alerta ainda não tem renderização demonstrada",
+    "source_locations": [
+      "docker/observability/alertmanager.yml:16",
+      "docker-compose.observability.yml:64"
+    ],
+    "observed": "Arquivo montado contém placeholder shell literal; Compose injeta o arquivo sem etapa de renderização. Entrega real de alerta permanece sem prova.",
+    "evidence_scope": "Inspeção estática; não se afirmou falha observada de uma instância real de Alertmanager.",
+    "evidence": "",
+    "legacy_tasks": [
+      "AUD13-31"
+    ],
+    "new_tasks": [
+      "AAA2-21"
+    ],
+    "confidence": "HIGH"
+  },
+  {
+    "id": "E16",
+    "severity": "HIGH",
+    "priority": "P1",
+    "title": "Jornadas e governança têm escopo obrigatório ainda parcial",
+    "source_locations": [
+      "docs/adr/031-journey-inventory-and-open-decisions.md",
+      ".agent/backlog.json"
+    ],
+    "observed": "Anexos, consentimento, fornecedores/custos, orçamento/conciliação, registry e automações foram deixados em filhos14A/16A/17A/18A/20A/25A planejados. Novas telas não encerram esses requisitos.",
+    "evidence_scope": "Estado declarado confrontado com superfícies implementadas; não atribuir falha a operações não executadas.",
+    "evidence": "",
+    "legacy_tasks": [
+      "AUD13-14A",
+      "AUD13-16A",
+      "AUD13-17A",
+      "AUD13-18A",
+      "AUD13-20A",
+      "AUD13-25A",
+      "AUD13-29"
+    ],
+    "new_tasks": [
+      "AAA2-13",
+      "AAA2-14",
+      "AAA2-15",
+      "AAA2-16",
+      "AAA2-17",
+      "AAA2-18",
+      "AAA2-20"
+    ],
+    "confidence": "HIGH"
+  },
+  {
+    "id": "E17",
+    "severity": "HIGH",
+    "priority": "P1",
+    "title": "Prova operacional, supply chain e aceite final continuam ausentes",
+    "source_locations": [
+      "docs/staging.md",
+      ".gauntlet/bar-v4.json",
+      ".agent/state.json"
+    ],
+    "observed": "Candidato modificado não possui neste pacote prova same-SHA de CI/imagem/staging, provider/secrets/WebAuthn, carga/chaos/recovery, matriz assistiva e decisão humana. Ausência não é incidente observado nem PASS.",
+    "evidence_scope": "NOT_RUN nesta auditoria para ambientes reais; registros históricos não promovem este candidato.",
+    "evidence": "",
+    "legacy_tasks": [
+      "AUD13-24",
+      "AUD13-26",
+      "AUD13-27",
+      "AUD13-28",
+      "AUD13-33",
+      "AUD13-34",
+      "AUD13-35",
+      "AUD13-36",
+      "AUD13-37",
+      "AUD13-38"
+    ],
+    "new_tasks": [
+      "AAA2-24",
+      "AAA2-25",
+      "AAA2-26",
+      "AAA2-27",
+      "AAA2-28",
+      "AAA2-29",
+      "AAA2-30",
+      "AAA2-31",
+      "AAA2-32"
+    ],
+    "confidence": "HIGH"
+  },
+  {
+    "id": "E18",
+    "severity": "HIGH",
+    "priority": "P1",
+    "title": "Exames concluídos no backlog ainda omitem semântica do UC03",
+    "source_locations": [
+      "packages/contracts/src/index.ts:240",
+      "docs/01-prd-cvg.md:104"
+    ],
+    "observed": "Schema de pedido não contém instruções/amostra prevista; resultado recebe value livre, source e sourceVersion, sem campos estruturados de unidade/referência e validação de unidade incompatível exigida pelo PRD. Fluxo atual não prova esse aceite.",
+    "evidence_scope": "Inspeção de contrato e formulário; suíte existente passa para o recorte implementado.",
+    "evidence": "",
+    "legacy_tasks": [
+      "AUD13-15"
+    ],
+    "new_tasks": [
+      "AAA2-33"
+    ],
+    "confidence": "HIGH"
+  }
+]

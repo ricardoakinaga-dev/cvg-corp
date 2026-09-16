@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import type { AiApproval, AiDraft, AiSession, AiTurn, CvgContext, DataClass, OpaqueId, Role } from "@cvg/contracts";
+import type { AiApproval, AiDraft, AiSession, AiTurn, BudgetReservation, CvgContext, DataClass, OpaqueId, Role } from "@cvg/contracts";
 import type { AiTurnInput } from "@cvg/contracts";
 import { CvgStore, DomainError, digest, isInContext, makeId, now } from "@cvg/domain";
 import { enforceApplicationPolicy, StaticPolicyDecisionPoint } from "@cvg/agent-policy";
@@ -116,12 +116,21 @@ export interface HarnessHealth {
   profileDigest: string;
 }
 
+export interface HarnessBudgetOptions {
+  caps?: Partial<Record<BudgetReservation["category"], number>>;
+  ttlMs?: number;
+}
+
 export class GovernedHarness {
-  private readonly budgetLimit = 12_000;
+  private readonly budgetCaps: Record<BudgetReservation["category"], number>;
+  private readonly budgetTtlMs: number;
   private readonly profileDigest = createHash("sha256").update(JSON.stringify(TOOL_REGISTRY)).digest("hex");
   private readonly toolGateway: ToolGateway;
+  private readonly inFlightTurns = new Map<string, Promise<HarnessTurnResult>>();
 
-  constructor(private readonly store: CvgStore) {
+  constructor(private readonly store: CvgStore, options: HarnessBudgetOptions = {}) {
+    this.budgetCaps = { TOKENS: 12_000, MEDIA: 20, TRANSCRIPTION: 30_000, INTEGRATION: 100, ...options.caps };
+    this.budgetTtlMs = options.ttlMs ?? 15 * 60_000;
     this.toolGateway = new ToolGateway(new StaticPolicyDecisionPoint("local-synthetic-v1"), new CvgStoreToolExecutionLedger(store));
     for (const tool of TOOL_REGISTRY) this.toolGateway.register({ ...tool, risk: policyRisk(tool.risk), timeoutMs: 5_000, egress: "LOCAL_ONLY", parseInput: (value: unknown) => value });
   }
@@ -149,17 +158,37 @@ export class GovernedHarness {
   }
 
   async executeTurn(context: CvgContext, input: AiTurnInput, approvalId: OpaqueId | null = null): Promise<HarnessTurnResult> {
+    this.store.validateContext(context);
+    enforceApplicationPolicy(context, `ai.turn.${input.purpose}`, { resourceId: input.resourceId ?? input.encounterId ?? input.patientId });
+    const executionKey = this.executionKey(context, input);
+    const existing = this.findExistingTurn(context, input);
+    if (existing) {
+      if (existing.prompt !== input.prompt) throw new DomainError("IDEMPOTENCY_CONFLICT", "A chave de idempotência já foi usada com outros argumentos.", 409);
+      return this.resultForExisting(context, existing);
+    }
+    const inFlight = this.inFlightTurns.get(executionKey);
+    if (inFlight) return inFlight;
+    const execution = this.executeTurnOnce(context, input, approvalId);
+    this.inFlightTurns.set(executionKey, execution);
+    try {
+      return await execution;
+    } finally {
+      if (this.inFlightTurns.get(executionKey) === execution) this.inFlightTurns.delete(executionKey);
+    }
+  }
+
+  private async executeTurnOnce(context: CvgContext, input: AiTurnInput, approvalId: OpaqueId | null): Promise<HarnessTurnResult> {
     enforceApplicationPolicy(context, `ai.turn.${input.purpose}`, { resourceId: input.resourceId ?? input.encounterId ?? input.patientId });
     const session = this.getOrCreateSession(context, input);
     if (!isInContext(session, context) || session.patientId !== input.patientId || session.encounterId !== input.encounterId || session.purpose !== input.purpose) throw new DomainError("POLICY_DENIED", "O contexto do turno não pode mudar a finalidade, o escopo, o paciente ou atendimento de uma sessão existente.", 403);
     const prompt = input.prompt;
     if (this.looksLikeInjection(prompt)) {
-      const turn = this.persistTurn(context, session, prompt, "QUARANTINED", "Conteúdo retido: o texto recebido é dado não confiável e não pode alterar policy ou tools.", 0, 0, []);
+      const turn = this.persistTurn(context, session, prompt, "QUARANTINED", "Conteúdo retido: o texto recebido é dado não confiável e não pode alterar policy ou tools.", 0, 0, [], { idempotencyKey: input.idempotencyKey });
       return this.result(context, session, turn, null, null, []);
     }
     const tool = input.requestedTool ? TOOL_REGISTRY.find((candidate) => candidate.name === input.requestedTool) : undefined;
     if (input.requestedTool && !tool) {
-      const turn = this.persistTurn(context, session, prompt, "DENIED", "Tool não registrada no profile CVG.", 0, 0, []);
+      const turn = this.persistTurn(context, session, prompt, "DENIED", "Tool não registrada no profile CVG.", 0, 0, [], { idempotencyKey: input.idempotencyKey });
       throw new DomainError("POLICY_DENIED", "A capability solicitada não está registrada.", 403, { turnId: turn.id });
     }
     if (tool) {
@@ -167,7 +196,7 @@ export class GovernedHarness {
         this.store.requireRole(context, tool.allowedRoles, tool.capability);
       } catch (error) {
         if (error instanceof DomainError && error.code === "FORBIDDEN") {
-          const turn = this.persistTurn(context, session, prompt, "DENIED", "Role sem permissão para a capability solicitada.", 0, 0, []);
+          const turn = this.persistTurn(context, session, prompt, "DENIED", "Role sem permissão para a capability solicitada.", 0, 0, [], { idempotencyKey: input.idempotencyKey });
           throw new DomainError("POLICY_DENIED", "A capability não está disponível para este perfil.", 403, { turnId: turn.id });
         }
         throw error;
@@ -177,26 +206,31 @@ export class GovernedHarness {
       const approval = approvalId ? this.store.aiApprovals.get(approvalId) : undefined;
       const requestDigest = this.approvalRequestDigest(context, session, input, tool.name);
       if (approvalId && (!approval || approval.organizationId !== context.organizationId || approval.actorId !== session.actorId || approval.sessionId !== session.id || approval.toolName !== tool.name || approval.resourceId !== (input.resourceId ?? input.encounterId ?? input.patientId) || approval.patientId !== input.patientId || approval.encounterId !== input.encounterId || approval.unitId !== context.unitId || approval.workspaceId !== context.workspaceId || approval.purpose !== input.purpose || approval.policyRevision !== context.policyRevision || approval.requestDigest !== requestDigest || Date.parse(approval.expiresAt) <= Date.now() || approval.decidedBy === null || (tool.risk === "HIGH_IMPACT" && approval.decidedBy === approval.actorId) || approval.decision === "rejected" || approval.decision === "consumed")) {
-        const turn = this.persistTurn(context, session, prompt, "DENIED", "Approval ausente, incompatível ou já consumida; nenhum dispatch foi realizado.", this.estimateInput(prompt), 0, []);
+        const turn = this.persistTurn(context, session, prompt, "DENIED", "Approval ausente, incompatível ou já consumida; nenhum dispatch foi realizado.", this.estimateInput(prompt), 0, [], { idempotencyKey: input.idempotencyKey });
         throw new DomainError("POLICY_DENIED", "A aprovação não corresponde exatamente a esta operação ou já foi consumida.", 403, { turnId: turn.id });
       }
       if (!approval) {
-        const turn = this.persistTurn(context, session, prompt, "RECEIVED", null, this.estimateInput(prompt), 0, []);
+        const turn = this.persistTurn(context, session, prompt, "RECEIVED", null, this.estimateInput(prompt), 0, [], { idempotencyKey: input.idempotencyKey, usageStatus: "RECEIVED" });
         const pending: AiApproval = { id: makeId(), organizationId: context.organizationId, actorId: context.actorId, sessionId: session.id, turnId: turn.id, toolName: tool.name, resourceId: input.resourceId ?? input.encounterId ?? input.patientId, patientId: input.patientId, encounterId: input.encounterId, unitId: context.unitId, workspaceId: context.workspaceId, purpose: input.purpose, requestDigest, policyRevision: context.policyRevision, expiresAt: new Date(Date.now() + 5 * 60_000).toISOString(), decision: "unavailable", decidedBy: null, reason: "Ação exige confirmação contextual e não pode ser presumida.", createdAt: now() };
         const persistedApproval = this.store.persistAiApproval(pending);
         return this.result(context, session, turn, null, persistedApproval, []);
       }
       const originalTurn = this.store.aiTurns.get(approval.turnId);
       if (!originalTurn || originalTurn.prompt !== prompt) {
-        const turn = this.persistTurn(context, session, prompt, "DENIED", "Os argumentos diferem do turno aprovado; nenhum dispatch foi realizado.", this.estimateInput(prompt), 0, []);
+        const turn = this.persistTurn(context, session, prompt, "DENIED", "Os argumentos diferem do turno aprovado; nenhum dispatch foi realizado.", this.estimateInput(prompt), 0, [], { idempotencyKey: input.idempotencyKey });
         throw new DomainError("POLICY_DENIED", "A aprovação está vinculada a outros argumentos.", 403, { turnId: turn.id });
       }
     }
     const estimated = this.estimateInput(prompt);
-    const available = this.availableBudget(session.id);
-    if (available < estimated + 400) {
-      const turn = this.persistTurn(context, session, prompt, "DENIED", "Budget insuficiente antes do turno; nenhuma chamada a provider foi feita.", estimated, 0, []);
-      throw new DomainError("BUDGET_EXCEEDED", "O budget disponível não cobre este turno.", 429, { available, required: estimated + 400, turnId: turn.id });
+    let reservation: BudgetReservation;
+    try {
+      reservation = this.store.reserveBudget(context, { sessionId: session.id, category: "TOKENS", units: estimated + 400, cap: this.budgetCaps.TOKENS, ttlMs: this.budgetTtlMs });
+    } catch (error) {
+      if (error instanceof DomainError && error.code === "BUDGET_EXCEEDED") {
+        const turn = this.persistTurn(context, session, prompt, "DENIED", "Budget insuficiente antes do turno; nenhuma chamada a provider foi feita.", estimated, 0, [], { idempotencyKey: input.idempotencyKey });
+        throw new DomainError("BUDGET_EXCEEDED", "O budget disponível não cobre este turno.", 429, { ...(error.details ?? {}), turnId: turn.id });
+      }
+      throw error;
     }
     if (tool) {
       const approval = approvalId ? this.store.aiApprovals.get(approvalId) : undefined;
@@ -207,11 +241,31 @@ export class GovernedHarness {
         });
       } catch (error) {
         if (error instanceof ToolGatewayError) {
+          // Unknown outcomes keep the reservation held: the turn may have produced
+          // external usage, so capacity must not be silently released as free.
+          if (error.code !== "OUTCOME_UNKNOWN") this.store.releaseBudgetReservation(reservation.id);
           const statusCode = error.code === "INVALID_INPUT" ? 400 : error.code === "APPROVAL_REQUIRED" ? 409 : error.code === "OUTCOME_UNKNOWN" || error.code === "CAPABILITY_DISABLED" ? 503 : 403;
           throw new DomainError(error.code, error.message, statusCode, error.details);
         }
+        this.store.releaseBudgetReservation(reservation.id);
         throw error;
       }
+    }
+    // The tool/provider boundary is asynchronous. Re-check the live context
+    // before producing or exposing a completed answer; an invalid context
+    // keeps the reservation held and becomes an indeterminate turn.
+    try {
+      this.store.validateContext(context);
+    } catch {
+      let retainedUnits = reservation.reservedUnits;
+      try {
+        retainedUnits = this.store.settleBudgetReservation(reservation.id, null).reservation.consumedUnits;
+      } catch {
+        // The usage link remains on the retained turn so reconciliation can
+        // repair a failed settlement without treating it as free usage.
+      }
+      const turn = this.persistTurn(context, session, prompt, "OUTCOME_UNKNOWN", "Turn retido: a autoridade foi revogada durante a execução.", estimated, 0, [], { idempotencyKey: input.idempotencyKey, reservationId: reservation.id, reservedUnits: reservation.reservedUnits, consumedUnits: retainedUnits, usageStatus: "RECONCILIATION_REQUIRED" });
+      return this.result(context, session, turn, null, null, []);
     }
     const references = [...this.store.knowledgeDocuments.values()]
       .filter((doc) => isInContext(doc, context) && doc.status === "APPROVED" && ["D0", "D1", "D2"].includes(doc.dataClass))
@@ -220,8 +274,20 @@ export class GovernedHarness {
       .map((doc) => ({ title: doc.title, source: doc.source }));
     const response = this.composeSafeResponse(context, input, tool, references);
     const outputTokens = this.estimateOutput(response);
-    this.consumeBudget(session, estimated + outputTokens);
-    const turn = this.persistTurn(context, session, prompt, "COMPLETED", response, estimated, outputTokens, references);
+    let settlement: ReturnType<CvgStore["settleBudgetReservation"]>;
+    try {
+      settlement = this.store.settleBudgetReservation(reservation.id, estimated + outputTokens);
+    } catch {
+      const turn = this.persistTurn(context, session, prompt, "OUTCOME_UNKNOWN", "Turn retido: o settlement de budget não foi confirmado.", estimated, outputTokens, [], { idempotencyKey: input.idempotencyKey, reservationId: reservation.id, reservedUnits: reservation.reservedUnits, consumedUnits: Math.max(reservation.reservedUnits, estimated + outputTokens), usageStatus: "RECONCILIATION_REQUIRED" });
+      return this.result(context, session, turn, null, null, []);
+    }
+    try {
+      this.store.validateContext(context);
+    } catch {
+      const turn = this.persistTurn(context, session, prompt, "OUTCOME_UNKNOWN", "Turn retido: a autoridade mudou antes da conclusão.", estimated, outputTokens, [], { idempotencyKey: input.idempotencyKey, reservationId: reservation.id, reservedUnits: reservation.reservedUnits, consumedUnits: settlement.reservation.consumedUnits, usageStatus: "RECONCILIATION_REQUIRED" });
+      return this.result(context, session, turn, null, null, []);
+    }
+    const turn = this.persistTurn(context, session, prompt, "COMPLETED", response, estimated, outputTokens, references, { idempotencyKey: input.idempotencyKey, reservationId: reservation.id, reservedUnits: settlement.reservation.reservedUnits, consumedUnits: settlement.reservation.consumedUnits, usageStatus: "SETTLED" });
     if (approvalId) {
       if (this.store.aiApprovals.has(approvalId)) this.store.updateAiApproval(approvalId, { decision: "consumed" });
     }
@@ -265,10 +331,33 @@ export class GovernedHarness {
     return { draft: promoted, documentId: document.id };
   }
 
-  private persistTurn(context: CvgContext, session: AiSession, prompt: string, status: AiTurn["status"], response: string | null, inputTokens: number, outputTokens: number, references: Array<{ title: string; source: string }>): AiTurn {
+  private executionKey(context: CvgContext, input: AiTurnInput): string {
+    return `ai-turn:${digest({ version: 1, organizationId: context.organizationId, actorId: context.actorId, idempotencyKey: input.idempotencyKey })}`;
+  }
+
+  private findExistingTurn(context: CvgContext, input: AiTurnInput): AiTurn | undefined {
+    const usageKey = this.executionKey(context, input);
+    return [...this.store.aiTurns.values()].filter((turn) => {
+      if (turn.usage?.idempotencyKey !== usageKey) return false;
+      const session = this.store.aiSessions.get(turn.sessionId);
+      return Boolean(session) && session!.organizationId === context.organizationId && session!.actorId === context.actorId && session!.unitId === context.unitId && session!.workspaceId === context.workspaceId && session!.purpose === input.purpose && session!.patientId === input.patientId && session!.encounterId === input.encounterId;
+    }).at(-1);
+  }
+
+  private resultForExisting(context: CvgContext, turn: AiTurn): HarnessTurnResult {
+    const session = this.store.aiSessions.get(turn.sessionId);
+    if (!session) throw new DomainError("OUTCOME_UNKNOWN", "O turno idempotente perdeu o vínculo da sessão.", 409);
+    const draft = [...this.store.aiDrafts.values()].find((candidate) => candidate.sourceTurnId === turn.id) ?? null;
+    const approval = [...this.store.aiApprovals.values()].find((candidate) => candidate.turnId === turn.id) ?? null;
+    return this.result(context, session, turn, draft, approval, [...turn.references]);
+  }
+
+  private persistTurn(context: CvgContext, session: AiSession, prompt: string, status: AiTurn["status"], response: string | null, inputTokens: number, outputTokens: number, references: Array<{ title: string; source: string }>, options: { idempotencyKey?: string; reservationId?: OpaqueId | null; reservedUnits?: number; consumedUnits?: number; usageStatus?: NonNullable<AiTurn["usage"]>["status"] } = {}): AiTurn {
     const id = makeId();
     const usageId = makeId();
     const referencesDigest = digest(references);
+    const reservedUnits = options.reservedUnits ?? inputTokens + outputTokens;
+    const consumedUnits = options.consumedUnits ?? inputTokens + outputTokens;
     const turn: AiTurn = {
       id,
       sessionId: session.id,
@@ -282,13 +371,13 @@ export class GovernedHarness {
       provenance: { provider: "local-stub", engineCommit: DSH_ENGINE_COMMIT, manifestVersion: DSH_MANIFEST_VERSION, profileDigest: this.profileDigest, policyRevision: context.policyRevision, references, referencesDigest, correlationId: context.correlationId, usageRecordId: usageId },
       usage: {
         id: usageId,
-        reservationId: null,
+        reservationId: options.reservationId ?? null,
         providerRequestId: null,
-        idempotencyKey: `ai-turn:${id}`,
+        idempotencyKey: options.idempotencyKey ? `ai-turn:${digest({ version: 1, organizationId: context.organizationId, actorId: context.actorId, idempotencyKey: options.idempotencyKey })}` : `ai-turn:${id}`,
         usageKind: "TOKENS",
-        reservedUnits: inputTokens + outputTokens,
-        consumedUnits: inputTokens + outputTokens,
-        status: status === "OUTCOME_UNKNOWN" ? "RECONCILIATION_REQUIRED" : "SETTLED",
+        reservedUnits,
+        consumedUnits,
+        status: options.usageStatus ?? (status === "OUTCOME_UNKNOWN" ? "RECONCILIATION_REQUIRED" : "SETTLED"),
         record: { kind: "AI_TURN_USAGE", turnId: id, sessionId: session.id, model: "cvg-local-governed-stub", provider: "local-stub", engineCommit: DSH_ENGINE_COMMIT, manifestVersion: DSH_MANIFEST_VERSION, profileDigest: this.profileDigest, policyRevision: context.policyRevision, correlationId: context.correlationId, referencesDigest, responseDigest: digest(response ?? "") },
         settlement: {
           model: "cvg-local-governed-stub",
@@ -326,19 +415,6 @@ export class GovernedHarness {
     };
     if (approval) request.approval = { approvalId: approval.id, actorId: approval.actorId, approverId: approval.decidedBy, requestDigest: approval.requestDigest, policyRevision: approval.policyRevision, expiresAt: approval.expiresAt, oneShot: true, consumed: approval.decision === "consumed" };
     return request;
-  }
-
-  private availableBudget(sessionId: OpaqueId): number {
-    return this.budgetLimit - [...this.store.budgetReservations.values()].filter((reservation) => reservation.sessionId === sessionId).reduce((sum, reservation) => sum + reservation.consumedUnits, 0);
-  }
-
-  private consumeBudget(session: AiSession, units: number): void {
-    let reservation = [...this.store.budgetReservations.values()].find((candidate) => candidate.sessionId === session.id && candidate.status === "RESERVED");
-    if (!reservation) {
-      reservation = { id: makeId(), organizationId: session.organizationId, sessionId: session.id, category: "TOKENS", reservedUnits: this.budgetLimit, consumedUnits: 0, status: "RESERVED", createdAt: now() };
-      this.store.persistBudgetReservation(reservation);
-    }
-    this.store.consumeBudgetReservation(reservation.id, units);
   }
 
   private estimateInput(prompt: string): number {

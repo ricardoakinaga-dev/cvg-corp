@@ -39,12 +39,40 @@ export class DomainCommandService {
     return this.run(context, "queue.check-in", () => this.store.checkInAppointment(context, appointmentId));
   }
 
+  confirmAppointment(context: CvgContext, appointmentId: OpaqueId, expectedVersion?: number | null): ReturnType<CvgStore["confirmAppointment"]> {
+    return this.run(context, "appointments.confirm", () => this.store.confirmAppointment(context, appointmentId, expectedVersion));
+  }
+
+  cancelAppointment(context: CvgContext, appointmentId: OpaqueId, reason: string, expectedVersion?: number | null): ReturnType<CvgStore["cancelAppointment"]> {
+    return this.run(context, "appointments.cancel", () => this.store.cancelAppointment(context, appointmentId, reason, expectedVersion));
+  }
+
+  rescheduleAppointment(context: CvgContext, appointmentId: OpaqueId, input: Parameters<CvgStore["rescheduleAppointment"]>[2]): ReturnType<CvgStore["rescheduleAppointment"]> {
+    return this.run(context, "appointments.reschedule", () => this.store.rescheduleAppointment(context, appointmentId, input));
+  }
+
+  triageQueueEntry(context: CvgContext, queueEntryId: OpaqueId, priority: Parameters<CvgStore["triageQueueEntry"]>[2]): ReturnType<CvgStore["triageQueueEntry"]> {
+    return this.run(context, "queue.triage", () => this.store.triageQueueEntry(context, queueEntryId, priority));
+  }
+
+  handoffQueueEntry(context: CvgContext, queueEntryId: OpaqueId, input: Parameters<CvgStore["handoffQueueEntry"]>[2]): ReturnType<CvgStore["handoffQueueEntry"]> {
+    return this.run(context, "queue.handoff", () => this.store.handoffQueueEntry(context, queueEntryId, input));
+  }
+
   createEncounter(context: CvgContext, input: Parameters<CvgStore["createEncounter"]>[1]): ReturnType<CvgStore["createEncounter"]> {
     return this.run(context, "encounters.create", () => this.store.createEncounter(context, input));
   }
 
   createClinicalDocument(context: CvgContext, input: Parameters<CvgStore["createClinicalDocument"]>[1]): ReturnType<CvgStore["createClinicalDocument"]> {
     return this.run(context, "clinical.write", () => this.store.createClinicalDocument(context, input));
+  }
+
+  updateClinicalDraft(context: CvgContext, documentId: OpaqueId, input: Parameters<CvgStore["updateClinicalDraft"]>[2]): ReturnType<CvgStore["updateClinicalDraft"]> {
+    return this.run(context, "clinical.write", () => this.store.updateClinicalDraft(context, documentId, input));
+  }
+
+  reviewClinicalDocument(context: CvgContext, documentId: OpaqueId, expectedVersion: string | null): ReturnType<CvgStore["reviewClinicalDocument"]> {
+    return this.run(context, "clinical.draft", () => this.store.reviewClinicalDocument(context, documentId, expectedVersion));
   }
 
   signClinicalDocument(context: CvgContext, documentId: OpaqueId, expectedVersion: string | null = null): ReturnType<CvgStore["signClinicalDocument"]> {
@@ -67,6 +95,10 @@ export class DomainCommandService {
     return this.run(context, "diagnostics.result", () => this.store.createResult(context, input));
   }
 
+  reviewDiagnosticRequest(context: CvgContext, requestId: OpaqueId): ReturnType<CvgStore["reviewDiagnosticRequest"]> {
+    return this.run(context, "diagnostics.review", () => this.store.reviewDiagnosticRequest(context, requestId));
+  }
+
   createHospitalEpisode(context: CvgContext, input: Parameters<CvgStore["createHospitalEpisode"]>[1]): ReturnType<CvgStore["createHospitalEpisode"]> {
     return this.run(context, "hospitalization.create", () => this.store.createHospitalEpisode(context, input));
   }
@@ -83,8 +115,32 @@ export class DomainCommandService {
     return this.run(context, "medication.administer", () => this.store.administerMedication(context, medicationOrderId, status, note));
   }
 
+  updateHospitalEpisodeStatus(context: CvgContext, episodeId: OpaqueId, status: Parameters<CvgStore["updateHospitalEpisodeStatus"]>[2]): ReturnType<CvgStore["updateHospitalEpisodeStatus"]> {
+    return this.run(context, "hospitalization.update", () => this.store.updateHospitalEpisodeStatus(context, episodeId, status));
+  }
+
+  dischargeHospitalEpisode(context: CvgContext, episodeId: OpaqueId): ReturnType<CvgStore["dischargeHospitalEpisode"]> {
+    return this.run(context, "hospitalization.discharge", () => this.store.dischargeHospitalEpisode(context, episodeId));
+  }
+
+  updateMedicationOrderStatus(context: CvgContext, medicationOrderId: OpaqueId, status: Parameters<CvgStore["updateMedicationOrderStatus"]>[2]): ReturnType<CvgStore["updateMedicationOrderStatus"]> {
+    return this.run(context, "medication.update", () => this.store.updateMedicationOrderStatus(context, medicationOrderId, status));
+  }
+
   createStockMovement(context: CvgContext, input: Parameters<CvgStore["createStockMovement"]>[1]): ReturnType<CvgStore["createStockMovement"]> {
     return this.run(context, "stock.write", () => this.store.createStockMovement(context, input));
+  }
+
+  createProduct(context: CvgContext, input: Parameters<CvgStore["createProduct"]>[1]): ReturnType<CvgStore["createProduct"]> {
+    return this.run(context, "stock.write", () => this.store.createProduct(context, input));
+  }
+
+  createLot(context: CvgContext, input: Parameters<CvgStore["createLot"]>[1]): ReturnType<CvgStore["createLot"]> {
+    return this.run(context, "stock.write", () => this.store.createLot(context, input));
+  }
+
+  adjustStockInventory(context: CvgContext, input: Parameters<CvgStore["adjustStockInventory"]>[1]): ReturnType<CvgStore["adjustStockInventory"]> {
+    return this.run(context, "stock.inventory", () => this.store.adjustStockInventory(context, input));
   }
 
   createCharge(context: CvgContext, input: Parameters<CvgStore["createCharge"]>[1]): ReturnType<CvgStore["createCharge"]> {
@@ -101,6 +157,18 @@ export class DomainCommandService {
 
   createKnowledgeDocument(context: CvgContext, input: Parameters<CvgStore["createKnowledgeDocument"]>[1]): ReturnType<CvgStore["createKnowledgeDocument"]> {
     return this.run(context, "knowledge.write", () => this.store.createKnowledgeDocument(context, input));
+  }
+
+  approveKnowledgeDocument(context: CvgContext, documentId: OpaqueId, expectedVersion: number | null = null): ReturnType<CvgStore["approveKnowledgeDocument"]> {
+    return this.run(context, "knowledge.approve", () => this.store.approveKnowledgeDocument(context, documentId, expectedVersion));
+  }
+
+  indexKnowledgeDocument(context: CvgContext, documentId: OpaqueId, expectedVersion: number | null = null): ReturnType<CvgStore["indexKnowledgeDocument"]> {
+    return this.run(context, "knowledge.index", () => this.store.indexKnowledgeDocument(context, documentId, expectedVersion));
+  }
+
+  quarantineKnowledgeDocument(context: CvgContext, documentId: OpaqueId, reason: string, expectedVersion: number | null = null): ReturnType<CvgStore["quarantineKnowledgeDocument"]> {
+    return this.run(context, "knowledge.quarantine", () => this.store.quarantineKnowledgeDocument(context, documentId, reason, expectedVersion));
   }
 
   createMessage(context: CvgContext, input: Parameters<CvgStore["createMessage"]>[1]): ReturnType<CvgStore["createMessage"]> {

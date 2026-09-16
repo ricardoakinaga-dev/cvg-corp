@@ -1,0 +1,908 @@
+[
+  {
+    "arquivo": "docs/00-fontes-e-premissas.md",
+    "tipo": "especificação/estado",
+    "linhas": 103,
+    "sha256": "3524b5b6e0256fc6b57f68c17c32e594a3ea9011333551a4ee8bca84cf2b8200"
+  },
+  {
+    "arquivo": "docs/00-quality-bar-v1.md",
+    "tipo": "especificação/estado",
+    "linhas": 96,
+    "sha256": "b91d089099c4810119a016b157627f8a157f6422548ef3d5a6d9d857dc5a3049"
+  },
+  {
+    "arquivo": "docs/01-prd-cvg.md",
+    "tipo": "especificação/estado",
+    "linhas": 275,
+    "sha256": "92784ca1b0d3c6242ed2a4daa4364eef8a595d5e87ed3e3ed388e42d67e69ef2"
+  },
+  {
+    "arquivo": "docs/02-arquitetura-alvo.md",
+    "tipo": "especificação/estado",
+    "linhas": 269,
+    "sha256": "21f5c44578b380c4738067003551d53c9a646c64ccf69ae28749930c2ff06d90"
+  },
+  {
+    "arquivo": "docs/03-dominio-dados-contratos.md",
+    "tipo": "especificação/estado",
+    "linhas": 562,
+    "sha256": "384d60a301cd920d31970f04c30e207c870532c3dc06f162d9d7fa0494c8219b"
+  },
+  {
+    "arquivo": "docs/04-motor-deepseek-e-plugins.md",
+    "tipo": "especificação/estado",
+    "linhas": 349,
+    "sha256": "8bbc0306cf7be2520ef7a5b9e2075f913308d641470dace2dce1df36cf2a7f5d"
+  },
+  {
+    "arquivo": "docs/05-seguranca-privacidade.md",
+    "tipo": "especificação/estado",
+    "linhas": 365,
+    "sha256": "dbd6466227ff13ce673171466a29986d1d843700de02de757a550a88eb987c78"
+  },
+  {
+    "arquivo": "docs/06-operacao-qualidade-e-recuperacao.md",
+    "tipo": "especificação/estado",
+    "linhas": 153,
+    "sha256": "26e19045d94812823f56c67a4c398ca8bc5b73389ef1ea9b9d950b1f571a8d8c"
+  },
+  {
+    "arquivo": "docs/07-plano-execucao.md",
+    "tipo": "especificação/estado",
+    "linhas": 362,
+    "sha256": "3e7c0c57eebfe57dae95335d94b9ba5cb5eaafb9804d380d62647350e5b32371"
+  },
+  {
+    "arquivo": "docs/08-rastreabilidade-e-decisoes.md",
+    "tipo": "especificação/estado",
+    "linhas": 259,
+    "sha256": "14e7742dc8b2393b9ff1ea1b16434e6c02086239ba87ff6184bfb6b7b4fe5b0e"
+  },
+  {
+    "arquivo": "docs/09-gauntlet-verdict.md",
+    "tipo": "evidência/registro histórico; não prova atual",
+    "linhas": 199,
+    "sha256": "c8193031cfc1d47c50e2db526d2c64e162e67d46bc8e17886880d1b9534b7fa0"
+  },
+  {
+    "arquivo": "docs/10-preparacao-m1.md",
+    "tipo": "especificação/estado",
+    "linhas": 68,
+    "sha256": "013a647be28cc17a855c65f9194739e3efa7d2052ec395541e8483865a079ac9"
+  },
+  {
+    "arquivo": "docs/11-transicao-para-producao.md",
+    "tipo": "especificação/estado",
+    "linhas": 61,
+    "sha256": "5b4fe1eaf6e1101d9b704008311741e7ae632c3a33f1d524f32ebe76c1709328"
+  },
+  {
+    "arquivo": "docs/12-estado-da-implementacao.md",
+    "tipo": "especificação/estado",
+    "linhas": 270,
+    "sha256": "36f6f930d5968f5455f5b8e24e0c17a2c1b532d28f0cbad0671a3c0776421856"
+  },
+  {
+    "arquivo": "docs/README.md",
+    "tipo": "especificação/estado",
+    "linhas": 111,
+    "sha256": "5ace20a1fe64e9352d13d0593f37b0a97ec086f4e7aa45701484bd42c6995930"
+  },
+  {
+    "arquivo": "docs/accessibility-proof.md",
+    "tipo": "evidência/registro histórico; não prova atual",
+    "linhas": 23,
+    "sha256": "043e5f7b025e450cd8f60441ee1c3f13c953551893a73fdebb7b5e4f5cfd7338"
+  },
+  {
+    "arquivo": "docs/adr/001-agent-runtime-boundary.md",
+    "tipo": "decisão arquitetural",
+    "linhas": 7,
+    "sha256": "77d72062b2da9b394d2a52e4f077c12b10649677e8bc7dc6beb913844a26858e"
+  },
+  {
+    "arquivo": "docs/adr/002-tool-gateway.md",
+    "tipo": "decisão arquitetural",
+    "linhas": 7,
+    "sha256": "d9b2f8f6c198d2c74674881e9c1c8e03dc02005e2e1b55397e082d9b5b785b15"
+  },
+  {
+    "arquivo": "docs/adr/003-pdp-abac.md",
+    "tipo": "decisão arquitetural",
+    "linhas": 7,
+    "sha256": "abc6cc26ea019f1f0dc64ce5407042a8aa83dbea6e2c8c782619a3d9fecbca1d"
+  },
+  {
+    "arquivo": "docs/adr/004-persistence-and-ledgers.md",
+    "tipo": "decisão arquitetural",
+    "linhas": 7,
+    "sha256": "9c5d82945c68e6f36effd3f2a2a27a9a602969d408877c4e2865e5133eb516df"
+  },
+  {
+    "arquivo": "docs/adr/005-worker-and-effects.md",
+    "tipo": "decisão arquitetural",
+    "linhas": 7,
+    "sha256": "713a276d132b0555db1bd7ab3dbb579bd89794a14b7449a21637268309e7e07b"
+  },
+  {
+    "arquivo": "docs/adr/006-secret-provider.md",
+    "tipo": "decisão arquitetural",
+    "linhas": 7,
+    "sha256": "ab0086a4cae7b68002226be15da82c2d27fddcd09ca17037d4b622f6f841583a"
+  },
+  {
+    "arquivo": "docs/adr/007-deployment-and-observability.md",
+    "tipo": "decisão arquitetural",
+    "linhas": 7,
+    "sha256": "b96b1578804cd704a7f920f0da45be70c3ba9af8b0fe735b3444f3dac44178e8"
+  },
+  {
+    "arquivo": "docs/adr/008-recovery-and-release.md",
+    "tipo": "decisão arquitetural",
+    "linhas": 7,
+    "sha256": "d1cad2e24e09a0cdf393f1a420bb8cace7e743c104096ee26b1e0a75e5029880"
+  },
+  {
+    "arquivo": "docs/adr/009-deepseek-harness-external-runtime.md",
+    "tipo": "decisão arquitetural",
+    "linhas": 7,
+    "sha256": "9ae82e93dcd5ddcf59c94d35ac60fe28fc15a6b9a85315c2719a193b8dd858fa"
+  },
+  {
+    "arquivo": "docs/adr/010-postgresql-rls.md",
+    "tipo": "decisão arquitetural",
+    "linhas": 7,
+    "sha256": "ecbc910f1789c4b11c8962c1288510005f828401cca95bddf2fbab3a955e6503"
+  },
+  {
+    "arquivo": "docs/adr/011-approval-model.md",
+    "tipo": "decisão arquitetural",
+    "linhas": 7,
+    "sha256": "b84dfbae25dacbcfd5b9536484734ef4ebc8bb8bf49d45104c64b8012c7daf35"
+  },
+  {
+    "arquivo": "docs/adr/012-ai-source-of-truth.md",
+    "tipo": "decisão arquitetural",
+    "linhas": 7,
+    "sha256": "cb2f0122baed6a9f4e1ee23affb9651f9e5baf6bcc3c2b5630a8af9e8310eb15"
+  },
+  {
+    "arquivo": "docs/adr/013-restore-quarantine.md",
+    "tipo": "decisão arquitetural",
+    "linhas": 7,
+    "sha256": "ddb027df92aa55007364670617999cce0cee1d697d8397c810391274553e35b2"
+  },
+  {
+    "arquivo": "docs/adr/014-authentication-boundary.md",
+    "tipo": "decisão arquitetural",
+    "linhas": 21,
+    "sha256": "4ff1595161feab11c3ba572f0df03049cfdb044c76abbc78884473ce19bac331"
+  },
+  {
+    "arquivo": "docs/adr/015-deepseek-bridge-contract.md",
+    "tipo": "decisão arquitetural",
+    "linhas": 24,
+    "sha256": "9b79a6632dfdcaa66a47139244fdeeb704b37623b0aff8d0829c843d1af91c21"
+  },
+  {
+    "arquivo": "docs/adr/016-authoritative-normalized-commands.md",
+    "tipo": "decisão arquitetural",
+    "linhas": 65,
+    "sha256": "ff0a32b4bc72f936450d16804676e09d5f4edd529eb3fe2c8f1fe85ece12f448"
+  },
+  {
+    "arquivo": "docs/adr/017-worker-effect-ledger-composition.md",
+    "tipo": "decisão arquitetural",
+    "linhas": 51,
+    "sha256": "ac8658f646ecbccde872b72da2b293d91f77aff8d2e12e704f65dd4e78015abd"
+  },
+  {
+    "arquivo": "docs/adr/018-restore-audit-receipt-durability.md",
+    "tipo": "decisão arquitetural",
+    "linhas": 42,
+    "sha256": "053bc9e8d65a9a4c1ba38aada9c7968cbbd29c7b7492435f9423c4e1cdf2094f"
+  },
+  {
+    "arquivo": "docs/adr/019-universal-durable-command-idempotency.md",
+    "tipo": "decisão arquitetural",
+    "linhas": 69,
+    "sha256": "41230f50265897c42a9f6e0668a2e18bb8f0cc324ac2026216e2683c00bdc298"
+  },
+  {
+    "arquivo": "docs/adr/020-universal-pdp-boundary-guard.md",
+    "tipo": "decisão arquitetural",
+    "linhas": 63,
+    "sha256": "597b73512e6d4aff243e545587f290331eedcb51259e91cac17a5f871e59a77d"
+  },
+  {
+    "arquivo": "docs/adr/021-authoritative-normalized-guardian-write.md",
+    "tipo": "decisão arquitetural",
+    "linhas": 72,
+    "sha256": "631721ef46c6b77c0ad329f16e9ea95f2a9aaed59206054426d43576171a7c8e"
+  },
+  {
+    "arquivo": "docs/adr/022-authoritative-diagnostic-request-write.md",
+    "tipo": "decisão arquitetural",
+    "linhas": 66,
+    "sha256": "aee3bf6d0c82d0ab49ac4119c7fb92c46a72325882290362c69e32fc189ddb85"
+  },
+  {
+    "arquivo": "docs/adr/023-authoritative-diagnostic-child-writes.md",
+    "tipo": "decisão arquitetural",
+    "linhas": 80,
+    "sha256": "13d2dc009d987240da159976467ce4e2f8e3a10a7ad4fb6d4ff15d6a578ed223"
+  },
+  {
+    "arquivo": "docs/adr/024-runtime-route-catalog-admission.md",
+    "tipo": "decisão arquitetural",
+    "linhas": 45,
+    "sha256": "6a672e7210045041b524f7dcb1a5cd80c50310772dbfcd6f4e1bc5b08139e41d"
+  },
+  {
+    "arquivo": "docs/adr/025-application-and-worker-policy-admission.md",
+    "tipo": "decisão arquitetural",
+    "linhas": 14,
+    "sha256": "303c45108b2d261788102dc448ca8e0244eaa8c04cac2b6235e9ea404aace3af"
+  },
+  {
+    "arquivo": "docs/adr/026-universal-authoritative-invariants.md",
+    "tipo": "decisão arquitetural",
+    "linhas": 17,
+    "sha256": "e2f490981a075ed74abf46b02d08c0aa2f302a48cd9f51ead0511a56ac70eebc"
+  },
+  {
+    "arquivo": "docs/adr/027-worker-handler-runtime-and-backpressure.md",
+    "tipo": "decisão arquitetural",
+    "linhas": 21,
+    "sha256": "f55de0ba8a3056029d545253148a3fbf6e34c72268cb0efbbd98aba42c11601c"
+  },
+  {
+    "arquivo": "docs/adr/028-deepseek-acp-governance-boundary.md",
+    "tipo": "decisão arquitetural",
+    "linhas": 36,
+    "sha256": "78dacaecccea012dd760d7f33f75ba72a59d1c60da03062ea05b38e6b02430aa"
+  },
+  {
+    "arquivo": "docs/adr/029-architecture-boundaries-and-ownership.md",
+    "tipo": "decisão arquitetural",
+    "linhas": 116,
+    "sha256": "644085a05011bc06b589be0c87cb20f6708e26618c45ed2a39d71989d2998503"
+  },
+  {
+    "arquivo": "docs/adr/030-contracts-session-finance-compatibility.md",
+    "tipo": "decisão arquitetural",
+    "linhas": 168,
+    "sha256": "2974306776dac09398dc3d2206a45a19eda24665261bd6e14bde15e58d73de41"
+  },
+  {
+    "arquivo": "docs/ai-runtime-vNext.md",
+    "tipo": "especificação/estado",
+    "linhas": 24,
+    "sha256": "7d6661e660d9977eaad4f8f78f27f0d212e63339a8fc94cecb18caa2c018ec04"
+  },
+  {
+    "arquivo": "docs/api-compatibility-proof.md",
+    "tipo": "evidência/registro histórico; não prova atual",
+    "linhas": 9,
+    "sha256": "f2b979169327410be5a57c5ad4828045708e24e654a0f5ceab2ea67e0b266674"
+  },
+  {
+    "arquivo": "docs/architecture-audit-vNext.md",
+    "tipo": "evidência/registro histórico; não prova atual",
+    "linhas": 255,
+    "sha256": "2b329a9dc0fb9fa82812d65ea5a507cbb13c7c5d928316d64b480e64615fe82f"
+  },
+  {
+    "arquivo": "docs/auditoria-2026-09-12.md",
+    "tipo": "evidência/registro histórico; não prova atual",
+    "linhas": 131,
+    "sha256": "87e95cf57d2f905e55cabf61b1aecf9825d2fed193851aac849596fd28d32ca6"
+  },
+  {
+    "arquivo": "docs/auth-boundary-vNext.md",
+    "tipo": "especificação/estado",
+    "linhas": 51,
+    "sha256": "5e2b0c9e9de69840682a8ad05bd95666dc043a447e2b5ab274cb14af2ff649f7"
+  },
+  {
+    "arquivo": "docs/authoritative-write-proof.md",
+    "tipo": "evidência/registro histórico; não prova atual",
+    "linhas": 18,
+    "sha256": "abcd509759bb8c09865b0181056c7596d2d3731259524123029cacea0aa8c0a8"
+  },
+  {
+    "arquivo": "docs/benchmarks/local-baseline.md",
+    "tipo": "especificação/estado",
+    "linhas": 19,
+    "sha256": "a54f62c6a5b8ce716a28ff35572747a6d2eb40d69d5c1eadba78dfdefb5005f0"
+  },
+  {
+    "arquivo": "docs/branch-consolidation-2026-09-11.md",
+    "tipo": "evidência/registro histórico; não prova atual",
+    "linhas": 52,
+    "sha256": "7b9a0c13f2d2c03d014d0110b4e0df8af1d70cd2238f9d4be88f74f92851386e"
+  },
+  {
+    "arquivo": "docs/chaos-proof.md",
+    "tipo": "evidência/registro histórico; não prova atual",
+    "linhas": 6,
+    "sha256": "6eba205234aca13b1283f4e90af8b315cd32a7d0a38095b19fbd414c69fd0962"
+  },
+  {
+    "arquivo": "docs/deepseek-acp-bridge.md",
+    "tipo": "especificação/estado",
+    "linhas": 51,
+    "sha256": "d110a12c28648916bb296768b54b624e34dc5e4a1ed41fb992225cf986278370"
+  },
+  {
+    "arquivo": "docs/deepseek-integration-vNext.md",
+    "tipo": "especificação/estado",
+    "linhas": 50,
+    "sha256": "b41eaeed018bebdfb0805019b4e79c736e8c1124dabcffd383deb401efdeed3b"
+  },
+  {
+    "arquivo": "docs/deepseek-production-integration.md",
+    "tipo": "especificação/estado",
+    "linhas": 63,
+    "sha256": "5cd1b41c42f5ea343c2620a42249d97a945c0fa8ca54747a1f5ffa7d497d98db"
+  },
+  {
+    "arquivo": "docs/deepseek-real-proof.md",
+    "tipo": "evidência/registro histórico; não prova atual",
+    "linhas": 49,
+    "sha256": "905a3faa758eba29a5f26fc8b5d02c55c66bd7ec1f41f01bd1ec94ab584f5d29"
+  },
+  {
+    "arquivo": "docs/deployment-vNext.md",
+    "tipo": "especificação/estado",
+    "linhas": 32,
+    "sha256": "b3c6bf3e3edd4262c4000c4995ea22a4c99cc5273c2349d3dfc2d455f91ca31c"
+  },
+  {
+    "arquivo": "docs/error-taxonomy-vNext.md",
+    "tipo": "especificação/estado",
+    "linhas": 18,
+    "sha256": "ea017ffeb631ae9668268d005d3240cde7c8ded454d7b2c02131337df45ae327"
+  },
+  {
+    "arquivo": "docs/fault-matrix-vNext.md",
+    "tipo": "especificação/estado",
+    "linhas": 23,
+    "sha256": "7df4e52c3d2be4d698d9d29704f7169baa3ca25d4bc660d79feeba0e38fd4191"
+  },
+  {
+    "arquivo": "docs/final-closure-audit.md",
+    "tipo": "evidência/registro histórico; não prova atual",
+    "linhas": 506,
+    "sha256": "15571cf072654b86a0459e33434156dc1a051452bc16c4c29e871a3e388315ce"
+  },
+  {
+    "arquivo": "docs/final-operational-proof-audit.md",
+    "tipo": "evidência/registro histórico; não prova atual",
+    "linhas": 625,
+    "sha256": "dbdd517e1cb265df3e00d2f70d8f21e609839a35a38dd23be6e1ca0033d7d555"
+  },
+  {
+    "arquivo": "docs/load-and-chaos.md",
+    "tipo": "especificação/estado",
+    "linhas": 22,
+    "sha256": "b8b8e6c156e871c2c427b297a909f189548864031cd40e660b8ce5b600f4065e"
+  },
+  {
+    "arquivo": "docs/load-proof.md",
+    "tipo": "evidência/registro histórico; não prova atual",
+    "linhas": 12,
+    "sha256": "5e2f9b139428d77d5a65524852acd18bc0b2e42492ecc6cc0bf5d2bc30545ef7"
+  },
+  {
+    "arquivo": "docs/observability-production.md",
+    "tipo": "especificação/estado",
+    "linhas": 28,
+    "sha256": "ab213fb0409f2d3a64f9d62e10a7871a30ade7a7ef6e9c80603b17ce13e80b73"
+  },
+  {
+    "arquivo": "docs/observability-proof.md",
+    "tipo": "evidência/registro histórico; não prova atual",
+    "linhas": 9,
+    "sha256": "d997bf2af23cbd5aea2f3a9e4028cefa91d4dc44413e628d470a79931c2f8bf6"
+  },
+  {
+    "arquivo": "docs/observability-vNext.md",
+    "tipo": "especificação/estado",
+    "linhas": 31,
+    "sha256": "d0d0cfe075865994564b5b5d4b1542f999dadc8889001811616b7cbf9775282b"
+  },
+  {
+    "arquivo": "docs/pdp-universal-coverage.md",
+    "tipo": "especificação/estado",
+    "linhas": 83,
+    "sha256": "6c5b0b81797417367394fa446bd32642629ccdb106e5ea3e40c9999b3bdc7a8a"
+  },
+  {
+    "arquivo": "docs/pdp-universal-proof.md",
+    "tipo": "evidência/registro histórico; não prova atual",
+    "linhas": 103,
+    "sha256": "1a510ebf2b8dbc30759bfab26ece70862fd7263becfdccf36b26fd464503a184"
+  },
+  {
+    "arquivo": "docs/performance-vNext.md",
+    "tipo": "especificação/estado",
+    "linhas": 20,
+    "sha256": "8578146b640d4aa21e1c52e0a2b23dc2fe016edd5c09a621a0311007356319d4"
+  },
+  {
+    "arquivo": "docs/plano-aaa-2026-09-12/README.md",
+    "tipo": "plano futuro; não prova implementação",
+    "linhas": 64,
+    "sha256": "d15c335847d4856ba1362267c85f17ee0ad0813488cc18d9154c84e154127384"
+  },
+  {
+    "arquivo": "docs/plano-aaa-2026-09-12/areas/01-arc.md",
+    "tipo": "plano futuro; não prova implementação",
+    "linhas": 111,
+    "sha256": "184764ccfb8f5b2563e9ed96eae87c2961f49b532c0ef1f3a4fb2daef2c1fb94"
+  },
+  {
+    "arquivo": "docs/plano-aaa-2026-09-12/areas/02-con.md",
+    "tipo": "plano futuro; não prova implementação",
+    "linhas": 109,
+    "sha256": "d24aeb9bede5f58361ce8765ac391111098a15ccf1abfccab725b37803762399"
+  },
+  {
+    "arquivo": "docs/plano-aaa-2026-09-12/areas/03-sec.md",
+    "tipo": "plano futuro; não prova implementação",
+    "linhas": 148,
+    "sha256": "705303a70304d093b761bfb0f536feef68a45ab0100b6bb84448a87992417689"
+  },
+  {
+    "arquivo": "docs/plano-aaa-2026-09-12/areas/04-aig.md",
+    "tipo": "plano futuro; não prova implementação",
+    "linhas": 118,
+    "sha256": "4f76ce8f499cb94dde881412bc3932dc5213b54bf440b662a7d58af99ed0fb36"
+  },
+  {
+    "arquivo": "docs/plano-aaa-2026-09-12/areas/05-dat.md",
+    "tipo": "plano futuro; não prova implementação",
+    "linhas": 145,
+    "sha256": "a26cb9de8d9be224d01f21bf8c4e4e149e2e9031787ff7f4b497759413d47984"
+  },
+  {
+    "arquivo": "docs/plano-aaa-2026-09-12/areas/06-wrk.md",
+    "tipo": "plano futuro; não prova implementação",
+    "linhas": 115,
+    "sha256": "a1dc3f7b21b536642a4bebbe09bf0943f7c70177a063b0f622861fc464378162"
+  },
+  {
+    "arquivo": "docs/plano-aaa-2026-09-12/areas/07-fun.md",
+    "tipo": "plano futuro; não prova implementação",
+    "linhas": 113,
+    "sha256": "26f1ac62962820a2d8a9c982d74168f4f999a48b81dd009a99b4e3549de543f1"
+  },
+  {
+    "arquivo": "docs/plano-aaa-2026-09-12/areas/08-fin.md",
+    "tipo": "plano futuro; não prova implementação",
+    "linhas": 148,
+    "sha256": "76c362cfe28ba38cf23b6320cdb8f4e8cb23520e2dbf7b543ec75cb20e5afe8f"
+  },
+  {
+    "arquivo": "docs/plano-aaa-2026-09-12/areas/09-ux.md",
+    "tipo": "plano futuro; não prova implementação",
+    "linhas": 111,
+    "sha256": "a19754821ebf343cf16e471ae1febd3612403bd8504aa3c71e86f5519e46c120"
+  },
+  {
+    "arquivo": "docs/plano-aaa-2026-09-12/areas/10-a11y.md",
+    "tipo": "plano futuro; não prova implementação",
+    "linhas": 110,
+    "sha256": "05b3bdb9bebd4f8ea08aff97fefead376876e230e44c828f0d15cfe6a482e516"
+  },
+  {
+    "arquivo": "docs/plano-aaa-2026-09-12/areas/11-qua.md",
+    "tipo": "plano futuro; não prova implementação",
+    "linhas": 110,
+    "sha256": "c0454285338124e60b90b3fd33a9f110ed7e7537fb63dd1763e93a74de5deb00"
+  },
+  {
+    "arquivo": "docs/plano-aaa-2026-09-12/areas/12-per.md",
+    "tipo": "plano futuro; não prova implementação",
+    "linhas": 113,
+    "sha256": "08737f493e3fd723ac4fde4ffebc866511493205b106a9da91c9eeea47624bdc"
+  },
+  {
+    "arquivo": "docs/plano-aaa-2026-09-12/areas/13-ops.md",
+    "tipo": "plano futuro; não prova implementação",
+    "linhas": 120,
+    "sha256": "46046307f501f0ef9e584f6da057000c3efea403bb0cd533b81a21ff6173dfa4"
+  },
+  {
+    "arquivo": "docs/plano-aaa-2026-09-12/areas/14-sup.md",
+    "tipo": "plano futuro; não prova implementação",
+    "linhas": 116,
+    "sha256": "c958bad92c92c467ad0ddb395ca94b90c59c016adc643fa0f463eb020f2d06b3"
+  },
+  {
+    "arquivo": "docs/plano-aaa-2026-09-12/areas/15-dev.md",
+    "tipo": "plano futuro; não prova implementação",
+    "linhas": 191,
+    "sha256": "8ca8add41fb44a2d87837c3aba1e271f01d551c773565f4448d9720caa55efae"
+  },
+  {
+    "arquivo": "docs/plano-aaa-2026-09-12/areas/16-doc.md",
+    "tipo": "plano futuro; não prova implementação",
+    "linhas": 137,
+    "sha256": "fdeed5413cfd664c9f89596ff70b0ba61a64b97b5c5db61f8dd48d350f7ae863"
+  },
+  {
+    "arquivo": "docs/plano-aaa-2026-09-12/backlog.json",
+    "tipo": "plano futuro; não prova implementação",
+    "linhas": 3013,
+    "sha256": "e28cd95e967cf705ec787b9ca68be46e210b96c420ddca204a1dbdef07214936"
+  },
+  {
+    "arquivo": "docs/plano-aaa-2026-09-12/backlog.md",
+    "tipo": "plano futuro; não prova implementação",
+    "linhas": 70,
+    "sha256": "f81e8081b7b3541d004adef56ac1dee2fdbbdecaedd1f7b2c746109fa5aa82c2"
+  },
+  {
+    "arquivo": "docs/plano-aaa-2026-09-12/multiagentes.md",
+    "tipo": "plano futuro; não prova implementação",
+    "linhas": 123,
+    "sha256": "1c320bdc6a879b30e39d9f00abe0c931eac669461bf808e203f73d9e4e9ab69f"
+  },
+  {
+    "arquivo": "docs/plano-aaa-2026-09-12/plano-executivo.md",
+    "tipo": "plano futuro; não prova implementação",
+    "linhas": 91,
+    "sha256": "77816c3c44f05fae32f781970d02dda89d6782789c1da2cb8aed891fcded2a4e"
+  },
+  {
+    "arquivo": "docs/plano-aaa-2026-09-12/prompt-implementacao.md",
+    "tipo": "plano futuro; não prova implementação",
+    "linhas": 194,
+    "sha256": "a2e220f90685791c0710a43d0b307960c03a145694f104e5393f51ffe3f71cfe"
+  },
+  {
+    "arquivo": "docs/plano-aaa-2026-09-12/qualidade.md",
+    "tipo": "plano futuro; não prova implementação",
+    "linhas": 159,
+    "sha256": "8eb7a275cedea9bfe6bccc09803bcf0132a785c29467535e0fa6fc921baf8e00"
+  },
+  {
+    "arquivo": "docs/plano-aaa-2026-09-12/roadmap.md",
+    "tipo": "plano futuro; não prova implementação",
+    "linhas": 76,
+    "sha256": "a22e2924a7ba34fdfe80cb1b94f079ce4fae8a18aac3a380e3d4821d41c9a7d2"
+  },
+  {
+    "arquivo": "docs/plano-aaa-2026-09-12/validacao.md",
+    "tipo": "plano futuro; não prova implementação",
+    "linhas": 32,
+    "sha256": "3b417e40b16dc696e34eb0efa4d2535ac1ef78bda8ce045aee11ac9531bf1ec1"
+  },
+  {
+    "arquivo": "docs/plano-aaa-2026-09-12/validar-plano.py",
+    "tipo": "plano futuro; não prova implementação",
+    "linhas": 103,
+    "sha256": "73e8f8bda1143e759d00fc2624ad2e2d88249c14cd2dbf363bb699cd153838c3"
+  },
+  {
+    "arquivo": "docs/postgres-concurrency-proof.md",
+    "tipo": "evidência/registro histórico; não prova atual",
+    "linhas": 45,
+    "sha256": "fba97e5cfef36ac5177cffe0711ed5c3b5eb54125af54eb90dbccee43f4b6d1d"
+  },
+  {
+    "arquivo": "docs/production-readiness-vNext.md",
+    "tipo": "especificação/estado",
+    "linhas": 36,
+    "sha256": "f566d3365a0ffab919fda5a7d1ae870807e4170056aa4caa7250be940b706a10"
+  },
+  {
+    "arquivo": "docs/production-reality-audit-vNext.md",
+    "tipo": "evidência/registro histórico; não prova atual",
+    "linhas": 144,
+    "sha256": "de7ce408a0bf6b83d21b5c8e934e17de6d308c99fbfab311a12290e0632d01fc"
+  },
+  {
+    "arquivo": "docs/prompt-final-operational-proof-2026-09-10.txt",
+    "tipo": "prompt histórico; não amplia autorização desta auditoria",
+    "linhas": 1642,
+    "sha256": "39dfbb610267b61854b972bf8513f6562b0ee374aa308f7a79b38d21f2cdeae3"
+  },
+  {
+    "arquivo": "docs/prompt-state-of-the-art-triplo-aaa-2026-09-09-v2.txt",
+    "tipo": "prompt histórico; não amplia autorização desta auditoria",
+    "linhas": 1599,
+    "sha256": "34e886f59adacf8fda46d8d54bdede259705adc6e1521590cd3c281509b0e0d9"
+  },
+  {
+    "arquivo": "docs/prompt-state-of-the-art-triplo-aaa-2026-09-09.txt",
+    "tipo": "prompt histórico; não amplia autorização desta auditoria",
+    "linhas": 1715,
+    "sha256": "e6f6cb4b81f333433d7a5e7b497b602d4c266b107fb772925aaf9d0369ebdd79"
+  },
+  {
+    "arquivo": "docs/prompt-state-of-the-art-triplo-aaa.md",
+    "tipo": "prompt histórico; não amplia autorização desta auditoria",
+    "linhas": 1940,
+    "sha256": "1fb482d752e37db2ad75fdf8c5ea8f893f9343102c42cde7da2fe32f9ad112da"
+  },
+  {
+    "arquivo": "docs/provider-integration-vNext.md",
+    "tipo": "especificação/estado",
+    "linhas": 50,
+    "sha256": "d663792b40e6c9165066da45f0c323b3402f8590b4d609504813bde3304aafc0"
+  },
+  {
+    "arquivo": "docs/provider-production-integration.md",
+    "tipo": "especificação/estado",
+    "linhas": 28,
+    "sha256": "8a12003c037702eb3dccbf8eda11a161851fe9089f8429b9b41e1405e6b564ec"
+  },
+  {
+    "arquivo": "docs/provider-real-proof.md",
+    "tipo": "evidência/registro histórico; não prova atual",
+    "linhas": 9,
+    "sha256": "2cc62a95873377fef8edaa29eac545c342037e759236469a1344085640452000"
+  },
+  {
+    "arquivo": "docs/recovery-proof-final.md",
+    "tipo": "evidência/registro histórico; não prova atual",
+    "linhas": 7,
+    "sha256": "d529a48b35fcdffc0cadc3555583d114b7eb2eb06f07865d8c86a6c340ea20c2"
+  },
+  {
+    "arquivo": "docs/recovery-proof.md",
+    "tipo": "evidência/registro histórico; não prova atual",
+    "linhas": 26,
+    "sha256": "91d77c54563447e923280db09025da8742ad0d37b121523866da3fd89f2b4472"
+  },
+  {
+    "arquivo": "docs/recovery-vNext.md",
+    "tipo": "especificação/estado",
+    "linhas": 31,
+    "sha256": "6331846ecbaf500e023ac9d6de8818140291d5ec99ae7e8ba469137cfaa3bbc4"
+  },
+  {
+    "arquivo": "docs/release-provenance.md",
+    "tipo": "especificação/estado",
+    "linhas": 15,
+    "sha256": "c18e2d268ae9ced186902b6feb852aa96d4fcdb9f2f3beb0d1d4281d208ff457"
+  },
+  {
+    "arquivo": "docs/runbooks/backup-incidente.md",
+    "tipo": "procedimento operacional",
+    "linhas": 38,
+    "sha256": "c3c32b5f89d1142b3fcaa4f3158f4dc271f2a9d28272909f74ef8806c2905579"
+  },
+  {
+    "arquivo": "docs/runbooks/backup.md",
+    "tipo": "procedimento operacional",
+    "linhas": 17,
+    "sha256": "52df8c44aba383c91fa6a3149eca59f594930cf9f9d7d64e44d9cdddbbabd2da"
+  },
+  {
+    "arquivo": "docs/runbooks/break-glass.md",
+    "tipo": "procedimento operacional",
+    "linhas": 10,
+    "sha256": "e00b11fc4478e95e16e44f7250cf24080f7095ad4220f85f531d59413edf81b2"
+  },
+  {
+    "arquivo": "docs/runbooks/credential-rotation.md",
+    "tipo": "procedimento operacional",
+    "linhas": 10,
+    "sha256": "d4a082c462009a247bb0db3026b49d21ec720fdbc6267b5f920d854ae5061486"
+  },
+  {
+    "arquivo": "docs/runbooks/database-incident.md",
+    "tipo": "procedimento operacional",
+    "linhas": 11,
+    "sha256": "51ca3df252d2b56ae14ebdb667eefbf1dfa983e0fdaa4ae0476f23cbf0e979a3"
+  },
+  {
+    "arquivo": "docs/runbooks/deepseek-bridge-outage.md",
+    "tipo": "procedimento operacional",
+    "linhas": 25,
+    "sha256": "15b2b2ecbca69820cd0e8f6ffa6600b22748ef2aede8c9665007798d10cfbc3a"
+  },
+  {
+    "arquivo": "docs/runbooks/deepseek-harness-outage.md",
+    "tipo": "procedimento operacional",
+    "linhas": 8,
+    "sha256": "d248c4acda6c4d6d0c4e53f4f890c53f28056eee872521a0d3792421908ad29f"
+  },
+  {
+    "arquivo": "docs/runbooks/deploy.md",
+    "tipo": "procedimento operacional",
+    "linhas": 27,
+    "sha256": "3a0af87f3a695305d5d47356a0708dc14ed55c5b8c4e0df8dd1ba95899df3a8e"
+  },
+  {
+    "arquivo": "docs/runbooks/deployment.md",
+    "tipo": "procedimento operacional",
+    "linhas": 13,
+    "sha256": "6276017ed69029685309293bc153018712b418d2f7baed4b4fe2919551b4ad3e"
+  },
+  {
+    "arquivo": "docs/runbooks/provider-outage.md",
+    "tipo": "procedimento operacional",
+    "linhas": 8,
+    "sha256": "7ad8ed723452e7117f4390705b6321f6b35dd13f613abc68b10c39eb2886679a"
+  },
+  {
+    "arquivo": "docs/runbooks/quarantine.md",
+    "tipo": "procedimento operacional",
+    "linhas": 8,
+    "sha256": "c0a0b43e64ec69525890d8f99e35d8064cabc664e78356492472ca098ffdd6b4"
+  },
+  {
+    "arquivo": "docs/runbooks/restore.md",
+    "tipo": "procedimento operacional",
+    "linhas": 10,
+    "sha256": "4e27bcf859b032b44aefa27a98a79b549b0c21440db999b19cccb784f1875087"
+  },
+  {
+    "arquivo": "docs/runbooks/rollback.md",
+    "tipo": "procedimento operacional",
+    "linhas": 21,
+    "sha256": "c59f56fc3f87dc268f3ab38f5ce3bb9f8f2be103ec80a5fafd28965c9da6df79"
+  },
+  {
+    "arquivo": "docs/runbooks/security-incident.md",
+    "tipo": "procedimento operacional",
+    "linhas": 8,
+    "sha256": "c0f41b70ba1b426d3cfb42f94815c29b2045e7007c6eeceab33205f30a2bb24b"
+  },
+  {
+    "arquivo": "docs/runbooks/slo-breach.md",
+    "tipo": "procedimento operacional",
+    "linhas": 27,
+    "sha256": "ec36a24c067b7b0cc285d77b20eac657da6a39f82ed602f36e62a806e066590e"
+  },
+  {
+    "arquivo": "docs/runbooks/worker-backlog.md",
+    "tipo": "procedimento operacional",
+    "linhas": 12,
+    "sha256": "ae3039b4b07f8d67f9f1dcb7ff6dd0e69d119418aa12d6d0bf09f31dbb5c5e2f"
+  },
+  {
+    "arquivo": "docs/security-red-team-final.md",
+    "tipo": "especificação/estado",
+    "linhas": 9,
+    "sha256": "6882d86d3d05a667dd24dc179b377114b70eb43a01b5f9643ef74cac1fa13414"
+  },
+  {
+    "arquivo": "docs/security-review-vNext.md",
+    "tipo": "especificação/estado",
+    "linhas": 27,
+    "sha256": "e35acd598af405ebdb680b0500947c6541ad3e02f96b48fd6a8a1a556d9cb9a9"
+  },
+  {
+    "arquivo": "docs/staging-vNext.md",
+    "tipo": "especificação/estado",
+    "linhas": 28,
+    "sha256": "1b1830864746d80d80cb48f13a74154cbd854c6ca273ecdcc72f6742409f61fe"
+  },
+  {
+    "arquivo": "docs/staging.md",
+    "tipo": "especificação/estado",
+    "linhas": 22,
+    "sha256": "158c0b94d0132f8c93fb0353fd3117fe2fa9de0b6021b3bb453d2879fcb5cac9"
+  },
+  {
+    "arquivo": "docs/state-of-the-art-scorecard.md",
+    "tipo": "evidência/registro histórico; não prova atual",
+    "linhas": 28,
+    "sha256": "da623292f87f87f5369503cb3de8bbaba36da4c5047598e52f20fc8c13f8d5c3"
+  },
+  {
+    "arquivo": "docs/triple-aaa-final-scorecard.md",
+    "tipo": "evidência/registro histórico; não prova atual",
+    "linhas": 496,
+    "sha256": "020c6c2e2ad915c587f58190558dffcc721e3c9b44d7fc6db85db24577afa246"
+  },
+  {
+    "arquivo": "docs/usage-settlement-proof.md",
+    "tipo": "evidência/registro histórico; não prova atual",
+    "linhas": 16,
+    "sha256": "c2543c999a6e5a9461a5669efd89c8fdec5176e2e667a6aac79347a6184b8184"
+  },
+  {
+    "arquivo": "docs/verification-2026-09-10-appointment-source-write.md",
+    "tipo": "evidência/registro histórico; não prova atual",
+    "linhas": 77,
+    "sha256": "57ed1385457233d32770a99809ddd9e55c9cbbd266f87ad6a4152afa56bb10b7"
+  },
+  {
+    "arquivo": "docs/verification-2026-09-10-clinical-sign.md",
+    "tipo": "evidência/registro histórico; não prova atual",
+    "linhas": 101,
+    "sha256": "529de3b7fefce0c480db2ec508c2863105e1bbabf02d1cd6c25f2b85397c964b"
+  },
+  {
+    "arquivo": "docs/verification-2026-09-10-diagnostic-child-source-writes.md",
+    "tipo": "evidência/registro histórico; não prova atual",
+    "linhas": 54,
+    "sha256": "3523cae1d7ccdc04575804edd3ea929f8ae0f1b03fd303ddcbcd38b33b194eb9"
+  },
+  {
+    "arquivo": "docs/verification-2026-09-10-diagnostic-request-source-write.md",
+    "tipo": "evidência/registro histórico; não prova atual",
+    "linhas": 93,
+    "sha256": "370a9d6edb9da38d1e2bfbc498416ea058131897b8c4f84ab6475333377350cd"
+  },
+  {
+    "arquivo": "docs/verification-2026-09-10-durable-idempotency.md",
+    "tipo": "evidência/registro histórico; não prova atual",
+    "linhas": 70,
+    "sha256": "2eeef4e752085cd8d604cd963b0b63c084b0a5be27098594a8babbdbd04fe98b"
+  },
+  {
+    "arquivo": "docs/verification-2026-09-10-encounter-source-write.md",
+    "tipo": "evidência/registro histórico; não prova atual",
+    "linhas": 86,
+    "sha256": "4817e7a00b7e96684c9820dd67b2ad6e49bb398590d368975f1a996f0b4628ca"
+  },
+  {
+    "arquivo": "docs/verification-2026-09-10-guardian-source-write.md",
+    "tipo": "evidência/registro histórico; não prova atual",
+    "linhas": 61,
+    "sha256": "eff39bb1ec0f084a259661c538a2a160ee3611f1f802932a83861fdc64b230f5"
+  },
+  {
+    "arquivo": "docs/verification-2026-09-10-local-closure.md",
+    "tipo": "evidência/registro histórico; não prova atual",
+    "linhas": 570,
+    "sha256": "80eeb037a24f53459ab17088040acbb6d2c5a6c0ffb1c3b29e9bf032ee4b6fa8"
+  },
+  {
+    "arquivo": "docs/verification-2026-09-10-patient-source-write.md",
+    "tipo": "evidência/registro histórico; não prova atual",
+    "linhas": 68,
+    "sha256": "f916e0e273a49d6ae7455135b3f1990a5a30575ba96819f253d75486b96718b8"
+  },
+  {
+    "arquivo": "docs/verification-2026-09-10-pdp-operational-repair.md",
+    "tipo": "evidência/registro histórico; não prova atual",
+    "linhas": 22,
+    "sha256": "7704937ec22f35ae267a9a11e27c7fb02d72e43892826ed899ed580238f40db4"
+  },
+  {
+    "arquivo": "docs/verification-2026-09-10-pdp-universal-guard.md",
+    "tipo": "evidência/registro histórico; não prova atual",
+    "linhas": 53,
+    "sha256": "e23fc778af83671bb054884eb1a192145e7df35f78008a2105a5491b56b48e00"
+  },
+  {
+    "arquivo": "docs/verification-2026-09-10-restore-audit-receipt.md",
+    "tipo": "evidência/registro histórico; não prova atual",
+    "linhas": 36,
+    "sha256": "dd86941ca0035c6113bfee272b3012f3ca064e7d8cc88f57da39623f5c610a8f"
+  },
+  {
+    "arquivo": "docs/verification-2026-09-10-worker-effect-ledger.md",
+    "tipo": "evidência/registro histórico; não prova atual",
+    "linhas": 48,
+    "sha256": "c0333e4e2836ae2f1ae873735b2f901fbb5790e1755028d60d2cf9f1365cc35f"
+  },
+  {
+    "arquivo": "docs/verification-vNext.md",
+    "tipo": "evidência/registro histórico; não prova atual",
+    "linhas": 240,
+    "sha256": "78063cfb24420084de42a0b8c3e86b8e1e680724e01acd6aca93cca4489314dd"
+  },
+  {
+    "arquivo": "docs/visual-qa-vNext.md",
+    "tipo": "especificação/estado",
+    "linhas": 73,
+    "sha256": "8fa8fad14448392d6dd736431e6cbd9625f2b665a8ebc4590ad5114ef940234f"
+  },
+  {
+    "arquivo": "docs/worker-production-proof.md",
+    "tipo": "evidência/registro histórico; não prova atual",
+    "linhas": 65,
+    "sha256": "99bf445dfc1e3e3cc635afb0805fedbea2c092f6f077303b485577e5ead66a99"
+  }
+]

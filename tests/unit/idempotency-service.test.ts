@@ -20,9 +20,10 @@ function input(store: CvgStore, body: unknown = { value: 1 }): IdempotencyInput 
 
 function fakePersistence(
   claim: PostgresPersistence["claimCommandReceipt"],
-  settle: PostgresPersistence["settleCommandReceipt"] = async () => undefined
+  settle: PostgresPersistence["settleCommandReceipt"] = async () => undefined,
+  markDispatched: PostgresPersistence["markCommandReceiptDispatched"] = async () => null
 ): PostgresPersistence {
-  return { claimCommandReceipt: claim, settleCommandReceipt: settle } as unknown as PostgresPersistence;
+  return { claimCommandReceipt: claim, settleCommandReceipt: settle, markCommandReceiptDispatched: markDispatched } as unknown as PostgresPersistence;
 }
 
 test("durable command executor claims before work and replays without invoking work", async () => {
@@ -65,7 +66,7 @@ test("durable command executor rejects a concurrent claim before the callback", 
       workCalls += 1;
       return true;
     }),
-    (error: unknown) => error instanceof DomainError && error.code === "OUTCOME_UNKNOWN"
+    (error: unknown) => error instanceof DomainError && error.code === "ADMISSION_IN_PROGRESS" && typeof error.details?.claimExpiresAt === "string"
   );
   assert.equal(workCalls, 0);
 });
@@ -152,6 +153,53 @@ test("an external idempotency replay returns the stored result without a second 
   assert.equal(remoteCalls, 1);
   assert.equal(replay.replayed, true);
   assert.deepEqual(replay.value, first.value);
+});
+
+test("external command never calls the provider when the durable dispatch fence is lost", async () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const command = { ...input(store), key: "remote-fence-loss-test-1" };
+  const receipt = newCommandReceipt(command);
+  let workCalls = 0;
+  let fenceCalls = 0;
+  const persistence = fakePersistence(
+    async () => ({ status: "CLAIMED", receipt }),
+    async () => undefined,
+    async () => {
+      fenceCalls += 1;
+      return null;
+    }
+  );
+  const executor = new DurableIdempotencyService(store, persistence);
+
+  await assert.rejects(
+    () => executor.execute(command, () => {
+      workCalls += 1;
+      return { providerRequestId: "must-not-dispatch" };
+    }, { external: true }),
+    (error: unknown) => error instanceof DomainError && error.code === "OUTCOME_UNKNOWN" && error.details?.failurePhase === "PRE_DISPATCH"
+  );
+  assert.equal(fenceCalls, 1);
+  assert.equal(workCalls, 0);
+});
+
+test("an external failure after the dispatch fence is always outcome unknown", async () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const command = { ...input(store), key: "remote-post-dispatch-failure-test-1" };
+  const receipt = newCommandReceipt(command);
+  let settled: { status: string; failurePhase: string | null } | null = null;
+  const persistence = fakePersistence(
+    async () => ({ status: "CLAIMED", receipt }),
+    async (value) => { settled = { status: value.status, failurePhase: value.failurePhase ?? null }; },
+    async () => ({ ...receipt, dispatchState: "DISPATCHED" })
+  );
+  const executor = new DurableIdempotencyService(store, persistence);
+
+  await assert.rejects(
+    () => executor.execute(command, async () => { throw new Error("provider connection dropped after dispatch"); }, { external: true }),
+    (error: unknown) => error instanceof Error && error.message === "provider connection dropped after dispatch"
+  );
+  assert.deepEqual(settled, { status: "OUTCOME_UNKNOWN", failurePhase: "POST_DISPATCH" });
+  assert.equal(store.commandReceipts.get(receipt.idempotencyLookup)?.status, "OUTCOME_UNKNOWN");
 });
 
 test("concurrent in-memory external claims admit one provider call", async () => {

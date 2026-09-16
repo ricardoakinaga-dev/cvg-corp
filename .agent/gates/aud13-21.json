@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "gate_id": "GATE-CVG-AUD13-21",
+  "task_id": "AUD13-21",
+  "status": "PASS",
+  "decision": "PASS",
+  "score": 8.0,
+  "critic_artifact": null,
+  "subject": {
+    "head_sha": "1c22c5dc79c52151f4c7c94c4402dfdc86812cbc",
+    "worktree": "MODIFIED",
+    "task_owned_paths": [
+      "packages/harness/",
+      "packages/agent-runtime/",
+      "packages/agent-tools/",
+      "apps/api/src/application/agent-service.ts",
+      "packages/persistence/",
+      "tests/"
+    ],
+    "exclusive_resources": [
+      "usage-ledger",
+      "persistence-core",
+      "ai-runtime"
+    ]
+  },
+  "bar": {
+    "path": ".gauntlet/bar-v4.json",
+    "sha256": "2093461a8d6103641a555ad45371dde4649e5f144c32260b80244e219fa70697"
+  },
+  "checks": [
+    {
+      "command": "node --import tsx --test tests/unit/budget.test.ts",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "3 testes"
+    },
+    {
+      "command": "npm test",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "368 testes: 367 pass, 1 skip, 0 fail"
+    },
+    {
+      "command": "npm run test:database",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "61 testes"
+    },
+    {
+      "command": "npm run verify:pdp",
+      "exit_code": 0,
+      "result": "PASS"
+    },
+    {
+      "command": "npm run typecheck",
+      "exit_code": 0,
+      "result": "PASS"
+    },
+    {
+      "command": "npm run lint",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary": "174 arquivos"
+    }
+  ],
+  "residuals": [
+    "modalidades MEDIA/TRANSCRIPTION/INTEGRATION nao exercitadas pelo runtime stub (AUD13-27/28)",
+    "OUTCOME_UNKNOWN mantem reserva retida sem marcador de estado no contrato"
+  ],
+  "verification_refs": [
+    "VER-CVG-AUD13-21-001"
+  ],
+  "artifact_digests": {
+    "packages/domain/src/index.ts": "85c41f95d7c1679bf4d87ab09b1ac49a62ddbd1bd6998c92f0608db79cf40861",
+    "packages/harness/src/index.ts": "00002c9b9f60502f74a9026ab86704924a18a718eb7f807e602cb4eb561e5318",
+    "tests/unit/budget.test.ts": "ea19912942e5c4153206b0f1e0377bd0af74a75bfd1aaa110685536691c58400"
+  },
+  "recorded_at": "2026-09-13T14:01:14-03:00"
+}

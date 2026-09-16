@@ -7,7 +7,7 @@ export default defineConfig({
   server: {
     host: "127.0.0.1",
     port: 5173,
-    proxy: { "/api": "http://127.0.0.1:4310" }
+    proxy: { "/api": `http://127.0.0.1:${process.env.PLAYWRIGHT_API_PORT ?? "4310"}` }
   },
   build: { outDir: "../../dist/web", emptyOutDir: true }
 });

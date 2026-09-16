@@ -92,7 +92,7 @@ export interface DeepSeekAcpReplay {
 export interface DeepSeekAcpGovernance {
   /** Exact canonical catalog exposed to the native process. */
   readonly toolNames: readonly string[];
-  createSession(context: CvgContext, input: Pick<AiTurnInput, "purpose" | "patientId" | "encounterId">): Promise<AiSession>;
+  createSession(context: CvgContext, input: Pick<AiTurnInput, "purpose" | "patientId" | "encounterId">, attestedFacts?: { engineCommit: string; profileDigest: string }): Promise<AiSession>;
   /** Reloads a durable CVG session after the ACP child process is restarted. */
   loadSession(context: CvgContext, sessionId: OpaqueId): Promise<AiSession | null>;
   authorizeTurn(context: CvgContext, session: AiSession, input: AiTurnInput, approvalId: OpaqueId | null): Promise<DeepSeekAcpTurnAuthorization>;
@@ -308,10 +308,9 @@ export class DeepSeekAcpNativeHarnessPort implements DeepSeekNativeHarnessPort {
 
   async createSession(request: DeepSeekNativeSessionRequest): Promise<unknown> {
     await this.requireReady(request.signal);
-    const response = await this.connection!.agent.request(methods.agent.session.new, { cwd: this.config.workspaceRoot, mcpServers: [] }, { cancellationSignal: request.signal });
     const facts = await this.attest();
     const session = this.config.governance
-      ? await this.config.governance.createSession(request.context, request.input)
+      ? await this.config.governance.createSession(request.context, request.input, { engineCommit: facts.engineCommit, profileDigest: facts.manifestVersion })
       : {
           id: id(randomUUID()),
           organizationId: request.context.organizationId,
@@ -326,6 +325,7 @@ export class DeepSeekAcpNativeHarnessPort implements DeepSeekNativeHarnessPort {
           status: "ACTIVE" as const,
           createdAt: nowIso()
         };
+    const response = await this.connection!.agent.request(methods.agent.session.new, { cwd: this.config.workspaceRoot, mcpServers: [] }, { cancellationSignal: request.signal });
     if (session.organizationId !== request.context.organizationId || session.actorId !== request.context.actorId || session.unitId !== request.context.unitId || session.workspaceId !== request.context.workspaceId || session.patientId !== request.input.patientId || session.encounterId !== request.input.encounterId || session.purpose !== request.input.purpose || session.engineCommit !== facts.engineCommit || session.profileDigest !== facts.manifestVersion || session.status !== "ACTIVE") {
       throw new DeepSeekBridgeError("CONTRACT_MISMATCH", "A governança ACP retornou uma sessão fora do contexto ou do profile atestado.");
     }

@@ -41,7 +41,7 @@ if (failures.length) {
 }
 
 const passed = requireTests(
-  ["tests/unit/agent-plugins.test.ts", "tests/unit/agent-skills.test.ts", "tests/unit/model-runtime.test.ts", "tests/unit/model-adapters.test.ts", "tests/unit/agent-context.test.ts", "tests/unit/agent-session.test.ts"],
+  ["tests/unit/agent-plugins.test.ts", "tests/unit/agent-skills.test.ts", "tests/unit/model-runtime.test.ts", "tests/unit/model-adapters.test.ts", "tests/unit/model-provider-contract.test.ts", "tests/unit/runtime-manifest.test.ts", "tests/unit/agent-metrics.test.ts", "tests/unit/agent-context.test.ts", "tests/unit/agent-session.test.ts"],
   "verify:embedded-harness"
 );
 process.stdout.write(`EMBEDDED_HARNESS_VERIFIED artifacts=${requiredFiles.length} focusedTests=${passed} license=MIT decision=HYBRID embeddedFiles=0\n`);

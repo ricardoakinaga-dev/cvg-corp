@@ -100,7 +100,10 @@ O que não está provado:
 | Baseline de carga | `npm run benchmark:agent-runtime` | 1/5/10/25/50 sessões; concorrência limitada a 8 com backpressure explícita; amostras brutas por sessão | Sem latência de provider real; budgets `PROPOSED` |
 | PostgreSQL do runtime de agentes | `npm run verify:postgres` | `agent_sessions`/`agent_turns`/`agent_checkpoints`/`agent_leases`: RLS por tenant, fence stale rejeitado, sequência global, append-only, round-trip de checkpoint | Executa somente com PostgreSQL autorizado (CI/staging) |
 | Tool executor de aplicação | `tests/integration/agent-tool-executor.test.ts` | projeção mínima, escopo cruzado negado, argumentos do modelo não redirecionam recurso, efeitos sem binding falham fechado | Comandos de efeito ainda sem binding de aplicação |
+| DeepSeek real (embedded) | `npm run verify:embedded-deepseek` | Caminho `Embedded Harness → DeepSeek Model Adapter → DeepSeek real`: health, capabilities, complete, structured output, cancel, timeout, turno governado, tool pelo gateway, approval, replay | `BLOCKED_EXTERNAL` sem endpoint/credencial/classes autorizadas; loopback e mock são rejeitados por desenho |
 | Estados de IA na UI | `tests/unit/assistant-state.test.ts` | disponibilidade, falhas distintas, prévia de aprovação completa, risco desconhecido nunca "seguro" | Sem revisão visual/leitor de tela nesta rodada |
+
+Aliases: `npm run verify:model-real` aponta para o mesmo gate autorizado (`verify:embedded-deepseek`).
 
 Composição completa: `npm run verify:state-of-art` executa 30 gates locais e grava
 `artifacts/operational-proof/state-of-art-local.json` (com `blockedGates` explícitos

@@ -113,6 +113,7 @@ export class OpsTelemetry {
   private requestsError = 0;
   private activeSessions = 0;
   private readonly operations = new Map<string, number>();
+  private readonly agentCounters = new Map<string, number>();
   private readonly statusCodes = new Map<string, number>();
   private readonly exporter: TelemetryExporter | null;
   private readonly telemetryMode: CvgMetrics["telemetry"]["mode"];
@@ -151,6 +152,17 @@ export class OpsTelemetry {
     this.operations.set(operation, (this.operations.get(operation) ?? 0) + 1);
     const statusFamily = `${Math.floor(statusCode / 100)}xx`;
     this.statusCodes.set(statusFamily, (this.statusCodes.get(statusFamily) ?? 0) + 1);
+  }
+
+  /**
+   * Redacted agent-runtime counters (kill switches, denials, kernel events).
+   * Metric names are sanitized to a bounded charset and never carry tenant,
+   * actor or resource identifiers.
+   */
+  increment(metric: string, value = 1): void {
+    const safe = metric.toLowerCase().replace(/[^a-z0-9_]/g, "_").slice(0, 80);
+    if (!safe || !Number.isFinite(value)) return;
+    this.agentCounters.set(safe, (this.agentCounters.get(safe) ?? 0) + value);
   }
 
   sessionOpened(): void { this.activeSessions += 1; }
@@ -230,6 +242,7 @@ export class OpsTelemetry {
       activeSessions: this.activeSessions,
       storageMode,
       operations: Object.fromEntries(this.operations),
+      agentCounters: Object.fromEntries(this.agentCounters),
       statusCodes: Object.fromEntries(this.statusCodes),
       dependencies,
       domain,
@@ -298,6 +311,11 @@ export function renderPrometheusMetrics(metrics: CvgMetrics): string {
     "# TYPE cvg_quarantined_total gauge",
     `cvg_quarantined_total ${metrics.domain.quarantined}`
   ];
+  for (const [metric, value] of Object.entries(metrics.agentCounters ?? {}).sort(([left], [right]) => left.localeCompare(right))) {
+    lines.push(`# HELP cvg_agent_${metric} Redacted agent-runtime counter ${metric}.`);
+    lines.push(`# TYPE cvg_agent_${metric} counter`);
+    lines.push(`cvg_agent_${metric} ${Math.max(0, value)}`);
+  }
   return `${lines.join("\n")}\n`;
 }
 

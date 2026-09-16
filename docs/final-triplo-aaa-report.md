@@ -66,6 +66,14 @@ candidate SHA será congelado após o commit).
   aprovação completa (operação, efeito, risco, alvo, escopo, digest, expiração)
   e rótulo `AI_GENERATED_DRAFT`.
 - Chaos local (7 falhas) e baseline de carga (1–50 sessões) com artefatos.
+- Suíte de contrato única para todos os `ModelProvider` (saúde, capabilities, data
+  policy, envelope, usage, cancelamento, normalização de erro) e testes de
+  classificação de replay (EXACT/COMPATIBLE/NON_EQUIVALENT) e compatibilidade.
+- Métricas de anomalia do runtime expostas em Prometheus (`cvg_agent_*`), com nomes
+  sanitizados e sem identificadores de tenant/ator.
+- Gate externo `verify:embedded-deepseek` (alias `verify:model-real`): prova o
+  caminho Embedded → DeepSeek real quando houver endpoint/credencial/classes
+  autorizadas; sem eles retorna `BLOCKED_EXTERNAL` e rejeita loopback/mock.
 
 ## TESTED (real, local)
 
@@ -85,6 +93,10 @@ candidate SHA será congelado após o commit).
 | `benchmark:agent-runtime` | baseline local 1/5/10/25/50 sessões; concorrência limitada a 8 com backpressure (8 aceitos, 42 rejeitados em 50) |
 | `verify:assistant-state` (testes) | PASS (estados de IA e prévia de aprovação) |
 | `agent-tool-executor` (integração) | PASS (projeção mínima, escopo cruzado negado, argumentos do modelo não redirecionam recurso, efeitos sem binding falham fechado) |
+| `model-provider-contract` (contrato) | PASS (mock/deepseek/local no mesmo suite; erros classificados; sem credencial falha fechado) |
+| `runtime-manifest` (replay/compat) | PASS (digest determinístico; replay classificado; matriz fail-closed; disabled runtime) |
+| `agent-metrics` (ops) | PASS (contadores sanitizados e render Prometheus sem labels de tenant) |
+| `verify:embedded-deepseek` | BLOCKED_EXTERNAL (sem endpoint/credencial/classes/evidence autorizados) |
 
 ## EXTERNAL BLOCKERS
 

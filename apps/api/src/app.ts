@@ -114,7 +114,7 @@ import { BreakGlassApplicationService, type BreakGlassScopeAuthority, type Break
  * `embedded` builds the provider-neutral kernel with a configured model
  * provider, and `disabled` fails AI closed without touching the domain.
  */
-function createEmbeddedRuntimeAdapter(config: ServerConfig, secretProvider: SecretProvider | null | undefined, store: CvgStore): AgentRuntime {
+function createEmbeddedRuntimeAdapter(config: ServerConfig, secretProvider: SecretProvider | null | undefined, store: CvgStore, agentMetrics?: { increment(metric: string, value?: number): void }): AgentRuntime {
   const allowedDataClasses = config.embeddedModelAllowedDataClasses;
   const bearerRef = config.deepseekBearerTokenRef;
   // Operator-supplied pricing only; absence keeps cost explicitly unknown.
@@ -167,6 +167,7 @@ function createEmbeddedRuntimeAdapter(config: ServerConfig, secretProvider: Secr
     modelProvider: provider,
     // Real governed application reads; effect tools stay unbound and fail closed.
     toolExecutor: createAgentToolExecutor({ store }),
+    ...(agentMetrics ? { telemetry: { increment: (metric: string, value?: number) => agentMetrics.increment(metric, value), recordKernelEvent: () => undefined } } : {}),
     controls: () => ({ aiEnabled: true, safeMode: config.aiSafeMode, disabledProviders: config.aiDisabledProviders, disabledTools: config.aiDisabledTools, disabledPlugins: [] }),
     maxConcurrentTurns: config.aiMaxConcurrentTurns,
     maxCostMicros: config.aiMaxCostMicros,
@@ -618,9 +619,12 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     : await isSecretReferenceUsable(secretProvider, config.deepseekContextSigningSecretRef) ? "READY" : "UNAVAILABLE";
   if (config.nodeEnv === "production" && config.deepseekRuntimeEnabled && deepseekContextSignatureStatus !== "READY") await closeBeforeRuntimeFailure("Produção exige que a referência de assinatura de contexto DeepSeek seja resolvível; o runtime foi mantido bloqueado.");
   const harness = options.harness ?? new GovernedHarness(store);
+  // Agent-runtime counters are collected before OpsTelemetry exists and rebound
+  // after it is created; names are sanitized at the telemetry boundary.
+  const agentMetricsSink: { increment(metric: string, value?: number): void } = { increment: () => undefined };
   const agentRuntime = options.agentRuntime ?? (() => {
     if (config.agentRuntimeMode === "disabled") return new DisabledAgentRuntime();
-    if (config.agentRuntimeMode === "embedded") return createEmbeddedRuntimeAdapter(config, secretProvider, store);
+    if (config.agentRuntimeMode === "embedded") return createEmbeddedRuntimeAdapter(config, secretProvider, store, agentMetricsSink);
     if (config.agentRuntimeMode === "auto" && !config.deepseekRuntimeEnabled) return new MockHarnessAdapter(harness);
     if (!config.deepseekBaseUrl || !config.deepseekExpectedEngineCommit || !config.deepseekExpectedManifestVersion) throw new DomainError("CAPABILITY_DISABLED", "O runtime DeepSeek exige URL, commit e manifest aprovados.", 503);
     const bearerTokenRef = config.deepseekBearerTokenRef;
@@ -640,6 +644,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     ...(activeOtelRuntime.exporter ? { exporter: activeOtelRuntime.exporter } : {}),
     telemetryMode: activeOtelRuntime.status === "READY" ? "OTEL_OTLP_REDACTED" : "REDACTED_BEST_EFFORT"
   });
+  agentMetricsSink.increment = (metric, value) => telemetry.increment(metric, value);
   const integrations = new IntegrationGateway(secretProvider);
   const secretProviderStatus: SecretProviderStatus = secretProvider?.status() ?? (config.demoMode ? "DEGRADED" : "UNAVAILABLE");
   const commandExecutor = new DurableIdempotencyService(store, persistence, ({ receiptId, error }) => {

@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-09-16T13:06:18.519Z",
+  "subjectSha": "local",
+  "status": "BLOCKED_EXTERNAL",
+  "evidenceClass": "EXTERNAL_REAL",
+  "missing": [
+    "CVG_EMBEDDED_DEEPSEEK_URL",
+    "CVG_EMBEDDED_DEEPSEEK_API_KEY",
+    "CVG_EMBEDDED_DEEPSEEK_ALLOWED_DATA_CLASSES",
+    "CVG_EMBEDDED_DEEPSEEK_EVIDENCE_FILE"
+  ],
+  "stages": []
+}

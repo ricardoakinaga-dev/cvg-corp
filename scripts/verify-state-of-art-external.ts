@@ -18,7 +18,11 @@ const requiredCredentials: { name: string; gates: string[] }[] = [
   { name: "CVG_PROVIDER_REAL_TOKEN", gates: ["verify:provider-real"] },
   { name: "CVG_PROVIDER_REAL_RECIPIENT", gates: ["verify:provider-real"] },
   { name: "CVG_STAGING_URL", gates: ["verify:staging"] },
-  { name: "CVG_LOAD_BASE_URL", gates: ["verify:load"] }
+  { name: "CVG_LOAD_BASE_URL", gates: ["verify:load"] },
+  { name: "CVG_EMBEDDED_DEEPSEEK_URL", gates: ["verify:embedded-deepseek"] },
+  { name: "CVG_EMBEDDED_DEEPSEEK_API_KEY", gates: ["verify:embedded-deepseek"] },
+  { name: "CVG_EMBEDDED_DEEPSEEK_ALLOWED_DATA_CLASSES", gates: ["verify:embedded-deepseek"] },
+  { name: "CVG_EMBEDDED_DEEPSEEK_EVIDENCE_FILE", gates: ["verify:embedded-deepseek"] }
 ];
 const missing = requiredCredentials.filter((credential) => !process.env[credential.name]?.trim()).map((credential) => credential.name);
 const sha = spawnSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).stdout?.trim() ?? "unknown";
@@ -29,7 +33,7 @@ const report = {
   evidenceClass: "EXTERNAL_REAL" as const,
   status: missing.length > 0 ? "BLOCKED_EXTERNAL" : "RUNNING",
   missingCredentials: missing,
-  gates: ["verify:deepseek-real", "verify:provider-real", "verify:staging", "verify:load"],
+  gates: ["verify:deepseek-real", "verify:embedded-deepseek", "verify:provider-real", "verify:staging", "verify:load"],
   notRun: ["verify:chaos (external)", "verify:recovery-production", "verify:observability (external)"],
   note: "Chaos, recovery and observability external proofs have no authorized runner in this environment and remain NOT_RUN."
 };

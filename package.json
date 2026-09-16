@@ -73,6 +73,8 @@
     "verify:skills": "tsx scripts/verify-skills.ts",
     "verify:agent-evals": "tsx scripts/verify-agent-evals.ts",
     "verify:ai-disabled": "tsx scripts/verify-ai-disabled.ts",
+    "verify:embedded-deepseek": "tsx scripts/verify-embedded-deepseek.ts",
+    "verify:model-real": "tsx scripts/verify-embedded-deepseek.ts",
     "verify:state-of-art": "tsx scripts/verify-state-of-art.ts",
     "verify:state-of-art-external": "tsx scripts/verify-state-of-art-external.ts",
     "verify:docs-provenance": "tsx scripts/verify-docs-provenance.ts",

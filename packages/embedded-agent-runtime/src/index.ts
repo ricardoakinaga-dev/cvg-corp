@@ -507,6 +507,7 @@ export class EmbeddedAgentRuntime implements AgentRuntime {
     const runState = emptyRunState();
     const prompt = input.prompt;
     if (this.looksLikeInjection(prompt)) {
+      this.options.telemetry?.increment("agent_prompt_quarantine", 1);
       const turn = this.persistTurn(context, session, prompt, "QUARANTINED", "Conteúdo retido: o texto recebido é dado não confiável e não pode alterar policy ou tools.", { profile, runState, usageStatus: "QUARANTINED", reservedUnits: 0, consumedUnits: 0, idempotencyKey: this.executionKey(context, input), inputTokens: estimateTokens(prompt), outputTokens: 0 });
       return this.result(context, session, turn, null, null, []);
     }
@@ -658,6 +659,7 @@ export class EmbeddedAgentRuntime implements AgentRuntime {
     };
     const result = await kernel.run(kernelInput);
     runState.sanitized = result.sanitizedContext;
+    if (result.sanitizedContext) this.options.telemetry?.increment("agent_context_sanitized", 1);
     const usageTotals = result.turns.reduce(
       (totals, turn) => ({ inputTokens: totals.inputTokens + (turn.usage?.inputTokens ?? 0), outputTokens: totals.outputTokens + (turn.usage?.outputTokens ?? 0) }),
       { inputTokens: 0, outputTokens: 0 }

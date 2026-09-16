@@ -1134,6 +1134,8 @@ export interface CvgMetrics {
   agentRuntime: "READY" | "DEGRADED" | "UNAVAILABLE" | "DISABLED";
   storageMode: "memory" | "postgres";
   operations: Record<string, number>;
+  /** Redacted agent-runtime counters (kill switches, denials, kernel events). */
+  agentCounters: Record<string, number>;
   statusCodes: Record<string, number>;
   dependencies: {
     database: "READY" | "UNAVAILABLE" | "NOT_CONFIGURED" | "DEGRADED";

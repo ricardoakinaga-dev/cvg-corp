@@ -17,7 +17,9 @@ jobs:
   checks:
     name: Typecheck, tests and release artifacts
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    # The full browser matrix (12 projects, serialized to protect shared
+    # synthetic fixtures) plus the PostgreSQL and evidence gates exceed 20min.
+    timeout-minutes: 60
     services:
       postgres:
         image: postgres:18.0-bookworm

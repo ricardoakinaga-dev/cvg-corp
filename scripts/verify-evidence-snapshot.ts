@@ -114,10 +114,23 @@ async function regularFile(pathValue: string): Promise<{ bytes: Buffer; modified
   return { bytes: await readFile(canonical), modifiedAt: entry.mtime.toISOString() };
 }
 
+/**
+ * The snapshot file itself must never count as a worktree modification: it is
+ * written after capture and is exactly the artifact under verification, so a
+ * clean CI checkout must stay CLEAN across capture and static verification.
+ */
+function worktreeState(): EvidenceSnapshot["worktree"] {
+  const status = git(["status", "--porcelain=v1", "--untracked-files=all"])
+    .split("\n")
+    .filter((line) => line.trim().length > 0 && !line.includes(EVIDENCE_SNAPSHOT_PATH))
+    .join("\n");
+  return status.trim().length === 0 ? "CLEAN" : "MODIFIED";
+}
+
 export async function createEvidenceSnapshot(): Promise<EvidenceSnapshot> {
   const capturedAt = new Date().toISOString();
   const sourceSha = git(["rev-parse", "HEAD"]);
-  const worktree = git(["status", "--porcelain=v1", "--untracked-files=all"]).trim().length === 0 ? "CLEAN" : "MODIFIED";
+  const worktree = worktreeState();
   const prompt = await readFile(resolve(root, PROMPT_REFERENCE));
   const artifacts: SnapshotEntry[] = [];
   for (const path of SNAPSHOT_ARTIFACTS) {
@@ -148,7 +161,7 @@ export async function verifyEvidenceSnapshot(snapshot: EvidenceSnapshot, environ
   if (snapshot.schemaVersion !== 1) errors.push("unsupported evidence snapshot schema");
   const currentSha = environment.headSha ?? git(["rev-parse", "HEAD"]);
   if (snapshot.sourceSha !== currentSha) errors.push("evidence snapshot source SHA does not match HEAD");
-  const currentWorktree: EvidenceSnapshot["worktree"] = environment.worktree ?? (git(["status", "--porcelain=v1", "--untracked-files=all"]).trim().length === 0 ? "CLEAN" : "MODIFIED");
+  const currentWorktree: EvidenceSnapshot["worktree"] = environment.worktree ?? worktreeState();
   if (snapshot.worktree !== "CLEAN" && snapshot.worktree !== "MODIFIED") errors.push("evidence snapshot worktree state is invalid");
   else if (snapshot.worktree !== currentWorktree) errors.push(`evidence snapshot worktree state ${snapshot.worktree} does not match current state ${currentWorktree}`);
   const captured = Date.parse(snapshot.capturedAt);

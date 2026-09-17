@@ -34,8 +34,11 @@ if (!existsSync(statePath)) {
     // artifacts may be dirty when CURRENT is claimed.
     const dirtyPaths = (spawnSync("git", ["status", "--porcelain"], { encoding: "utf8" }).stdout ?? "")
       .split("\n")
-      .filter((line) => line.trim().length > 0)
-      .map((line) => line.slice(3).trim());
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0)
+      // Porcelain lines are "XY PATH"; stdout trimming strips the leading
+      // status space of the first line, so strip the status token instead.
+      .map((line) => line.replace(/^\S+\s+/, ""));
     const evidenceOnlyDirty = dirtyPaths.every((path) => path.startsWith("artifacts/"));
     if (!evidenceOnlyDirty) failures.push(`${statePath}: CURRENT cannot be claimed with uncommitted non-evidence changes: ${dirtyPaths.filter((path) => !path.startsWith("artifacts/")).join(", ")}`);
   }

@@ -126,8 +126,12 @@ function sourceDriftPaths(): string[] {
     .split("\n")
     .filter((line) => line.trim().length > 0)
     // Untracked build/tool debris is not source drift; tracked modifications are.
+    .filter((line) => line.trim().length > 0)
+    .map((line) => line.trim())
     .filter((line) => !line.startsWith("?? "))
-    .map((line) => line.slice(3).trim())
+    // Porcelain lines are "XY PATH"; the helper trims stdout, which strips the
+    // leading status space of the first line, so strip the status token itself.
+    .map((line) => line.replace(/^\S+\s+/, ""))
     .filter((path) => path !== EVIDENCE_SNAPSHOT_PATH && !path.startsWith("artifacts/"));
 }
 

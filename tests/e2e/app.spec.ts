@@ -859,7 +859,7 @@ test.describe("agenda derivada do contexto e do relógio", () => {
       const movedTime = SLOTS[windowIndex + 1];
       if (!startTime || !movedTime) throw new Error(`Sem janela sintética livre para o projeto ${testInfo.project.name}`);
       const frozenDay = new Date("2030-09-15T15:00:00Z");
-      frozenDay.setUTCDate(frozenDay.getUTCDate() + dayOffset + testInfo.retry);
+      frozenDay.setUTCDate(frozenDay.getUTCDate() + dayOffset * (testInfo.project.retries + 1) + testInfo.retry);
       await page.clock.setFixedTime(frozenDay);
       const suffix = `${windowIndex}${Date.now().toString(36)}`;
       const patientName = `Pac Agenda ${suffix}`;

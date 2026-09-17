@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-09-17T15:30:00Z",
+  "subjectSha": "141d7671f25c84a0d8f0ad34f649011e87b45269",
+  "classification": "CURRENT",
+  "sourceDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "fingerprintCommand": "git diff --binary 1a15a56..HEAD -- apps packages tests scripts | sha256sum",
+  "scope": "CI-CLOSURE-01 agenda temporal range correction + OCI/provenance closure",
+  "status": "CI_GREEN_SAME_SHA",
+  "remoteCI": {
+    "runId": 35246374977,
+    "runUrl": "https://github.com/ricardoakinaga-dev/cvg-corp/actions/runs/35246374977",
+    "conclusion": "success",
+    "jobs": [
+      {"id": 105287506498, "name": "Typecheck, tests and release artifacts", "conclusion": "success", "note": "all steps success incl. Browser E2E, three PostgreSQL gates"},
+      {"id": 105305746627, "name": "Build API and web images", "conclusion": "success", "note": "Buildx setup, both OCI exports, layout extract, both Trivy scans, provenance write+verify, upload"}
+    ]
+  },
+  "checks": [
+    {"command": "npm run verify:state-of-art", "exitCode": 0, "passed": 30, "subjectSha": "141d7671f25c84a0d8f0ad34f649011e87b45269", "artifact": "artifacts/operational-proof/state-of-art-local.json"},
+    {"command": "docker buildx build --output=type=oci Dockerfile.api + Dockerfile.web (CI-exact)", "exitCode": 0, "note": "reproduced locally pre-fix; CI OCI exports passed remotely post-fix"},
+    {"command": "trivy 0.70.0 image --input <extracted OCI layout> --severity HIGH,CRITICAL --exit-code 1", "exitCode": 0, "note": "API clean after libpcre2-8-0 10.42-1+deb12u1 upgrade; web clean"},
+    {"command": "npm run release:provenance -- --write + --manifest (clean worktree, pinned engine commit)", "exitCode": 0, "note": "fallback to DSH_ENGINE_COMMIT 6454e3270642c3a7551dcae4f7447e4032febd77 when repo var unset"}
+  ],
+  "history": [
+    {"stage": "baseline 08813b8", "result": "FAIL", "observation": "Receipt present; 21:00 Sao Paulo row absent with server UTC. Remote 35178677019 confirms."},
+    {"stage": "agenda fix b4cf96a + fixture bc25ef6 + retry isolation 1a15a56", "result": "PASS_LOCAL", "observation": "449 E2E pass UTC retries0; 30/30 state-of-art; real PG16 trio PASS"},
+    {"stage": "OCI builder fix 1acfe19", "result": "CI_CHECKS_GREEN_CONTAINER_FAIL_TRIVY", "observation": "OCI exports passed remotely; Trivy API failed on libpcre2 HIGH CVEs"},
+    {"stage": "libpcre2 patch + scan-layout + cache-dir 727b04b", "result": "CI_CHECKS_GREEN_PROVENANCE_FAIL", "observation": "both scans passed; provenance exit 2 (missing repo var / dirty .cache)"},
+    {"stage": "provenance fallback + error surfacing 141d767", "result": "CI_GREEN_SAME_SHA", "observation": "run 35246374977 both jobs success; local 30/30 on same SHA"}
+  ],
+  "finalCritic": {"id": "ses_f4f89e2a7ffej1Mofl0Vd1rhrQ", "decision": "BLOCKED", "note": "procedural: no-shell critic cannot inspect remote API JSON or git diff; C3 no-weakening PASS, C5 truthfulness PASS (inspected scope), no REJECT findings, no material product gap identified"},
+  "limitations": ["External provider/staging/SLO/human-approval evidence absent by design", "AAA_NOT_PROVEN globally", "Repo var CVG_DEEPSEEK_EXPECTED_ENGINE_COMMIT unset; CI uses pinned-code fallback with warning — setting the var is recommended hygiene", "Full browser matrix locally NOT_RUN by design; covered by remote CI"],
+  "productScope": "apps/packages/tests/scripts unchanged since 1a15a56; 141d767 adds only .github/workflows/ci.yml + Dockerfile.api"
+}

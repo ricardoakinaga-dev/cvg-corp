@@ -290,7 +290,22 @@ No SHA final, `npm test` passou 136 (`135 pass`, `1 skip`), `test:database` 25/2
 
 ## Checkpoint 2026-09-17 — Embedded Agent Runtime / CI closure
 
-**Base:** `277f10f189750586ae32c7ae1974488c9c1b97ce` (CI run `35176228659`).
+**Fechamento CI-CLOSURE-01 em `141d7671f25c84a0d8f0ad34f649011e87b45269` (run `35246374977`, `success`):**
+job `checks` verde (lint, testes, static, PDP, agent gates, Browser E2E com a
+jornada de agenda, três gates PostgreSQL) e job `container-build` verde
+(builder Buildx OCI-capaz, exports OCI API/web, scans Trivy HIGH/CRITICAL
+exit-1 limpos, provenance same-SHA gerada e verificada, upload).
+Correções da rodada: limites de calendário locais do navegador com validação
+de range explícito (causa raiz do passo 30), isolamento de retries por janela,
+builder OCI no CI, patch `libpcre2-8-0` na imagem API, scan sobre layouts OCI
+extraídos (Trivy 0.70 não lê tar OCI direto), cache Trivy fora do checkout e
+fallback para o engine commit pinnado do código com warning quando a variável
+de repositório está ausente. `verify:state-of-art` 30/30 no mesmo SHA.
+Veredito global permanece `AAA_NOT_PROVEN`; provas externas e aprovação
+humana continuam ausentes. Detalhe auditável em
+`artifacts/quality/ci-closure-local.json`.
+
+**Base original:** `277f10f189750586ae32c7ae1974488c9c1b97ce` (CI run `35176228659`).
 **Plano ativo de retomada:** [`.agent/plans/2026-09-17-embedded-runtime-ci-closure.md`](../.agent/plans/2026-09-17-embedded-runtime-ci-closure.md).
 
 Estado: implementação local fechada e verificada — `verify:state-of-art` 30/30,

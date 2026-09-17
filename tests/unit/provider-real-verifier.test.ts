@@ -7,7 +7,9 @@ const proofKeys = generateKeyPairSync("ed25519");
 const trustedPublicKey = proofKeys.publicKey.export({ format: "pem", type: "spki" }).toString();
 
 function evidence(sourceSha = "a".repeat(40)): ProviderRealProofEvidence {
-  const stages = Object.fromEntries(PROVIDER_REAL_PROOF_STAGES.map((stage, index) => [stage, { status: "PASS" as const, observedAt: `2026-09-10T00:${String(index).padStart(2, "0")}:00.000Z`, evidenceRef: `stages/${stage}.json`, evidenceDigest: String(index + 1).padStart(64, "0") }])) as ProviderRealProofEvidence["stages"];
+  // Relative timestamps: a hard-coded date turns this fixture into a time bomb
+  // once it leaves the validator freshness window.
+  const stages = Object.fromEntries(PROVIDER_REAL_PROOF_STAGES.map((stage, index) => [stage, { status: "PASS" as const, observedAt: new Date(Date.now() - (index + 1) * 60_000).toISOString(), evidenceRef: `stages/${stage}.json`, evidenceDigest: String(index + 1).padStart(64, "0") }])) as ProviderRealProofEvidence["stages"];
   const unsigned: Omit<ProviderRealProofEvidence, "attestation"> = { schemaVersion: 1, sourceSha, worktree: "CLEAN", transactionId: "proof-transaction-1", producer: "provider-runner", reviewer: "independent-reviewer", independentReview: true, stages, chainDigest: providerRealProofChainDigest(stages), limitations: ["controlled staging provider"], residualRisk: ["provider behavior remains externally bounded"] };
   const payload = providerRealProofAttestationPayload(unsigned);
   return { ...unsigned, attestation: { signatureAlgorithm: "Ed25519", signatureDigest: createHash("sha256").update(payload).digest("hex"), signature: sign(null, payload, proofKeys.privateKey).toString("base64url") } };

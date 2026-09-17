@@ -201,6 +201,17 @@ export const patientMergeInputSchema = z.object({
 });
 export type PatientMergeInput = z.infer<typeof patientMergeInputSchema>;
 
+export const appointmentRangeSchema = z.object({
+  startsAt: z.string().datetime({ offset: true }),
+  endsAt: z.string().datetime({ offset: true })
+}).strict().superRefine((value, ctx) => {
+  const duration = Date.parse(value.endsAt) - Date.parse(value.startsAt);
+  if (!Number.isFinite(duration) || duration <= 0 || duration > 8 * 86_400_000) {
+    ctx.addIssue({ code: "custom", path: ["endsAt"], message: "Range must be positive and at most 8 days" });
+  }
+});
+export type AppointmentRange = "today" | "week" | z.infer<typeof appointmentRangeSchema>;
+
 export const appointmentInputSchema = z.object({
   patientId: idSchema,
   providerId: idSchema,

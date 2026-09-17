@@ -616,6 +616,111 @@ test("legacy password digests verify once and upgrade storage without changing c
   }
 });
 
+test("appointment ranges validate paired bounded timestamps and preserve legacy reads", async () => {
+  const client = makeClient(); await client.login("admin@cvg.local", password);
+  const start = "2030-09-15T03:00:00.000Z";
+  const end = "2030-09-16T03:00:00.000Z";
+  for (const query of [
+    { startsAt: start }, { endsAt: end }, { startsAt: "invalid", endsAt: end },
+    { startsAt: "2030-09-15", endsAt: end }, { startsAt: start, endsAt: start },
+    { startsAt: end, endsAt: start }, { startsAt: start, endsAt: "2030-09-23T03:00:00.001Z" },
+    { startsAt: "2030-02-30T03:00:00Z", endsAt: end }
+  ]) {
+    const response = await client.request(`/appointments?${new URLSearchParams(query)}`);
+    assert.equal(response.statusCode, 400, JSON.stringify(query));
+    assert.equal(response.body.error?.code, "INVALID_INPUT");
+  }
+  for (const path of ["/appointments", "/appointments?range=today", "/appointments?range=week", "/appointments?range=unknown", `/appointments?${new URLSearchParams({ startsAt: start, endsAt: end })}`, `/appointments?${new URLSearchParams({ startsAt: start, endsAt: "2030-09-23T03:00:00.000Z" })}`]) {
+    assert.equal((await client.request(path)).statusCode, 200, path);
+  }
+});
+
+test("appointment range includes Sao Paulo 21:00 on the next UTC day and excludes boundaries outside scope", async () => {
+  const client = makeClient(); await client.login("admin@cvg.local", password);
+  const option = runtime.store.contextOptions(runtime.store.bootstrapCredentials.userId)[0]!;
+  const patient = [...runtime.store.patients.values()].find((item) => item.workspaceId === option.workspace.id)!;
+  const provider = [...runtime.store.providers.values()].find((item) => item.unitId === option.unit.id)!;
+  const service = [...runtime.store.services.values()][0]!;
+  const starts = ["2030-09-15T02:00:00Z", "2030-09-15T03:00:00Z", "2030-09-16T00:00:00Z", "2030-09-16T03:00:00Z"];
+  const ids: string[] = [];
+  for (const [index, startsAt] of starts.entries()) {
+    const response = await client.request("/appointments", { method: "POST", headers: { "Idempotency-Key": `range-boundary-${index}` }, payload: {
+      patientId: patient.id, providerId: provider.id, serviceId: service.id, resourceId: null,
+      startsAt, endsAt: new Date(Date.parse(startsAt) + 30 * 60_000).toISOString(), purpose: `range boundary ${index}`
+    } });
+    assert.equal(response.statusCode, 201, JSON.stringify(response.body));
+    ids.push((response.body.data as { appointment: { id: string } }).appointment.id);
+  }
+  const query = new URLSearchParams({ startsAt: "2030-09-15T00:00:00-03:00", endsAt: "2030-09-16T00:00:00-03:00" });
+  const response = await client.request(`/appointments?range=week&${query}`);
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual((response.body.data as { items: Array<{ id: string }> }).items.map((item) => item.id), ids.slice(1, 3));
+  const other = runtime.store.contextOptions(runtime.store.bootstrapCredentials.userId).find((item) => item.unit.id !== option.unit.id)!;
+  const scoped = await client.request(`/appointments?${query}`, { headers: { "x-cvg-unit-id": other.unit.id, "x-cvg-workspace-id": other.workspace.id } });
+  assert.equal(scoped.statusCode, 200);
+  assert.deepEqual((scoped.body.data as { items: unknown[] }).items, []);
+  const unauthenticated = await runtime.app.inject({ method: "GET", url: `/api/v1/appointments?${query}` });
+  assert.equal(unauthenticated.statusCode, 401);
+});
+
+test("appointment ranges select precise membership across both DST transitions", async () => {
+  const client = makeClient(); await client.login("admin@cvg.local", password);
+  const option = runtime.store.contextOptions(runtime.store.bootstrapCredentials.userId)[0]!;
+  const patient = [...runtime.store.patients.values()].find((item) => item.workspaceId === option.workspace.id)!;
+  const provider = [...runtime.store.providers.values()].find((item) => item.unitId === option.unit.id)!;
+  const service = [...runtime.store.services.values()][0]!;
+  for (const [index, range] of [
+    { startsAt: "2032-03-13T00:00:00-05:00", endsAt: "2032-03-20T00:00:00-04:00", hours: 167 },
+    { startsAt: "2032-11-06T00:00:00-04:00", endsAt: "2032-11-13T00:00:00-05:00", hours: 169 }
+  ].entries()) {
+    const start = Date.parse(range.startsAt);
+    const end = Date.parse(range.endsAt);
+    assert.equal((end - start) / 3_600_000, range.hours);
+    const ids: string[] = [];
+    for (const [boundary, instant] of [start - 1, start, end - 1, end].entries()) {
+      const response = await client.request("/appointments", { method: "POST", headers: { "Idempotency-Key": `dst-${index}-${boundary}` }, payload: {
+        patientId: patient.id, providerId: provider.id, serviceId: service.id, resourceId: null,
+        startsAt: new Date(instant).toISOString(), endsAt: new Date(instant + 1).toISOString(), purpose: `DST boundary ${index} ${boundary}`
+      } });
+      assert.equal(response.statusCode, 201, JSON.stringify(response.body));
+      ids.push((response.body.data as { appointment: { id: string } }).appointment.id);
+    }
+    const response = await client.request(`/appointments?${new URLSearchParams({ startsAt: range.startsAt, endsAt: range.endsAt })}`);
+    assert.equal(response.statusCode, 200);
+    assert.deepEqual((response.body.data as { items: Array<{ id: string }> }).items.map((item) => item.id), ids.slice(1, 3));
+  }
+});
+
+test("appointment legacy today and week preserve server-local membership", async (t) => {
+  const client = makeClient(); await client.login("admin@cvg.local", password);
+  t.mock.timers.enable({ apis: ["Date"], now: Date.now() });
+  const option = runtime.store.contextOptions(runtime.store.bootstrapCredentials.userId)[0]!;
+  const patient = [...runtime.store.patients.values()].find((item) => item.workspaceId === option.workspace.id)!;
+  const provider = [...runtime.store.providers.values()].find((item) => item.unitId === option.unit.id)!;
+  const service = [...runtime.store.services.values()][0]!;
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  const ids: string[] = [];
+  for (const offset of [-1, 0, 1, 6, 7]) {
+    const date = new Date(start);
+    date.setDate(date.getDate() + offset);
+    const response = await client.request("/appointments", { method: "POST", headers: { "Idempotency-Key": `legacy-range-${offset}` }, payload: {
+      patientId: patient.id, providerId: provider.id, serviceId: service.id, resourceId: null,
+      startsAt: date.toISOString(), endsAt: new Date(date.getTime() + 1).toISOString(), purpose: `Legacy boundary ${offset}`
+    } });
+    assert.equal(response.statusCode, 201, JSON.stringify(response.body));
+    ids.push((response.body.data as { appointment: { id: string } }).appointment.id);
+  }
+  for (const [path, expected] of [
+    ["/appointments", ids.slice(1, 2)], ["/appointments?range=today", ids.slice(1, 2)],
+    ["/appointments?range=unknown", ids.slice(1, 2)], ["/appointments?range=week", ids.slice(1, 4)]
+  ] as const) {
+    const response = await client.request(path);
+    assert.equal(response.statusCode, 200);
+    assert.deepEqual((response.body.data as { items: Array<{ id: string }> }).items.map((item) => item.id).filter((id) => ids.includes(id)), expected, path);
+  }
+});
+
 test("two concurrent reservation attempts yield one booking, a clear conflict and a safe replay", async () => {
   const first = makeClient(); await first.login("admin@cvg.local", password);
   const second = makeClient(); await second.login("admin@cvg.local", password);

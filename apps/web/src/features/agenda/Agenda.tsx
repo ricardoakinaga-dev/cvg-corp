@@ -106,28 +106,50 @@ export function Agenda({ client, context, notify }: { client: ApiClient; context
   const [cancelReason, setCancelReason] = useState("");
   const submissionKey = useRef<string | null>(null);
 
+  const requestVersion = useRef(0);
+  const activeLoad = useRef<(() => Promise<void>) | null>(null);
   const load = useCallback(async () => {
+    if (activeLoad.current !== load) return;
+    const version = ++requestVersion.current;
+    const captured = new Date();
+    const start = new Date(captured.getFullYear(), captured.getMonth(), captured.getDate());
+    const end = new Date(captured.getFullYear(), captured.getMonth(), captured.getDate() + (mode === "week" ? 7 : 1));
+    const query = new URLSearchParams({ startsAt: start.toISOString(), endsAt: end.toISOString() });
     setLoading(true);
     setError("");
-    setClock(new Date());
+    setItems([]);
+    setQueue([]);
+    setClock(captured);
     try {
       if (mode === "queue") {
-        setQueue((await client.get<{ items: QueueItem[] }>("/queue", context)).items);
-        setItems([]);
+        const result = await client.get<{ items: QueueItem[] }>("/queue", context);
+        if (version === requestVersion.current) setQueue(result.items);
       } else {
-        setItems((await client.get<{ items: Appointment[] }>(`/appointments?range=${mode}`, context)).items);
-        setQueue([]);
+        const result = await client.get<{ items: Appointment[] }>(`/appointments?${query}`, context);
+        if (version === requestVersion.current) setItems(result.items);
       }
     }
-    catch (reason) { setError(reason instanceof Error ? reason.message : "Agenda indisponível."); }
-    finally { setLoading(false); }
+    catch (reason) { if (version === requestVersion.current) setError(reason instanceof Error ? reason.message : "Agenda indisponível."); }
+    finally { if (version === requestVersion.current) setLoading(false); }
   }, [client, context, mode]);
 
-  useEffect(() => { void load(); }, [load]);
   useEffect(() => {
-    const timer = window.setInterval(() => setClock(new Date()), 60_000);
-    return () => window.clearInterval(timer);
-  }, []);
+    activeLoad.current = load;
+    void load();
+    return () => { activeLoad.current = null; requestVersion.current++; };
+  }, [load]);
+  useEffect(() => {
+    const nextDay = new Date(clock.getFullYear(), clock.getMonth(), clock.getDate() + 1);
+    const refreshDay = () => { if (dateInputValue(new Date()) !== dateInputValue(clock)) void load(); };
+    const timer = window.setTimeout(() => void load(), Math.max(0, nextDay.getTime() - Date.now()));
+    window.addEventListener("focus", refreshDay);
+    document.addEventListener("visibilitychange", refreshDay);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener("focus", refreshDay);
+      document.removeEventListener("visibilitychange", refreshDay);
+    };
+  }, [clock, load]);
 
   const loadOptions = useCallback(async () => {
     try {
@@ -298,7 +320,8 @@ export function Agenda({ client, context, notify }: { client: ApiClient; context
   };
 
   const unitLabel = context ? context.unit.name.toUpperCase() : "SEM UNIDADE";
-  const weekEnd = new Date(clock.getTime() + 6 * 86_400_000);
+  const weekEnd = new Date(clock);
+  weekEnd.setDate(weekEnd.getDate() + 6);
   const periodLabel = mode === "today" ? `${formatDayLabel(clock)} · ${unitLabel}` : mode === "week" ? `${formatDayLabel(clock)}–${formatDayLabel(weekEnd)} · ${unitLabel}` : `ATENDIMENTO EM FILA · ${unitLabel}`;
   const heading = mode === "today" ? weekdayLabel(clock) : mode === "week" ? "Próximos 7 dias" : "Fila de atendimento";
   const count = mode === "queue" ? queue.length : items.length;

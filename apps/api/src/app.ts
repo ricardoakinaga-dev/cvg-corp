@@ -16,6 +16,7 @@ import {
   administrationInputSchema,
   aiTurnInputSchema,
   appointmentInputSchema,
+  appointmentRangeSchema,
   chargeInputSchema,
   clinicalDocumentInputSchema,
   clinicalSignInputSchema,
@@ -1490,7 +1491,9 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
   app.get("/api/v1/appointments", async (request, reply) => {
     const { context } = requestContext(request, "appointments.read");
     const query = request.query as Record<string, unknown>;
-    const range = query.range === "week" ? "week" : "today";
+    const range = query.startsAt !== undefined || query.endsAt !== undefined
+      ? parse(appointmentRangeSchema, { startsAt: query.startsAt, endsAt: query.endsAt })
+      : query.range === "week" ? "week" : "today";
     const appointments = await readApplication.listAppointments(context, range);
     audit(context, "appointments.read", "Appointment", null, "ALLOWED", null, { count: appointments.length });
     return response(reply, success({ items: appointments }, context.correlationId));

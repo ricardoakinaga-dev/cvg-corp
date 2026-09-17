@@ -9,6 +9,7 @@ import type {
   AuthSecurityState,
   AnimalPatient,
   Appointment,
+  AppointmentRange,
   AuditRecord,
   Bed,
   BudgetReservation,
@@ -83,6 +84,15 @@ export class DomainError extends Error {
 }
 
 export const now = (): string => new Date().toISOString();
+
+export function appointmentRangeBounds(range: AppointmentRange, clock = new Date()): { start: Date; end: Date } {
+  if (typeof range !== "string") return { start: new Date(range.startsAt), end: new Date(range.endsAt) };
+  const start = new Date(clock);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(start);
+  end.setDate(end.getDate() + (range === "week" ? 7 : 1));
+  return { start, end };
+}
 
 export function defaultAuthSecurityState(createdAt = now()): AuthSecurityState {
   return {
@@ -1214,12 +1224,9 @@ export class CvgStore {
     return clone(appointment);
   }
 
-  listAppointments(context: CvgContext, range: "today" | "week" = "today"): Appointment[] {
+  listAppointments(context: CvgContext, range: AppointmentRange = "today"): Appointment[] {
     this.requireRole(context, ["admin", "recepcao", "veterinario", "estoque", "financeiro"], "appointments:read");
-    const start = new Date();
-    start.setHours(0, 0, 0, 0);
-    const end = new Date(start);
-    end.setDate(end.getDate() + (range === "week" ? 7 : 1));
+    const { start, end } = appointmentRangeBounds(range);
     return [...this.appointmentsStore.values()].filter((appointment) => appointment.organizationId === context.organizationId && (!context.unitId || appointment.unitId === context.unitId) && (!context.workspaceId || appointment.workspaceId === context.workspaceId) && new Date(appointment.startsAt) >= start && new Date(appointment.startsAt) < end).sort((a, b) => a.startsAt.localeCompare(b.startsAt)).map(clone);
   }
 

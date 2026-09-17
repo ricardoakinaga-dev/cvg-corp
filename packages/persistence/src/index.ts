@@ -2,7 +2,7 @@ import { createCipheriv, createDecipheriv, randomBytes, randomUUID } from "node:
 import { chmod, lstat, mkdir, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
 import { join, resolve, sep } from "node:path";
 import { Pool, type PoolClient, type PoolConfig } from "pg";
-import type { AiSession, AnimalPatient, Appointment, AuditRecord, Bed, Charge, ClinicalDocument, CommunicationMessage, CommandReceipt, CvgContext, DiagnosticRequest, DiagnosticResult, Encounter, Guardian, HospitalEpisode, KnowledgeDocument, LedgerEntry, Lot, MedicationOrder, OpaqueId, Payment, Product, QueueEntry, ScopeType, Specimen, StockLocation } from "@cvg/contracts";
+import type { AiSession, AnimalPatient, Appointment, AppointmentRange, AuditRecord, Bed, Charge, ClinicalDocument, CommunicationMessage, CommandReceipt, CvgContext, DiagnosticRequest, DiagnosticResult, Encounter, Guardian, HospitalEpisode, KnowledgeDocument, LedgerEntry, Lot, MedicationOrder, OpaqueId, Payment, Product, QueueEntry, ScopeType, Specimen, StockLocation } from "@cvg/contracts";
 import { id, scopeTypes } from "@cvg/contracts";
 export { AUTHORITATIVE_DOMAIN_REGISTRY } from "@cvg/contracts";
 
@@ -63,7 +63,7 @@ export function authoritativeCoverage(): { snapshotKeys: string[]; commandOwned:
   const covered = new Set([...commandOwned, ...snapshotPrimary]);
   return { snapshotKeys, commandOwned, snapshotPrimary, uncovered: snapshotKeys.filter((key) => !covered.has(key)) };
 }
-import { auditRecordHash, commandReceiptLookups, digest, idempotencyLookup, newCommandReceipt, now, parseSnapshot, serializeSnapshot, validateSnapshotSemantics, verifyAuditChain, type IdempotencyInput, type StoreSnapshot } from "@cvg/domain";
+import { appointmentRangeBounds, auditRecordHash, commandReceiptLookups, digest, idempotencyLookup, newCommandReceipt, now, parseSnapshot, serializeSnapshot, validateSnapshotSemantics, verifyAuditChain, type IdempotencyInput, type StoreSnapshot } from "@cvg/domain";
 
 const LOCK_KEY = "cvg-corp:canonical-state:v1";
 
@@ -3299,12 +3299,9 @@ export class PostgresPersistence {
     });
   }
 
-  async listAppointments(context: CvgContext, range: "today" | "week" = "today"): Promise<NormalizedAppointmentRead[]> {
+  async listAppointments(context: CvgContext, range: AppointmentRange = "today"): Promise<NormalizedAppointmentRead[]> {
     return this.scopedRead(context, "appointments", async (client) => {
-      const start = new Date();
-      start.setHours(0, 0, 0, 0);
-      const end = new Date(start);
-      end.setDate(end.getDate() + (range === "week" ? 7 : 1));
+      const { start, end } = appointmentRangeBounds(range);
       const result = await client.query<{
         id: string;
         organization_id: string;

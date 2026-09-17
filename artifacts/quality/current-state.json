@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "generatedAt": "2026-09-16T21:40:30.000Z",
-  "subjectSha": "0759f7d1c4bc84d3968436aaa64f9741308044b6",
-  "classification": "CURRENT",
+  "subjectSha": "08813b8346f5cb6cf9c121d627f5f2ade15f7b9f",
+  "classification": "WORKTREE",
   "candidateSha": null,
   "engineeringState": "LOCAL_STATE_OF_THE_ART_CANDIDATE",
   "stateOfTheArtState": "STATE_OF_THE_ART_NOT_PROVEN",

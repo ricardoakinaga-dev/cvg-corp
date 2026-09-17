@@ -535,7 +535,9 @@ test.describe("agenda derivada do contexto e do relógio", () => {
   };
 
   test("dia, semana e unidade seguem contexto e relógio, inclusive virada de dia", async ({ page }) => {
-    await page.clock.install({ time: new Date("2026-09-15T18:00:00Z") });
+    const appointmentRequest = page.waitForRequest((request) => new URL(request.url()).pathname.endsWith("/appointments"));
+    await page.clock.install({ time: new Date("2026-09-16T02:59:50Z") });
+    await page.clock.pauseAt(new Date("2026-09-16T02:59:50Z"));
     await page.goto("/");
     await page.getByRole("button", { name: /Abrir demonstração sintética/i }).click();
     await expect(page.getByRole("heading", { name: "Bom dia, Ricardo." })).toBeVisible();
@@ -543,18 +545,262 @@ test.describe("agenda derivada do contexto e do relógio", () => {
     await expect(page.getByText("15 SET · UNIDADE CENTRO")).toBeVisible();
     await expect(page.getByRole("heading", { name: "Terça-feira", exact: true })).toBeVisible();
 
+    const centroHeaders = (await appointmentRequest).headers();
+    const reservations = await page.evaluate(async (scope) => {
+      const headers: Record<string, string> = {
+        "content-type": "application/json", "x-cvg-unit-id": scope["x-cvg-unit-id"]!, "x-cvg-workspace-id": scope["x-cvg-workspace-id"]!,
+        "x-csrf-token": decodeURIComponent(document.cookie.split("; ").find((value) => value.startsWith("cvg_csrf="))!.split("=")[1]!)
+      };
+      const read = async (path: string) => {
+        const response = await fetch(`/api/v1${path}`, { headers });
+        if (!response.ok) throw new Error(`Fixture read failed: ${response.status} ${await response.text()}`);
+        const payload = await response.json();
+        if (!payload?.data) throw new Error(`Fixture read without data: ${path} ${JSON.stringify(payload).slice(0, 300)}`);
+        return payload.data;
+      };
+      const patients = await read("/patients");
+      const options = await read("/scheduling/options");
+      const ids: string[] = [];
+      for (const [index, startsAt] of ["2026-09-16T02:59:59.999Z", "2026-09-16T03:00:00.000Z"].entries()) {
+        const response = await fetch("/api/v1/appointments", { method: "POST", headers: { ...headers, "Idempotency-Key": `midnight-membership-${index}` }, body: JSON.stringify({
+          patientId: patients.items[0].id, providerId: options.providers[0].id, serviceId: options.services[0].id, resourceId: null,
+          startsAt, endsAt: new Date(Date.parse(startsAt) + 1).toISOString(), purpose: `Midnight membership ${index}`
+        }) });
+        if (response.status !== 201) throw new Error(`Fixture reservation failed: ${response.status} ${await response.text()}`);
+        ids.push((await response.json()).data.appointment.id);
+      }
+      return ids;
+    }, centroHeaders);
+    await page.getByRole("button", { name: "Atualizar" }).click();
+    await expect(page.locator("tr", { hasText: "Midnight membership 0" })).toBeVisible();
+    await expect(page.locator("tr", { hasText: "Midnight membership 1" })).toHaveCount(0);
+
+    const midnightRead = page.waitForResponse((response) => {
+      const url = new URL(response.url());
+      return url.pathname.endsWith("/appointments") && url.searchParams.get("startsAt") === "2026-09-16T03:00:00.000Z";
+    });
+    await page.clock.runFor(10_001);
+    expect((await midnightRead).status()).toBe(200);
+    await expect(page.getByText("16 SET · UNIDADE CENTRO")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Quarta-feira", exact: true })).toBeVisible();
+    await expect(page.locator("tr", { hasText: "Midnight membership 1" })).toBeVisible();
+    await expect(page.locator("tr", { hasText: "Midnight membership 0" })).toHaveCount(0);
+
+    await page.getByRole("button", { name: "Próximos 7 dias" }).click();
+    await expect(page.getByText("16 SET–22 SET · UNIDADE CENTRO")).toBeVisible();
+    await expect(page.locator("tr", { hasText: "Midnight membership 1" })).toBeVisible();
+
     const menu = page.getByRole("button", { name: "Abrir menu" });
     if (await menu.isVisible()) await menu.click();
     await page.getByLabel("Selecionar unidade e workspace").selectOption({ label: "Unidade Sul · Operação clínica" });
-    await expect(page.getByText("15 SET · UNIDADE SUL")).toBeVisible();
-
-    await page.clock.setFixedTime(new Date("2026-09-16T03:30:00Z"));
-    await page.getByRole("button", { name: "Atualizar" }).click();
     await expect(page.getByText("16 SET · UNIDADE SUL")).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Quarta-feira", exact: true })).toBeVisible();
+    await expect(page.locator("tr", { hasText: "Midnight membership 1" })).toHaveCount(0);
+  });
 
+  test("meia-noite inexistente mantém limites e reservas do dia e da semana", async ({ page }) => {
+    const instant = new Date("2018-11-04T12:00:00Z");
+    await page.clock.install({ time: instant });
+    await page.clock.pauseAt(instant);
+    await page.goto("/");
+    await page.getByRole("button", { name: /Abrir demonstração sintética/i }).click();
+    await expect(page.getByRole("heading", { name: "Bom dia, Ricardo." })).toBeVisible();
+    const initialRead = page.waitForResponse((response) => {
+      const url = new URL(response.url());
+      return url.pathname.endsWith("/appointments") && url.searchParams.has("startsAt");
+    });
+    await openAgenda(page);
+    const initialResponse = await initialRead;
+    expect(initialResponse.status()).toBe(200);
+    expect(new URL(initialResponse.url()).searchParams.get("startsAt")).toBe("2018-11-04T03:00:00.000Z");
+    expect(new URL(initialResponse.url()).searchParams.get("endsAt")).toBe("2018-11-05T02:00:00.000Z");
+    const ids = await page.evaluate(async (scope) => {
+      const headers: Record<string, string> = {
+        "content-type": "application/json", "x-cvg-unit-id": scope["x-cvg-unit-id"]!, "x-cvg-workspace-id": scope["x-cvg-workspace-id"]!,
+        "x-csrf-token": decodeURIComponent(document.cookie.split("; ").find((value) => value.startsWith("cvg_csrf="))!.split("=")[1]!)
+      };
+      const read = async (path: string) => {
+        const response = await fetch(`/api/v1${path}`, { headers });
+        if (!response.ok) throw new Error(`Fixture read failed: ${response.status}`);
+        return (await response.json()).data;
+      };
+      const patients = await read("/patients");
+      const options = await read("/scheduling/options");
+      const result: string[] = [];
+      const instants = ["2018-11-04T03:00:00.000Z", "2018-11-05T01:59:59.999Z", "2018-11-05T02:00:00.000Z", "2018-11-11T01:59:59.999Z", "2018-11-11T02:00:00.000Z"];
+      for (const [index, startsAt] of instants.entries()) {
+        const response = await fetch("/api/v1/appointments", { method: "POST", headers: { ...headers, "Idempotency-Key": `skipped-midnight-2018-${index}` }, body: JSON.stringify({
+          patientId: patients.items[0].id, providerId: options.providers[0].id, serviceId: options.services[0].id, resourceId: null,
+          startsAt, endsAt: new Date(Date.parse(startsAt) + 1).toISOString(), purpose: `Skipped midnight ${index}`
+        }) });
+        if (response.status !== 201) throw new Error(`Fixture reservation failed: ${response.status} ${await response.text()}`);
+        result.push((await response.json()).data.appointment.id);
+      }
+      return result;
+    }, initialResponse.request().headers());
+    const readWindow = (start: string, end: string) => page.waitForResponse((response) => {
+      const url = new URL(response.url());
+      return url.pathname.endsWith("/appointments") && url.searchParams.get("startsAt") === start && url.searchParams.get("endsAt") === end;
+    });
+    const today = readWindow("2018-11-04T03:00:00.000Z", "2018-11-05T02:00:00.000Z");
+    await page.getByRole("button", { name: "Atualizar" }).click();
+    expect((await (await today).json()).data.items.map((item: { id: string }) => item.id)).toEqual(ids.slice(0, 2));
+    await expect(page.getByText("04 NOV · UNIDADE CENTRO")).toBeVisible();
+    await expect(page.locator("tr", { hasText: "Skipped midnight 1" })).toBeVisible();
+    await expect(page.locator("tr", { hasText: "Skipped midnight 2" })).toHaveCount(0);
+    const week = readWindow("2018-11-04T03:00:00.000Z", "2018-11-11T02:00:00.000Z");
     await page.getByRole("button", { name: "Próximos 7 dias" }).click();
-    await expect(page.getByText("16 SET–22 SET · UNIDADE SUL")).toBeVisible();
+    expect((await (await week).json()).data.items.map((item: { id: string }) => item.id)).toEqual(ids.slice(0, 4));
+    await expect(page.getByText("04 NOV–10 NOV · UNIDADE CENTRO")).toBeVisible();
+    await expect(page.locator("tr", { hasText: "Skipped midnight 3" })).toBeVisible();
+    await expect(page.locator("tr", { hasText: "Skipped midnight 4" })).toHaveCount(0);
+    await page.getByRole("button", { name: "Hoje" }).click();
+    await expect(page.locator("tr", { hasText: "Skipped midnight 1" })).toBeVisible();
+    const midnight = readWindow("2018-11-05T02:00:00.000Z", "2018-11-06T02:00:00.000Z");
+    await page.clock.fastForward(14 * 60 * 60_000);
+    expect((await (await midnight).json()).data.items.map((item: { id: string }) => item.id)).toEqual([ids[2]]);
+    await expect(page.getByText("05 NOV · UNIDADE CENTRO")).toBeVisible();
+    await expect(page.locator("tr", { hasText: "Skipped midnight 2" })).toBeVisible();
+    await expect(page.locator("tr", { hasText: "Skipped midnight 1" })).toHaveCount(0);
+  });
+
+  test.describe("limites de calendário com DST", () => {
+    test.use({ timezoneId: "America/New_York" });
+    for (const sample of [
+      { clock: "2030-03-09T17:00:00Z", start: "2030-03-09T05:00:00.000Z", end: "2030-03-16T04:00:00.000Z", label: "09 MAR–15 MAR · UNIDADE CENTRO" },
+      { clock: "2030-11-02T16:00:00Z", start: "2030-11-02T04:00:00.000Z", end: "2030-11-09T05:00:00.000Z", label: "02 NOV–08 NOV · UNIDADE CENTRO" }
+    ]) {
+      test(`semana usa dias locais: ${sample.clock}`, async ({ page }) => {
+        const rangeRequest = page.waitForRequest((request) => new URL(request.url()).pathname.endsWith("/appointments"));
+        await page.clock.setFixedTime(new Date(sample.clock));
+        await page.goto("/");
+        await page.getByRole("button", { name: /Abrir demonstração sintética/i }).click();
+        await expect(page.getByRole("heading", { name: "Bom dia, Ricardo." })).toBeVisible();
+        await openAgenda(page);
+        const scopeHeaders = (await rangeRequest).headers();
+        const seededIds = await page.evaluate(async ({ scope, tag }) => {
+          const headers: Record<string, string> = {
+            "content-type": "application/json", "x-cvg-unit-id": scope["x-cvg-unit-id"]!, "x-cvg-workspace-id": scope["x-cvg-workspace-id"]!,
+            "x-csrf-token": decodeURIComponent(document.cookie.split("; ").find((value) => value.startsWith("cvg_csrf="))!.split("=")[1]!)
+          };
+          const read = async (path: string) => {
+            const response = await fetch(`/api/v1${path}`, { headers });
+            if (!response.ok) throw new Error(`Fixture read failed: ${response.status} ${await response.text()}`);
+            const payload = await response.json();
+            if (!payload?.data) throw new Error(`Fixture read without data: ${path}`);
+            return payload.data;
+          };
+          const patients = await read("/patients");
+          const options = await read("/scheduling/options");
+          const ids: string[] = [];
+          for (const [index, startsAt] of tag.instants.entries()) {
+            const response = await fetch("/api/v1/appointments", { method: "POST", headers: { ...headers, "Idempotency-Key": `dst-membership-${tag.key}-${index}` }, body: JSON.stringify({
+              patientId: patients.items[0].id, providerId: options.providers[0].id, serviceId: options.services[0].id, resourceId: null,
+              startsAt, endsAt: new Date(Date.parse(startsAt) + 1).toISOString(), purpose: `DST membership ${tag.key} ${index}`
+            }) });
+            if (response.status !== 201) throw new Error(`Fixture reservation failed: ${response.status} ${await response.text()}`);
+            ids.push((await response.json()).data.appointment.id);
+          }
+          return ids;
+        }, { scope: scopeHeaders, tag: { key: sample.start, instants: [sample.start, sample.end] } });
+        const read = page.waitForResponse((response) => {
+          const url = new URL(response.url());
+          return url.pathname.endsWith("/appointments") && url.searchParams.get("endsAt") === sample.end;
+        });
+        await page.getByRole("button", { name: "Próximos 7 dias" }).click();
+        const response = await read;
+        expect(response.status()).toBe(200);
+        expect(new URL(response.url()).searchParams.get("startsAt")).toBe(sample.start);
+        const returned = (await response.json()).data.items.map((item: { id: string }) => item.id);
+        expect(returned).toContain(seededIds[0]);
+        expect(returned).not.toContain(seededIds[1]);
+        await expect(page.getByText(sample.label)).toBeVisible();
+        await expect(page.locator("tr", { hasText: `DST membership ${sample.start} 0` })).toBeVisible();
+        await expect(page.locator("tr", { hasText: `DST membership ${sample.start} 1` })).toHaveCount(0);
+      });
+    }
+  });
+
+  for (const mode of ["success", "error"] as const) {
+    test(`troca de contexto controlada com resposta atrasada do contexto antigo (${mode})`, async ({ page }) => {
+      const seenUnits: string[] = [];
+      let releaseOldContext = () => {};
+      const oldContextRelease = new Promise<void>((resolve) => { releaseOldContext = resolve; });
+      let staleContextReadArmed = false;
+      const staleRow = { id: "00000000-0000-4000-8000-00000000d401", startsAt: "2033-05-19T12:00:00Z", endsAt: "2033-05-19T12:30:00Z", purpose: "Reserva Antiga Central", status: "SCHEDULED", version: 1, patient: { name: "Paciente Antigo" } };
+      await page.route("**/api/v1/appointments**", async (route) => {
+        const url = new URL(route.request().url());
+        if (url.searchParams.get("endsAt") !== "2033-05-20T03:00:00.000Z") { await route.continue(); return; }
+        const unit = route.request().headers()["x-cvg-unit-id"] ?? "";
+        if (!seenUnits.includes(unit)) seenUnits.push(unit);
+        if (unit !== seenUnits[0]) { await route.continue(); return; }
+        if (staleContextReadArmed) {
+          staleContextReadArmed = false;
+          await oldContextRelease;
+          if (mode === "success") {
+            await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ schemaVersion: 1, data: { items: [staleRow] }, correlationId: "ctx-stale-success" }) });
+            return;
+          }
+          await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ schemaVersion: 1, error: { code: "DEPENDENCY_UNAVAILABLE", message: "Agenda indisponível." }, correlationId: "ctx-stale-error" }) });
+          return;
+        }
+        await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ schemaVersion: 1, data: { items: [staleRow] }, correlationId: "ctx-old" }) });
+      });
+      await page.clock.setFixedTime(new Date("2033-05-19T15:00:00Z"));
+      await page.goto("/");
+      await page.getByRole("button", { name: /Abrir demonstração sintética/i }).click();
+      await expect(page.getByRole("heading", { name: "Bom dia, Ricardo." })).toBeVisible();
+      await openAgenda(page);
+      const oldRow = page.locator("tr", { hasText: "Reserva Antiga Central" });
+      const degradedHeading = page.locator("main.content").getByRole("heading", { name: "Conectividade parcial." });
+      await expect(oldRow).toBeVisible();
+      staleContextReadArmed = true;
+      await page.getByRole("button", { name: "Atualizar" }).click();
+      await page.getByLabel("Selecionar unidade e workspace").selectOption({ label: "Unidade Sul · Operação clínica" });
+      await expect(page.getByText("19 MAI · UNIDADE SUL")).toBeVisible({ timeout: 10_000 });
+      await expect(oldRow).toHaveCount(0);
+      const staleResponse = page.waitForResponse(async (response) => {
+        if (!new URL(response.url()).pathname.endsWith("/appointments")) return false;
+        return (await response.json()).correlationId === `ctx-stale-${mode}`;
+      });
+      releaseOldContext();
+      await (await staleResponse).finished();
+      if (mode === "success") {
+        await expect(page.getByText("19 MAI · UNIDADE SUL")).toBeVisible({ timeout: 10_000 });
+        await expect(oldRow).toHaveCount(0);
+        await expect(degradedHeading).toHaveCount(0);
+      } else {
+        await expect(degradedHeading).toBeVisible({ timeout: 10_000 });
+        await expect(oldRow).toHaveCount(0);
+      }
+    });
+  }
+
+  test("resposta atrasada do dia não substitui a semana selecionada", async ({ page }) => {
+    await page.clock.setFixedTime(new Date("2031-09-15T15:00:00Z"));
+    let release = () => {};
+    const held = new Promise<void>((resolve) => { release = resolve; });
+    let dayRequested = () => {};
+    const requested = new Promise<void>((resolve) => { dayRequested = resolve; });
+    await page.route("**/api/v1/appointments**", async (route) => {
+      const url = new URL(route.request().url());
+      if (url.searchParams.get("endsAt") !== "2031-09-16T03:00:00.000Z") { await route.continue(); return; }
+      dayRequested();
+      await held;
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ schemaVersion: 1, data: { items: [{ id: "stale-day", startsAt: "2031-09-15T12:00:00Z", endsAt: "2031-09-15T12:30:00Z", purpose: "Resposta obsoleta", status: "CANCELLED", patient: { name: "Paciente obsoleto" } }] }, correlationId: "stale-range" }) });
+    });
+    await page.goto("/");
+    await page.getByRole("button", { name: /Abrir demonstração sintética/i }).click();
+    await expect(page.getByRole("heading", { name: "Bom dia, Ricardo." })).toBeVisible();
+    await openAgenda(page);
+    await requested;
+    await page.getByRole("button", { name: "Próximos 7 dias" }).click();
+    await expect(page.getByText("Nenhuma janela encontrada")).toBeVisible();
+    const stale = page.waitForResponse((response) => new URL(response.url()).searchParams.get("endsAt") === "2031-09-16T03:00:00.000Z");
+    release();
+    await (await stale).finished();
+    await expect(page.getByText("15 SET–21 SET · UNIDADE CENTRO")).toBeVisible();
+    await expect(page.getByText("Nenhuma janela encontrada")).toBeVisible();
+    await expect(page.getByText("Paciente obsoleto")).toHaveCount(0);
   });
 
   test("agenda vazia e falha de leitura mostram estados explícitos", async ({ page }) => {
@@ -579,50 +825,53 @@ test.describe("agenda derivada do contexto e do relógio", () => {
     await expect(page.getByText("Nenhuma janela encontrada")).toBeVisible();
   });
 
-  test("jornada de agenda: reserva, confirmação, remarcação, check-in, triagem e handoff", async ({ page }, testInfo) => {
-    // 15-minute slots from 10:00: late enough to stay clear of the seeded
-    // morning fixture in every runner timezone, and each project owns a
-    // disjoint block per attempt so a retry never collides with its own
-    // previous booking.
-    // 13:00 start clears both seeded fixtures (10:30-11:15 clinical and
-    // 12:00-12:45 reception, which the unit-scoped reschedule check also
-    // considers); 60-minute project blocks (45-minute service + 15-minute
-    // reschedule) touch but never overlap across projects.
-    const SLOTS = Array.from({ length: 40 }, (_, index) => {
-      const minutes = 13 * 60 + index * 15;
-      return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
-    });
-    const PROJECT_PAIRS: Record<string, number> = {
-      "chromium-wide-1440": 0,
-      "chromium-tablet-768": 1,
-      "chromium-mobile-375": 2,
-      "firefox-wide-1440": 3,
-      "firefox-tablet-768": 4,
-      "firefox-mobile-375": 5,
-      "webkit-wide-1440": 6,
-      "webkit-tablet-768": 7,
-      "webkit-mobile-375": 8
-    };
-    const pairIndex = PROJECT_PAIRS[testInfo.project.name];
-    if (pairIndex === undefined) throw new Error(`Projeto sem janela de agenda sintética: ${testInfo.project.name}`);
-    // A retry moves to the next day so it can never collide with its own
-    // previous booking.
-    const windowIndex = pairIndex * 4;
-    const startTime = SLOTS[windowIndex];
-    const movedTime = SLOTS[windowIndex + 1];
-    if (!startTime || !movedTime) throw new Error(`Sem janela sintética livre para o projeto ${testInfo.project.name}`);
-    const suffix = `${windowIndex}${Date.now().toString(36)}`;
-    const patientName = `Pac Agenda ${suffix}`;
-    const purpose = `Consulta E2E ${suffix}`;
+  for (const [attempt, dayOffset] of [[0, 0], [1, 1]] as const) {
+    test(`jornada de agenda: reserva, confirmação, remarcação, check-in, triagem e handoff (offset ${dayOffset})`, async ({ page }, testInfo) => {
+      // 15-minute slots from 10:00: late enough to stay clear of the seeded
+      // morning fixture in every runner timezone, and each project owns a
+      // disjoint block per attempt so a retry never collides with its own
+      // previous booking.
+      // 13:00 start clears both seeded fixtures (10:30-11:15 clinical and
+      // 12:00-12:45 reception, which the unit-scoped reschedule check also
+      // considers); 60-minute project blocks (45-minute service + 15-minute
+      // reschedule) touch but never overlap across projects.
+      const SLOTS = Array.from({ length: 40 }, (_, index) => {
+        const minutes = 13 * 60 + index * 15;
+        return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+      });
+      const PROJECT_PAIRS: Record<string, number> = {
+        "chromium-wide-1440": 0,
+        "chromium-tablet-768": 1,
+        "chromium-mobile-375": 2,
+        "firefox-wide-1440": 3,
+        "firefox-tablet-768": 4,
+        "firefox-mobile-375": 5,
+        "webkit-wide-1440": 6,
+        "webkit-tablet-768": 7,
+        "webkit-mobile-375": 8
+      };
+      const pairIndex = PROJECT_PAIRS[testInfo.project.name];
+      if (pairIndex === undefined) throw new Error(`Projeto sem janela de agenda sintética: ${testInfo.project.name}`);
+      // A retry moves to the next day so it can never collide with its own
+      // previous booking.
+      const windowIndex = pairIndex * 4;
+      const startTime = SLOTS[windowIndex];
+      const movedTime = SLOTS[windowIndex + 1];
+      if (!startTime || !movedTime) throw new Error(`Sem janela sintética livre para o projeto ${testInfo.project.name}`);
+      const frozenDay = new Date("2030-09-15T15:00:00Z");
+      frozenDay.setUTCDate(frozenDay.getUTCDate() + dayOffset + testInfo.retry);
+      await page.clock.setFixedTime(frozenDay);
+      const suffix = `${windowIndex}${Date.now().toString(36)}`;
+      const patientName = `Pac Agenda ${suffix}`;
+      const purpose = `Consulta E2E ${suffix}`;
 
     await page.goto("/");
     await page.getByRole("button", { name: /Abrir demonstração sintética/i }).click();
     await expect(page.getByRole("heading", { name: "Bom dia, Ricardo." })).toBeVisible();
-    const agendaDate = await page.evaluate((retryOffset: number) => {
+    const agendaDate = await page.evaluate(() => {
       const date = new Date();
-      date.setDate(date.getDate() + retryOffset);
       return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-    }, testInfo.retry);
+    });
 
     const menu = page.getByRole("button", { name: "Abrir menu" });
     if (await menu.isVisible()) await menu.click();
@@ -680,18 +929,19 @@ test.describe("agenda derivada do contexto e do relógio", () => {
     await expect(page.locator('p.table-sub[role="status"]', { hasText: "Handoff concluído" })).toBeVisible();
     await expect(page.locator("tr", { hasText: patientName }).filter({ hasText: "Em atendimento" })).toBeVisible();
 
-    await page.getByRole("button", { name: "Hoje" }).click();
-    await page.getByRole("button", { name: "Novo horário" }).click();
-    await page.locator("#agenda-patient").selectOption(patientValue!);
-    await page.locator("#agenda-service").selectOption({ index: 1 });
-    await page.locator("#agenda-provider").selectOption({ index: 1 });
-    await page.locator("#agenda-date").fill(agendaDate);
-    await page.locator("#agenda-time").fill(movedTime);
-    await page.locator("#agenda-purpose").fill(`Conflito E2E ${suffix}`);
-    await page.getByRole("button", { name: "Criar reserva" }).click();
-    await expect(page.getByRole("alert").filter({ hasText: "A janela escolhida já está ocupada." })).toBeVisible();
-    await page.getByRole("dialog").getByRole("button", { name: "Cancelar" }).click();
-  });
+      await page.getByRole("button", { name: "Hoje" }).click();
+      await page.getByRole("button", { name: "Novo horário" }).click();
+      await page.locator("#agenda-patient").selectOption(patientValue!);
+      await page.locator("#agenda-service").selectOption({ index: 1 });
+      await page.locator("#agenda-provider").selectOption({ index: 1 });
+      await page.locator("#agenda-date").fill(agendaDate);
+      await page.locator("#agenda-time").fill(movedTime);
+      await page.locator("#agenda-purpose").fill(`Conflito E2E ${suffix}`);
+      await page.getByRole("button", { name: "Criar reserva" }).click();
+      await expect(page.getByRole("alert").filter({ hasText: "A janela escolhida já está ocupada." })).toBeVisible();
+      await page.getByRole("dialog").getByRole("button", { name: "Cancelar" }).click();
+    });
+  }
 });
 
 test("copiloto mostra a proveniência real da resposta, sem rótulo fixo", async ({ page }) => {

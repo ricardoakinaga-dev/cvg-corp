@@ -11,6 +11,7 @@ import { GovernedHarness } from "@cvg/harness";
 import { MockHarnessAdapter } from "@cvg/harness-adapters";
 import { createRuntime } from "@cvg/api";
 import { AgentApplicationService } from "../../apps/api/src/application/agent-service.ts";
+import { createReadApplicationService } from "../../apps/api/src/application/read-services.ts";
 import { ExportApplicationService } from "../../apps/api/src/application/export-service.ts";
 import { AUTHORITATIVE_DOMAIN_REGISTRY, createRecoveryBundleManifest, decryptRecoveryBundle, encryptRecoveryBundle, OperationalBackupJob, OutboxLeaseLostError, PersistenceConflictError, PersistenceCorruptionError, PersistenceStateError, PersistenceUnavailableError, PostgresPersistence, validateAuthoritativeSnapshot, validateRecoveryBundle, verifyOperationalBackupDirectory, verifyOperationalBackupFile, writeOperationalBackup, type DurableOutboxRecord, type DurableRecoveryBundle } from "@cvg/persistence";
 
@@ -646,6 +647,58 @@ test("AI projections derive mandatory tenant scope from the persisted session", 
   assert.ok(turnStatement?.includes("organization_id, unit_id, workspace_id, session_id"));
   assert.ok(turnStatement?.includes("usage_record_id, provenance_json"));
   assert.ok(fake.statements.some((statement) => statement.startsWith("insert into ai_usage_ledger")));
+});
+
+test("appointment range parity keeps exact bounds and tenant scope through memory and Postgres repositories", async () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const option = store.contextOptions(store.bootstrapCredentials.userId)[0]!;
+  const session = store.createSession(store.bootstrapCredentials.userId, "range-parity-token", "range-parity-csrf", 60);
+  const context = store.resolveContext(store.bootstrapCredentials.userId, { unitId: option.unit.id, workspaceId: option.workspace.id }, "appointments.read", "range-parity", null, null, session.id);
+  const patient = [...store.patients.values()].find((item) => item.workspaceId === context.workspaceId)!;
+  const provider = [...store.providers.values()].find((item) => item.unitId === context.unitId)!;
+  const service = [...store.services.values()][0]!;
+  const range = { startsAt: "2030-09-15T03:00:00.000Z", endsAt: "2030-09-16T03:00:00.000Z" };
+  const starts = ["2030-09-15T02:59:59.999Z", range.startsAt, "2030-09-16T00:00:00.000Z", "2030-09-16T02:59:59.999Z", range.endsAt];
+  const appointments = starts.map((startsAt, index) => store.createAppointment(context, {
+    patientId: patient.id, providerId: provider.id, serviceId: service.id, resourceId: null,
+    startsAt, endsAt: new Date(Date.parse(startsAt) + 1).toISOString(), purpose: `boundary ${index}`
+  }));
+  let organization: unknown;
+  let selectedBounds: unknown[] = [];
+  const client = {
+    async query(sql: string, params: unknown[] = []) {
+      if (sql.includes("set_config('cvg.organization_id'")) organization = params[0];
+      if (!sql.includes("from appointments a")) return { rows: [] };
+      assert.ok(sql.includes("a.organization_id = cvg_request_organization()"));
+      assert.ok(sql.includes("($1::uuid is null or a.unit_id = $1::uuid)"));
+      assert.ok(sql.includes("($2::uuid is null or a.workspace_id = $2::uuid)"));
+      assert.ok(sql.includes("a.starts_at >= $3::timestamptz and a.starts_at < $4::timestamptz"));
+      selectedBounds = params;
+      return { rows: appointments.filter((item) => item.organizationId === organization && (!params[0] || item.unitId === params[0]) && (!params[1] || item.workspaceId === params[1]) && Date.parse(item.startsAt) >= (params[2] as Date).getTime() && Date.parse(item.startsAt) < (params[3] as Date).getTime()).map((item) => ({
+        id: item.id, organization_id: item.organizationId, unit_id: item.unitId, workspace_id: item.workspaceId,
+        patient_id: item.patientId, provider_id: item.providerId, resource_id: item.resourceId, service_id: item.serviceId,
+        starts_at: item.startsAt, ends_at: item.endsAt, purpose: item.purpose, status: item.status, version: item.version,
+        created_at: item.createdAt, patient_name: patient.name, provider_name: provider.displayName
+      })) };
+    },
+    release() {}
+  } as unknown as PoolClient;
+  const persistence = new PostgresPersistence({ connectionString: "postgres://synthetic.invalid", pool: { connect: async () => client } as unknown as Pool });
+  const memory = createReadApplicationService(store, null);
+  const postgres = createReadApplicationService(store, persistence);
+  const expected = appointments.slice(1, 4).map((item) => item.id);
+  assert.deepEqual((await memory.listAppointments(context, range)).map((item) => item.id), expected);
+  assert.deepEqual((await postgres.listAppointments(context, range)).map((item) => item.id), expected);
+  assert.deepEqual(selectedBounds, [context.unitId, context.workspaceId, new Date(range.startsAt), new Date(range.endsAt)]);
+  for (const other of store.contextOptions(store.bootstrapCredentials.userId).filter((item) => item.workspace.id !== context.workspaceId)) {
+    const scoped = store.resolveContext(store.bootstrapCredentials.userId, { unitId: other.unit.id, workspaceId: other.workspace.id }, "appointments.read", "range-other", null, null, session.id);
+    assert.deepEqual(await memory.listAppointments(scoped, range), []);
+    assert.deepEqual(await postgres.listAppointments(scoped, range), []);
+  }
+  for (const changed of [{ organizationId: makeId() }, { unitId: makeId() }, { workspaceId: makeId() }]) {
+    assert.throws(() => store.listAppointments({ ...context, ...changed }, range), /contexto.*não está/);
+    assert.deepEqual(await persistence.listAppointments({ ...context, ...changed }, range), []);
+  }
 });
 
 test("normalized read repositories scope the transaction and preserve joined projections", async () => {

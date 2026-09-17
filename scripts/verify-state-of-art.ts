@@ -60,9 +60,9 @@ const failed = results.filter((result) => result.status === "FAIL");
 const blockedGates = [
   {
     gate: "verify:production (full browser matrix)",
-    status: "BLOCKED_ENVIRONMENT",
-    reason: "WebKit host libraries are missing (libgstcodecparsers-1.0.so.0); the full Playwright matrix cannot launch WebKit on this host",
-    handling: "The supported local subset test:e2e:smoke (Chromium/Firefox) runs here; the full production structural gate remains a CI/staging requirement with `npx playwright install --with-deps`."
+    status: "NOT_RUN",
+    reason: "The full browser matrix is not included in this composition; host library availability is not inferred",
+    handling: "This composition runs test:e2e:smoke:serial. Record separately executed full-matrix and production verification with their own current evidence."
   },
   {
     gate: "verify:deepseek-real / verify:provider-real / verify:staging / verify:load",

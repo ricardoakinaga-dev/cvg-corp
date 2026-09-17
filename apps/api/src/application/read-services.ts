@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { financialBalanceSchema, type AdministrationOccurrence, type AiSession, type AnimalPatient, type Appointment, type AuditRecord, type Bed, type Charge, type ClinicalAddendum, type ClinicalDocument, type StockMovement, type CommunicationMessage, type ContextSelector, type CvgContext, type DiagnosticRequest, type DiagnosticResult, type Dispensation, type Encounter, type FinancialBalance, type Guardian, type HospitalEpisode, type KnowledgeDocument, type LedgerEntry, type Lot, type MedicationOrder, type OpaqueId, type Payment, type Product, type Provider, type QueueEntry, type Resource, type ServiceCatalogItem, type Specimen, type StockLocation, type User } from "@cvg/contracts";
+import { financialBalanceSchema, type AdministrationOccurrence, type AiSession, type AnimalPatient, type Appointment, type AppointmentRange, type AuditRecord, type Bed, type Charge, type ClinicalAddendum, type ClinicalDocument, type StockMovement, type CommunicationMessage, type ContextSelector, type CvgContext, type DiagnosticRequest, type DiagnosticResult, type Dispensation, type Encounter, type FinancialBalance, type Guardian, type HospitalEpisode, type KnowledgeDocument, type LedgerEntry, type Lot, type MedicationOrder, type OpaqueId, type Payment, type Product, type Provider, type QueueEntry, type Resource, type ServiceCatalogItem, type Specimen, type StockLocation, type User } from "@cvg/contracts";
 import { computeFinancialBalance, type ContextOption, type CvgStore, type PublicUser } from "@cvg/domain";
 import type { NormalizedAiSessionRead, NormalizedAppointmentRead, NormalizedEncounterRead, NormalizedMedicationOrderRead, NormalizedQueueRead, NormalizedStockRead, PostgresPersistence } from "@cvg/persistence";
 import { enforceApplicationPolicy } from "@cvg/agent-policy";
@@ -18,7 +18,7 @@ export interface GuardianReadRepository {
 }
 
 export interface AppointmentReadRepository {
-  list(context: CvgContext, range?: "today" | "week"): Promise<AppointmentRead[]>;
+  list(context: CvgContext, range?: AppointmentRange): Promise<AppointmentRead[]>;
 }
 
 export interface AuditRepository {
@@ -130,7 +130,7 @@ class PostgresGuardianReadRepository implements GuardianReadRepository {
 class StoreAppointmentReadRepository implements AppointmentReadRepository {
   constructor(private readonly store: CvgStore) {}
 
-  async list(context: CvgContext, range: "today" | "week" = "today"): Promise<AppointmentRead[]> {
+  async list(context: CvgContext, range: AppointmentRange = "today"): Promise<AppointmentRead[]> {
     return this.store.listAppointments(context, range).map((appointment) => ({
       ...appointment,
       patient: this.store.patients.get(appointment.patientId) ? { id: appointment.patientId, name: this.store.patients.get(appointment.patientId)!.name } : null,
@@ -142,7 +142,7 @@ class StoreAppointmentReadRepository implements AppointmentReadRepository {
 class PostgresAppointmentReadRepository implements AppointmentReadRepository {
   constructor(private readonly persistence: PostgresPersistence) {}
 
-  async list(context: CvgContext, range: "today" | "week" = "today"): Promise<NormalizedAppointmentRead[]> {
+  async list(context: CvgContext, range: AppointmentRange = "today"): Promise<NormalizedAppointmentRead[]> {
     return this.persistence.listAppointments(context, range);
   }
 }
@@ -587,7 +587,7 @@ export class ReadApplicationService {
     return this.guardians.list(context, query);
   }
 
-  listAppointments(context: CvgContext, range: "today" | "week" = "today"): Promise<AppointmentRead[]> {
+  listAppointments(context: CvgContext, range: AppointmentRange = "today"): Promise<AppointmentRead[]> {
     enforceApplicationPolicy(context, "appointments.read");
     return this.appointments.list(context, range);
   }

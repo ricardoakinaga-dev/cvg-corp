@@ -157,9 +157,12 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
           # Annotations are the only failure channel readable without repository
           # admin rights; publish each failing journey as an error annotation.
-          for f in $(find test-results -name "error-context.md" 2>/dev/null | head -8); do
+          for f in $(find test-results -name "error-context.md" 2>/dev/null | head -3); do
             name=$(sed -n '/# Test info/,+4p' "$f" | tr '\n' ' ' | cut -c1-280)
-            detail=$(sed -n '/# Error details/,+16p' "$f" | tr '\n' ' ' | cut -c1-1400)
+            # Include the page snapshot: the receipt, window count and visible
+            # rows are what identify a conflict, a wrong-day booking or a
+            # missing reload.
+            detail=$(sed -n '/# Error details/,+80p' "$f" | tr '\n' ' ' | cut -c1-6000)
             echo "::error title=E2E failure ${f}::${name} ${detail}"
           done
 

@@ -649,7 +649,8 @@ test.describe("agenda derivada do contexto e do relógio", () => {
     await page.getByRole("button", { name: "Criar reserva" }).click();
     const row = page.locator("tr", { hasText: purpose });
     // The persisted row is the authoritative proof; the toast is transient.
-    await expect(row).toBeVisible();
+    // The list reloads asynchronously after the POST, so allow a slower runner.
+    await expect(row).toBeVisible({ timeout: 15_000 });
 
     await row.getByRole("button", { name: "Confirmar", exact: true }).click();
     await page.getByRole("button", { name: "Confirmar reserva" }).click();

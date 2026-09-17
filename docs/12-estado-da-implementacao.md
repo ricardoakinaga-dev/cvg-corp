@@ -287,3 +287,19 @@ O commit `fe02a54f363952fc2d9da3956013c63a516265af` corrigiu o wiring do limite 
 Nos commits `7971d27f039ae93530bf8eac93f573bbd2b77d9a` e `3b57fd5b7104e89bf8a0c5cb224b8e5dc611b147`, `createWorkerDependencies` virou a composição única, o teste unitário valida os dois limites, `docker/**/*.ts` entrou no `tsconfig`, `docker` entrou no lint e o narrowing nullable do entrypoint Docker foi corrigido. No commit `39024ca03af5a78ad1edabaf9e5be6654a98327d`, os verificadores passaram a exigir o call real compartilhado, não apenas símbolos soltos.
 
 No SHA final, `npm test` passou 136 (`135 pass`, `1 skip`), `test:database` 25/25, worker 13/13, typecheck, lint (124 fontes), build, static (50 artefatos/126 fontes), PDP, `verify:production` estrutural e diff check passaram. A crítica fresh `Sartre` concluiu `REVIEW_ONLY_PASS` para este recorte e está registrada em `.gauntlet/critique-worker-entrypoint-final-attempt-20260910.md`; ela não aprova AAA. O veredito integral continua `IN_PROGRESS`/`PARTIAL`, `FAIL_WITH_LIMITATIONS`/`AAA_NOT_PROVEN`, com evidência externa e aceite humano ainda obrigatórios.
+
+## Checkpoint 2026-09-17 — Embedded Agent Runtime / CI closure
+
+**Base:** `277f10f189750586ae32c7ae1974488c9c1b97ce` (CI run `35176228659`).
+**Plano ativo de retomada:** [`.agent/plans/2026-09-17-embedded-runtime-ci-closure.md`](../.agent/plans/2026-09-17-embedded-runtime-ci-closure.md).
+
+Estado: implementação local fechada e verificada — `verify:state-of-art` 30/30,
+evals 7/7 com paridade diferencial, 10 ataques adversariais, chaos com 7 falhas,
+baseline de carga 1–50 sessões e PostgreSQL 16.15 real local (migrations 001–039,
+RLS, fence no banco, append-only, concorrência e restore). No CI remoto a run
+`35170108792` passou os passos 1–36 (incluindo Browser E2E e os três gates
+PostgreSQL); a run `35176228659` falhou apenas no passo 30 (jornada de agenda do
+Browser E2E: recibo de criação presente, linha ausente na lista). O checkpoint
+publica timeout de asserção ampliado (15 s) e diagnóstico de anexos com o
+snapshot da página para a próxima run. Veredito global permanece
+`AAA_NOT_PROVEN`; provas externas e aprovação humana continuam ausentes.

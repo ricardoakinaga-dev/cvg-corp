@@ -10,16 +10,16 @@
     "INTEGRATION",
     "AUDIT"
   ],
-  "lifecycle_stage": "PROMOTION",
-  "active_activity": "PROMOTION",
+  "lifecycle_stage": "VERIFY",
+  "active_activity": "VERIFY",
   "engineering_tier": "T4_CONTROLS",
   "risk_level": "CRITICAL",
   "blast_radius": "SYSTEM",
   "status": "IN_PROGRESS",
-  "active_execplan": ".agent/plans/2026-09-13-aaa2.md",
-  "active_task": "EMBEDDED-RUNTIME-LOCAL-CLOSURE",
-  "verification_state": "LOCAL_STATE_OF_THE_ART_CANDIDATE",
-  "repository_state": "HEAD-to-be-committed; worktree carries the embedded agent runtime program; npm test 497 (496 pass, 1 skip, 0 fail); verify:state-of-art 27/27 PASS; external evidence BLOCKED_EXTERNAL",
+  "active_execplan": ".agent/plans/2026-09-17-embedded-runtime-ci-closure.md",
+  "active_task": "CI-CLOSURE-01",
+  "verification_state": "LOCAL_GREEN_CI_PENDING",
+  "repository_state": "CHECKPOINT 2026-09-17: base 277f10f189750586ae32c7ae1974488c9c1b97ce; implementacao do runtime embarcado, gates locais 30/30 e PostgreSQL real local verdes; CI remoto verde ate o passo 36 e falhando apenas no passo 30 (Browser E2E, jornada de agenda); correcoes de robustez do teste e diagnostico ampliado aplicadas neste checkpoint; evidencia externa BLOCKED_EXTERNAL",
   "instruction_scope_refs": [
     "docs/prompt-state-of-the-art-triplo-aaa.md",
     "docs/prompt-state-of-the-art-triplo-aaa-2026-09-09-v2.txt",
@@ -49,9 +49,9 @@
     ".agent/plans/2026-09-13-aaa2.md"
   ],
   "last_gate_record": null,
-  "last_event_id": "EVT-CVG-20260913-AAA2-02-CLOSE-036",
-  "state_revision": 352,
-  "latest_evidence_note": "Hybrid embedding decision, embedded kernel/context/session/plugins/skills/model runtime, migration 038, evals 7/7 and 12 new local gates green. AAA_NOT_PROVEN; production and external proofs absent.",
+  "last_event_id": "EVT-CVG-20260917-CI-CLOSURE-001",
+  "state_revision": 353,
+  "latest_evidence_note": "verify:state-of-art 30/30 verde em 73e1208/148a4ce; PostgreSQL 16.15 real local verde (verify:postgres, concurrency, restore); CI remoto run 35170108792 verde ate o passo 36; run 35176228659 falhou apenas na jornada de agenda do Browser E2E.",
   "historical_checkpoint": {
     "commit": "e43b3b0032aafb9d17563b1fce00fbae88ee0d51",
     "worktree": "modified",
@@ -69,18 +69,17 @@
     "tripleArtifactSha256": "a20b88c3ca8a827ba0210b792a807072fe1d5f49e1f952167b85827a0cb35818"
   },
   "current_checkpoint": {
-    "task": "AUD13-16",
-    "action": "AUD13-16:AAA2-02-E01",
-    "sourceSha": "1c22c5dc79c52151f4c7c94c4402dfdc86812cbc",
+    "task": "CI-CLOSURE-01",
+    "action": "CI-CLOSURE-01:BROWSER-E2E-AGENDA",
+    "sourceSha": "277f10f189750586ae32c7ae1974488c9c1b97ce",
     "worktree": "modified",
-    "result": "DONE_WITH_LIMITATION",
-    "evidence": "VER-CVG-AAA2-02-005",
-    "critic": "CRIT-AAA2-02-E01-FINAL-20260913-7F3A",
+    "plan": ".agent/plans/2026-09-17-embedded-runtime-ci-closure.md",
+    "result": "CHECKPOINT",
+    "evidence": "CI run 35170108792 (steps 1-36 PASS); rollback/retomada em docs/12-estado-da-implementacao.md",
     "globalVerdict": "AAA_NOT_PROVEN",
     "limitations": [
-      "PostgreSQL multi-process medication concurrency not proven",
-      "AUD13-16A blocked by D-02",
-      "external gates and human approval absent"
+      "Browser E2E (jornada de agenda) ainda falha no runner UTC; timeout de 15s e diagnostico ampliado aplicados e aguardando nova run",
+      "gates externos, staging, provider real e aprovacao humana ausentes"
     ]
   },
   "current_evidence_note": "AAA2-02/E01: correcao vertical e validacao local aprovadas com ressalvas; AUD13-16 segue IN_PROGRESS aguardando D-02/AUD13-16A. AAA2-01 permanece fechamento local aceito com limitacao; promocao/Triplo AAA global continuam AAA_NOT_PROVEN.",
@@ -99,15 +98,15 @@
   },
   "blocked_by": [
     "external DeepSeek/model execution not authorized (BLOCKED_EXTERNAL)",
-    "no authorized staging, real provider, secret authority, TLS or telemetry collector",
-    "PostgreSQL migration 038 and the agent_* SQL repairs were not executed against real PostgreSQL (no local Docker/PostgreSQL)",
-    "verify:production full browser matrix BLOCKED_ENVIRONMENT: WebKit libgstcodecparsers-1.0.so.0 missing; supported subset test:e2e:smoke:serial PASS (254/22 skips)",
-    "no independent critics signatures, same-SHA CI, or human approvals at this state"
+    "no authorized staging, real provider, secret authority, TLS, telemetry collector, load/chaos/recovery environment",
+    "staging PostgreSQL multi-instance, managed backup/restore and RTO/RPO remain external (local real PostgreSQL 16.15 proof is LOCAL_REAL)",
+    "Browser E2E agenda journey is failing on the UTC CI runner (receipt created, row missing); timeout/diagnostics fix pending a new run",
+    "no independent critics, signed evidence bundle or human approval at this state"
   ],
   "human_approval_required": [
     "production release, real data, real provider, credential handling, break-glass, retention/residency, RTO/RPO/SLO and residual high/critical risk"
   ],
-  "updated_at": "2026-09-16T18:00:00-03:00",
+  "updated_at": "2026-09-17T00:34:12-03:00",
   "latest_remote_observation": {
     "run": "34503647191",
     "sha": "539d34e48e4b94d83d161797219bbc95fb43fec4",
@@ -122,8 +121,8 @@
     "limitations": "Remote CI is not staging or external provider/DeepSeek/secret authority. Operational Collector/SLO, production-like load/chaos/recovery, staging browser/assistive-tech/real-zoom matrix and human acceptance remain absent",
     "observed_at": "2026-09-10T13:50:43-03:00"
   },
-  "next_gate": "CI same-SHA -> staging autorizado -> provider real -> observability/load/chaos/recovery -> critics -> human approval",
-  "active_action_id": "AUD13-16:AAA2-02-E01-WAIT-D02",
+  "next_gate": "CI-CLOSURE-01:BROWSER-E2E-AGENDA",
+  "active_action_id": "CI-CLOSURE-01:BROWSER-E2E-AGENDA",
   "active_checkpoint": {
     "task": "AUD13-16",
     "action": "AUD13-16:AAA2-02-E01-WAIT-D02",
@@ -155,5 +154,5 @@
     "result": "VER-CVG-AAA2-02-004: E01 aprovado no escopo local com ressalvas; suite e gates locais passam; PostgreSQL multi-processo, AUD13-16A, gates externos e aprovacao humana permanecem ausentes",
     "globalVerdict": "AAA_NOT_PROVEN"
   },
-  "active_plan": "docs/prompt-embedded-agent-runtime-2026-09-16.md"
+  "active_plan": ".agent/plans/2026-09-17-embedded-runtime-ci-closure.md"
 }

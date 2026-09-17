@@ -207,7 +207,10 @@ try {
   const luna = patientsBody.data.items.find((item) => item.name === "Luna");
   if (!luna || luna.guardian?.displayName !== "Marina Souza") throw new Error("normalized patient read did not return the joined guardian projection");
 
-  const appointments = await second.app.inject({ method: "GET", url: "/api/v1/appointments", headers: auth.headers });
+  const fixtureAppointment = [...second.store.appointments.values()].find((item) => item.patientId === luna.id && item.workspaceId === auth.workspaceId);
+  if (!fixtureAppointment) throw new Error("persisted Luna appointment fixture is missing");
+  const fixtureRange = new URLSearchParams({ startsAt: fixtureAppointment.startsAt, endsAt: fixtureAppointment.endsAt });
+  const appointments = await second.app.inject({ method: "GET", url: `/api/v1/appointments?${fixtureRange}`, headers: auth.headers });
   if (appointments.statusCode !== 200) throw new Error(`normalized appointment read failed with ${appointments.statusCode}: ${appointments.body}`);
   const appointmentsBody = JSON.parse(appointments.body) as { data: { items: Array<{ id: string; workspaceId: string; patient?: { name: string }; provider: string | null }> } };
   if (!appointmentsBody.data.items.some((item) => item.workspaceId === auth.workspaceId && item.patient?.name === "Luna" && item.provider === "Dra. Ana Martins")) throw new Error("normalized appointment read did not honor the selected workspace projection");

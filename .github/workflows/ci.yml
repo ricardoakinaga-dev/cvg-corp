@@ -87,7 +87,16 @@ jobs:
         run: npm run verify:evidence-snapshot
 
       - name: Static verification
-        run: npm run verify:static
+        run: |
+          set -o pipefail
+          npm run verify:static > /tmp/static-verification.log 2>&1 || status=$?
+          if [ "${status:-0}" != "0" ]; then
+            msg=$(grep -E "^FAIL" /tmp/static-verification.log | head -6 | sed 's/%/%25/g' | tr '\n' ' ')
+            echo "::error title=verify:static failure::${msg:0:1400}"
+            tail -20 /tmp/static-verification.log
+            exit 1
+          fi
+          cat /tmp/static-verification.log
 
       - name: Application PDP coverage
         run: npm run verify:pdp

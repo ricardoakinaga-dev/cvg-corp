@@ -92,6 +92,7 @@ candidate SHA será congelado após o commit).
 | `verify:postgres` (PostgreSQL 16.15 local real) | PASS (migrations 001–039; RLS do catálogo; fence no banco; append-only; sessão/turnos do agente) |
 | `verify:postgres:concurrency` | PASS (2 processos, 1 vencedor, 0 efeitos duplicados) |
 | `verify:postgres:restore` | PASS (quarentena, login/readiness bloqueados, fonte inalterada) |
+| `verify:production` (structural, local com WebKit habilitado) | PASS (Compose/release estruturais; containers não iniciados) |
 | `verify:agent-chaos` | PASS (7 falhas: provider down, timeout, tool OUTCOME_UNKNOWN, ledger, restart em approval, persistência de outcome unknown, budget port; sem corrupção de domínio) |
 | `benchmark:agent-runtime` | baseline local 1/5/10/25/50 sessões; concorrência limitada a 8 com backpressure (8 aceitos, 42 rejeitados em 50) |
 | `verify:assistant-state` (testes) | PASS (estados de IA e prévia de aprovação) |

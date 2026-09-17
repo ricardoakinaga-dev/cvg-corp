@@ -115,14 +115,20 @@ async function regularFile(pathValue: string): Promise<{ bytes: Buffer; modified
 }
 
 /**
- * The snapshot file itself must never count as a worktree modification: it is
- * written after capture and is exactly the artifact under verification, so a
- * clean CI checkout must stay CLEAN across capture and static verification.
+ * Worktree state tracks source drift only.  Evidence artifacts under
+ * `artifacts/` (including this snapshot itself) are rewritten by intermediate
+ * gates; their integrity is already bound by digests, so counting them would
+ * make a clean CI checkout flip from CLEAN to MODIFIED between capture and
+ * static verification.
  */
 function worktreeState(): EvidenceSnapshot["worktree"] {
   const status = git(["status", "--porcelain=v1", "--untracked-files=all"])
     .split("\n")
-    .filter((line) => line.trim().length > 0 && !line.includes(EVIDENCE_SNAPSHOT_PATH))
+    .filter((line) => line.trim().length > 0)
+    .filter((line) => {
+      const path = line.slice(3).trim();
+      return path !== EVIDENCE_SNAPSHOT_PATH && !path.startsWith("artifacts/");
+    })
     .join("\n");
   return status.trim().length === 0 ? "CLEAN" : "MODIFIED";
 }

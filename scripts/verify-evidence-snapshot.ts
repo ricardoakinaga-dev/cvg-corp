@@ -121,16 +121,18 @@ async function regularFile(pathValue: string): Promise<{ bytes: Buffer; modified
  * make a clean CI checkout flip from CLEAN to MODIFIED between capture and
  * static verification.
  */
-function worktreeState(): EvidenceSnapshot["worktree"] {
-  const status = git(["status", "--porcelain=v1", "--untracked-files=all"])
+function sourceDriftPaths(): string[] {
+  return git(["status", "--porcelain=v1", "--untracked-files=all"])
     .split("\n")
     .filter((line) => line.trim().length > 0)
-    .filter((line) => {
-      const path = line.slice(3).trim();
-      return path !== EVIDENCE_SNAPSHOT_PATH && !path.startsWith("artifacts/");
-    })
-    .join("\n");
-  return status.trim().length === 0 ? "CLEAN" : "MODIFIED";
+    // Untracked build/tool debris is not source drift; tracked modifications are.
+    .filter((line) => !line.startsWith("?? "))
+    .map((line) => line.slice(3).trim())
+    .filter((path) => path !== EVIDENCE_SNAPSHOT_PATH && !path.startsWith("artifacts/"));
+}
+
+function worktreeState(): EvidenceSnapshot["worktree"] {
+  return sourceDriftPaths().length === 0 ? "CLEAN" : "MODIFIED";
 }
 
 export async function createEvidenceSnapshot(): Promise<EvidenceSnapshot> {
@@ -169,7 +171,7 @@ export async function verifyEvidenceSnapshot(snapshot: EvidenceSnapshot, environ
   if (snapshot.sourceSha !== currentSha) errors.push("evidence snapshot source SHA does not match HEAD");
   const currentWorktree: EvidenceSnapshot["worktree"] = environment.worktree ?? worktreeState();
   if (snapshot.worktree !== "CLEAN" && snapshot.worktree !== "MODIFIED") errors.push("evidence snapshot worktree state is invalid");
-  else if (snapshot.worktree !== currentWorktree) errors.push(`evidence snapshot worktree state ${snapshot.worktree} does not match current state ${currentWorktree}`);
+  else if (snapshot.worktree !== currentWorktree) errors.push(`evidence snapshot worktree state ${snapshot.worktree} does not match current state ${currentWorktree} (source drift: ${sourceDriftPaths().join(", ") || "none"})`);
   const captured = Date.parse(snapshot.capturedAt);
   if (!Number.isFinite(captured) || captured > now + 5 * 60_000 || captured < now - 7 * 24 * 60 * 60_000) errors.push("evidence snapshot capturedAt is outside the bounded evidence window");
   if (snapshot.prompt.path !== PROMPT_REFERENCE || snapshot.prompt.sha256 !== EXPECTED_PROMPT_SHA256) errors.push("evidence snapshot prompt binding is invalid");

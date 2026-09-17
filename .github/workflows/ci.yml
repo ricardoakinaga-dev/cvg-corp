@@ -255,10 +255,16 @@ jobs:
       - name: Create OCI web artifact
         run: docker buildx build --provenance=false --sbom=false --build-arg CVG_SOURCE_REVISION=${{ github.sha }} --file Dockerfile.web --output=type=oci,dest=artifacts/cvg-web-${{ github.sha }}.oci.tar .
 
+      - name: Extract OCI layouts for vulnerability scanning
+        run: |
+          mkdir -p artifacts/cvg-api-${{ github.sha }}.oci artifacts/cvg-web-${{ github.sha }}.oci
+          tar -xf artifacts/cvg-api-${{ github.sha }}.oci.tar -C artifacts/cvg-api-${{ github.sha }}.oci
+          tar -xf artifacts/cvg-web-${{ github.sha }}.oci.tar -C artifacts/cvg-web-${{ github.sha }}.oci
+
       - name: Scan API image
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
-          input: artifacts/cvg-api-${{ github.sha }}.oci.tar
+          input: artifacts/cvg-api-${{ github.sha }}.oci
           format: table
           exit-code: "1"
           ignore-unfixed: true
@@ -267,7 +273,7 @@ jobs:
       - name: Scan web image
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
-          input: artifacts/cvg-web-${{ github.sha }}.oci.tar
+          input: artifacts/cvg-web-${{ github.sha }}.oci
           format: table
           exit-code: "1"
           ignore-unfixed: true

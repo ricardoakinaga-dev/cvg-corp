@@ -285,14 +285,34 @@ jobs:
         env:
           CVG_DEEPSEEK_EXPECTED_ENGINE_COMMIT: ${{ vars.CVG_DEEPSEEK_EXPECTED_ENGINE_COMMIT }}
         run: |
+          set -o pipefail
           mkdir -p artifacts
+          if [ -z "${CVG_DEEPSEEK_EXPECTED_ENGINE_COMMIT:-}" ]; then
+            PINNED_ENGINE_COMMIT="$(node -e 'const fs=require("node:fs"); const src=fs.readFileSync("packages/harness/src/index.ts","utf8"); const match=src.match(/DSH_ENGINE_COMMIT\s*=\s*"([0-9a-f]{40})"/); if(!match) process.exit(2); process.stdout.write(match[1]);')"
+            export CVG_DEEPSEEK_EXPECTED_ENGINE_COMMIT="$PINNED_ENGINE_COMMIT"
+            echo "::warning title=release provenance::CVG_DEEPSEEK_EXPECTED_ENGINE_COMMIT repo variable is unset; using pinned engine commit from packages/harness/src/index.ts"
+          fi
           node -e 'const fs=require("node:fs"); const value={schemaVersion:1,sourceSha:process.env.GITHUB_SHA,workflow:process.env.GITHUB_WORKFLOW,runId:process.env.GITHUB_RUN_ID,completedStages:["checks","container-build","trivy-api","trivy-web","sbom"],observedAt:new Date().toISOString()}; fs.writeFileSync("artifacts/ci-results.json", JSON.stringify(value,null,2)+"\n", {mode:0o600})'
           CVG_API_IMAGE_DIGEST="$(tar -xOf artifacts/cvg-api-${{ github.sha }}.oci.tar index.json | node -e 'let value=""; process.stdin.on("data", (chunk) => value += chunk); process.stdin.on("end", () => { const index = JSON.parse(value); const digest = index.manifests?.[0]?.digest; if (typeof digest !== "string" || !/^sha256:[a-f0-9]{64}$/.test(digest)) process.exit(2); process.stdout.write(digest); });')"
           CVG_WEB_IMAGE_DIGEST="$(tar -xOf artifacts/cvg-web-${{ github.sha }}.oci.tar index.json | node -e 'let value=""; process.stdin.on("data", (chunk) => value += chunk); process.stdin.on("end", () => { const index = JSON.parse(value); const digest = index.manifests?.[0]?.digest; if (typeof digest !== "string" || !/^sha256:[a-f0-9]{64}$/.test(digest)) process.exit(2); process.stdout.write(digest); });')"
           export CVG_API_IMAGE_DIGEST CVG_WEB_IMAGE_DIGEST
           npm sbom --sbom-format cyclonedx > artifacts/sbom.cdx.json
-          npm run release:provenance -- --write artifacts/release-provenance.json
-          npm run verify:release-provenance -- --manifest artifacts/release-provenance.json
+          npm run release:provenance -- --write artifacts/release-provenance.json > /tmp/provenance-write.log 2>&1 || status=$?
+          if [ "${status:-0}" != "0" ]; then
+            msg=$(grep -E "RELEASE_PROVENANCE_BLOCKED" /tmp/provenance-write.log | head -2 | sed 's/%/%25/g' | tr '\n' ' ')
+            drift=$(git status --porcelain=v1 --untracked-files=all | head -8 | sed 's/%/%25/g' | tr '\n' ' ')
+            echo "::error title=release provenance failure::${msg:0:1400} drift:${drift:0:600}"
+            cat /tmp/provenance-write.log
+            exit 1
+          fi
+          npm run verify:release-provenance -- --manifest artifacts/release-provenance.json > /tmp/provenance-verify.log 2>&1 || status=$?
+          if [ "${status:-0}" != "0" ]; then
+            msg=$(grep -E "RELEASE_PROVENANCE_BLOCKED" /tmp/provenance-verify.log | head -2 | sed 's/%/%25/g' | tr '\n' ' ')
+            echo "::error title=release provenance verification failure::${msg:0:1400}"
+            cat /tmp/provenance-verify.log
+            exit 1
+          fi
+          cat /tmp/provenance-write.log /tmp/provenance-verify.log
 
       - name: Upload release provenance
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2

@@ -71,8 +71,8 @@
   "current_checkpoint": {
     "task": "CI-CLOSURE-01",
     "action": "CI-CLOSURE-01:BROWSER-E2E-AGENDA",
-    "sourceSha": "277f10f189750586ae32c7ae1974488c9c1b97ce",
-    "worktree": "modified",
+    "sourceSha": "9bda283f212f4a616a2b302bc943311238d63052",
+    "worktree": "clean (checkpoint committed)",
     "plan": ".agent/plans/2026-09-17-embedded-runtime-ci-closure.md",
     "result": "CHECKPOINT",
     "evidence": "CI run 35170108792 (steps 1-36 PASS); rollback/retomada em docs/12-estado-da-implementacao.md",
@@ -106,7 +106,7 @@
   "human_approval_required": [
     "production release, real data, real provider, credential handling, break-glass, retention/residency, RTO/RPO/SLO and residual high/critical risk"
   ],
-  "updated_at": "2026-09-17T00:34:12-03:00",
+  "updated_at": "2026-09-17T00:34:27-03:00",
   "latest_remote_observation": {
     "run": "34503647191",
     "sha": "539d34e48e4b94d83d161797219bbc95fb43fec4",
@@ -121,7 +121,7 @@
     "limitations": "Remote CI is not staging or external provider/DeepSeek/secret authority. Operational Collector/SLO, production-like load/chaos/recovery, staging browser/assistive-tech/real-zoom matrix and human acceptance remain absent",
     "observed_at": "2026-09-10T13:50:43-03:00"
   },
-  "next_gate": "CI-CLOSURE-01:BROWSER-E2E-AGENDA",
+  "next_gate": "CI-CLOSURE-01:RUN-ON-9bda283f212f",
   "active_action_id": "CI-CLOSURE-01:BROWSER-E2E-AGENDA",
   "active_checkpoint": {
     "task": "AUD13-16",

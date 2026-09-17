@@ -92,6 +92,7 @@ const required = [
   "tests/unit/embedded-runtime.test.ts",
   "tests/unit/agent-security.test.ts",
   "db/migrations/038_agent_runtime_session_state.sql",
+  "db/migrations/039_agent_runtime_fence_guard.sql",
   "docs/README.md",
   "docs/prompt-final-operational-proof-2026-09-10.txt",
   "docs/final-operational-proof-audit.md",

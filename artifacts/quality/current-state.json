@@ -11,9 +11,9 @@
   "blockers": [
     "external DeepSeek/model execution not authorized (BLOCKED_EXTERNAL)",
     "no authorized staging, real provider, secret authority, TLS, telemetry collector, load/chaos/recovery environment",
-    "PostgreSQL migration 038 not applied or exercised (no local PostgreSQL/Docker available)",
+    "staging PostgreSQL multi-instance, managed backup/restore and RTO/RPO remain external (local real PostgreSQL 16.15 proof is LOCAL_REAL)",
     "no independent critics, signed evidence bundle or human approval at this state",
-    "provider real, staging, observability SLOs, RTO/RPO and container execution remain NOT_RUN"
+    "provider real, staging, observability SLOs and container execution remain NOT_RUN"
   ],
   "lastVerification": {
     "at": "2026-09-16T21:40:30.000Z",
@@ -22,9 +22,9 @@
   },
   "evidenceClasses": {
     "static": "STATIC",
-    "unitIntegration": "UNIT",
+    "unitIntegration": "INTEGRATION",
     "evals": "SYNTHETIC",
-    "localPostgres": "NOT_RUN",
+    "localPostgres": "LOCAL_REAL",
     "staging": "NOT_RUN",
     "externalReal": "BLOCKED_EXTERNAL"
   },

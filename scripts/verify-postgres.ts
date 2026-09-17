@@ -647,7 +647,25 @@ let agentSessionProof: Record<string, unknown> = { status: "NOT_RUN" };
     if (leaseB !== null) throw new Error("a live agent lease must block a second owner");
     const checkpoint = await store.checkpoint({ sessionId, organizationId, fence: leaseA.fence, payload: { turn: 1, state: "WAITING_APPROVAL" } });
     if (checkpoint.sequence !== 1) throw new Error(`checkpoint sequence expected 1, observed ${checkpoint.sequence}`);
-    await expectSqlRejected(agentPool, "stale-fence checkpoint", "insert into agent_checkpoints (session_id, organization_id, sequence, schema_version, digest, payload, fence) values ($1,$2,99,1,$3,'{}'::jsonb,0)", [sessionId, organizationId, "a".repeat(64)]);
+    // The fence invariant is enforced by the database too: a tenant-scoped raw
+    // append with a stale fence must be rejected by the 039 trigger.
+    {
+      const client = await agentPool.connect();
+      try {
+        await client.query("begin");
+        await client.query("select set_config('cvg.organization_id', $1, true)", [organizationId]);
+        let staleRejected = false;
+        try {
+          await client.query("insert into agent_checkpoints (session_id, organization_id, sequence, schema_version, digest, payload, fence) values ($1,$2,99,1,$3,'{}'::jsonb,0)", [sessionId, organizationId, "a".repeat(64)]);
+        } catch {
+          staleRejected = true;
+        }
+        await client.query("rollback");
+        if (!staleRejected) throw new Error("the database must reject an append with a stale fence");
+      } finally {
+        client.release();
+      }
+    }
     let staleRejected = false;
     try {
       await store.checkpoint({ sessionId, organizationId, fence: leaseA.fence + 5, payload: { forged: true } });
@@ -658,13 +676,25 @@ let agentSessionProof: Record<string, unknown> = { status: "NOT_RUN" };
     const firstTurn = await store.appendTurn({ turnId: randomUUID(), sessionId, organizationId, sequence: 0, status: "COMPLETED", inputDigest: digest({ turn: 1 }), contextDigest: null, modelRequestDigest: null, modelResponseDigest: null, toolRequestIds: [], usageRecordId: null, provenance: { provider: "verify" }, startedAt: new Date().toISOString(), completedAt: new Date().toISOString(), fence: leaseA.fence });
     const secondTurn = await store.appendTurn({ turnId: randomUUID(), sessionId, organizationId, sequence: 0, status: "COMPLETED", inputDigest: digest({ turn: 2 }), contextDigest: null, modelRequestDigest: null, modelResponseDigest: null, toolRequestIds: [], usageRecordId: null, provenance: { provider: "verify" }, startedAt: new Date().toISOString(), completedAt: new Date().toISOString(), fence: leaseA.fence });
     if (firstTurn.sequence !== 1 || secondTurn.sequence !== 2) throw new Error(`agent turn sequence expected 1,2 observed ${firstTurn.sequence},${secondTurn.sequence}`);
-    let immutableRejected = false;
-    try {
-      await agentPool.query("update agent_turns set status = 'FAILED' where turn_id = $1", [firstTurn.turnId]);
-    } catch {
-      immutableRejected = true;
+    // Tenant-scoped append-only probe: with the GUC set, RLS admits the row and
+    // the 038 trigger (or the missing UPDATE grant) must reject the mutation.
+    {
+      const client = await agentPool.connect();
+      try {
+        await client.query("begin");
+        await client.query("select set_config('cvg.organization_id', $1, true)", [organizationId]);
+        let immutableRejected = false;
+        try {
+          await client.query("update agent_turns set status = 'FAILED' where turn_id = $1", [firstTurn.turnId]);
+        } catch {
+          immutableRejected = true;
+        }
+        await client.query("rollback");
+        if (!immutableRejected) throw new Error("agent turn ledger must be append-only");
+      } finally {
+        client.release();
+      }
     }
-    if (!immutableRejected) throw new Error("agent turn ledger must be append-only");
     const latest = await store.latestCheckpoint(sessionId, { organizationId, actorId });
     if (!latest || latest.sequence !== 1 || latest.payload["state"] !== "WAITING_APPROVAL") throw new Error("latest checkpoint did not round-trip");
     let staleCompletionRejected = false;

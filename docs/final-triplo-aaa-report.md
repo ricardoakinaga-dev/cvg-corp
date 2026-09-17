@@ -89,6 +89,9 @@ candidate SHA será congelado após o commit).
 | `verify:agent-runtime-smoke` | PASS (session → tool → approval → checkpoint → resume → drain) |
 | `verify:architecture` | PASS (domainImports=0, applicationProviderImports=0) |
 | `verify:pdp-universal` / `verify:pdp` | PASS |
+| `verify:postgres` (PostgreSQL 16.15 local real) | PASS (migrations 001–039; RLS do catálogo; fence no banco; append-only; sessão/turnos do agente) |
+| `verify:postgres:concurrency` | PASS (2 processos, 1 vencedor, 0 efeitos duplicados) |
+| `verify:postgres:restore` | PASS (quarentena, login/readiness bloqueados, fonte inalterada) |
 | `verify:agent-chaos` | PASS (7 falhas: provider down, timeout, tool OUTCOME_UNKNOWN, ledger, restart em approval, persistência de outcome unknown, budget port; sem corrupção de domínio) |
 | `benchmark:agent-runtime` | baseline local 1/5/10/25/50 sessões; concorrência limitada a 8 com backpressure (8 aceitos, 42 rejeitados em 50) |
 | `verify:assistant-state` (testes) | PASS (estados de IA e prévia de aprovação) |
@@ -130,10 +133,12 @@ Achados residuais assumidos:
   `finance.refund` permanecem sem binding e falham fechado (nenhum sucesso
   sintético). Ligar comandos de efeito exige um binding de aplicação dedicado e
   aprovação de produto.
-- **MEDIUM:** as correções SQL de fence/sequência agora são exercitadas pelo
-  `verify:postgres` (RLS, fence stale, sequência global, append-only, round-trip
-  de checkpoint) sempre que houver PostgreSQL autorizado — em CI e staging. Nesta
-  máquina (sem Docker/PostgreSQL) permanecem `NOT_RUN` localmente.
+- **MEDIUM (fechado localmente):** as correções SQL foram exercitadas contra
+  **PostgreSQL 16.15 real** local (instância portátil sem root): migrations
+  001–039, RLS por tenant, fence stale rejeitado no banco (migration 039),
+  append-only comprovado em escopo de tenant, sequência global, concorrência de
+  2 processos sem efeito duplicado e restore quarentenado. Multi-instância em
+  staging e backup gerenciado permanecem externos.
 - **MEDIUM:** `disabledPlugins` só é aplicado quando um `pluginRuntime` é injetado;
   a API não registra plugins hoje (sem plugins de produção).
 - **LOW:** `/api/v1/ai/ready` usa `auth: PUBLIC` no catálogo (metadado sem dado de

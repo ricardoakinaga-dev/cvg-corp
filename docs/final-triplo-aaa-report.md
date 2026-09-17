@@ -138,6 +138,15 @@ Achados residuais assumidos:
   a API não registra plugins hoje (sem plugins de produção).
 - **LOW:** `/api/v1/ai/ready` usa `auth: PUBLIC` no catálogo (metadado sem dado de
   ator), igual a `/health` e `/ready`.
+- **MEDIUM (produto, não corrigido por exigir autoridade de produto):**
+  `rescheduleAppointment` valida conflito no escopo de **unidade**, enquanto
+  `createAppointment` valida no escopo de **workspace**; um agendamento na
+  recepção bloqueia o reagendamento clínico do mesmo profissional. Descoberto
+  pelo E2E (jornada de agenda) e contornado no teste com janelas após 13:00; a
+  correção de semântica (alinhar os dois escopos) requer decisão de produto.
+- **LOW (teste):** a jornada de agenda é sensível ao par de fusos
+  navegador/servidor; em CI ambos são UTC e as janelas iniciam após os fixtures
+  semeados (10:30–11:15 e 12:00–12:45).
 
 ## RESIDUAL RISKS
 

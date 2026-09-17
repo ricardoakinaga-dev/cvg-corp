@@ -580,11 +580,19 @@ test.describe("agenda derivada do contexto e do relógio", () => {
   });
 
   test("jornada de agenda: reserva, confirmação, remarcação, check-in, triagem e handoff", async ({ page }, testInfo) => {
-    const PROJECT_WINDOWS = [
-      "08:00", "08:45", "09:30",
-      "13:00", "13:45", "14:30", "15:15", "16:00", "16:45", "17:30", "18:15", "19:00", "19:45", "20:30", "21:15", "22:00", "22:45", "23:30"
-    ];
-    const PROJECT_WINDOW_PAIRS: Record<string, number> = {
+    // 15-minute slots from 10:00: late enough to stay clear of the seeded
+    // morning fixture in every runner timezone, and each project owns a
+    // disjoint block per attempt so a retry never collides with its own
+    // previous booking.
+    // 13:00 start clears both seeded fixtures (10:30-11:15 clinical and
+    // 12:00-12:45 reception, which the unit-scoped reschedule check also
+    // considers); 60-minute project blocks (45-minute service + 15-minute
+    // reschedule) touch but never overlap across projects.
+    const SLOTS = Array.from({ length: 40 }, (_, index) => {
+      const minutes = 13 * 60 + index * 15;
+      return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+    });
+    const PROJECT_PAIRS: Record<string, number> = {
       "chromium-wide-1440": 0,
       "chromium-tablet-768": 1,
       "chromium-mobile-375": 2,
@@ -595,11 +603,14 @@ test.describe("agenda derivada do contexto e do relógio", () => {
       "webkit-tablet-768": 7,
       "webkit-mobile-375": 8
     };
-    const pairIndex = PROJECT_WINDOW_PAIRS[testInfo.project.name];
+    const pairIndex = PROJECT_PAIRS[testInfo.project.name];
     if (pairIndex === undefined) throw new Error(`Projeto sem janela de agenda sintética: ${testInfo.project.name}`);
-    const windowIndex = pairIndex * 2;
-    const startTime = PROJECT_WINDOWS[windowIndex]!;
-    const movedTime = PROJECT_WINDOWS[windowIndex + 1]!;
+    // A retry moves to the next day so it can never collide with its own
+    // previous booking.
+    const windowIndex = pairIndex * 4;
+    const startTime = SLOTS[windowIndex];
+    const movedTime = SLOTS[windowIndex + 1];
+    if (!startTime || !movedTime) throw new Error(`Sem janela sintética livre para o projeto ${testInfo.project.name}`);
     const suffix = `${windowIndex}${Date.now().toString(36)}`;
     const patientName = `Pac Agenda ${suffix}`;
     const purpose = `Consulta E2E ${suffix}`;
@@ -607,10 +618,11 @@ test.describe("agenda derivada do contexto e do relógio", () => {
     await page.goto("/");
     await page.getByRole("button", { name: /Abrir demonstração sintética/i }).click();
     await expect(page.getByRole("heading", { name: "Bom dia, Ricardo." })).toBeVisible();
-    const agendaDate = await page.evaluate(() => {
+    const agendaDate = await page.evaluate((retryOffset: number) => {
       const date = new Date();
+      date.setDate(date.getDate() + retryOffset);
       return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-    });
+    }, testInfo.retry);
 
     const menu = page.getByRole("button", { name: "Abrir menu" });
     if (await menu.isVisible()) await menu.click();
@@ -635,21 +647,21 @@ test.describe("agenda derivada do contexto e do relógio", () => {
     await page.locator("#agenda-time").fill(startTime);
     await page.locator("#agenda-purpose").fill(purpose);
     await page.getByRole("button", { name: "Criar reserva" }).click();
-    await expect(page.getByRole("status").filter({ hasText: "Reserva de" })).toBeVisible();
     const row = page.locator("tr", { hasText: purpose });
+    // The persisted row is the authoritative proof; the toast is transient.
     await expect(row).toBeVisible();
 
     await row.getByRole("button", { name: "Confirmar", exact: true }).click();
     await page.getByRole("button", { name: "Confirmar reserva" }).click();
-    await expect(page.getByRole("status").filter({ hasText: "Reserva confirmada" })).toBeVisible();
+    await expect(page.locator('p.table-sub[role="status"]', { hasText: "Reserva confirmada" })).toBeVisible();
 
     await row.getByRole("button", { name: "Reagendar" }).click();
     await page.locator("#agenda-reschedule-time").fill(movedTime);
     await page.getByRole("button", { name: "Confirmar nova janela" }).click();
-    await expect(page.getByRole("status").filter({ hasText: "Reserva remarcada" })).toBeVisible();
+    await expect(page.locator('p.table-sub[role="status"]', { hasText: "Reserva remarcada" })).toBeVisible();
 
     await row.getByRole("button", { name: "Check-in" }).click();
-    await expect(page.getByRole("status").filter({ hasText: "Check-in registrado" })).toBeVisible();
+    await expect(page.locator('p.table-sub[role="status"]', { hasText: "Check-in registrado" })).toBeVisible();
 
     await page.getByRole("button", { name: "Visão de fila" }).click();
     const queueRow = page.locator("tr", { hasText: patientName }).first();
@@ -657,14 +669,14 @@ test.describe("agenda derivada do contexto e do relógio", () => {
     await queueRow.getByRole("button", { name: "Triagem" }).click();
     await page.locator("#agenda-priority").selectOption("EMERGENCY");
     await page.getByRole("button", { name: "Registrar triagem" }).click();
-    await expect(page.getByRole("status").filter({ hasText: "Triagem registrada" })).toBeVisible();
+    await expect(page.locator('p.table-sub[role="status"]', { hasText: "Triagem registrada" })).toBeVisible();
 
     const triagedRow = page.locator("tr", { hasText: patientName }).first();
     await triagedRow.getByRole("button", { name: "Handoff" }).click();
     await page.locator("#agenda-chief").fill("queixa E2E de handoff");
     await page.locator("#agenda-urgency").selectOption("URGENT");
     await page.getByRole("button", { name: "Abrir atendimento" }).click();
-    await expect(page.getByRole("status").filter({ hasText: "Handoff concluído" })).toBeVisible();
+    await expect(page.locator('p.table-sub[role="status"]', { hasText: "Handoff concluído" })).toBeVisible();
     await expect(page.locator("tr", { hasText: patientName }).filter({ hasText: "Em atendimento" })).toBeVisible();
 
     await page.getByRole("button", { name: "Hoje" }).click();

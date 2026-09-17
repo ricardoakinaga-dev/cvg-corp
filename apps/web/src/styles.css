@@ -606,7 +606,9 @@ a { color: inherit; }
 .audit-row strong, .audit-row span, .audit-row small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .audit-row strong { color: var(--ink-800); font-size: var(--type-013); }
 .audit-row div > span:not(.status-badge), .audit-row small { margin-top: var(--space-px-3); color: var(--ink-500); font-size: var(--type-024); }
-.audit-meta { min-width: 0; text-align: right; }
+.audit-meta { min-width: 0; text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: var(--space-px-4); }
+.audit-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-008); }
+.audit-actions .text-button { white-space: nowrap; }
 .audit-meta > span:not(.status-badge) { color: var(--ink-700); }
 
 /* Reports stay data-first: no decorative chart can imply a measurement that the source did not provide. */
@@ -664,7 +666,8 @@ a { color: inherit; }
   .admin-user-actions { width: var(--space-003); margin-left: var(--space-045); justify-content: flex-start; }
   .admin-audit { grid-column: auto; }
   .audit-row { grid-template-columns: 30px minmax(0, 1fr); gap: var(--space-009); }
-  .audit-meta { grid-column: 2; text-align: left; }
+  .audit-meta { grid-column: 2; text-align: left; align-items: flex-start; }
+  .audit-actions { justify-content: flex-start; }
   .report-toolbar { align-items: stretch; flex-direction: column; }
   .report-toolbar label, .report-toolbar select, .report-toolbar input, .report-toolbar .button { width: var(--space-003); }
   .report-sections { grid-template-columns: 1fr; }

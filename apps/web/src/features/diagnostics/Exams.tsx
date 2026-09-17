@@ -226,11 +226,11 @@ export function Exams({ client, context, notify }: { client: ApiClient; context:
           </div>
           <div className="audit-meta">
             <StatusBadge tone={status.tone}>{status.label}</StatusBadge>
-            <small>
-              {(request.status === "REQUESTED" || request.status === "SPECIMEN_COLLECTED" || request.status === "RESULTED") && <button className="text-button" type="button" onClick={() => openDialog({ kind: "specimen", request })}>Registrar amostra</button>}{" "}
-              {(request.status === "SPECIMEN_COLLECTED" || request.status === "RESULTED") && <button className="text-button" type="button" onClick={() => openDialog({ kind: "result", request })}>Registrar resultado</button>}{" "}
+            <div className="audit-actions">
+              {(request.status === "REQUESTED" || request.status === "SPECIMEN_COLLECTED" || request.status === "RESULTED") && <button className="text-button" type="button" onClick={() => openDialog({ kind: "specimen", request })}>Registrar amostra</button>}
+              {(request.status === "SPECIMEN_COLLECTED" || request.status === "RESULTED") && <button className="text-button" type="button" onClick={() => openDialog({ kind: "result", request })}>Registrar resultado</button>}
               {request.status === "RESULTED" && <button className="text-button" type="button" onClick={() => void review(request)}>Revisar</button>}
-            </small>
+            </div>
           </div>
         </div>;
       })}</div>}

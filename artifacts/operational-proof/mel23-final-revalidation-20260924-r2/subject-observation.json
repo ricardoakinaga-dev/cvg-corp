@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "captured_at": "2026-09-24T12:44:07.019Z",
+  "source_sha": "c990914148a8f375082cd12bbdb2ad20cfe1900f",
+  "observed_subject_fingerprint": "sha256:492181ca3eb8452c80f55b4c35de91ddf3f01d5cb17e8b0d22bb552cc9ab8501",
+  "candidate_fingerprint": null,
+  "fingerprint_status": "UNFROZEN_UNTIL_AUD27-004",
+  "dirty": true,
+  "subject_file_counts": {
+    "tracked": 625,
+    "untracked": 175,
+    "status_entries": 276,
+    "configuration": 79
+  },
+  "evidence_exclusions": [
+    ".agent/",
+    "artifacts/",
+    ".gauntlet/",
+    ".git/",
+    "node_modules/",
+    "dist/",
+    "coverage/",
+    ".vite/"
+  ],
+  "protected_matrix": {
+    "path": "artifacts/operational-proof/mel23-evidence-matrix.json",
+    "expected_sha256": "4f88513a5a0efbfe16da5d1da5e69e1bd3aee4ef0a1b9e44dfec53c5f1db3028",
+    "current_sha256": "f46355276df64e6ebcf1c1afe17785b92df62622bfc0ea950faa298c0b737ec0",
+    "bytes": 99409,
+    "restored": false,
+    "modified_by_this_revalidation": false
+  }
+}

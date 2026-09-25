@@ -1,0 +1,2396 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-09-23T13:37:49.518Z",
+  "source_sha": "c990914148a8f375082cd12bbdb2ad20cfe1900f",
+  "observed_subject_fingerprint": "sha256:220ea7e29a684e9930e655b2556ec4cdaeb19c809f9c033e17b5b64177fce470",
+  "candidate_fingerprint": null,
+  "fingerprint_status": "UNFROZEN_UNTIL_AUD27-004",
+  "status_source": ".agent/backlog.json#items (AUD27 only)",
+  "crosswalk_source": "docs/mel23-aud27-reconciliation.json (no task status fields)",
+  "catalogue_issues": [],
+  "report": {
+    "summary": {
+      "requirements": 50,
+      "mapped": 50,
+      "qualified": 0,
+      "blocked": 50
+    },
+    "rows": [
+      {
+        "id": "MEL23-001",
+        "milestone": "M0",
+        "target": "Reconciliar `last_gate_record` e `last_event_id` por novo evento; `verify:control-plane` passa e ambos apontam às caudas corretas.",
+        "coverage": "SUBSCOPE",
+        "acceptance_additions": [],
+        "aud27": [
+          {
+            "id": "AUD27-001",
+            "status": "IN_PROGRESS",
+            "evidence_state": "IMPLEMENTED_UNVERIFIED",
+            "implementation_targets": [
+              ".agent/backlog.json",
+              "docs/aud27-semantic-manifest.json",
+              ".agent/verification.jsonl"
+            ]
+          },
+          {
+            "id": "AUD27-003",
+            "status": "IMPLEMENTED_UNVERIFIED",
+            "evidence_state": "IMPLEMENTED_UNVERIFIED",
+            "implementation_targets": [
+              ".agent/backlog.json",
+              "scripts/verify-control-plane.ts"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm run verify:control-plane",
+          "npm run verify:mel23-control-plane"
+        ],
+        "evidence_artifacts": [
+          "artifacts/operational-proof/mel23-control-plane-final.json"
+        ],
+        "receipt_id": "VER-CVG-AUD27-001-109",
+        "environment": "Local workspace; dirty worktree preserved; current observed subject; synthetic data/resources; no production endpoint, real provider, clinical data or human approval used.",
+        "result": "PASS",
+        "receipt_result": "IMPLEMENTED_LOCAL",
+        "fingerprint": "sha256:a78a4ecd6f6c4c68e02c136ae7765db08a69d14f2d27a0a532de19ae11b5d3ae",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt fingerprint does not match the current observed subject",
+          "capture fingerprint does not match the current observed subject"
+        ]
+      },
+      {
+        "id": "MEL23-002",
+        "milestone": "M0",
+        "target": "Mutante `missing_transition` remove a transição do evento lido pelo verificador; known-bad é rejeitado e conhecido-bom passa.",
+        "coverage": "ACCEPTANCE_ADDITION",
+        "acceptance_additions": [
+          "Add a named negative fixture that removes next_state from the event selected by state.last_event_id; known-good passes and known-bad produces MISSING_ACTIVE_TRANSITION."
+        ],
+        "aud27": [
+          {
+            "id": "AUD27-002",
+            "status": "IMPLEMENTED_UNVERIFIED",
+            "evidence_state": "IMPLEMENTED_UNVERIFIED",
+            "implementation_targets": [
+              "scripts/verify-aud27-semantics.ts",
+              "tests/unit/"
+            ]
+          }
+        ],
+        "test_commands": [
+          "node --import tsx --test tests/unit/control-plane.test.ts tests/unit/control-plane-aud23.test.ts tests/unit/docs-integrity.test.ts tests/unit/mel23-evidence.test.ts tests/unit/mutation-verifier.test.ts",
+          "npm run verify:aud27-semantics",
+          "npm run verify:mutation"
+        ],
+        "evidence_artifacts": [],
+        "receipt_id": "VER-CVG-AUD27-002-010",
+        "environment": "Local workspace; dirty worktree preserved; current observed subject; synthetic data/resources; no production endpoint, real provider, clinical data or human approval used.",
+        "result": "PASS",
+        "receipt_result": "IMPLEMENTED_LOCAL",
+        "fingerprint": "sha256:a78a4ecd6f6c4c68e02c136ae7765db08a69d14f2d27a0a532de19ae11b5d3ae",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt fingerprint does not match the current observed subject"
+        ]
+      },
+      {
+        "id": "MEL23-003",
+        "milestone": "M0",
+        "target": "`npm test` termina com zero falhas no candidato observado; guardar contagens e exit status.",
+        "coverage": "SUBSCOPE",
+        "acceptance_additions": [],
+        "aud27": [
+          {
+            "id": "AUD27-004",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "BLOCKED_BY_DIRTY_WORKTREE",
+            "implementation_targets": [
+              "git status",
+              ".agent/subject-manifest.json"
+            ]
+          },
+          {
+            "id": "AUD27-025",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              ".agent/",
+              "docs/"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm test"
+        ],
+        "evidence_artifacts": [],
+        "receipt_id": "VER-CVG-AUD27-004-007",
+        "environment": "Local workspace; dirty worktree preserved; current observed subject; synthetic data/resources; no production endpoint, real provider, clinical data or human approval used.",
+        "result": "PASS",
+        "receipt_result": "BLOCKED_BY_DEPENDENCIES",
+        "fingerprint": "sha256:a78a4ecd6f6c4c68e02c136ae7765db08a69d14f2d27a0a532de19ae11b5d3ae",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt fingerprint does not match the current observed subject"
+        ]
+      },
+      {
+        "id": "MEL23-004",
+        "milestone": "M1",
+        "target": "Revisão Git limpa e checkout novo reproduzem instalação, typecheck, build e manifesto; nenhuma alteração necessária fica untracked.",
+        "coverage": "SUBSCOPE",
+        "acceptance_additions": [],
+        "aud27": [
+          {
+            "id": "AUD27-004",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "BLOCKED_BY_DIRTY_WORKTREE",
+            "implementation_targets": [
+              "git status",
+              ".agent/subject-manifest.json"
+            ]
+          },
+          {
+            "id": "AUD27-025",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              ".agent/",
+              "docs/"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm test",
+          "PLAYWRIGHT_RETRIES=0 npm run test:e2e:full (disposable WebKit libraries extracted under /tmp)",
+          "git status --short"
+        ],
+        "evidence_artifacts": [],
+        "receipt_id": "VER-CVG-AUD27-004-006",
+        "environment": "Local workspace; dirty worktree preserved; current observed subject only; synthetic data/resources; no production endpoint or human approval used.",
+        "result": "BLOCKED",
+        "receipt_result": "BLOCKED_BY_DEPENDENCIES",
+        "fingerprint": "sha256:fd0f59d39b7309ddeed00874610b627cecccac3a6a9e045aa03f5d7e53aa1364",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt fingerprint does not match the current observed subject",
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-005",
+        "milestone": "M1",
+        "target": "Fingerprint é recalculado dos bytes do candidato e coincide em checkout independente; repetir após qualquer mudança.",
+        "coverage": "SUBSCOPE",
+        "acceptance_additions": [],
+        "aud27": [
+          {
+            "id": "AUD27-004",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "BLOCKED_BY_DIRTY_WORKTREE",
+            "implementation_targets": [
+              "git status",
+              ".agent/subject-manifest.json"
+            ]
+          },
+          {
+            "id": "AUD27-005",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "BLOCKED_EXTERNAL",
+            "implementation_targets": [
+              ".agent/authority.jsonl",
+              "evidence-root externo"
+            ]
+          },
+          {
+            "id": "AUD27-025",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              ".agent/",
+              "docs/"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm test",
+          "PLAYWRIGHT_RETRIES=0 npm run test:e2e:full (disposable WebKit libraries extracted under /tmp)",
+          "git status --short"
+        ],
+        "evidence_artifacts": [],
+        "receipt_id": "VER-CVG-AUD27-004-006",
+        "environment": "Local workspace; dirty worktree preserved; current observed subject only; synthetic data/resources; no production endpoint or human approval used.",
+        "result": "BLOCKED",
+        "receipt_result": "BLOCKED_BY_DEPENDENCIES",
+        "fingerprint": "sha256:fd0f59d39b7309ddeed00874610b627cecccac3a6a9e045aa03f5d7e53aa1364",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt fingerprint does not match the current observed subject",
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-006",
+        "milestone": "M1",
+        "target": "`verify:aud27-evidence-root` passa para o fingerprint exato; pacote externo contém recibos aplicáveis e atuais.",
+        "coverage": "SUBSCOPE",
+        "acceptance_additions": [],
+        "aud27": [
+          {
+            "id": "AUD27-005",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "BLOCKED_EXTERNAL",
+            "implementation_targets": [
+              ".agent/authority.jsonl",
+              "evidence-root externo"
+            ]
+          },
+          {
+            "id": "AUD27-006",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PARTIAL_LOCAL_WITH_EXTERNAL_GAP",
+            "implementation_targets": [
+              ".agent/backlog.json",
+              ".agent/verification.jsonl"
+            ]
+          },
+          {
+            "id": "AUD27-025",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              ".agent/",
+              "docs/"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm run verify:aud27-evidence-root"
+        ],
+        "evidence_artifacts": [],
+        "receipt_id": "VER-CVG-AUD27-005-013",
+        "environment": "Local workspace; dirty worktree preserved; current observed subject only; synthetic data/resources; no production endpoint or human approval used.",
+        "result": "PARTIAL",
+        "receipt_result": "BLOCKED_BY_DEPENDENCIES",
+        "fingerprint": "sha256:fd0f59d39b7309ddeed00874610b627cecccac3a6a9e045aa03f5d7e53aa1364",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt fingerprint does not match the current observed subject",
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-007",
+        "milestone": "M1",
+        "target": "Adulteração de recibo/hash é rejeitada; outro checkout valida pacote, digest e origem sem depender da árvore original.",
+        "coverage": "SUBSCOPE",
+        "acceptance_additions": [],
+        "aud27": [
+          {
+            "id": "AUD27-005",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "BLOCKED_EXTERNAL",
+            "implementation_targets": [
+              ".agent/authority.jsonl",
+              "evidence-root externo"
+            ]
+          },
+          {
+            "id": "AUD27-025",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              ".agent/",
+              "docs/"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm run verify:aud27-evidence-root"
+        ],
+        "evidence_artifacts": [],
+        "receipt_id": "VER-CVG-AUD27-005-013",
+        "environment": "Local workspace; dirty worktree preserved; current observed subject only; synthetic data/resources; no production endpoint or human approval used.",
+        "result": "PARTIAL",
+        "receipt_result": "BLOCKED_BY_DEPENDENCIES",
+        "fingerprint": "sha256:fd0f59d39b7309ddeed00874610b627cecccac3a6a9e045aa03f5d7e53aa1364",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt fingerprint does not match the current observed subject",
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-008",
+        "milestone": "M2",
+        "target": "As 24 coleções residuais têm caminho de comando autoritativo; inventário final registra 0 `SNAPSHOT_PRIMARY`, sem fallback oculto.",
+        "coverage": "SUBSCOPE",
+        "acceptance_additions": [],
+        "aud27": [
+          {
+            "id": "AUD27-011",
+            "status": "PARTIAL",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
+            "implementation_targets": [
+              "scripts/verify-aud27-24-slices.ts",
+              "packages/persistence/src/aud27-postgres-migration.ts"
+            ]
+          },
+          {
+            "id": "AUD27-012",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              "db/migrations",
+              "scripts/"
+            ]
+          },
+          {
+            "id": "AUD27-013",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              "db/migrations",
+              "scripts/"
+            ]
+          },
+          {
+            "id": "AUD27-014",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              "db/migrations",
+              "scripts/"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm run verify:ephemeral-postgres -- --rounds=1 --run-postgres",
+          "npm run verify:ephemeral-postgres -- --rounds=1 --run-aud27-migration",
+          "npm run verify:ephemeral-postgres -- --rounds=1 --run-aud27-normalized-writes",
+          "npm run verify:ephemeral-postgres -- --rounds=1 --run-aud27-24-slices",
+          "npm run verify:ephemeral-postgres -- --rounds=1 --run-restore"
+        ],
+        "evidence_artifacts": [],
+        "receipt_id": "VER-CVG-AUD27-011-019",
+        "environment": "Local workspace; dirty worktree preserved; current observed subject only; synthetic data/resources; no production endpoint or human approval used.",
+        "result": "PARTIAL",
+        "receipt_result": "PARTIAL",
+        "fingerprint": "sha256:fd0f59d39b7309ddeed00874610b627cecccac3a6a9e045aa03f5d7e53aa1364",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt fingerprint does not match the current observed subject",
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-009",
+        "milestone": "M2",
+        "target": "Cada coleção possui backfill idempotente, contagem/digest/invariantes iguais e registro de divergência em quarentena.",
+        "coverage": "SUBSCOPE",
+        "acceptance_additions": [],
+        "aud27": [
+          {
+            "id": "AUD27-011",
+            "status": "PARTIAL",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
+            "implementation_targets": [
+              "scripts/verify-aud27-24-slices.ts",
+              "packages/persistence/src/aud27-postgres-migration.ts"
+            ]
+          },
+          {
+            "id": "AUD27-012",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              "db/migrations",
+              "scripts/"
+            ]
+          },
+          {
+            "id": "AUD27-013",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              "db/migrations",
+              "scripts/"
+            ]
+          },
+          {
+            "id": "AUD27-014",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              "db/migrations",
+              "scripts/"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm run verify:ephemeral-postgres -- --rounds=1 --run-postgres",
+          "npm run verify:ephemeral-postgres -- --rounds=1 --run-aud27-migration",
+          "npm run verify:ephemeral-postgres -- --rounds=1 --run-aud27-normalized-writes",
+          "npm run verify:ephemeral-postgres -- --rounds=1 --run-aud27-24-slices",
+          "npm run verify:ephemeral-postgres -- --rounds=1 --run-restore"
+        ],
+        "evidence_artifacts": [],
+        "receipt_id": "VER-CVG-AUD27-011-019",
+        "environment": "Local workspace; dirty worktree preserved; current observed subject only; synthetic data/resources; no production endpoint or human approval used.",
+        "result": "PARTIAL",
+        "receipt_result": "PARTIAL",
+        "fingerprint": "sha256:fd0f59d39b7309ddeed00874610b627cecccac3a6a9e045aa03f5d7e53aa1364",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt fingerprint does not match the current observed subject",
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-010",
+        "milestone": "M2",
+        "target": "Testes de concorrência, replay e idempotência rejeitam duplicata/divergência para cada novo comando em PostgreSQL.",
+        "coverage": "SUBSCOPE",
+        "acceptance_additions": [],
+        "aud27": [
+          {
+            "id": "AUD27-011",
+            "status": "PARTIAL",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
+            "implementation_targets": [
+              "scripts/verify-aud27-24-slices.ts",
+              "packages/persistence/src/aud27-postgres-migration.ts"
+            ]
+          },
+          {
+            "id": "AUD27-012",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              "db/migrations",
+              "scripts/"
+            ]
+          },
+          {
+            "id": "AUD27-013",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              "db/migrations",
+              "scripts/"
+            ]
+          },
+          {
+            "id": "AUD27-014",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              "db/migrations",
+              "scripts/"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm run verify:ephemeral-postgres -- --rounds=1 --run-postgres",
+          "npm run verify:ephemeral-postgres -- --rounds=1 --run-aud27-migration",
+          "npm run verify:ephemeral-postgres -- --rounds=1 --run-aud27-normalized-writes",
+          "npm run verify:ephemeral-postgres -- --rounds=1 --run-aud27-24-slices",
+          "npm run verify:ephemeral-postgres -- --rounds=1 --run-restore"
+        ],
+        "evidence_artifacts": [],
+        "receipt_id": "VER-CVG-AUD27-011-019",
+        "environment": "Local workspace; dirty worktree preserved; current observed subject only; synthetic data/resources; no production endpoint or human approval used.",
+        "result": "PARTIAL",
+        "receipt_result": "PARTIAL",
+        "fingerprint": "sha256:fd0f59d39b7309ddeed00874610b627cecccac3a6a9e045aa03f5d7e53aa1364",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt fingerprint does not match the current observed subject",
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-011",
+        "milestone": "M2",
+        "target": "Cada onda demonstra rollback e compatibilidade antes de retirar fallback; falha não perde nem duplica dados.",
+        "coverage": "SUBSCOPE",
+        "acceptance_additions": [],
+        "aud27": [
+          {
+            "id": "AUD27-011",
+            "status": "PARTIAL",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
+            "implementation_targets": [
+              "scripts/verify-aud27-24-slices.ts",
+              "packages/persistence/src/aud27-postgres-migration.ts"
+            ]
+          },
+          {
+            "id": "AUD27-012",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              "db/migrations",
+              "scripts/"
+            ]
+          },
+          {
+            "id": "AUD27-013",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              "db/migrations",
+              "scripts/"
+            ]
+          },
+          {
+            "id": "AUD27-014",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              "db/migrations",
+              "scripts/"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm run verify:ephemeral-postgres -- --rounds=1 --run-postgres",
+          "npm run verify:ephemeral-postgres -- --rounds=1 --run-aud27-migration",
+          "npm run verify:ephemeral-postgres -- --rounds=1 --run-aud27-normalized-writes",
+          "npm run verify:ephemeral-postgres -- --rounds=1 --run-aud27-24-slices",
+          "npm run verify:ephemeral-postgres -- --rounds=1 --run-restore"
+        ],
+        "evidence_artifacts": [],
+        "receipt_id": "VER-CVG-AUD27-011-019",
+        "environment": "Local workspace; dirty worktree preserved; current observed subject only; synthetic data/resources; no production endpoint or human approval used.",
+        "result": "PARTIAL",
+        "receipt_result": "PARTIAL",
+        "fingerprint": "sha256:fd0f59d39b7309ddeed00874610b627cecccac3a6a9e045aa03f5d7e53aa1364",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt fingerprint does not match the current observed subject",
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-012",
+        "milestone": "M2",
+        "target": "Restore e replay são executados sobre o esquema após cutover; hashes, escopo, quarentena e continuidade são conferidos.",
+        "coverage": "SUBSCOPE",
+        "acceptance_additions": [],
+        "aud27": [
+          {
+            "id": "AUD27-011",
+            "status": "PARTIAL",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
+            "implementation_targets": [
+              "scripts/verify-aud27-24-slices.ts",
+              "packages/persistence/src/aud27-postgres-migration.ts"
+            ]
+          },
+          {
+            "id": "AUD27-012",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              "db/migrations",
+              "scripts/"
+            ]
+          },
+          {
+            "id": "AUD27-013",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              "db/migrations",
+              "scripts/"
+            ]
+          },
+          {
+            "id": "AUD27-014",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              "db/migrations",
+              "scripts/"
+            ]
+          },
+          {
+            "id": "AUD27-022",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PARTIAL_LOCAL_WITH_EXTERNAL_GAP",
+            "implementation_targets": [
+              "scripts/",
+              "docs/runbooks",
+              "staging"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm run verify:ephemeral-postgres -- --rounds=1 --run-postgres",
+          "npm run verify:ephemeral-postgres -- --rounds=1 --run-aud27-migration",
+          "npm run verify:ephemeral-postgres -- --rounds=1 --run-aud27-normalized-writes",
+          "npm run verify:ephemeral-postgres -- --rounds=1 --run-aud27-24-slices",
+          "npm run verify:ephemeral-postgres -- --rounds=1 --run-restore"
+        ],
+        "evidence_artifacts": [],
+        "receipt_id": "VER-CVG-AUD27-011-019",
+        "environment": "Local workspace; dirty worktree preserved; current observed subject only; synthetic data/resources; no production endpoint or human approval used.",
+        "result": "PARTIAL",
+        "receipt_result": "PARTIAL",
+        "fingerprint": "sha256:fd0f59d39b7309ddeed00874610b627cecccac3a6a9e045aa03f5d7e53aa1364",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt fingerprint does not match the current observed subject",
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-013",
+        "milestone": "M3",
+        "target": "As 10 ocorrências da allowlist recebem substituição ou decisão formal de política; `audit:licenses` passa para o lockfile candidato.",
+        "coverage": "DIRECT",
+        "acceptance_additions": [],
+        "aud27": [
+          {
+            "id": "AUD27-016",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "BLOCKED_HUMAN_REVIEW",
+            "implementation_targets": [
+              "LICENSE",
+              "notices",
+              "scripts/verify-licenses.ts"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm run audit:licenses"
+        ],
+        "evidence_artifacts": [],
+        "receipt_id": "VER-CVG-AUD27-016-007",
+        "environment": "Local workspace; dirty worktree preserved; current observed subject only; synthetic data/resources; no production endpoint or human approval used.",
+        "result": "BLOCKED",
+        "receipt_result": "BLOCKED_BY_DEPENDENCIES",
+        "fingerprint": "sha256:fd0f59d39b7309ddeed00874610b627cecccac3a6a9e045aa03f5d7e53aa1364",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt fingerprint does not match the current observed subject",
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-014",
+        "milestone": "M3",
+        "target": "`LICENSE` ou `COPYING` de raiz corresponde à decisão do responsável e é verificado no pacote de release.",
+        "coverage": "SUBSCOPE",
+        "acceptance_additions": [],
+        "aud27": [
+          {
+            "id": "AUD27-016",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "BLOCKED_HUMAN_REVIEW",
+            "implementation_targets": [
+              "LICENSE",
+              "notices",
+              "scripts/verify-licenses.ts"
+            ]
+          },
+          {
+            "id": "AUD27-017",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "BLOCKED_EXTERNAL",
+            "implementation_targets": [
+              ".github/workflows/ci.yml",
+              "Dockerfiles"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm run audit:licenses"
+        ],
+        "evidence_artifacts": [],
+        "receipt_id": "VER-CVG-AUD27-016-007",
+        "environment": "Local workspace; dirty worktree preserved; current observed subject only; synthetic data/resources; no production endpoint or human approval used.",
+        "result": "BLOCKED",
+        "receipt_result": "BLOCKED_BY_DEPENDENCIES",
+        "fingerprint": "sha256:fd0f59d39b7309ddeed00874610b627cecccac3a6a9e045aa03f5d7e53aa1364",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt fingerprint does not match the current observed subject",
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-015",
+        "milestone": "M3",
+        "target": "Smoke usa a imagem real: start, health, non-root, escrita/leitura controlada, shutdown e restart com resultado registrado.",
+        "coverage": "DIRECT",
+        "acceptance_additions": [],
+        "aud27": [
+          {
+            "id": "AUD27-015",
+            "status": "PARTIAL",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
+            "implementation_targets": [
+              "Dockerfile.api",
+              "scripts/verify-container-smoke.ts"
+            ]
+          }
+        ],
+        "test_commands": [
+          "docker buildx build --platform linux/amd64 Dockerfile.api (BuildKit SBOM+provenance; local OCI output)",
+          "docker buildx build --platform linux/amd64 Dockerfile.web (BuildKit SBOM+provenance; local OCI output)",
+          "Trivy 0.74.0 API image scan using isolated cache and local Docker source",
+          "Trivy 0.74.0 web image scan using isolated cache and local Docker source",
+          "docker compose -p cvg-mel23-smoke-20260923-r1 --env-file /tmp/cvg-mel23-compose-20260923-r1/runtime.env config --format json",
+          "docker compose -p cvg-mel23-compose-prod-config-only -f docker-compose.yml -f docker-compose.production.yml --env-file /tmp/cvg-mel23-compose-20260923-r1/production.env config --format json",
+          "node /tmp/cvg-mel23-compose-20260923-r1/host-edge-smoke.mjs",
+          "docker compose -p cvg-mel23-smoke-20260923-r1 --env-file /tmp/cvg-mel23-compose-20260923-r1/runtime.env ps -a"
+        ],
+        "evidence_artifacts": [],
+        "receipt_id": "VER-CVG-AUD27-015-007",
+        "environment": "Local workspace; dirty worktree preserved; current observed subject; synthetic data/resources; no production endpoint, real provider, clinical data or human approval used.",
+        "result": "PARTIAL",
+        "receipt_result": "PARTIAL",
+        "fingerprint": "sha256:a78a4ecd6f6c4c68e02c136ae7765db08a69d14f2d27a0a532de19ae11b5d3ae",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt fingerprint does not match the current observed subject",
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-016",
+        "milestone": "M3",
+        "target": "Digests de API/web correspondem a SBOM, scan e proveniência OCI do mesmo build; divergência bloqueia release.",
+        "coverage": "DIRECT",
+        "acceptance_additions": [],
+        "aud27": [
+          {
+            "id": "AUD27-015",
+            "status": "PARTIAL",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
+            "implementation_targets": [
+              "Dockerfile.api",
+              "scripts/verify-container-smoke.ts"
+            ]
+          },
+          {
+            "id": "AUD27-017",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "BLOCKED_EXTERNAL",
+            "implementation_targets": [
+              ".github/workflows/ci.yml",
+              "Dockerfiles"
+            ]
+          }
+        ],
+        "test_commands": [
+          "docker buildx build --platform linux/amd64 Dockerfile.api (BuildKit SBOM+provenance; local OCI output)",
+          "docker buildx build --platform linux/amd64 Dockerfile.web (BuildKit SBOM+provenance; local OCI output)",
+          "Trivy 0.74.0 API image scan using isolated cache and local Docker source",
+          "Trivy 0.74.0 web image scan using isolated cache and local Docker source",
+          "docker compose -p cvg-mel23-smoke-20260923-r1 --env-file /tmp/cvg-mel23-compose-20260923-r1/runtime.env config --format json",
+          "docker compose -p cvg-mel23-compose-prod-config-only -f docker-compose.yml -f docker-compose.production.yml --env-file /tmp/cvg-mel23-compose-20260923-r1/production.env config --format json",
+          "node /tmp/cvg-mel23-compose-20260923-r1/host-edge-smoke.mjs",
+          "docker compose -p cvg-mel23-smoke-20260923-r1 --env-file /tmp/cvg-mel23-compose-20260923-r1/runtime.env ps -a"
+        ],
+        "evidence_artifacts": [],
+        "receipt_id": "VER-CVG-AUD27-015-007",
+        "environment": "Local workspace; dirty worktree preserved; current observed subject; synthetic data/resources; no production endpoint, real provider, clinical data or human approval used.",
+        "result": "PARTIAL",
+        "receipt_result": "PARTIAL",
+        "fingerprint": "sha256:a78a4ecd6f6c4c68e02c136ae7765db08a69d14f2d27a0a532de19ae11b5d3ae",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt fingerprint does not match the current observed subject",
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-017",
+        "milestone": "M5",
+        "target": "Staging autorizado prova Secret Authority, login, revogação e falha fechada sem segredos expostos em logs.",
+        "coverage": "ACCEPTANCE_ADDITION",
+        "acceptance_additions": [
+          "Name Secret Authority, login and revocation scenarios, fail-closed outcomes, and secret-leak checks in staging logs."
+        ],
+        "aud27": [
+          {
+            "id": "AUD27-022",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PARTIAL_LOCAL_WITH_EXTERNAL_GAP",
+            "implementation_targets": [
+              "scripts/",
+              "docs/runbooks",
+              "staging"
+            ]
+          },
+          {
+            "id": "AUD27-026",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              ".agent/authority.jsonl",
+              "evidence-root externo"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm run verify:load-local",
+          "npm run verify:chaos-local",
+          "npm run verify:dr-local",
+          "npm run verify:observability-local",
+          "npm run verify:load (all CVG_LOAD_* staging inputs explicitly unset)"
+        ],
+        "evidence_artifacts": [],
+        "receipt_id": "VER-CVG-AUD27-022-002",
+        "environment": "Local workspace; dirty worktree preserved; current observed subject only; synthetic data/resources; no production endpoint or human approval used.",
+        "result": "PARTIAL",
+        "receipt_result": "BLOCKED_BY_DEPENDENCIES",
+        "fingerprint": "sha256:fd0f59d39b7309ddeed00874610b627cecccac3a6a9e045aa03f5d7e53aa1364",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt fingerprint does not match the current observed subject",
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-018",
+        "milestone": "M5",
+        "target": "Provedores e DeepSeek reais passam casos positivo, negativo, timeout, receipt e reconciliação no mesmo candidato.",
+        "coverage": "ACCEPTANCE_ADDITION",
+        "acceptance_additions": [
+          "Name real DeepSeek/provider positive, negative, timeout, receipt, and reconciliation cases bound to the same candidate."
+        ],
+        "aud27": [
+          {
+            "id": "AUD27-022",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PARTIAL_LOCAL_WITH_EXTERNAL_GAP",
+            "implementation_targets": [
+              "scripts/",
+              "docs/runbooks",
+              "staging"
+            ]
+          },
+          {
+            "id": "AUD27-026",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              ".agent/authority.jsonl",
+              "evidence-root externo"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm run verify:load-local",
+          "npm run verify:chaos-local",
+          "npm run verify:dr-local",
+          "npm run verify:observability-local",
+          "npm run verify:load (all CVG_LOAD_* staging inputs explicitly unset)"
+        ],
+        "evidence_artifacts": [],
+        "receipt_id": "VER-CVG-AUD27-022-002",
+        "environment": "Local workspace; dirty worktree preserved; current observed subject only; synthetic data/resources; no production endpoint or human approval used.",
+        "result": "PARTIAL",
+        "receipt_result": "BLOCKED_BY_DEPENDENCIES",
+        "fingerprint": "sha256:fd0f59d39b7309ddeed00874610b627cecccac3a6a9e045aa03f5d7e53aa1364",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt fingerprint does not match the current observed subject",
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-019",
+        "milestone": "M5",
+        "target": "Restore em infraestrutura equivalente mede RTO/RPO aprovados e verifica não reativação de dados ou privilégios revogados.",
+        "coverage": "ACCEPTANCE_ADDITION",
+        "acceptance_additions": [
+          "After restore, explicitly prove revoked data and privileges are not reactivated."
+        ],
+        "aud27": [
+          {
+            "id": "AUD27-022",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PARTIAL_LOCAL_WITH_EXTERNAL_GAP",
+            "implementation_targets": [
+              "scripts/",
+              "docs/runbooks",
+              "staging"
+            ]
+          },
+          {
+            "id": "AUD27-026",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              ".agent/authority.jsonl",
+              "evidence-root externo"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm run verify:load-local",
+          "npm run verify:chaos-local",
+          "npm run verify:dr-local",
+          "npm run verify:observability-local",
+          "npm run verify:load (all CVG_LOAD_* staging inputs explicitly unset)"
+        ],
+        "evidence_artifacts": [],
+        "receipt_id": "VER-CVG-AUD27-022-002",
+        "environment": "Local workspace; dirty worktree preserved; current observed subject only; synthetic data/resources; no production endpoint or human approval used.",
+        "result": "PARTIAL",
+        "receipt_result": "BLOCKED_BY_DEPENDENCIES",
+        "fingerprint": "sha256:fd0f59d39b7309ddeed00874610b627cecccac3a6a9e045aa03f5d7e53aa1364",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt fingerprint does not match the current observed subject",
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-020",
+        "milestone": "M6",
+        "target": "Duas revisões independentes qualificam o mesmo fingerprint e a autoridade humana registra decisão explícita; sem qualquer gate, permanece bloqueado.",
+        "coverage": "DIRECT",
+        "acceptance_additions": [],
+        "aud27": [
+          {
+            "id": "AUD27-025",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              ".agent/",
+              "docs/"
+            ]
+          },
+          {
+            "id": "AUD27-026",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              ".agent/authority.jsonl",
+              "evidence-root externo"
+            ]
+          },
+          {
+            "id": "AUD27-027",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              "docs/",
+              ".agent/authority.jsonl"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm run verify:promotion-invariant"
+        ],
+        "evidence_artifacts": [],
+        "receipt_id": "VER-CVG-AUD27-025-001",
+        "environment": "Local workspace; dirty worktree preserved; current observed subject only; synthetic data/resources; no production endpoint or human approval used.",
+        "result": "BLOCKED",
+        "receipt_result": "BLOCKED_BY_DEPENDENCIES",
+        "fingerprint": "sha256:fd0f59d39b7309ddeed00874610b627cecccac3a6a9e045aa03f5d7e53aa1364",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt fingerprint does not match the current observed subject",
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-021",
+        "milestone": "M2",
+        "target": "Fixtures de respostas reais cobrem 105/105 rotas e satisfazem os 80 schemas específicos, incluindo erros versionados.",
+        "coverage": "DIRECT",
+        "acceptance_additions": [],
+        "aud27": [
+          {
+            "id": "AUD27-007",
+            "status": "IMPLEMENTED_UNVERIFIED",
+            "evidence_state": "IMPLEMENTED_UNVERIFIED",
+            "implementation_targets": [
+              "packages/contracts",
+              "apps/api/src/response-contract.ts"
+            ]
+          },
+          {
+            "id": "AUD27-008",
+            "status": "IMPLEMENTED_UNVERIFIED",
+            "evidence_state": "IMPLEMENTED_UNVERIFIED",
+            "implementation_targets": [
+              "apps/api/src/response-schemas/auth-ops.ts",
+              "tests/unit/api-response-contract-auth-ops.test.ts"
+            ]
+          },
+          {
+            "id": "AUD27-009",
+            "status": "IMPLEMENTED_UNVERIFIED",
+            "evidence_state": "IMPLEMENTED_UNVERIFIED",
+            "implementation_targets": [
+              "apps/api/src/response-schemas/clinical.ts",
+              "tests/unit/api-response-contract-clinical.test.ts"
+            ]
+          },
+          {
+            "id": "AUD27-010",
+            "status": "IMPLEMENTED_UNVERIFIED",
+            "evidence_state": "IMPLEMENTED_UNVERIFIED",
+            "implementation_targets": [
+              "apps/api/src/response-schemas/remaining.ts",
+              "tests/unit/api-response-contract-remaining.test.ts"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm run verify:pdp",
+          "node --import tsx --test tests/integration/api.test.ts tests/integration/route-catalog.test.ts tests/unit/api-response-contract.test.ts tests/unit/api-response-contract-remaining.test.ts tests/unit/api-response-contract-auth-ops.test.ts tests/unit/api-response-contract-clinical.test.ts"
+        ],
+        "evidence_artifacts": [],
+        "receipt_id": "VER-CVG-AUD27-007-006",
+        "environment": "Local workspace; dirty worktree preserved; current observed subject only; synthetic data/resources; no production endpoint or human approval used.",
+        "result": "PARTIAL",
+        "receipt_result": "IMPLEMENTED_LOCAL",
+        "fingerprint": "sha256:fd0f59d39b7309ddeed00874610b627cecccac3a6a9e045aa03f5d7e53aa1364",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt fingerprint does not match the current observed subject",
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-022",
+        "milestone": "M2",
+        "target": "Cada família de API rejeita campos sensíveis, payload excessivo e forma inválida antes do envio; casos negativos passam.",
+        "coverage": "DIRECT",
+        "acceptance_additions": [],
+        "aud27": [
+          {
+            "id": "AUD27-008",
+            "status": "IMPLEMENTED_UNVERIFIED",
+            "evidence_state": "IMPLEMENTED_UNVERIFIED",
+            "implementation_targets": [
+              "apps/api/src/response-schemas/auth-ops.ts",
+              "tests/unit/api-response-contract-auth-ops.test.ts"
+            ]
+          },
+          {
+            "id": "AUD27-009",
+            "status": "IMPLEMENTED_UNVERIFIED",
+            "evidence_state": "IMPLEMENTED_UNVERIFIED",
+            "implementation_targets": [
+              "apps/api/src/response-schemas/clinical.ts",
+              "tests/unit/api-response-contract-clinical.test.ts"
+            ]
+          },
+          {
+            "id": "AUD27-010",
+            "status": "IMPLEMENTED_UNVERIFIED",
+            "evidence_state": "IMPLEMENTED_UNVERIFIED",
+            "implementation_targets": [
+              "apps/api/src/response-schemas/remaining.ts",
+              "tests/unit/api-response-contract-remaining.test.ts"
+            ]
+          }
+        ],
+        "test_commands": [
+          "node --import tsx --test tests/integration/api.test.ts tests/integration/route-catalog.test.ts tests/unit/api-response-contract.test.ts tests/unit/api-response-contract-remaining.test.ts tests/unit/api-response-contract-auth-ops.test.ts tests/unit/api-response-contract-clinical.test.ts",
+          "npm run verify:schema-manifest"
+        ],
+        "evidence_artifacts": [],
+        "receipt_id": "VER-CVG-AUD27-008-007",
+        "environment": "Local workspace; dirty worktree preserved; current observed subject only; synthetic data/resources; no production endpoint or human approval used.",
+        "result": "PARTIAL",
+        "receipt_result": "IMPLEMENTED_LOCAL",
+        "fingerprint": "sha256:fd0f59d39b7309ddeed00874610b627cecccac3a6a9e045aa03f5d7e53aa1364",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt fingerprint does not match the current observed subject",
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-023",
+        "milestone": "M2",
+        "target": "Após cada onda, testes PostgreSQL negam leitura/escrita cross-tenant e cross-workspace nas tabelas afetadas.",
+        "coverage": "SUBSCOPE",
+        "acceptance_additions": [],
+        "aud27": [
+          {
+            "id": "AUD27-011",
+            "status": "PARTIAL",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
+            "implementation_targets": [
+              "scripts/verify-aud27-24-slices.ts",
+              "packages/persistence/src/aud27-postgres-migration.ts"
+            ]
+          },
+          {
+            "id": "AUD27-012",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              "db/migrations",
+              "scripts/"
+            ]
+          },
+          {
+            "id": "AUD27-013",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              "db/migrations",
+              "scripts/"
+            ]
+          },
+          {
+            "id": "AUD27-014",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              "db/migrations",
+              "scripts/"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm run verify:ephemeral-postgres -- --rounds=1 --run-postgres",
+          "npm run verify:ephemeral-postgres -- --rounds=1 --run-aud27-migration",
+          "npm run verify:ephemeral-postgres -- --rounds=1 --run-aud27-normalized-writes",
+          "npm run verify:ephemeral-postgres -- --rounds=1 --run-aud27-24-slices",
+          "npm run verify:ephemeral-postgres -- --rounds=1 --run-restore"
+        ],
+        "evidence_artifacts": [],
+        "receipt_id": "VER-CVG-AUD27-011-019",
+        "environment": "Local workspace; dirty worktree preserved; current observed subject only; synthetic data/resources; no production endpoint or human approval used.",
+        "result": "PARTIAL",
+        "receipt_result": "PARTIAL",
+        "fingerprint": "sha256:fd0f59d39b7309ddeed00874610b627cecccac3a6a9e045aa03f5d7e53aa1364",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt fingerprint does not match the current observed subject",
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-024",
+        "milestone": "M2",
+        "target": "Fault injection entre commit, checkpoint e receipt retoma sem segundo efeito e sem falso sucesso.",
+        "coverage": "ACCEPTANCE_ADDITION",
+        "acceptance_additions": [
+          "Inject failures between commit, checkpoint, and receipt; prove safe resume, one effect, and no false success."
+        ],
+        "aud27": [
+          {
+            "id": "AUD27-011",
+            "status": "PARTIAL",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
+            "implementation_targets": [
+              "scripts/verify-aud27-24-slices.ts",
+              "packages/persistence/src/aud27-postgres-migration.ts"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm run verify:ephemeral-postgres -- --rounds=1 --run-postgres",
+          "npm run verify:ephemeral-postgres -- --rounds=1 --run-aud27-migration",
+          "npm run verify:ephemeral-postgres -- --rounds=1 --run-aud27-normalized-writes",
+          "npm run verify:ephemeral-postgres -- --rounds=1 --run-aud27-24-slices",
+          "npm run verify:ephemeral-postgres -- --rounds=1 --run-restore"
+        ],
+        "evidence_artifacts": [],
+        "receipt_id": "VER-CVG-AUD27-011-019",
+        "environment": "Local workspace; dirty worktree preserved; current observed subject only; synthetic data/resources; no production endpoint or human approval used.",
+        "result": "PARTIAL",
+        "receipt_result": "PARTIAL",
+        "fingerprint": "sha256:fd0f59d39b7309ddeed00874610b627cecccac3a6a9e045aa03f5d7e53aa1364",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt fingerprint does not match the current observed subject",
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-025",
+        "milestone": "M4",
+        "target": "Metas e exceções de cobertura por área crítica são versionadas; gate rejeita regressão abaixo do limite aprovado.",
+        "coverage": "DIRECT",
+        "acceptance_additions": [],
+        "aud27": [
+          {
+            "id": "AUD27-018",
+            "status": "PARTIAL",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
+            "implementation_targets": [
+              "scripts/verify-mutation.ts",
+              "artifacts/mutation-summary.json",
+              "tests/"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm run verify:coverage",
+          "npm run verify:mutation"
+        ],
+        "evidence_artifacts": [],
+        "receipt_id": "VER-CVG-AUD27-018-015",
+        "environment": "Local workspace; dirty worktree preserved; current observed subject; synthetic data/resources; no production endpoint, real provider, clinical data or human approval used.",
+        "result": "PASS",
+        "receipt_result": "PARTIAL",
+        "fingerprint": "sha256:a78a4ecd6f6c4c68e02c136ae7765db08a69d14f2d27a0a532de19ae11b5d3ae",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt fingerprint does not match the current observed subject"
+        ]
+      },
+      {
+        "id": "MEL23-026",
+        "milestone": "M4",
+        "target": "Mutantes relevantes de autorização, finanças, clínica e persistência são rejeitados; relatório identifica sobreviventes.",
+        "coverage": "DIRECT",
+        "acceptance_additions": [],
+        "aud27": [
+          {
+            "id": "AUD27-018",
+            "status": "PARTIAL",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
+            "implementation_targets": [
+              "scripts/verify-mutation.ts",
+              "artifacts/mutation-summary.json",
+              "tests/"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm run verify:coverage",
+          "npm run verify:mutation"
+        ],
+        "evidence_artifacts": [],
+        "receipt_id": "VER-CVG-AUD27-018-015",
+        "environment": "Local workspace; dirty worktree preserved; current observed subject; synthetic data/resources; no production endpoint, real provider, clinical data or human approval used.",
+        "result": "PASS",
+        "receipt_result": "PARTIAL",
+        "fingerprint": "sha256:a78a4ecd6f6c4c68e02c136ae7765db08a69d14f2d27a0a532de19ae11b5d3ae",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt fingerprint does not match the current observed subject"
+        ]
+      },
+      {
+        "id": "MEL23-027",
+        "milestone": "M4",
+        "target": "Matriz E2E completa executa na CI para o candidato; falhas intermitentes têm reprodução e diagnóstico.",
+        "coverage": "ACCEPTANCE_ADDITION",
+        "acceptance_additions": [
+          "Specify the full E2E CI matrix and require reproduction and diagnosis for intermittent failures."
+        ],
+        "aud27": [
+          {
+            "id": "AUD27-004",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "BLOCKED_BY_DIRTY_WORKTREE",
+            "implementation_targets": [
+              "git status",
+              ".agent/subject-manifest.json"
+            ]
+          },
+          {
+            "id": "AUD27-019",
+            "status": "PARTIAL",
+            "evidence_state": "PARTIAL_LOCAL_BROWSER_ENVIRONMENT",
+            "implementation_targets": [
+              "playwright.config.ts",
+              "tests/e2e",
+              "supported WebKit runtime",
+              "accessibility review"
+            ]
+          },
+          {
+            "id": "AUD27-025",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              ".agent/",
+              "docs/"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm test",
+          "PLAYWRIGHT_RETRIES=0 npm run test:e2e:full (disposable WebKit libraries extracted under /tmp)",
+          "git status --short"
+        ],
+        "evidence_artifacts": [],
+        "receipt_id": "VER-CVG-AUD27-004-006",
+        "environment": "Local workspace; dirty worktree preserved; current observed subject only; synthetic data/resources; no production endpoint or human approval used.",
+        "result": "PARTIAL",
+        "receipt_result": "BLOCKED_BY_DEPENDENCIES",
+        "fingerprint": "sha256:fd0f59d39b7309ddeed00874610b627cecccac3a6a9e045aa03f5d7e53aa1364",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt fingerprint does not match the current observed subject",
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-028",
+        "milestone": "M4",
+        "target": "WebKit executa em host suportado; jornadas prioritárias passam ou falhas ficam abertas com reprodução.",
+        "coverage": "DIRECT",
+        "acceptance_additions": [],
+        "aud27": [
+          {
+            "id": "AUD27-019",
+            "status": "PARTIAL",
+            "evidence_state": "PARTIAL_LOCAL_BROWSER_ENVIRONMENT",
+            "implementation_targets": [
+              "playwright.config.ts",
+              "tests/e2e",
+              "supported WebKit runtime",
+              "accessibility review"
+            ]
+          },
+          {
+            "id": "AUD27-026",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              ".agent/authority.jsonl",
+              "evidence-root externo"
+            ]
+          }
+        ],
+        "test_commands": [
+          "PLAYWRIGHT_RETRIES=0 npm run test:e2e:full (disposable WebKit libraries extracted under /tmp)"
+        ],
+        "evidence_artifacts": [],
+        "receipt_id": "VER-CVG-AUD27-019-010",
+        "environment": "Local workspace; dirty worktree preserved; current observed subject only; synthetic data/resources; no production endpoint or human approval used.",
+        "result": "PARTIAL",
+        "receipt_result": "PARTIAL",
+        "fingerprint": "sha256:fd0f59d39b7309ddeed00874610b627cecccac3a6a9e045aa03f5d7e53aa1364",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt fingerprint does not match the current observed subject",
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-029",
+        "milestone": "M4",
+        "target": "Testes renderizados documentam contraste, foco/teclado, zoom e reflow nos estados principais.",
+        "coverage": "DIRECT",
+        "acceptance_additions": [],
+        "aud27": [
+          {
+            "id": "AUD27-019",
+            "status": "PARTIAL",
+            "evidence_state": "PARTIAL_LOCAL_BROWSER_ENVIRONMENT",
+            "implementation_targets": [
+              "playwright.config.ts",
+              "tests/e2e",
+              "supported WebKit runtime",
+              "accessibility review"
+            ]
+          }
+        ],
+        "test_commands": [
+          "PLAYWRIGHT_RETRIES=0 npm run test:e2e:full (disposable WebKit libraries extracted under /tmp)"
+        ],
+        "evidence_artifacts": [],
+        "receipt_id": "VER-CVG-AUD27-019-010",
+        "environment": "Local workspace; dirty worktree preserved; current observed subject only; synthetic data/resources; no production endpoint or human approval used.",
+        "result": "PARTIAL",
+        "receipt_result": "PARTIAL",
+        "fingerprint": "sha256:fd0f59d39b7309ddeed00874610b627cecccac3a6a9e045aa03f5d7e53aa1364",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt fingerprint does not match the current observed subject",
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-030",
+        "milestone": "M4",
+        "target": "Revisão com tecnologia assistiva cobre login e jornadas clínicas/administrativas prioritárias, com achados e correção.",
+        "coverage": "DIRECT",
+        "acceptance_additions": [],
+        "aud27": [
+          {
+            "id": "AUD27-019",
+            "status": "PARTIAL",
+            "evidence_state": "PARTIAL_LOCAL_BROWSER_ENVIRONMENT",
+            "implementation_targets": [
+              "playwright.config.ts",
+              "tests/e2e",
+              "supported WebKit runtime",
+              "accessibility review"
+            ]
+          },
+          {
+            "id": "AUD27-026",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              ".agent/authority.jsonl",
+              "evidence-root externo"
+            ]
+          }
+        ],
+        "test_commands": [
+          "PLAYWRIGHT_RETRIES=0 npm run test:e2e:full (disposable WebKit libraries extracted under /tmp)"
+        ],
+        "evidence_artifacts": [],
+        "receipt_id": "VER-CVG-AUD27-019-010",
+        "environment": "Local workspace; dirty worktree preserved; current observed subject only; synthetic data/resources; no production endpoint or human approval used.",
+        "result": "BLOCKED",
+        "receipt_result": "PARTIAL",
+        "fingerprint": "sha256:fd0f59d39b7309ddeed00874610b627cecccac3a6a9e045aa03f5d7e53aa1364",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt fingerprint does not match the current observed subject",
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-031",
+        "milestone": "M2",
+        "target": "Responsabilidades de `persistence/index.ts` são extraídas por dono sem mudar contratos; testes de banco e imports passam.",
+        "coverage": "DIRECT",
+        "acceptance_additions": [],
+        "aud27": [
+          {
+            "id": "AUD27-020",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PARTIAL_LOCAL_WITH_SEAMS_REMAINING",
+            "implementation_targets": [
+              "packages/persistence",
+              "apps/api",
+              "packages/domain",
+              "packages/contracts"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm run verify:architecture",
+          "npm run typecheck"
+        ],
+        "evidence_artifacts": [],
+        "receipt_id": "VER-CVG-AUD27-020-009",
+        "environment": "Local workspace; dirty worktree preserved; current observed subject only; synthetic data/resources; no production endpoint or human approval used.",
+        "result": "PARTIAL",
+        "receipt_result": "BLOCKED_BY_DEPENDENCIES",
+        "fingerprint": "sha256:fd0f59d39b7309ddeed00874610b627cecccac3a6a9e045aa03f5d7e53aa1364",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt fingerprint does not match the current observed subject",
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-032",
+        "milestone": "M2",
+        "target": "Rotas/serviços saem de `app.ts` com ownership explícito; inventário runtime e testes HTTP continuam verdes.",
+        "coverage": "DIRECT",
+        "acceptance_additions": [],
+        "aud27": [
+          {
+            "id": "AUD27-020",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PARTIAL_LOCAL_WITH_SEAMS_REMAINING",
+            "implementation_targets": [
+              "packages/persistence",
+              "apps/api",
+              "packages/domain",
+              "packages/contracts"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm run verify:architecture",
+          "npm run typecheck"
+        ],
+        "evidence_artifacts": [],
+        "receipt_id": "VER-CVG-AUD27-020-009",
+        "environment": "Local workspace; dirty worktree preserved; current observed subject only; synthetic data/resources; no production endpoint or human approval used.",
+        "result": "PARTIAL",
+        "receipt_result": "BLOCKED_BY_DEPENDENCIES",
+        "fingerprint": "sha256:fd0f59d39b7309ddeed00874610b627cecccac3a6a9e045aa03f5d7e53aa1364",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt fingerprint does not match the current observed subject",
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-033",
+        "milestone": "M2",
+        "target": "Domínio e contratos centrais são decompostos sem ciclos de import ou alteração pública não versionada.",
+        "coverage": "DIRECT",
+        "acceptance_additions": [],
+        "aud27": [
+          {
+            "id": "AUD27-020",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PARTIAL_LOCAL_WITH_SEAMS_REMAINING",
+            "implementation_targets": [
+              "packages/persistence",
+              "apps/api",
+              "packages/domain",
+              "packages/contracts"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm run verify:architecture",
+          "npm run typecheck"
+        ],
+        "evidence_artifacts": [],
+        "receipt_id": "VER-CVG-AUD27-020-009",
+        "environment": "Local workspace; dirty worktree preserved; current observed subject only; synthetic data/resources; no production endpoint or human approval used.",
+        "result": "PARTIAL",
+        "receipt_result": "BLOCKED_BY_DEPENDENCIES",
+        "fingerprint": "sha256:fd0f59d39b7309ddeed00874610b627cecccac3a6a9e045aa03f5d7e53aa1364",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt fingerprint does not match the current observed subject",
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-034",
+        "milestone": "M4",
+        "target": "Carga sustentada prova limites de fila, backpressure, drenagem e retomada sem claim indevido do worker.",
+        "coverage": "ACCEPTANCE_ADDITION",
+        "acceptance_additions": [
+          "Measure bounded queue behavior, backpressure, draining, recovery, and worker claim/effect outcomes under sustained load."
+        ],
+        "aud27": [
+          {
+            "id": "AUD27-022",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PARTIAL_LOCAL_WITH_EXTERNAL_GAP",
+            "implementation_targets": [
+              "scripts/",
+              "docs/runbooks",
+              "staging"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm run verify:load-local",
+          "npm run verify:chaos-local",
+          "npm run verify:dr-local",
+          "npm run verify:observability-local",
+          "npm run verify:load (all CVG_LOAD_* staging inputs explicitly unset)"
+        ],
+        "evidence_artifacts": [],
+        "receipt_id": "VER-CVG-AUD27-022-002",
+        "environment": "Local workspace; dirty worktree preserved; current observed subject only; synthetic data/resources; no production endpoint or human approval used.",
+        "result": "PARTIAL",
+        "receipt_result": "BLOCKED_BY_DEPENDENCIES",
+        "fingerprint": "sha256:fd0f59d39b7309ddeed00874610b627cecccac3a6a9e045aa03f5d7e53aa1364",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt fingerprint does not match the current observed subject",
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-035",
+        "milestone": "M4",
+        "target": "Timeout/resposta perdida produzem `OUTCOME_UNKNOWN` e consulta/reconciliação; nenhum retry cego duplica efeito.",
+        "coverage": "ACCEPTANCE_ADDITION",
+        "acceptance_additions": [
+          "On timeout or lost response, observe OUTCOME_UNKNOWN and reconciliation; prohibit blind retry that duplicates an effect."
+        ],
+        "aud27": [
+          {
+            "id": "AUD27-022",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PARTIAL_LOCAL_WITH_EXTERNAL_GAP",
+            "implementation_targets": [
+              "scripts/",
+              "docs/runbooks",
+              "staging"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm run verify:load-local",
+          "npm run verify:chaos-local",
+          "npm run verify:dr-local",
+          "npm run verify:observability-local",
+          "npm run verify:load"
+        ],
+        "evidence_artifacts": [],
+        "receipt_id": "VER-CVG-AUD27-022-003",
+        "environment": "Local workspace; dirty worktree preserved; current observed subject; synthetic data/resources; no production endpoint, real provider, clinical data or human approval used.",
+        "result": "PASS",
+        "receipt_result": "BLOCKED_BY_DEPENDENCIES",
+        "fingerprint": "sha256:a78a4ecd6f6c4c68e02c136ae7765db08a69d14f2d27a0a532de19ae11b5d3ae",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt fingerprint does not match the current observed subject"
+        ]
+      },
+      {
+        "id": "MEL23-036",
+        "milestone": "M5",
+        "target": "SLOs recebem dono, baseline, janela e meta aprovada; queries medem os SLIs em tráfego representativo.",
+        "coverage": "DIRECT",
+        "acceptance_additions": [],
+        "aud27": [
+          {
+            "id": "AUD27-021",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PARTIAL_LOCAL_WITH_EXTERNAL_GAP",
+            "implementation_targets": [
+              "docker/observability",
+              "packages/ops",
+              "docs/runbooks"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm run verify:observability-local",
+          "npm run verify:alertmanager"
+        ],
+        "evidence_artifacts": [],
+        "receipt_id": "VER-CVG-AUD27-021-003",
+        "environment": "Local workspace; dirty worktree preserved; current observed subject only; synthetic data/resources; no production endpoint or human approval used.",
+        "result": "PARTIAL",
+        "receipt_result": "BLOCKED_BY_DEPENDENCIES",
+        "fingerprint": "sha256:fd0f59d39b7309ddeed00874610b627cecccac3a6a9e045aa03f5d7e53aa1364",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt fingerprint does not match the current observed subject",
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-037",
+        "milestone": "M5",
+        "target": "Falha de serviço dispara alerta entregue; retenção e perda de telemetria são observadas e não substituem auditoria.",
+        "coverage": "ACCEPTANCE_ADDITION",
+        "acceptance_additions": [
+          "Observe actual alert delivery, retention, telemetry loss, and separation from the audit trail."
+        ],
+        "aud27": [
+          {
+            "id": "AUD27-021",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PARTIAL_LOCAL_WITH_EXTERNAL_GAP",
+            "implementation_targets": [
+              "docker/observability",
+              "packages/ops",
+              "docs/runbooks"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm run verify:observability-local",
+          "npm run verify:alertmanager"
+        ],
+        "evidence_artifacts": [],
+        "receipt_id": "VER-CVG-AUD27-021-003",
+        "environment": "Local workspace; dirty worktree preserved; current observed subject only; synthetic data/resources; no production endpoint or human approval used.",
+        "result": "PARTIAL",
+        "receipt_result": "BLOCKED_BY_DEPENDENCIES",
+        "fingerprint": "sha256:fd0f59d39b7309ddeed00874610b627cecccac3a6a9e045aa03f5d7e53aa1364",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt fingerprint does not match the current observed subject",
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-038",
+        "milestone": "M5",
+        "target": "Carga e caos em staging registram workload, janela, limites, recuperação e critério de parada.",
+        "coverage": "DIRECT",
+        "acceptance_additions": [],
+        "aud27": [
+          {
+            "id": "AUD27-022",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PARTIAL_LOCAL_WITH_EXTERNAL_GAP",
+            "implementation_targets": [
+              "scripts/",
+              "docs/runbooks",
+              "staging"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm run verify:load-local",
+          "npm run verify:chaos-local",
+          "npm run verify:dr-local",
+          "npm run verify:observability-local",
+          "npm run verify:load (all CVG_LOAD_* staging inputs explicitly unset)"
+        ],
+        "evidence_artifacts": [],
+        "receipt_id": "VER-CVG-AUD27-022-002",
+        "environment": "Local workspace; dirty worktree preserved; current observed subject only; synthetic data/resources; no production endpoint or human approval used.",
+        "result": "PARTIAL",
+        "receipt_result": "BLOCKED_BY_DEPENDENCIES",
+        "fingerprint": "sha256:fd0f59d39b7309ddeed00874610b627cecccac3a6a9e045aa03f5d7e53aa1364",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt fingerprint does not match the current observed subject",
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-039",
+        "milestone": "M3",
+        "target": "Compose das imagens finais passa inspeção de usuário, capabilities, filesystem, rede e secrets conforme threat model.",
+        "coverage": "ACCEPTANCE_ADDITION",
+        "acceptance_additions": [
+          "Inspect final Compose network, filesystem, and secrets settings against the threat model."
+        ],
+        "aud27": [
+          {
+            "id": "AUD27-015",
+            "status": "PARTIAL",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
+            "implementation_targets": [
+              "Dockerfile.api",
+              "scripts/verify-container-smoke.ts"
+            ]
+          },
+          {
+            "id": "AUD27-017",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "BLOCKED_EXTERNAL",
+            "implementation_targets": [
+              ".github/workflows/ci.yml",
+              "Dockerfiles"
+            ]
+          }
+        ],
+        "test_commands": [
+          "docker buildx build --platform linux/amd64 Dockerfile.api (BuildKit SBOM+provenance; local OCI output)",
+          "docker buildx build --platform linux/amd64 Dockerfile.web (BuildKit SBOM+provenance; local OCI output)",
+          "Trivy 0.74.0 API image scan using isolated cache and local Docker source",
+          "Trivy 0.74.0 web image scan using isolated cache and local Docker source",
+          "docker compose -p cvg-mel23-smoke-20260923-r1 --env-file /tmp/cvg-mel23-compose-20260923-r1/runtime.env config --format json",
+          "docker compose -p cvg-mel23-compose-prod-config-only -f docker-compose.yml -f docker-compose.production.yml --env-file /tmp/cvg-mel23-compose-20260923-r1/production.env config --format json",
+          "node /tmp/cvg-mel23-compose-20260923-r1/host-edge-smoke.mjs",
+          "docker compose -p cvg-mel23-smoke-20260923-r1 --env-file /tmp/cvg-mel23-compose-20260923-r1/runtime.env ps -a"
+        ],
+        "evidence_artifacts": [],
+        "receipt_id": "VER-CVG-AUD27-015-007",
+        "environment": "Local workspace; dirty worktree preserved; current observed subject; synthetic data/resources; no production endpoint, real provider, clinical data or human approval used.",
+        "result": "PARTIAL",
+        "receipt_result": "PARTIAL",
+        "fingerprint": "sha256:a78a4ecd6f6c4c68e02c136ae7765db08a69d14f2d27a0a532de19ae11b5d3ae",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt fingerprint does not match the current observed subject",
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-040",
+        "milestone": "M0",
+        "target": "Relatório automático liga cada requisito obrigatório a teste, recibo, ambiente, resultado e fingerprint; lacunas falham.",
+        "coverage": "ACCEPTANCE_ADDITION",
+        "acceptance_additions": [
+          "Generate a mandatory requirement-to-test/receipt/environment/result/fingerprint report and fail closed on any missing link."
+        ],
+        "aud27": [
+          {
+            "id": "AUD27-002",
+            "status": "IMPLEMENTED_UNVERIFIED",
+            "evidence_state": "IMPLEMENTED_UNVERIFIED",
+            "implementation_targets": [
+              "scripts/verify-aud27-semantics.ts",
+              "tests/unit/"
+            ]
+          },
+          {
+            "id": "AUD27-006",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PARTIAL_LOCAL_WITH_EXTERNAL_GAP",
+            "implementation_targets": [
+              ".agent/backlog.json",
+              ".agent/verification.jsonl"
+            ]
+          },
+          {
+            "id": "AUD27-024",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              "docs/",
+              "README.md",
+              ".agent/state.json"
+            ]
+          },
+          {
+            "id": "AUD27-025",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              ".agent/",
+              "docs/"
+            ]
+          }
+        ],
+        "test_commands": [
+          "node --import tsx --test tests/unit/control-plane.test.ts tests/unit/control-plane-aud23.test.ts tests/unit/docs-integrity.test.ts tests/unit/mel23-evidence.test.ts tests/unit/mutation-verifier.test.ts",
+          "npm run verify:aud27-semantics",
+          "npm run verify:mutation"
+        ],
+        "evidence_artifacts": [],
+        "receipt_id": "VER-CVG-AUD27-002-010",
+        "environment": "Local workspace; dirty worktree preserved; current observed subject; synthetic data/resources; no production endpoint, real provider, clinical data or human approval used.",
+        "result": "PASS",
+        "receipt_result": "IMPLEMENTED_LOCAL",
+        "fingerprint": "sha256:a78a4ecd6f6c4c68e02c136ae7765db08a69d14f2d27a0a532de19ae11b5d3ae",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt fingerprint does not match the current observed subject"
+        ]
+      },
+      {
+        "id": "MEL23-041",
+        "milestone": "M0",
+        "target": "`docs/README.md` aponta à fotografia atual; não chama 78/80 schemas genéricos nem raiz externa ausente de fatos atuais.",
+        "coverage": "SUBSCOPE",
+        "acceptance_additions": [],
+        "aud27": [
+          {
+            "id": "AUD27-003",
+            "status": "IMPLEMENTED_UNVERIFIED",
+            "evidence_state": "IMPLEMENTED_UNVERIFIED",
+            "implementation_targets": [
+              ".agent/backlog.json",
+              "scripts/verify-control-plane.ts"
+            ]
+          },
+          {
+            "id": "AUD27-024",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              "docs/",
+              "README.md",
+              ".agent/state.json"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm run verify:docs-integrity",
+          "node --import tsx --test tests/unit/control-plane.test.ts tests/unit/control-plane-aud23.test.ts tests/unit/docs-integrity.test.ts tests/unit/mel23-evidence.test.ts tests/unit/mutation-verifier.test.ts",
+          "npm run verify:static",
+          "npm run lint"
+        ],
+        "evidence_artifacts": [],
+        "receipt_id": "VER-CVG-AUD27-003-008",
+        "environment": "Local workspace; dirty worktree preserved; current observed subject; synthetic data/resources; no production endpoint, real provider, clinical data or human approval used.",
+        "result": "PASS",
+        "receipt_result": "IMPLEMENTED_LOCAL",
+        "fingerprint": "sha256:a78a4ecd6f6c4c68e02c136ae7765db08a69d14f2d27a0a532de19ae11b5d3ae",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt fingerprint does not match the current observed subject"
+        ]
+      },
+      {
+        "id": "MEL23-042",
+        "milestone": "M0",
+        "target": "`12-estado-da-implementacao.md` distingue o último checkpoint dos registros históricos e reflete os gates atuais.",
+        "coverage": "SUBSCOPE",
+        "acceptance_additions": [],
+        "aud27": [
+          {
+            "id": "AUD27-003",
+            "status": "IMPLEMENTED_UNVERIFIED",
+            "evidence_state": "IMPLEMENTED_UNVERIFIED",
+            "implementation_targets": [
+              ".agent/backlog.json",
+              "scripts/verify-control-plane.ts"
+            ]
+          },
+          {
+            "id": "AUD27-024",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              "docs/",
+              "README.md",
+              ".agent/state.json"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm run verify:docs-integrity",
+          "node --import tsx --test tests/unit/control-plane.test.ts tests/unit/control-plane-aud23.test.ts tests/unit/docs-integrity.test.ts tests/unit/mel23-evidence.test.ts tests/unit/mutation-verifier.test.ts",
+          "npm run verify:static",
+          "npm run lint"
+        ],
+        "evidence_artifacts": [],
+        "receipt_id": "VER-CVG-AUD27-003-008",
+        "environment": "Local workspace; dirty worktree preserved; current observed subject; synthetic data/resources; no production endpoint, real provider, clinical data or human approval used.",
+        "result": "PASS",
+        "receipt_result": "IMPLEMENTED_LOCAL",
+        "fingerprint": "sha256:a78a4ecd6f6c4c68e02c136ae7765db08a69d14f2d27a0a532de19ae11b5d3ae",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt fingerprint does not match the current observed subject"
+        ]
+      },
+      {
+        "id": "MEL23-043",
+        "milestone": "M0",
+        "target": "`production-readiness-vNext.md` é rotulado como histórico ou revalidado; contagens/gates vencidos não são apresentados como atuais.",
+        "coverage": "SUBSCOPE",
+        "acceptance_additions": [],
+        "aud27": [
+          {
+            "id": "AUD27-003",
+            "status": "IMPLEMENTED_UNVERIFIED",
+            "evidence_state": "IMPLEMENTED_UNVERIFIED",
+            "implementation_targets": [
+              ".agent/backlog.json",
+              "scripts/verify-control-plane.ts"
+            ]
+          },
+          {
+            "id": "AUD27-024",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              "docs/",
+              "README.md",
+              ".agent/state.json"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm run verify:docs-integrity",
+          "node --import tsx --test tests/unit/control-plane.test.ts tests/unit/control-plane-aud23.test.ts tests/unit/docs-integrity.test.ts tests/unit/mel23-evidence.test.ts tests/unit/mutation-verifier.test.ts",
+          "npm run verify:static",
+          "npm run lint"
+        ],
+        "evidence_artifacts": [],
+        "receipt_id": "VER-CVG-AUD27-003-008",
+        "environment": "Local workspace; dirty worktree preserved; current observed subject; synthetic data/resources; no production endpoint, real provider, clinical data or human approval used.",
+        "result": "PASS",
+        "receipt_result": "IMPLEMENTED_LOCAL",
+        "fingerprint": "sha256:a78a4ecd6f6c4c68e02c136ae7765db08a69d14f2d27a0a532de19ae11b5d3ae",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt fingerprint does not match the current observed subject"
+        ]
+      },
+      {
+        "id": "MEL23-044",
+        "milestone": "M0",
+        "target": "Cada ADR tem número único; referências ao antigo ADR 036 são resolvidas sem quebrar rastreabilidade histórica.",
+        "coverage": "ACCEPTANCE_ADDITION",
+        "acceptance_additions": [
+          "Require unique ADR numbers and resolve old ADR 036 references without rewriting historical reports."
+        ],
+        "aud27": [
+          {
+            "id": "AUD27-024",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              "docs/",
+              "README.md",
+              ".agent/state.json"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm run verify:docs-integrity",
+          "npm run verify:schema-manifest",
+          "git diff --check"
+        ],
+        "evidence_artifacts": [],
+        "receipt_id": "VER-CVG-AUD27-024-003",
+        "environment": "Local workspace; dirty worktree preserved; current observed subject; synthetic data/resources; no production endpoint, real provider, clinical data or human approval used.",
+        "result": "PASS",
+        "receipt_result": "BLOCKED_BY_DEPENDENCIES",
+        "fingerprint": "sha256:a78a4ecd6f6c4c68e02c136ae7765db08a69d14f2d27a0a532de19ae11b5d3ae",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt fingerprint does not match the current observed subject"
+        ]
+      },
+      {
+        "id": "MEL23-045",
+        "milestone": "M0",
+        "target": "Índices mostram claramente estado atual, plano proposto e histórico datado; links internos passam.",
+        "coverage": "SUBSCOPE",
+        "acceptance_additions": [],
+        "aud27": [
+          {
+            "id": "AUD27-003",
+            "status": "IMPLEMENTED_UNVERIFIED",
+            "evidence_state": "IMPLEMENTED_UNVERIFIED",
+            "implementation_targets": [
+              ".agent/backlog.json",
+              "scripts/verify-control-plane.ts"
+            ]
+          },
+          {
+            "id": "AUD27-024",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              "docs/",
+              "README.md",
+              ".agent/state.json"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm run verify:docs-integrity",
+          "node --import tsx --test tests/unit/control-plane.test.ts tests/unit/control-plane-aud23.test.ts tests/unit/docs-integrity.test.ts tests/unit/mel23-evidence.test.ts tests/unit/mutation-verifier.test.ts",
+          "npm run verify:static",
+          "npm run lint"
+        ],
+        "evidence_artifacts": [],
+        "receipt_id": "VER-CVG-AUD27-003-008",
+        "environment": "Local workspace; dirty worktree preserved; current observed subject; synthetic data/resources; no production endpoint, real provider, clinical data or human approval used.",
+        "result": "PASS",
+        "receipt_result": "IMPLEMENTED_LOCAL",
+        "fingerprint": "sha256:a78a4ecd6f6c4c68e02c136ae7765db08a69d14f2d27a0a532de19ae11b5d3ae",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt fingerprint does not match the current observed subject"
+        ]
+      },
+      {
+        "id": "MEL23-046",
+        "milestone": "M0",
+        "target": "Vocabulário de status/evidência é único entre docs, backlog e `.agent`; verificador rejeita sinônimos ambíguos.",
+        "coverage": "ACCEPTANCE_ADDITION",
+        "acceptance_additions": [
+          "Define one canonical task/evidence vocabulary and make the verifier reject ambiguous synonyms in current records."
+        ],
+        "aud27": [
+          {
+            "id": "AUD27-002",
+            "status": "IMPLEMENTED_UNVERIFIED",
+            "evidence_state": "IMPLEMENTED_UNVERIFIED",
+            "implementation_targets": [
+              "scripts/verify-aud27-semantics.ts",
+              "tests/unit/"
+            ]
+          },
+          {
+            "id": "AUD27-003",
+            "status": "IMPLEMENTED_UNVERIFIED",
+            "evidence_state": "IMPLEMENTED_UNVERIFIED",
+            "implementation_targets": [
+              ".agent/backlog.json",
+              "scripts/verify-control-plane.ts"
+            ]
+          },
+          {
+            "id": "AUD27-024",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              "docs/",
+              "README.md",
+              ".agent/state.json"
+            ]
+          }
+        ],
+        "test_commands": [
+          "node --import tsx --test tests/unit/control-plane.test.ts tests/unit/control-plane-aud23.test.ts tests/unit/docs-integrity.test.ts tests/unit/mel23-evidence.test.ts tests/unit/mutation-verifier.test.ts",
+          "npm run verify:aud27-semantics",
+          "npm run verify:mutation"
+        ],
+        "evidence_artifacts": [],
+        "receipt_id": "VER-CVG-AUD27-002-010",
+        "environment": "Local workspace; dirty worktree preserved; current observed subject; synthetic data/resources; no production endpoint, real provider, clinical data or human approval used.",
+        "result": "PASS",
+        "receipt_result": "IMPLEMENTED_LOCAL",
+        "fingerprint": "sha256:a78a4ecd6f6c4c68e02c136ae7765db08a69d14f2d27a0a532de19ae11b5d3ae",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt fingerprint does not match the current observed subject"
+        ]
+      },
+      {
+        "id": "MEL23-047",
+        "milestone": "M2",
+        "target": "Contratos principais incluem exemplos válidos de request, success e erro que passam pelos schemas atuais.",
+        "coverage": "SUBSCOPE",
+        "acceptance_additions": [],
+        "aud27": [
+          {
+            "id": "AUD27-007",
+            "status": "IMPLEMENTED_UNVERIFIED",
+            "evidence_state": "IMPLEMENTED_UNVERIFIED",
+            "implementation_targets": [
+              "packages/contracts",
+              "apps/api/src/response-contract.ts"
+            ]
+          },
+          {
+            "id": "AUD27-008",
+            "status": "IMPLEMENTED_UNVERIFIED",
+            "evidence_state": "IMPLEMENTED_UNVERIFIED",
+            "implementation_targets": [
+              "apps/api/src/response-schemas/auth-ops.ts",
+              "tests/unit/api-response-contract-auth-ops.test.ts"
+            ]
+          },
+          {
+            "id": "AUD27-009",
+            "status": "IMPLEMENTED_UNVERIFIED",
+            "evidence_state": "IMPLEMENTED_UNVERIFIED",
+            "implementation_targets": [
+              "apps/api/src/response-schemas/clinical.ts",
+              "tests/unit/api-response-contract-clinical.test.ts"
+            ]
+          },
+          {
+            "id": "AUD27-010",
+            "status": "IMPLEMENTED_UNVERIFIED",
+            "evidence_state": "IMPLEMENTED_UNVERIFIED",
+            "implementation_targets": [
+              "apps/api/src/response-schemas/remaining.ts",
+              "tests/unit/api-response-contract-remaining.test.ts"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm run verify:pdp",
+          "npm test"
+        ],
+        "evidence_artifacts": [],
+        "receipt_id": "VER-CVG-AUD27-007-007",
+        "environment": "Local workspace; dirty worktree preserved; current observed subject; synthetic data/resources; no production endpoint, real provider, clinical data or human approval used.",
+        "result": "PASS",
+        "receipt_result": "IMPLEMENTED_LOCAL",
+        "fingerprint": "sha256:a78a4ecd6f6c4c68e02c136ae7765db08a69d14f2d27a0a532de19ae11b5d3ae",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt fingerprint does not match the current observed subject"
+        ]
+      },
+      {
+        "id": "MEL23-048",
+        "milestone": "M3",
+        "target": "`CONTRIBUTING.md` documenta checks focais por área, pré-requisitos e execução sem alterar dados compartilhados.",
+        "coverage": "ACCEPTANCE_ADDITION",
+        "acceptance_additions": [
+          "Document area-specific focused checks, prerequisites, and how to avoid modifying shared data."
+        ],
+        "aud27": [
+          {
+            "id": "AUD27-024",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              "docs/",
+              "README.md",
+              ".agent/state.json"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm run verify:docs-integrity",
+          "npm run verify:schema-manifest",
+          "git diff --check"
+        ],
+        "evidence_artifacts": [],
+        "receipt_id": "VER-CVG-AUD27-024-003",
+        "environment": "Local workspace; dirty worktree preserved; current observed subject; synthetic data/resources; no production endpoint, real provider, clinical data or human approval used.",
+        "result": "PASS",
+        "receipt_result": "BLOCKED_BY_DEPENDENCIES",
+        "fingerprint": "sha256:a78a4ecd6f6c4c68e02c136ae7765db08a69d14f2d27a0a532de19ae11b5d3ae",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt fingerprint does not match the current observed subject"
+        ]
+      },
+      {
+        "id": "MEL23-049",
+        "milestone": "M2",
+        "target": "Changelog registra cada cutover e mudança pública por versão, com migração/rollback e compatibilidade.",
+        "coverage": "ACCEPTANCE_ADDITION",
+        "acceptance_additions": [
+          "Require a versioned changelog entry per cutover/public change with migration, rollback, and compatibility details."
+        ],
+        "aud27": [
+          {
+            "id": "AUD27-011",
+            "status": "PARTIAL",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
+            "implementation_targets": [
+              "scripts/verify-aud27-24-slices.ts",
+              "packages/persistence/src/aud27-postgres-migration.ts"
+            ]
+          },
+          {
+            "id": "AUD27-012",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              "db/migrations",
+              "scripts/"
+            ]
+          },
+          {
+            "id": "AUD27-013",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              "db/migrations",
+              "scripts/"
+            ]
+          },
+          {
+            "id": "AUD27-014",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              "db/migrations",
+              "scripts/"
+            ]
+          },
+          {
+            "id": "AUD27-024",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              "docs/",
+              "README.md",
+              ".agent/state.json"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm run verify:ephemeral-postgres -- --rounds=1 --run-postgres",
+          "npm run verify:ephemeral-postgres -- --rounds=1 --run-aud27-migration",
+          "npm run verify:ephemeral-postgres -- --rounds=1 --run-aud27-normalized-writes",
+          "npm run verify:ephemeral-postgres -- --rounds=1 --run-aud27-24-slices",
+          "npm run verify:ephemeral-postgres -- --rounds=1 --run-restore"
+        ],
+        "evidence_artifacts": [],
+        "receipt_id": "VER-CVG-AUD27-011-019",
+        "environment": "Local workspace; dirty worktree preserved; current observed subject only; synthetic data/resources; no production endpoint or human approval used.",
+        "result": "PARTIAL",
+        "receipt_result": "PARTIAL",
+        "fingerprint": "sha256:fd0f59d39b7309ddeed00874610b627cecccac3a6a9e045aa03f5d7e53aa1364",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt fingerprint does not match the current observed subject",
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-050",
+        "milestone": "M3",
+        "target": "Gate documental detecta links quebrados, ADR duplicado e referência a arquivo removido; fixture negativa falha.",
+        "coverage": "ACCEPTANCE_ADDITION",
+        "acceptance_additions": [
+          "Add known-good and negative documentation fixtures for broken links, duplicate ADR IDs, and references to removed files."
+        ],
+        "aud27": [
+          {
+            "id": "AUD27-002",
+            "status": "IMPLEMENTED_UNVERIFIED",
+            "evidence_state": "IMPLEMENTED_UNVERIFIED",
+            "implementation_targets": [
+              "scripts/verify-aud27-semantics.ts",
+              "tests/unit/"
+            ]
+          },
+          {
+            "id": "AUD27-024",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              "docs/",
+              "README.md",
+              ".agent/state.json"
+            ]
+          }
+        ],
+        "test_commands": [
+          "node --import tsx --test tests/unit/control-plane.test.ts tests/unit/control-plane-aud23.test.ts tests/unit/docs-integrity.test.ts tests/unit/mel23-evidence.test.ts tests/unit/mutation-verifier.test.ts",
+          "npm run verify:aud27-semantics",
+          "npm run verify:mutation"
+        ],
+        "evidence_artifacts": [],
+        "receipt_id": "VER-CVG-AUD27-002-010",
+        "environment": "Local workspace; dirty worktree preserved; current observed subject; synthetic data/resources; no production endpoint, real provider, clinical data or human approval used.",
+        "result": "PASS",
+        "receipt_result": "IMPLEMENTED_LOCAL",
+        "fingerprint": "sha256:a78a4ecd6f6c4c68e02c136ae7765db08a69d14f2d27a0a532de19ae11b5d3ae",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt fingerprint does not match the current observed subject"
+        ]
+      }
+    ],
+    "global_issues": []
+  }
+}

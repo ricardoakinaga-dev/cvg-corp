@@ -1,0 +1,313 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-09-24T12:49:36.801Z",
+  "source_sha": "c990914148a8f375082cd12bbdb2ad20cfe1900f",
+  "observed_subject_fingerprint": "sha256:492181ca3eb8452c80f55b4c35de91ddf3f01d5cb17e8b0d22bb552cc9ab8501",
+  "candidate_fingerprint": null,
+  "fingerprint_status": "UNFROZEN_UNTIL_AUD27-004",
+  "subject_state": {
+    "dirty": true,
+    "file_counts": {
+      "tracked": 625,
+      "untracked": 175,
+      "status_entries": 276,
+      "configuration": 79
+    }
+  },
+  "qualification": {
+    "global_verdict": "AAA_NOT_PROVEN",
+    "promotion": "BLOCKED",
+    "mel23": {
+      "requirements": 50,
+      "mapped": 50,
+      "qualified": 15,
+      "blocked": 35
+    },
+    "qualified_ids": [
+      "MEL23-001",
+      "MEL23-002",
+      "MEL23-003",
+      "MEL23-013",
+      "MEL23-021",
+      "MEL23-024",
+      "MEL23-040",
+      "MEL23-041",
+      "MEL23-042",
+      "MEL23-043",
+      "MEL23-044",
+      "MEL23-045",
+      "MEL23-046",
+      "MEL23-048",
+      "MEL23-050"
+    ],
+    "global_issues": []
+  },
+  "gates": [
+    {
+      "gate": "npm test",
+      "result": "PASS",
+      "detail": "735 total; 734 pass; 0 fail; 1 skip."
+    },
+    {
+      "gate": "typecheck/build/lint/static/schema",
+      "result": "PASS",
+      "detail": "Typecheck, production build, lint, 250 static artifacts/297 sources, schema latest 049."
+    },
+    {
+      "gate": "AUD27 semantics",
+      "result": "PASS",
+      "detail": "39 findings; 5/5 known-bad cases rejected."
+    },
+    {
+      "gate": "coverage",
+      "result": "PASS",
+      "detail": "88.41% line and line-equivalent statements; 76.62% branch; 87.96% functions; ratchet unchanged."
+    },
+    {
+      "gate": "mutation",
+      "result": "PASS",
+      "detail": "25/25 killed; 0 survived; 0 invalid; 100.00%."
+    },
+    {
+      "gate": "documentation",
+      "result": "PASS",
+      "detail": "256 files; 0 findings; provenance and diff checks pass."
+    },
+    {
+      "gate": "Chromium stress",
+      "result": "PASS_WITH_SKIP",
+      "detail": "5 passed; 1 conditional skip."
+    },
+    {
+      "gate": "full Playwright matrix",
+      "result": "BLOCKED_ENVIRONMENT",
+      "detail": "WebKit could not launch because Linux system libraries are missing; no system dependency installation was performed."
+    },
+    {
+      "gate": "PostgreSQL synthetic proofs",
+      "result": "PASS_LOCAL_ONLY",
+      "detail": "Products backfill, two durable routes, 49-migration protocol, normalized writes, and 24-slice parity/rollback passed; exact temporary containers were removed and inventory stayed unchanged; no cutover claimed."
+    },
+    {
+      "gate": "license policy",
+      "result": "PASS_WITH_HUMAN_BLOCKER",
+      "detail": "183 third-party lockfile packages pass; root license/legal-owner decision remains unavailable."
+    },
+    {
+      "gate": "MEL23 sidecar",
+      "result": "BLOCKED",
+      "detail": "15/50 qualified, 35 unqualified; global catalogue issues 0; incomplete result is expected while external, migration, legal, browser and human gates remain open."
+    }
+  ],
+  "control_plane_capture": {
+    "result": "PASS",
+    "source_sha": "c990914148a8f375082cd12bbdb2ad20cfe1900f",
+    "observed_subject_fingerprint": "sha256:492181ca3eb8452c80f55b4c35de91ddf3f01d5cb17e8b0d22bb552cc9ab8501",
+    "last_gate_record": "VER-CVG-AUD27-001-145",
+    "verification_tail": "VER-CVG-AUD27-001-145",
+    "last_event_id": "EVT-CVG-AUD27-001-145",
+    "event_tail": "EVT-CVG-AUD27-001-145"
+  },
+  "protected_matrix": {
+    "path": "artifacts/operational-proof/mel23-evidence-matrix.json",
+    "expected_sha256": "4f88513a5a0efbfe16da5d1da5e69e1bd3aee4ef0a1b9e44dfec53c5f1db3028",
+    "current_sha256": "f46355276df64e6ebcf1c1afe17785b92df62622bfc0ea950faa298c0b737ec0",
+    "bytes": 99409,
+    "restored": false,
+    "modified_by_this_revalidation": false
+  },
+  "limitations": [
+    "The original registered matrix bytes were not available; the protected path remains unchanged with its current hash different from the expected digest.",
+    "The worktree is dirty and no candidate freeze or independent clean checkout/build is claimed.",
+    "24/32 collections remain SNAPSHOT_PRIMARY; no full source backfill, relational-primary cutover, authority switch, or post-cutover restore is claimed.",
+    "External evidence-root authority, staging/provider gates, independent review, legal root-license decision, and human promotion approval remain open.",
+    "Full WebKit E2E remains blocked by missing operating-system libraries."
+  ],
+  "artifacts": [
+    {
+      "path": "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/subject-observation.json",
+      "sha256": "aa145ed0702c1edbf54852f2a3ae351abb1863ad4512e0717ec826e807d48438",
+      "bytes": 993
+    },
+    {
+      "path": "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/npm-test-final.log",
+      "sha256": "4a69e291eb0f4aef7ee0b70825be44264ca0ef5a7874f5cfce17e1365801260c",
+      "bytes": 68959
+    },
+    {
+      "path": "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/typecheck-final.log",
+      "sha256": "b1a0d6629091d917e161240022488b23b5b19792581a3cd8fad42c16836c9174",
+      "bytes": 76
+    },
+    {
+      "path": "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/build-final.log",
+      "sha256": "b19d2aaee43139174c793d97b3e01270c9e3ac9c10c8c96b1284c1a7011e2075",
+      "bytes": 2182
+    },
+    {
+      "path": "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/lint-final.log",
+      "sha256": "b99a76329973a4d5e557e58a7d94b7b96a9947e70e60fedb5e6f6c2c830cb13c",
+      "bytes": 229
+    },
+    {
+      "path": "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/static-postappend-final.log",
+      "sha256": "2b1e54327db6c6288133bd6eec70aeb9fc3f168776a3053831ba7fbcc3a15540",
+      "bytes": 133
+    },
+    {
+      "path": "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/schema-manifest-final.log",
+      "sha256": "3f71d84e1208d12145289b8b60a89df78ba09f1065c6813cd4352b1149e7d12b",
+      "bytes": 158
+    },
+    {
+      "path": "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/aud27-semantics-postappend-final.log",
+      "sha256": "79be9e002a09d40436d3dd788902b324d3f9bbf42e3193a195e9cd72fe85d628",
+      "bytes": 157
+    },
+    {
+      "path": "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/docs-integrity-final.log",
+      "sha256": "f360836136be58ef1c6d062f6ddc113fdf47560c596ce4ecb98f848712771185",
+      "bytes": 114
+    },
+    {
+      "path": "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/docs-provenance-final.log",
+      "sha256": "60330de1d74fe15f34f97387682e0d287b0dbb4e97ccf9fbff5f804ee89ed3fd",
+      "bytes": 179
+    },
+    {
+      "path": "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/diff-check-final.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/coverage-final.log",
+      "sha256": "03b98687d856f871992022af76579bc0ff6bbf0e4050c70fdd25fc35180a2086",
+      "bytes": 945
+    },
+    {
+      "path": "artifacts/coverage-output.txt",
+      "sha256": "f38df14c726c428a89a606fb43107ff0d17128ed992f6cff11864d638aad645f",
+      "bytes": 95084
+    },
+    {
+      "path": "artifacts/coverage-summary.json",
+      "sha256": "08e4992485143fd82f2cd923ed20092465621fecd04b614634151ff19032f738",
+      "bytes": 5810
+    },
+    {
+      "path": "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/mutation-final.log",
+      "sha256": "ff689b1c30ee4ea78298f272efc6b0fbd8007f2decf06b1e8881b23e15d4384b",
+      "bytes": 268
+    },
+    {
+      "path": "artifacts/mutation-summary.json",
+      "sha256": "bd7c5274e6b44599490d3f9dd525a3ad35b1483dd26238315364befa0ee844ab",
+      "bytes": 73259
+    },
+    {
+      "path": "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/e2e-chromium-stress.log",
+      "sha256": "3fe4571e4ed10831a9dc061b1b7fdc55d7730d7b8850d0962fb71065e87bd71d",
+      "bytes": 1722
+    },
+    {
+      "path": "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/e2e.log",
+      "sha256": "0f82856e493f105e44261fd044f74facfe0714db98fe643694d37ff392feb618",
+      "bytes": 369469
+    },
+    {
+      "path": "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/api-response-postgres-final.log",
+      "sha256": "8eab8f5366b8e997668d4ac3e1512090adb580701b835bfc8d8683ee6ff8b0e4",
+      "bytes": 335
+    },
+    {
+      "path": "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/products-backfill-postgres/environment.txt",
+      "sha256": "b8034e80a4ecef02d377f042bd05b4fa8075d430640b33549c2114263d61a899",
+      "bytes": 201
+    },
+    {
+      "path": "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/products-backfill-postgres/migrations.log",
+      "sha256": "34acc61e481e8f3985f0df22a6625b8f5b08d269e05191ea7818a14caa9dce0d",
+      "bytes": 2172
+    },
+    {
+      "path": "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/products-backfill-postgres/products-backfill.log",
+      "sha256": "fec515ceb7df7c760a4d60496fec29c4e1e15c201ba2adfae565bf40a7f0649a",
+      "bytes": 551
+    },
+    {
+      "path": "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/products-backfill-postgres/container-cleanup.log",
+      "sha256": "575684611f27519afe9e3551569e85d770d701600229471659dd6ef7b0ba9b48",
+      "bytes": 65
+    },
+    {
+      "path": "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/products-backfill-postgres/container-inventory-before.txt",
+      "sha256": "1e34c290cc4145c91fdaf436bfbf36ed0c3bb53ac921e14a65b21f99c3f46918",
+      "bytes": 273
+    },
+    {
+      "path": "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/products-backfill-postgres/container-inventory-after.txt",
+      "sha256": "1e34c290cc4145c91fdaf436bfbf36ed0c3bb53ac921e14a65b21f99c3f46918",
+      "bytes": 273
+    },
+    {
+      "path": "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/aud27-migration-postgres-final.log",
+      "sha256": "cc6c3d2b344024c6923db4ed4145ad1eb4e9c9a5cbda29c0678da1dd8b6e18ef",
+      "bytes": 482
+    },
+    {
+      "path": "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/aud27-normalized-writes-postgres-final.log",
+      "sha256": "c21e67b9c4ca7c81a4094743442fb367c51938a6e69c835ee13b449f33587074",
+      "bytes": 420
+    },
+    {
+      "path": "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/aud27-24-slices-postgres-final.log",
+      "sha256": "d82b15b583777a28007182656a1c10dce28844a2d4f57d1c76aff5e040fde733",
+      "bytes": 795
+    },
+    {
+      "path": "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/license-audit-final.log",
+      "sha256": "ddeffc1193c3129acad00ec58f0768e5c03426ddf3d62063ab5c61aa1992758e",
+      "bytes": 208
+    },
+    {
+      "path": "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/control-plane-postappend.log",
+      "sha256": "e5f022c48a9e436906523abbe64ba70d25b2b1462fed1aa654d59129fc9df449",
+      "bytes": 152
+    },
+    {
+      "path": "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/control-plane-capture-final.log",
+      "sha256": "d289b8aa5b60b4f7e62acb9eb18619d88fcb0b55bf41cdcfc7a164fe4f272f31",
+      "bytes": 403
+    },
+    {
+      "path": "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/control-plane-postcapture.log",
+      "sha256": "e5f022c48a9e436906523abbe64ba70d25b2b1462fed1aa654d59129fc9df449",
+      "bytes": 152
+    },
+    {
+      "path": "artifacts/operational-proof/mel23-control-plane-current.json",
+      "sha256": "96807fb0e8ece76db6e46248330e444d2b2c21dea891b1a05ce97f678c853a10",
+      "bytes": 806
+    },
+    {
+      "path": "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/mel23-evidence-matrix-final.log",
+      "sha256": "4f9cba956a889eaa4f3d9ce881c8a5b1b74f04c43f52db250234f6b81df5d423",
+      "bytes": 4683
+    },
+    {
+      "path": "artifacts/operational-proof/mel23-evidence-matrix-current.json",
+      "sha256": "f617d4545cfddd157c1e895b66d07de10e45f6b7e5667353c9d3e5e4bc574e09",
+      "bytes": 140704
+    },
+    {
+      "path": "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/docs-integrity-post-ledger.log",
+      "sha256": "f360836136be58ef1c6d062f6ddc113fdf47560c596ce4ecb98f848712771185",
+      "bytes": 114
+    },
+    {
+      "path": "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/diff-check-post-ledger.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    }
+  ]
+}

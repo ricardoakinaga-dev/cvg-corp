@@ -1,4 +1,4 @@
-import type { AiApproval, AiDraft, AiSession, AiTurnInput, CvgContext, OpaqueId } from "@cvg/contracts";
+import type { AiApproval, AiSession, AiTurnInput, CvgContext, OpaqueId } from "@cvg/contracts";
 import { AgentRuntimeUnavailableError } from "./errors.ts";
 import type { AgentDraftPromotion, AgentReplayResult, AgentRuntime, AgentRuntimeCapabilities, AgentRuntimeHealth, AgentTurnResult } from "./index.ts";
 

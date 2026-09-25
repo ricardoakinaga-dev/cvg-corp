@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { auditRecordHash, computeFinancialBalance, CvgStore, DomainError, idempotent, idempotencyLookup, parseSnapshot, serializeSnapshot } from "@cvg/domain";
+import { appointmentRangeBounds, auditRecordHash, computeFinancialBalance, CvgStore, DomainError, idempotent, idempotencyLookup, parseSnapshot, serializeSnapshot, verifyAuditChain, verifyPassword } from "@cvg/domain";
 import { GovernedHarness } from "@cvg/harness";
 import { financialBalanceSchema, id, type Payment } from "@cvg/contracts";
 
@@ -15,6 +15,7 @@ test("public domain collections reject direct mutation", () => {
   const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
   const provider = [...store.providers.values()][0];
   assert.ok(provider);
+  assert.equal(store.providers.get("missing-provider"), undefined);
   assert.throws(() => (store.providers as unknown as Map<string, unknown>).set(provider.id, provider), /read-only/);
   assert.throws(() => (store.providers as unknown as Map<string, unknown>).delete(provider.id), /read-only/);
   assert.throws(() => (store.providers as unknown as Map<string, unknown>).clear(), /read-only/);
@@ -206,12 +207,64 @@ test("snapshot validation enforces audit and command receipt foreign keys", () =
 });
 
 test("password fixture is valid only for the generated admin secret", async () => {
-  const { verifyPassword } = await import("@cvg/domain");
   const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
   const user = store.getUserByLogin("admin@cvg.local");
   assert.ok(user);
   assert.equal(verifyPassword("synthetic-password-123", user.passwordDigest), true);
   assert.equal(verifyPassword("wrong-password", user.passwordDigest), false);
+  assert.equal(verifyPassword("wrong-password", "malformed"), false);
+  assert.equal(verifyPassword("wrong-password", "scrypt$%%%$YWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWE"), false);
+});
+
+test("domain security and audit helpers reject malformed branches and preserve exact appointment bounds", () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const clock = new Date("2030-01-15T15:30:00.000Z");
+  const day = appointmentRangeBounds("today", clock);
+  const week = appointmentRangeBounds("week", clock);
+  const exact = appointmentRangeBounds({ startsAt: "2030-02-01T03:00:00.000Z", endsAt: "2030-02-02T03:00:00.000Z" }, clock);
+  assert.equal(day.end.getTime() - day.start.getTime(), 86_400_000);
+  assert.equal(week.end.getTime() - week.start.getTime(), 7 * 86_400_000);
+  assert.equal(exact.start.toISOString(), "2030-02-01T03:00:00.000Z");
+
+  const first = store.recordAudit({ organizationId: store.bootstrapCredentials.organizationId, actorId: store.bootstrapCredentials.userId, unitId: null, workspaceId: null, action: "audit.branch.first", resourceType: "Fixture", resourceId: null, result: "ALLOWED", reason: null, correlationId: "audit-branch", metadata: {} });
+  const second = store.recordAudit({ organizationId: store.bootstrapCredentials.organizationId, actorId: store.bootstrapCredentials.userId, unitId: null, workspaceId: null, action: "audit.branch.second", resourceType: "Fixture", resourceId: null, result: "ALLOWED", reason: null, correlationId: "audit-branch", metadata: {} });
+  const branch = { ...second, id: id("00000000-0000-4000-8000-000000009980"), action: "audit.branch.parallel", previousHash: first.recordHash, recordHash: "" };
+  branch.recordHash = auditRecordHash(branch);
+  assert.throws(() => verifyAuditChain([first, second, branch]), /chain branch/);
+});
+
+test("session lookup and MFA lifecycle fail closed for expired, revoked and missing sessions", () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const userId = store.bootstrapCredentials.userId;
+  const active = store.createSession(userId, "domain-active-session", "csrf", 60);
+  store.markSessionMfaVerified(active.id, "2030-01-15T00:00:00.000Z");
+  assert.equal(store.findSession(active.tokenDigest)?.mfaVerifiedAt, "2030-01-15T00:00:00.000Z");
+  store.touchSession(active);
+  store.revokeSessionById(active.id);
+  assert.equal(store.findSession(active.tokenDigest), undefined);
+  assert.throws(() => store.markSessionMfaVerified(id("00000000-0000-4000-8000-000000009979")), (error: unknown) => error instanceof DomainError && error.code === "NOT_FOUND");
+  const expired = store.createSession(userId, "domain-expired-session", "csrf", -1);
+  assert.equal(store.findSession(expired.tokenDigest), undefined);
+  assert.equal(store.revokeAllSessions(userId), 1);
+});
+
+test("domain reads and session mutators fail closed for absent records", () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const missingId = id("00000000-0000-4000-8000-000000009978");
+  assert.equal(store.getUserByLogin("absent@example.test"), undefined);
+  assert.throws(() => store.getUser(missingId), (error: unknown) => error instanceof DomainError && error.code === "UNAUTHENTICATED");
+  assert.equal(store.findSession("absent-session"), undefined);
+
+  const session = store.createSession(store.bootstrapCredentials.userId, "absent-session-mutator", "csrf", 60);
+  const absentSession = { ...session, id: missingId };
+  store.touchSession(absentSession);
+  store.revokeSession(absentSession);
+  store.revokeSessionById(missingId);
+
+  let iterated = 0;
+  for (const [_key, _value] of store.organizations) iterated += 1;
+  store.organizations.forEach(() => { iterated += 1; });
+  assert.ok(iterated > 0);
 });
 
 test("authentication challenges expire, cannot replay and lock after the bounded attempt budget", () => {
@@ -965,6 +1018,15 @@ test("stock entry, movements and inventory stay atomic, auditable and reject inv
   const movements = [...store.stockMovements.values()].filter((movement) => movement.lotId === entry.lot.id);
   assert.equal(movements.length, 5);
   assert.ok(movements.every((movement) => movement.createdBy === ctx.actorId && movement.reason.length >= 3));
+  const inactiveSkuSnapshot = store.snapshot();
+  const persistedProduct = inactiveSkuSnapshot.products.find((candidate) => candidate.id === product.id);
+  assert.ok(persistedProduct);
+  persistedProduct.status = "INACTIVE";
+  store.hydrate(inactiveSkuSnapshot);
+  assert.throws(
+    () => store.createProduct(ctx, { sku: "TEST-SKU-01", name: "SKU inativo reutilizado", category: "Teste", unit: "unidade", reorderPoint: 0 }),
+    (error: unknown) => error instanceof DomainError && error.code === "CONFLICT"
+  );
 });
 
 test("financial sequences keep ledger append-only and the balance contract explicit under seeded randomness", () => {

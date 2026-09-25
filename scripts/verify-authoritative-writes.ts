@@ -1,20 +1,26 @@
 import { readFile } from "node:fs/promises";
 import { CvgStore } from "@cvg/domain";
 import { readdir } from "node:fs/promises";
-import { AUTHORITATIVE_COMMAND_REGISTRY, AUTHORITATIVE_DOMAIN_REGISTRY, authoritativeCoverage, PersistenceCorruptionError, SNAPSHOT_PRIMARY_ENTITIES, validateAuthoritativeSnapshot } from "@cvg/persistence";
+import { AUD27_TRANSITIONAL_WRITE_FIELDS, AUTHORITATIVE_COMMAND_REGISTRY, AUTHORITATIVE_DOMAIN_REGISTRY, authoritativeCoverage, PersistenceCorruptionError, SNAPSHOT_PRIMARY_ENTITIES, validateAuthoritativeSnapshot } from "@cvg/persistence";
 
 const source = await readFile("packages/persistence/src/index.ts", "utf8");
+const persistenceSources = (await Promise.all((await readdir("packages/persistence/src")).filter((file) => file.endsWith(".ts")).map((file) => readFile(`packages/persistence/src/${file}`, "utf8")))).join("\n");
 const required = new Set(AUTHORITATIVE_DOMAIN_REGISTRY.map((entry) => entry.snapshotKey));
 if (required.size !== AUTHORITATIVE_DOMAIN_REGISTRY.length || required.size !== 32) throw new Error(`authoritative registry must contain 32 unique snapshot keys; found ${required.size}`);
 if (new Set(AUTHORITATIVE_DOMAIN_REGISTRY.map((entry) => entry.table)).size !== AUTHORITATIVE_DOMAIN_REGISTRY.length) throw new Error("authoritative registry contains duplicate SQL tables");
 const missingRegistry = [...required].filter((key) => !AUTHORITATIVE_DOMAIN_REGISTRY.some((entry) => entry.snapshotKey === key));
-const missingSql = AUTHORITATIVE_DOMAIN_REGISTRY.filter((entry) => !source.includes(`insert into ${entry.table}`)).map((entry) => entry.table);
+const missingSql = AUTHORITATIVE_DOMAIN_REGISTRY.filter((entry) => !persistenceSources.includes(`insert into ${entry.table}`)).map((entry) => entry.table);
 if (missingRegistry.length || missingSql.length) {
   throw new Error(`authoritative coverage is incomplete: registry=${missingRegistry.join(",") || "ok"} sql=${missingSql.join(",") || "ok"}`);
 }
+const wiredSeams = ["projectAiRows(", "writeAud27DomainWrite(", "writeAuthoritativeProduct("];
+const missingWiring = wiredSeams.filter((marker) => !source.includes(marker));
+if (missingWiring.length) throw new Error(`authoritative SQL seams are not wired into the commit path: ${missingWiring.join(",")}`);
 
-const normalizedFields = [...source.matchAll(/normalized([A-Za-z]+)Write\??:/g)].map((match) => `normalized${match[1]}Write`);
-const registeredFields = new Set<string>(AUTHORITATIVE_COMMAND_REGISTRY.map((entry) => entry.inputField));
+const transitionalFields = AUD27_TRANSITIONAL_WRITE_FIELDS.filter((entry) => SNAPSHOT_PRIMARY_ENTITIES.some((entity) => entity.snapshotKey === entry.snapshotKey && entity.owner === entry.owner));
+if (transitionalFields.length !== AUD27_TRANSITIONAL_WRITE_FIELDS.length) throw new Error("transitional write fields must match a declared snapshot-primary collection owner");
+const normalizedFields = [...new Set([...source.matchAll(/normalized([A-Za-z]+)Write\??:/g)].map((match) => `normalized${match[1]}Write`))];
+const registeredFields = new Set<string>([...AUTHORITATIVE_COMMAND_REGISTRY.map((entry) => entry.inputField), ...transitionalFields.map((entry) => entry.inputField)]);
 const unregisteredFields = normalizedFields.filter((field) => !registeredFields.has(field));
 const staleFields = [...registeredFields].filter((field) => !normalizedFields.includes(field));
 if (unregisteredFields.length || staleFields.length) throw new Error(`command inventory diverges from the durable commit surface: unregistered=${unregisteredFields.join(",") || "ok"} stale=${staleFields.join(",") || "ok"}`);

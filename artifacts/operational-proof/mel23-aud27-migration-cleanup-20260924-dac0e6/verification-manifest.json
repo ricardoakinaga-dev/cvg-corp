@@ -1,0 +1,121 @@
+{
+  "schema_version": 1,
+  "created_at": "2026-09-24T10:23:20.597Z",
+  "task": "AUD27-011",
+  "mel23_ids": [
+    "MEL23-008",
+    "MEL23-009",
+    "MEL23-010",
+    "MEL23-011",
+    "MEL23-012"
+  ],
+  "source_sha": "c990914148a8f375082cd12bbdb2ad20cfe1900f",
+  "observed_subject_fingerprint": "sha256:dac0e6cd6eaa3bc335569ffaee11d9f2d5c8e2fc7d7fbb6adc392f91c876f744",
+  "candidate_fingerprint": null,
+  "fingerprint_status": "UNFROZEN_UNTIL_AUD27-004",
+  "environment": "Local dirty workspace; PostgreSQL 16 temporary container on loopback with synthetic credentials/data; no production system or real clinical data.",
+  "command_results": [
+    {
+      "command": "node --import tsx --test tests/unit/aud27-postgres-migration-cleanup.test.ts tests/unit/aud27-postgres-migration.test.ts",
+      "exit_status": 0,
+      "observed": "8 tests passed; cleanup is tenant/slice/run-ID scoped and releases its pinned client."
+    },
+    {
+      "command": "npm run typecheck",
+      "exit_status": 0,
+      "observed": "tsc -p tsconfig.json --noEmit passed."
+    },
+    {
+      "command": "npm run verify:ephemeral-postgres -- --rounds=1 --run-aud27-migration --run-aud27-24-slices",
+      "exit_status": 0,
+      "observed": "PostgreSQL 16; 49 migrations; cleanup deleted 9 records and 4 checkpoints across 5 verifier-owned run IDs; 24 slices have row/count parity 24/24, replay duplicate_rows=0, rollback PASS; inventory_unchanged=true; database_removed=true; cutover=NOT_CLAIMED."
+    },
+    {
+      "command": "npm run verify:snapshot-command-migration",
+      "exit_status": 0,
+      "observed": "32 collections; 8 command-authoritative; 24 snapshot-primary; replay, rollback and reconciliation PASS."
+    },
+    {
+      "command": "npm run verify:aud27-migration-harness",
+      "exit_status": 0,
+      "observed": "5/5 tests passed."
+    },
+    {
+      "command": "npm test",
+      "exit_status": 0,
+      "observed": "726 tests; 725 passed; 0 failed; 1 skipped."
+    },
+    {
+      "command": "npm run verify:control-plane",
+      "exit_status": 0,
+      "observed": "334 items passed; active action remains AUD27-001:SEMANTIC-RECONCILIATION."
+    },
+    {
+      "command": "npm run verify:aud27-semantics",
+      "exit_status": 0,
+      "observed": "39 findings/tasks consistent; 5/5 known-bad mutations rejected."
+    },
+    {
+      "command": "git diff --check",
+      "exit_status": 0,
+      "observed": "No whitespace errors."
+    }
+  ],
+  "artifact_hashes": [
+    {
+      "path": "artifacts/operational-proof/mel23-aud27-migration-cleanup-20260924-dac0e6/migration-cleanup-unit.log",
+      "size": 920,
+      "sha256": "45e4e05c291484a08eeb3d343135f5805ef64ef2df49c81a8837e034d15ac1e8"
+    },
+    {
+      "path": "artifacts/operational-proof/mel23-aud27-migration-cleanup-20260924-dac0e6/typecheck.log",
+      "size": 61,
+      "sha256": "19c71cde12d596f5abd6f07b9713c068230e6bd3a8086d6bdf9ba3a34d1a9409"
+    },
+    {
+      "path": "artifacts/operational-proof/mel23-aud27-migration-cleanup-20260924-dac0e6/full-suite.log",
+      "size": 67738,
+      "sha256": "5bde8e3c0366def6cd965a590174d9aaca1711673ea949883a4b9972b95028ae"
+    },
+    {
+      "path": "artifacts/operational-proof/mel23-aud27-migration-cleanup-20260924-dac0e6/ephemeral-postgres-migration.log",
+      "size": 884,
+      "sha256": "50b58e4602944d9dd6cd2f4c7a975c738de2185ecaf59701e373e7f70094eac0"
+    },
+    {
+      "path": "artifacts/operational-proof/mel23-aud27-migration-cleanup-20260924-dac0e6/snapshot-inventory.log",
+      "size": 256,
+      "sha256": "f4beacba8448d22f3626b4be60ef5a8e3b8884150de3195e313c47b3a5aad6a1"
+    },
+    {
+      "path": "artifacts/operational-proof/mel23-aud27-migration-cleanup-20260924-dac0e6/migration-harness-unit.log",
+      "size": 676,
+      "sha256": "b628ec94b6b41b82d5e31dca2081321f267886247d8bc18325cbac8eab35641a"
+    },
+    {
+      "path": "artifacts/operational-proof/mel23-aud27-migration-cleanup-20260924-dac0e6/control-plane.log",
+      "size": 152,
+      "sha256": "e5f022c48a9e436906523abbe64ba70d25b2b1462fed1aa654d59129fc9df449"
+    },
+    {
+      "path": "artifacts/operational-proof/mel23-aud27-migration-cleanup-20260924-dac0e6/aud27-semantics.log",
+      "size": 157,
+      "sha256": "79be9e002a09d40436d3dd788902b324d3f9bbf42e3193a195e9cd72fe85d628"
+    }
+  ],
+  "criterion_results": {
+    "MEL23-008": "PARTIAL",
+    "MEL23-009": "PARTIAL",
+    "MEL23-010": "PARTIAL",
+    "MEL23-011": "PARTIAL",
+    "MEL23-012": "BLOCKED"
+  },
+  "remaining": [
+    "24 SNAPSHOT_PRIMARY collections remain; synthetic incremental writes do not prove real-data backfill or relational-primary cutover.",
+    "Named migration authority, representative golden dataset, per-slice real data parity and concurrent writer qualification are absent.",
+    "Rollback/replay and restore after cutover are not proven; no cutover is claimed.",
+    "Candidate remains dirty and unfrozen; no clean independent checkout/build or external evidence anchor is qualified.",
+    "Protected registered matrix bytes remain unavailable: expected SHA-256 4f88513a5a0efbfe16da5d1da5e69e1bd3aee4ef0a1b9e44dfec53c5f1db3028; current file remains unchanged at f46355276df64e6ebcf1c1afe17785b92df62622bfc0ea950faa298c0b737ec0."
+  ],
+  "verdict": "LOCAL_VERIFIER_SAFETY_IMPROVED; MIGRATION_PARTIAL; PROMOTION_BLOCKED"
+}

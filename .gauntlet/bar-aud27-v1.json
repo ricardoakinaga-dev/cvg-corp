@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "bar_id": "CVG-BAR-2026-09-21-AUD27-V1",
+  "goal": "Implementar e reauditar AUD27 sem falso verde, preservando AUD26 como histórico",
+  "scope_ref": "AUD27-001..027",
+  "frozen_at": "2026-09-21T20:23:45-03:00",
+  "immutable": true,
+  "source": {
+    "audit": "docs/auditoria-resultado-cvg-aud27-2026-09-21.md",
+    "audit_sha256": "6c46d47ed96457da07416b980ba788f01f0a7e1c13632b3f4ec359b7f0a58219",
+    "roadmap": "docs/roadmap-melhorias-cvg-aud27-2026-09-21.md",
+    "roadmap_sha256": "1844eadad1151e360bfe38e723b159b0c98fb4bce71159c031ff1574cb9ca070",
+    "backlog": "docs/backlog-melhorias-cvg-aud27-2026-09-21.md",
+    "backlog_sha256": "ae36a0235e6a15d968b964496c6563d24f84e802ae41905f62d7616a545e279a",
+    "aud26_report": "docs/auditoria-profunda-repositorio-2026-09-21.md",
+    "aud26_report_sha256": "80301c506963d1e04e0bfe8dba24b109522ced51732e251bf1de983a7f35864b",
+    "semantic_manifest": "docs/aud27-semantic-manifest.json"
+  },
+  "evidence_rules": {
+    "no_claim_without_current_executable_evidence": true,
+    "source_inspection_is_not_runtime_proof": true,
+    "synthetic_or_disposable_is_not_production_proof": true,
+    "not_run_remains_not_run": true,
+    "subject_rebind_is_not_behavioral_proof": true,
+    "exact_subject_fingerprint_required_after_freeze": true,
+    "source_sha_required": true,
+    "partial_requires_observed_and_remaining": true,
+    "done_requires_typed_receipt": true,
+    "snapshot_primary_zero_of_32": true,
+    "response_routes_105_and_schemas_80": true,
+    "external_evidence_root_outside_candidate": true,
+    "builder_cannot_approve_own_work": true,
+    "sealed_fresh_context_critics_required": true,
+    "human_release_approval_not_agent_generated": true
+  },
+  "required_criteria": [
+    { "id": "M0-001", "tasks": ["AUD27-001", "AUD27-002", "AUD27-003"], "title": "semantic manifest, adversarial verifier and typed control-plane state", "gate": "required" },
+    { "id": "M1-004", "tasks": ["AUD27-004", "AUD27-005", "AUD27-006"], "title": "clean reproducible subject, external AUD27 evidence root and non-rebind receipts", "gate": "required" },
+    { "id": "API-007", "tasks": ["AUD27-007", "AUD27-008", "AUD27-009", "AUD27-010"], "title": "105 routes and 80 response schemas are nominal, owned, versioned and runtime-validated", "gate": "required" },
+    { "id": "DATA-011", "tasks": ["AUD27-011", "AUD27-012", "AUD27-013", "AUD27-014"], "title": "durable migration harness and 24 snapshot-primary cutovers to 0/32", "gate": "required" },
+    { "id": "SUP-015", "tasks": ["AUD27-015", "AUD27-016", "AUD27-017"], "title": "real image smoke, root license, OCI digest/SBOM/scan/provenance/signature", "gate": "required" },
+    { "id": "QUAL-018", "tasks": ["AUD27-018", "AUD27-019", "AUD27-020"], "title": "coverage/statements/mutation, three browsers/rendered a11y and modular seams", "gate": "required" },
+    { "id": "OPS-021", "tasks": ["AUD27-021", "AUD27-022"], "title": "durable ops, staging/load/chaos/restore/DR and measured RTO/RPO", "gate": "required" },
+    { "id": "REVIEW-023", "tasks": ["AUD27-023", "AUD27-024", "AUD27-025"], "title": "sealed critics, honest documentation and two independent qualifications", "gate": "required" },
+    { "id": "EXT-026", "tasks": ["AUD27-026"], "title": "named external gates with same-fingerprint receipts", "gate": "blocking-external" },
+    { "id": "HUMAN-027", "tasks": ["AUD27-027"], "title": "named human APPROVE/REJECT/DEFER decision", "gate": "blocking-human" }
+  ],
+  "qualification": {
+    "required_rounds": 2,
+    "same_fingerprint": true,
+    "clean_worktree_required": true,
+    "dirty_inventory_required_before_freeze": true,
+    "no_done_before_m0": true,
+    "promotion": "BLOCKED_UNTIL_LOCAL_EXTERNAL_AND_HUMAN_GATES"
+  },
+  "hard_blockers": [
+    "candidate is not yet clean/frozen",
+    "external durable evidence root and registry/issuer unavailable",
+    "authorized staging/providers/secrets/collector unavailable",
+    "production-like load/chaos/DR and RTO/RPO authority unavailable",
+    "WebKit/assistive-technology human qualification unavailable",
+    "fresh sealed independent critic and named human approval unavailable"
+  ],
+  "verdict_policy": {
+    "local_completion": "PASS only with current executable evidence and task-bound receipt",
+    "external_unknown": "BLOCKED_EXTERNAL",
+    "human_unknown": "BLOCKED_HUMAN",
+    "overall": "PROMOTION_BLOCKED — AAA_NOT_PROVEN until every required gate is current"
+  }
+}

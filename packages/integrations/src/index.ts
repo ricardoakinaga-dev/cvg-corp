@@ -5,6 +5,10 @@ import { existsSync, readFileSync } from "node:fs";
 import { isIP } from "node:net";
 import { join, resolve, sep } from "node:path";
 import type { DurableExternalEffectInput, DurableExternalEffectOutcome, DurableExternalEffectRecord, DurableExternalReconciliationEvidence, DurableInboxInput, DurableOutboxInput, DurableOutboxRecord, PostgresPersistence } from "@cvg/persistence";
+import { EgressPolicyViolation, fetchWithEgressPolicy, headerValue, isAllowedEgressAddress, pinnedEgressFetch, type EgressDnsResolver, type EgressFetch, type EgressHttpResponse, type EgressPolicy } from "./egress.ts";
+
+export { EgressPolicyViolation, fetchWithEgressPolicy, isAllowedEgressAddress, pinnedEgressFetch, validateEgressTarget } from "./egress.ts";
+export type { EgressDnsResolver, EgressFetch, EgressHttpResponse, EgressFetchResult, EgressPolicy, EgressTarget } from "./egress.ts";
 
 export interface IntegrationContract {
   integrationId: string;
@@ -252,16 +256,8 @@ export type MessagingCallbackPayload = string | Uint8Array | Readonly<Record<str
 export type MessagingSecretResolver = (reference: string) => Promise<string | null>;
 
 /** The only transport seam used by HttpMessagingProvider; tests inject it. */
-export interface MessagingHttpResponse {
-  readonly status: number;
-  readonly ok: boolean;
-  readonly headers?: { get?(name: string): string | null } | Readonly<Record<string, string | undefined>>;
-  /** Native fetch responses expose text(); injected transports may provide only json(). */
-  text?(): Promise<string>;
-  json(): Promise<unknown>;
-}
-
-export type MessagingFetch = (input: string, init?: RequestInit) => Promise<MessagingHttpResponse>;
+export type MessagingHttpResponse = EgressHttpResponse;
+export type MessagingFetch = EgressFetch;
 
 export type MessagingFailure = "CONFIGURATION" | "CREDENTIAL" | "RATE_LIMITED" | "CIRCUIT_OPEN" | "TIMEOUT" | "TRANSPORT" | "INVALID_RESPONSE" | "CANCELLED" | "CONFLICT";
 export type MessagingFailureOutcome = "NOT_SENT" | "OUTCOME_UNKNOWN";
@@ -553,8 +549,12 @@ export interface SyntheticMessagingProviderOptions extends MessagingProviderCont
   sendOutcome?: "DELIVERED" | "OUTCOME_UNKNOWN";
 }
 
+export interface MessagingProviderSendOptions {
+  signal?: AbortSignal;
+}
+
 export interface MessagingProvider {
-  send(request: MessagingSendRequest): Promise<MessagingSendResult>;
+  send(request: MessagingSendRequest, options?: MessagingProviderSendOptions): Promise<MessagingSendResult>;
   queryStatus(request: MessagingQueryRequest): Promise<MessagingQueryResult>;
   query(request: MessagingQueryRequest): Promise<MessagingQueryResult>;
   normalizeReceipt(raw: unknown, providerRequestId?: string): MessagingReceipt;
@@ -584,7 +584,8 @@ export class SyntheticMessagingProvider implements MessagingProvider {
     this.sendOutcome = options.sendOutcome ?? "DELIVERED";
   }
 
-  async send(request: MessagingSendRequest): Promise<MessagingSendResult> {
+  async send(request: MessagingSendRequest, options: MessagingProviderSendOptions = {}): Promise<MessagingSendResult> {
+    if (options.signal?.aborted) throw new MessagingProviderError("CANCELLED", "provider send aborted before dispatch", { outcome: "NOT_SENT" });
     const normalized = normalizedSendRequest(request);
     const requestId = normalized.requestId ?? deterministicRequestId("msg", normalized.idempotencyKey);
     const requestDigest = digest({ idempotencyKey: normalized.idempotencyKey, channel: normalized.channel, recipient: normalized.recipient, body: normalized.body, metadata: normalized.metadata });
@@ -644,6 +645,11 @@ export class SyntheticMessagingProvider implements MessagingProvider {
 export interface HttpMessagingProviderOptions extends MessagingProviderControlOptions {
   endpoint?: string | null;
   allowedHosts?: readonly string[];
+  allowedPorts?: readonly number[];
+  blockedIpv6Prefixes?: readonly string[];
+  resolveHostname?: EgressDnsResolver;
+  /** Redirects are disabled by default; only read requests may follow them. */
+  maxRedirects?: number;
   credentialRef?: string | null;
   secretResolver?: MessagingSecretResolver;
   resolveSecret?: MessagingSecretResolver;
@@ -659,7 +665,7 @@ export interface HttpMessagingProviderOptions extends MessagingProviderControlOp
 interface HttpAttemptResult {
   response: MessagingHttpResponse | null;
   payload?: unknown;
-  failure: "TIMEOUT" | "TRANSPORT" | "INVALID_RESPONSE" | "CANCELLED" | null;
+  failure: "TIMEOUT" | "TRANSPORT" | "INVALID_RESPONSE" | "CANCELLED" | "CONFIGURATION" | null;
 }
 
 const DEFAULT_PROVIDER_RESPONSE_BODY_BYTES = 256 * 1024;
@@ -671,13 +677,7 @@ function boundedResponseBodyBytes(value: number | undefined): number {
 }
 
 function responseContentLength(response: MessagingHttpResponse): number | null {
-  const headers = response.headers;
-  const hasGetter = headers && typeof headers === "object" && "get" in headers && typeof (headers as { get?: unknown }).get === "function";
-  const raw = hasGetter
-    ? (headers as { get: (name: string) => string | null }).get("content-length")
-    : headers
-      ? (headers as Readonly<Record<string, string | undefined>>)["content-length"]
-      : undefined;
+  const raw = headerValue(response.headers, "content-length");
   if (raw === null || raw === undefined || raw === "") return null;
   const parsed = Number(raw);
   return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : null;
@@ -686,11 +686,40 @@ function responseContentLength(response: MessagingHttpResponse): number | null {
 async function responseJson(response: MessagingHttpResponse, maxBodyBytes: number): Promise<unknown> {
   const declaredLength = responseContentLength(response);
   if (declaredLength !== null && declaredLength > maxBodyBytes) throw new Error("provider response body exceeds the configured limit");
+  if (response.body && typeof response.body.getReader === "function") {
+    const reader = response.body.getReader();
+    const chunks: Uint8Array[] = [];
+    let total = 0;
+    try {
+      for (;;) {
+        const next = await reader.read();
+        if (next.done) break;
+        const chunk = next.value;
+        total += chunk.byteLength;
+        if (total > maxBodyBytes) {
+          await reader.cancel("response body limit exceeded");
+          throw new Error("provider response body exceeds the configured limit");
+        }
+        chunks.push(chunk);
+      }
+    } finally {
+      reader.releaseLock();
+    }
+    const bytes = new Uint8Array(total);
+    let offset = 0;
+    for (const chunk of chunks) {
+      bytes.set(chunk, offset);
+      offset += chunk.byteLength;
+    }
+    const raw = new TextDecoder().decode(bytes);
+    return JSON.parse(raw) as unknown;
+  }
   if (typeof response.text === "function") {
     const raw = await response.text();
     if (Buffer.byteLength(raw, "utf8") > maxBodyBytes) throw new Error("provider response body exceeds the configured limit");
     return JSON.parse(raw) as unknown;
   }
+  if (typeof response.json !== "function") throw new Error("provider response body transport is unavailable");
   const payload = await response.json();
   let encoded: string;
   try { encoded = JSON.stringify(payload); } catch { throw new Error("provider response is not serializable"); }
@@ -698,7 +727,7 @@ async function responseJson(response: MessagingHttpResponse, maxBodyBytes: numbe
   return payload;
 }
 
-async function httpAttempt(fetcher: MessagingFetch, url: string, init: RequestInit, timeoutMs: number, callerSignal: AbortSignal | null, maxResponseBodyBytes: number): Promise<HttpAttemptResult> {
+async function httpAttempt(fetcher: MessagingFetch, url: string, init: RequestInit, timeoutMs: number, callerSignal: AbortSignal | null, maxResponseBodyBytes: number, egressPolicy: EgressPolicy): Promise<HttpAttemptResult> {
   if (callerSignal?.aborted) return { response: null, failure: "CANCELLED" };
   const controller = new AbortController();
   let timedOut = false;
@@ -707,8 +736,8 @@ async function httpAttempt(fetcher: MessagingFetch, url: string, init: RequestIn
   const onAbort = (): void => controller.abort();
   callerSignal?.addEventListener("abort", onAbort, { once: true });
   try {
-    const operation = fetcher(url, { ...init, signal: controller.signal }).then(async (response) => {
-      if (!response || typeof response.status !== "number" || (typeof response.text !== "function" && typeof response.json !== "function")) throw new Error("provider response transport is invalid");
+    const operation = fetchWithEgressPolicy(fetcher, url, { ...init, signal: controller.signal }, egressPolicy).then(async ({ response }) => {
+      if (!response || typeof response.status !== "number" || (typeof response.text !== "function" && typeof response.json !== "function" && !response.body)) throw new Error("provider response transport is invalid");
       let payload: unknown;
       try {
         payload = await responseJson(response, maxResponseBodyBytes);
@@ -727,8 +756,9 @@ async function httpAttempt(fetcher: MessagingFetch, url: string, init: RequestIn
     });
     const result = await Promise.race([operation, timeout]);
     return { response: result.response, payload: result.payload, failure: null };
-  } catch {
-    return { response: null, failure: callerSignal?.aborted ? "CANCELLED" : timedOut ? "TIMEOUT" : invalidResponse ? "INVALID_RESPONSE" : "TRANSPORT" };
+  } catch (error) {
+    if (error instanceof EgressPolicyViolation && error.phase === "INITIAL") return { response: null, failure: "CONFIGURATION" };
+    return { response: null, failure: callerSignal?.aborted ? "CANCELLED" : timedOut ? "TIMEOUT" : invalidResponse || error instanceof EgressPolicyViolation ? "INVALID_RESPONSE" : "TRANSPORT" };
   } finally {
     if (timer) clearTimeout(timer);
     callerSignal?.removeEventListener("abort", onAbort);
@@ -744,9 +774,7 @@ function providerEndpoint(options: HttpMessagingProviderOptions): string {
     throw new MessagingProviderError("CONFIGURATION", "message provider endpoint is invalid");
   }
   const hostname = parsed.hostname.toLowerCase();
-  const privateLiteral = isIP(hostname) === 4
-    ? hostname.startsWith("10.") || hostname.startsWith("127.") || hostname.startsWith("192.168.") || /^172\.(1[6-9]|2\d|3[0-1])\./.test(hostname) || hostname.startsWith("169.254.")
-    : isIP(hostname) === 6 && (hostname === "::1" || hostname.startsWith("fc") || hostname.startsWith("fd") || hostname.startsWith("fe80:") || hostname.startsWith("::ffff:127."));
+  const privateLiteral = isIP(hostname) !== 0 && !isAllowedEgressAddress(hostname, options.blockedIpv6Prefixes);
   const allowedHosts = options.allowedHosts?.map((host) => host.trim().toLowerCase()).filter(Boolean);
   if (parsed.username || parsed.password || (parsed.protocol !== "https:" && !options.allowInsecureEndpoint) || privateLiteral || (allowedHosts !== undefined && (!allowedHosts.length || !allowedHosts.includes(hostname)))) throw new MessagingProviderError("CONFIGURATION", "message provider endpoint is not an approved secure allowlisted URL");
   return parsed.toString().replace(/\/+$/, "");
@@ -776,7 +804,8 @@ export class HttpMessagingProvider implements MessagingProvider {
     this.maxResponseBodyBytes = boundedResponseBodyBytes(options.maxResponseBodyBytes);
   }
 
-  async send(request: MessagingSendRequest): Promise<MessagingSendResult> {
+  async send(request: MessagingSendRequest, options: MessagingProviderSendOptions = {}): Promise<MessagingSendResult> {
+    if (options.signal?.aborted) throw new MessagingProviderError("CANCELLED", "provider send aborted before dispatch", { outcome: "NOT_SENT" });
     const normalized = normalizedSendRequest(request, this.defaultTimeoutMs);
     const requestId = normalized.requestId ?? deterministicRequestId("msg", normalized.idempotencyKey);
     const endpoint = providerEndpoint(this.options);
@@ -789,8 +818,9 @@ export class HttpMessagingProvider implements MessagingProvider {
     } catch {
       throw new DomainError("INVALID_INPUT", "O payload da mensagem não pode ser serializado.", 400);
     }
-    const attempt = await httpAttempt(this.fetcher(), joinProviderEndpoint(endpoint, this.options.sendPath ?? "/messages"), { method: "POST", redirect: "error", headers: { accept: "application/json", "content-type": "application/json", "x-request-id": requestId, "idempotency-key": normalized.idempotencyKey, authorization: `Bearer ${secret}` }, body }, normalized.timeoutMs || this.defaultTimeoutMs, normalized.signal, this.maxResponseBodyBytes);
+    const attempt = await httpAttempt(this.fetcher(), joinProviderEndpoint(endpoint, this.options.sendPath ?? "/messages"), { method: "POST", headers: { accept: "application/json", "content-type": "application/json", "x-request-id": requestId, "idempotency-key": normalized.idempotencyKey, authorization: `Bearer ${secret}` }, body }, normalized.timeoutMs || this.defaultTimeoutMs, normalized.signal, this.maxResponseBodyBytes, this.egressPolicy());
     if (attempt.failure) {
+      if (attempt.failure === "CONFIGURATION") throw new MessagingProviderError("CONFIGURATION", "message provider egress policy rejected the endpoint");
       this.controls.circuitBreaker?.recordFailure();
       return httpFailureResult(attempt.failure, requestId, null);
     }
@@ -834,8 +864,9 @@ export class HttpMessagingProvider implements MessagingProvider {
     const identity = normalized.providerRequestId ?? normalized.requestId ?? normalized.idempotencyKey ?? requestId;
     const configuredPath = typeof this.options.queryPath === "function" ? this.options.queryPath(request) : this.options.queryPath ?? `/messages/${encodeURIComponent(identity)}`;
     const path = configuredPath.replace(":providerRequestId", encodeURIComponent(identity));
-    const attempt = await httpAttempt(this.fetcher(), joinProviderEndpoint(endpoint, path), { method: "GET", redirect: "error", headers: { accept: "application/json", "x-request-id": requestId, authorization: `Bearer ${secret}` } }, normalized.timeoutMs || this.defaultTimeoutMs, normalized.signal, this.maxResponseBodyBytes);
+    const attempt = await httpAttempt(this.fetcher(), joinProviderEndpoint(endpoint, path), { method: "GET", headers: { accept: "application/json", "x-request-id": requestId, authorization: `Bearer ${secret}` } }, normalized.timeoutMs || this.defaultTimeoutMs, normalized.signal, this.maxResponseBodyBytes, this.egressPolicy());
     if (attempt.failure) {
+      if (attempt.failure === "CONFIGURATION") throw new MessagingProviderError("CONFIGURATION", "message provider egress policy rejected the endpoint");
       this.controls.circuitBreaker?.recordFailure();
       return { status: "OUTCOME_UNKNOWN", requestId, providerRequestId: normalized.providerRequestId, receipt: null, error: httpFailureResult(attempt.failure, requestId, normalized.providerRequestId).reason };
     }
@@ -885,8 +916,23 @@ export class HttpMessagingProvider implements MessagingProvider {
 
   private fetcher(): MessagingFetch {
     if (this.options.fetch) return this.options.fetch;
-    if (typeof globalThis.fetch !== "function") throw new MessagingProviderError("CONFIGURATION", "message provider fetch transport is unavailable");
-    return globalThis.fetch.bind(globalThis) as MessagingFetch;
+    return pinnedEgressFetch;
+  }
+
+  private egressPolicy(): EgressPolicy {
+    // An injected fetch is the deterministic transport seam used by the
+    // contract harness. It has no socket/DNS side effects, so a public fixture
+    // resolution keeps legacy fixtures portable; adversarial tests inject the
+    // resolver explicitly. Production uses the system resolver.
+    const resolveHostname = this.options.resolveHostname ?? (this.options.fetch ? async (_hostname: string): Promise<readonly string[]> => ["93.184.216.34"] : undefined);
+    return {
+      ...(this.options.allowedHosts !== undefined ? { allowedHosts: this.options.allowedHosts } : {}),
+      ...(this.options.allowedPorts !== undefined ? { allowedPorts: this.options.allowedPorts } : {}),
+      ...(this.options.blockedIpv6Prefixes !== undefined ? { blockedIpv6Prefixes: this.options.blockedIpv6Prefixes } : {}),
+      ...(this.options.allowInsecureEndpoint ? { allowInsecure: true } : {}),
+      ...(this.options.maxRedirects !== undefined ? { maxRedirects: this.options.maxRedirects } : {}),
+      ...(resolveHostname ? { resolveHostname } : {})
+    };
   }
 
   private async resolveSecret(timeoutMs: number, callerSignal: AbortSignal | null): Promise<string> {
@@ -943,6 +989,8 @@ export interface OutboxDispatchContext {
   integrationId: string;
   idempotencyKey: string;
   fenceToken: bigint;
+  /** CVG-AUD20-009: cooperative cancellation propagated to the provider. */
+  signal?: AbortSignal;
 }
 
 export interface OutboxSink {
@@ -961,7 +1009,9 @@ export class MessagingOutboxSink implements OutboxSink {
 
   async deliver(record: DurableOutboxRecord, context?: OutboxDispatchContext): Promise<OutboxDeliveryDecision> {
     const dispatchContext: OutboxDispatchContext = context ?? { effectId: record.id, integrationId: `outbox:${record.eventType}`, idempotencyKey: record.id, fenceToken: record.fenceToken };
-    const outcome = await this.provider.send(this.mapRequest(record, dispatchContext));
+    const mapped = this.mapRequest(record, dispatchContext);
+    const request: MessagingSendRequest = dispatchContext.signal && !mapped.signal ? { ...mapped, signal: dispatchContext.signal } : mapped;
+    const outcome = await this.provider.send(request, { ...(dispatchContext.signal ? { signal: dispatchContext.signal } : {}) });
     if (outcome.status === "DELIVERED") return { status: "DELIVERED", providerRequestId: outcome.providerRequestId, receipt: { requestId: outcome.requestId, ...outcome.receipt } };
     return { status: "OUTCOME_UNKNOWN", providerRequestId: outcome.providerRequestId, evidence: { requestId: outcome.requestId }, reason: outcome.reason };
   }
@@ -1094,11 +1144,14 @@ export function createMessagingExternalEffectQueryAdapter(provider: Pick<Messagi
 export class OutboxWorker {
   constructor(private readonly persistence: Pick<PostgresPersistence, "claimOutbox" | "completeOutbox" | "failOutbox">, private readonly effects: ExternalEffectLedger | null = null) {}
 
-  async runOnce(organizationId: OpaqueId, workerId: string, sink: OutboxSink, options: { limit?: number; leaseSeconds?: number; maxAttempts?: number; hooks?: OutboxWorkerHooks } = {}): Promise<OutboxWorkerResult> {
+  async runOnce(organizationId: OpaqueId, workerId: string, sink: OutboxSink, options: { limit?: number; leaseSeconds?: number; maxAttempts?: number; hooks?: OutboxWorkerHooks; signal?: AbortSignal } = {}): Promise<OutboxWorkerResult> {
     const maxAttempts = Math.min(20, Math.max(1, Math.trunc(options.maxAttempts ?? 5)));
+    if (options.signal?.aborted) return { claimed: 0, delivered: 0, retried: 0, quarantined: 0, outcomeUnknown: 0 };
     const records = await this.persistence.claimOutbox(organizationId, workerId, options.limit ?? 10, options.leaseSeconds ?? 30);
     const result: OutboxWorkerResult = { claimed: records.length, delivered: 0, retried: 0, quarantined: 0, outcomeUnknown: 0 };
     for (const record of records) {
+      // CVG-AUD19-016: cooperative cancellation stops before a new effect.
+      if (options.signal?.aborted) break;
       const attemptStarted = Date.now();
       const hooks = options.hooks;
       const cycleId = hooks?.cycleId ?? record.id;
@@ -1113,9 +1166,9 @@ export class OutboxWorker {
       recordMetric("worker.handler.attempt");
       if (sink.requiresDurableEffectLedger && !this.effects) {
         const reason = "external sink requires a durable effect ledger; dispatch was not attempted";
+        await this.persistence.failOutbox(organizationId, record.id, workerId, record.fenceToken, reason, true, 1);
         await recordAudit("QUARANTINED", reason);
         recordMetric("worker.handler.quarantined");
-        await this.persistence.failOutbox(organizationId, record.id, workerId, record.fenceToken, reason, true, 1);
         result.quarantined += 1;
         continue;
       }
@@ -1124,9 +1177,17 @@ export class OutboxWorker {
       if (this.effects) {
         effect = await this.effects.prepareExternalEffect(effectInput, { workerId, fenceToken: record.fenceToken, leaseSeconds: options.leaseSeconds ?? 30 });
         if (effect.status === "SUCCEEDED") {
+          // CVG-AUD19-015: success is only claimed after the durable
+          // acknowledgement.  A failed ack is reported honestly instead.
+          try {
+            await this.persistence.completeOutbox(organizationId, record.id, workerId, record.fenceToken);
+          } catch (ackError) {
+            await recordAudit("RETRY_SCHEDULED", "durable acknowledgement failed after a replayed effect; the outcome requires reconciliation", effect.providerRequestId);
+            recordMetric("worker.handler.retry", effect.providerRequestId);
+            throw ackError;
+          }
           await recordAudit("SUCCEEDED", null, effect.providerRequestId);
           recordMetric("worker.handler.succeeded", effect.providerRequestId);
-          await this.persistence.completeOutbox(organizationId, record.id, workerId, record.fenceToken);
           result.delivered += 1;
           continue;
         }
@@ -1134,9 +1195,9 @@ export class OutboxWorker {
           const quarantine = effect.status !== "FAILED_RETRYABLE";
           if (effect.status === "OUTCOME_UNKNOWN" || effect.status === "RECONCILIATION_REQUIRED" || effect.status === "DISPATCHED") result.outcomeUnknown += 1;
           const reason = `external effect is ${effect.status}; dispatch is blocked until reconciliation`;
+          await this.persistence.failOutbox(organizationId, record.id, workerId, record.fenceToken, reason, quarantine, 1);
           await recordAudit(quarantine ? "QUARANTINED" : "RETRY_SCHEDULED", reason, effect.providerRequestId);
           recordMetric(quarantine ? "worker.handler.quarantined" : "worker.handler.retry", effect.providerRequestId);
-          await this.persistence.failOutbox(organizationId, record.id, workerId, record.fenceToken, reason, quarantine, 1);
           if (quarantine) result.quarantined += 1;
           else result.retried += 1;
           continue;
@@ -1148,7 +1209,8 @@ export class OutboxWorker {
       let providerRequestId: string | null = null;
       let providerReceipt: Record<string, unknown> | null = null;
       try {
-        const delivery = await sink.deliver(record, { effectId: effect?.id ?? record.id, integrationId: effect?.integrationId ?? `outbox:${record.eventType}`, idempotencyKey: effect?.idempotencyKey ?? record.id, fenceToken: record.fenceToken });
+        if (options.signal?.aborted) break;
+        const delivery = await sink.deliver(record, { effectId: effect?.id ?? record.id, integrationId: effect?.integrationId ?? `outbox:${record.eventType}`, idempotencyKey: effect?.idempotencyKey ?? record.id, fenceToken: record.fenceToken, ...(options.signal ? { signal: options.signal } : {}) });
         if (typeof delivery === "object" && delivery !== null) {
           if (delivery.status === "DELIVERED") {
             if (!delivery.providerRequestId.trim() || !delivery.receipt || typeof delivery.receipt !== "object" || Array.isArray(delivery.receipt)) {
@@ -1178,6 +1240,12 @@ export class OutboxWorker {
         reason = redactMessagingError(error);
         decision = error instanceof MessagingProviderError && error.outcome === "NOT_SENT" ? "QUARANTINE" : "OUTCOME_UNKNOWN";
       }
+      // CVG-AUD21-005: a provider may observe abort and still return a receipt.
+      // Do not turn that late response into a durable success or acknowledgement.
+      if (options.signal?.aborted && decision === "DELIVERED") {
+        decision = "OUTCOME_UNKNOWN";
+        reason = "outbox dispatch was cancelled after provider response; outcome requires reconciliation";
+      }
       if (this.effects && effect) {
         const outcome: DurableExternalEffectOutcome = decision === "DELIVERED"
           ? { status: "SUCCEEDED", providerRequestId, response: providerReceipt }
@@ -1189,16 +1257,29 @@ export class OutboxWorker {
         await this.effects.recordExternalEffectOutcome(organizationId, effect.id, workerId, record.fenceToken, outcome);
       }
       if (decision === "DELIVERED") {
+        // CVG-AUD19-015: the durable acknowledgement precedes any success
+        // audit/metric.  An ack failure is a retryable/unknown outcome.
+        if (options.signal?.aborted) {
+          await recordAudit("RETRY_SCHEDULED", "outbox dispatch was cancelled before durable acknowledgement", providerRequestId);
+          recordMetric("worker.handler.retry", providerRequestId);
+          throw new DomainError("BUDGET_EXCEEDED", "Outbox dispatch was cancelled before durable acknowledgement.", 503);
+        }
+        try {
+          await this.persistence.completeOutbox(organizationId, record.id, workerId, record.fenceToken);
+        } catch (ackError) {
+          await recordAudit("RETRY_SCHEDULED", "durable acknowledgement failed after a delivered effect; the outcome requires reconciliation", providerRequestId);
+          recordMetric("worker.handler.retry", providerRequestId);
+          throw ackError;
+        }
         await recordAudit("SUCCEEDED", null, providerRequestId);
         recordMetric("worker.handler.succeeded", providerRequestId);
-        await this.persistence.completeOutbox(organizationId, record.id, workerId, record.fenceToken);
         result.delivered += 1;
         continue;
       }
       const quarantine = decision === "QUARANTINE" || decision === "OUTCOME_UNKNOWN" || record.attempts >= maxAttempts;
+      await this.persistence.failOutbox(organizationId, record.id, workerId, record.fenceToken, reason, quarantine, Math.min(300, 2 ** Math.min(record.attempts, 8)));
       await recordAudit(quarantine ? "QUARANTINED" : "RETRY_SCHEDULED", reason, providerRequestId);
       recordMetric(quarantine ? "worker.handler.quarantined" : "worker.handler.retry", providerRequestId);
-      await this.persistence.failOutbox(organizationId, record.id, workerId, record.fenceToken, reason, quarantine, Math.min(300, 2 ** Math.min(record.attempts, 8)));
       if (quarantine) result.quarantined += 1;
       else result.retried += 1;
       if (decision === "OUTCOME_UNKNOWN") result.outcomeUnknown += 1;
@@ -1217,7 +1298,7 @@ export async function reconcileUnknownExternalEffect(
   organizationId: OpaqueId,
   effectId: OpaqueId,
   adapter: ExternalEffectQueryAdapter,
-  options: { timeoutMs?: number; workerId?: string; leaseSeconds?: number } = {}
+  options: { timeoutMs?: number; workerId?: string; leaseSeconds?: number; signal?: AbortSignal } = {}
 ): Promise<DurableExternalEffectRecord> {
   const listedEffect = (await persistence.listExternalEffects(organizationId)).find((candidate) => candidate.id === effectId);
   let effect = listedEffect;
@@ -1235,6 +1316,11 @@ export async function reconcileUnknownExternalEffect(
   if (!adapter.integrationIds.includes(effect.integrationId)) throw new DomainError("CAPABILITY_DISABLED", "Não há query adapter autorizado para esta integração.", 503);
   const timeoutMs = Math.min(30_000, Math.max(100, Math.trunc(options.timeoutMs ?? 3_000)));
   const controller = new AbortController();
+  const onParentAbort = (): void => controller.abort(options.signal?.reason);
+  if (options.signal) {
+    options.signal.addEventListener("abort", onParentAbort, { once: true });
+    if (options.signal.aborted) controller.abort(options.signal.reason);
+  }
   let timer: ReturnType<typeof setTimeout> | undefined;
   let result: ExternalEffectQueryResult;
   try {
@@ -1248,6 +1334,7 @@ export async function reconcileUnknownExternalEffect(
     result = await Promise.race([query, timeout]);
   } finally {
     if (timer) clearTimeout(timer);
+    options.signal?.removeEventListener("abort", onParentAbort);
   }
   if (!result || (result.status !== "SUCCEEDED" && result.status !== "FAILED_FINAL" && result.status !== "QUARANTINED") || (result.source !== "PROVIDER_QUERY" && result.source !== "SYNTHETIC_PROVIDER_QUERY") || (result.providerRequestId !== null && typeof result.providerRequestId !== "string") || (result.response !== null && (typeof result.response !== "object" || Array.isArray(result.response)))) {
     throw new DomainError("INVALID_STATE", "O query adapter retornou uma observação inválida.", 502);

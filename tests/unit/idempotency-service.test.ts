@@ -247,3 +247,23 @@ test("a final commit failure can durably settle a successful claim as outcome un
     (error: unknown) => error instanceof DomainError && error.code === "OUTCOME_UNKNOWN"
   );
 });
+
+test("a known rolled-back commit rejection settles its local command receipt as failed", async () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const command = { ...input(store), key: "known-commit-rejection-test-1" };
+  const receipt = newCommandReceipt(command);
+  let settled: { status: string; failurePhase: string | null } | null = null;
+  const persistence = fakePersistence(
+    async () => ({ status: "CLAIMED", receipt }),
+    async (value) => { settled = { status: value.status, failurePhase: value.failurePhase ?? null }; }
+  );
+  const executor = new DurableIdempotencyService(store, persistence);
+  const result = await executor.execute(command, () => ({ createdId: "local-before-commit" }));
+  const failed = await executor.markCommitFailure(result.receipt);
+
+  assert.equal(failed.status, "FAILED");
+  assert.equal(failed.result, null);
+  assert.equal(failed.failurePhase, "PRE_DISPATCH");
+  assert.deepEqual(settled, { status: "FAILED", failurePhase: "PRE_DISPATCH" });
+  assert.equal(store.commandReceipts.get(receipt.idempotencyLookup)?.status, "FAILED");
+});

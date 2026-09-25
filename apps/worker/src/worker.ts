@@ -4,7 +4,7 @@ import { enforceWorkerPolicy, WORKER_POLICY_REGISTRY, type WorkerPolicyRule } fr
 import { configuredSecretProvider, createMessagingExternalEffectQueryAdapter, HttpMessagingProvider, MessagingOutboxSink, OutboxWorker, reconcileUnknownExternalEffect, type ExternalEffectLedger, type ExternalEffectQueryAdapter, type OutboxDeliveryDecision, type OutboxSink, type OutboxMetricEvent, type OutboxWorkerHooks, type OutboxWorkerResult } from "@cvg/integrations";
 import type { CvgConfig } from "@cvg/config";
 import type { DurableWorkerJobInput, DurableWorkerJobRecord, DurableWorkerLane, PostgresPersistence } from "@cvg/persistence";
-import { databasePoolSaturated, withAbortableTimeout, WorkerResourceController, type DatabasePoolCapacity, type WorkerResource, type WorkerResourceLimits } from "./runtime-controls.ts";
+import { databasePoolSaturated, withAbortableTimeout, WorkerResourceController, type DatabasePoolCapacity, type WorkerResource, type WorkerResourceLimits, assertNotAborted } from "./runtime-controls.ts";
 
 export const WORKER_LANES = ["outbox", "jobs", "schedule", "reconciliation", "notifications", "maintenance"] as const;
 export type WorkerLane = (typeof WORKER_LANES)[number];
@@ -120,6 +120,8 @@ export interface WorkerLaneBudget {
 export interface WorkerCycleOptions {
   /** Internal correlation used by the outbox attempt audit/metrics bridge. */
   cycleId?: OpaqueId;
+  /** Parent cancellation is forwarded to every outbox/provider boundary. */
+  signal?: AbortSignal;
   limit?: number;
   leaseSeconds?: number;
   maxAttempts?: number;
@@ -295,8 +297,13 @@ function createProductionWorkerJobHandlers(input: { persistence: WorkerDependenc
         if (typeof effectId !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/.test(effectId)) throw new DomainError("INVALID_INPUT", "external.reconcile effectId is invalid.", 400);
       },
       handle: async (job, context) => {
+        assertNotAborted(context.signal);
         const effectId = payloadObject(job.payload, "external.reconcile").effectId as string;
-        await reconcileUnknownExternalEffect({ listExternalEffects: input.persistence.listExternalEffects!, reconcileExternalEffect: input.persistence.reconcileExternalEffect!, ...(input.persistence.claimExternalEffectForReconciliation ? { claimExternalEffectForReconciliation: input.persistence.claimExternalEffectForReconciliation } : {}) }, job.organizationId, effectId as OpaqueId, input.configuredSink.queryAdapter!, { timeoutMs: 4_000, workerId: context.workerId, leaseSeconds: 30 });
+        await reconcileUnknownExternalEffect({
+          listExternalEffects: input.persistence.listExternalEffects!.bind(input.persistence),
+          reconcileExternalEffect: input.persistence.reconcileExternalEffect!.bind(input.persistence),
+          ...(input.persistence.claimExternalEffectForReconciliation ? { claimExternalEffectForReconciliation: input.persistence.claimExternalEffectForReconciliation.bind(input.persistence) } : {})
+        }, job.organizationId, effectId as OpaqueId, input.configuredSink.queryAdapter!, { timeoutMs: 4_000, workerId: context.workerId, leaseSeconds: 30, signal: context.signal });
       }
     });
   }
@@ -317,8 +324,9 @@ function createProductionWorkerJobHandlers(input: { persistence: WorkerDependenc
       retryMaxSeconds: 300,
       validate(payload) { boundedPayloadInteger(payloadObject(payload, "communication.dispatch").limit, "communication.dispatch.limit", 1, 25); },
       handle: async (job, context) => {
+        assertNotAborted(context.signal);
         const limit = boundedPayloadInteger(job.payload.limit, "communication.dispatch.limit", 1, 25);
-        await relay.runOnce(job.organizationId, context.workerId, input.configuredSink.sink, { limit, leaseSeconds: 30, maxAttempts: job.maxAttempts });
+        await relay.runOnce(job.organizationId, context.workerId, input.configuredSink.sink, { limit, leaseSeconds: 30, maxAttempts: job.maxAttempts, signal: context.signal });
       }
     });
   }
@@ -405,6 +413,7 @@ export class CvgWorkerApplication {
       ...(this.dependencies.metrics ? { metrics: (event: OutboxMetricEvent) => this.dependencies.metrics!.record({ name: event.name, lane: "outbox", jobType: event.jobType, durationMs: event.durationMs, cycleId: event.cycleId, jobId: event.outboxId, outboxId: event.outboxId, providerRequestId: event.providerRequestId }) } : {})
     };
     const relayOptions: Parameters<OutboxWorker["runOnce"]>[3] = { hooks };
+    if (options.signal) relayOptions.signal = options.signal;
     if (options.limit !== undefined) relayOptions.limit = options.limit;
     if (options.leaseSeconds !== undefined) relayOptions.leaseSeconds = options.leaseSeconds;
     if (options.maxAttempts !== undefined) relayOptions.maxAttempts = options.maxAttempts;
@@ -420,6 +429,11 @@ export class CvgWorkerApplication {
     const cycleId = makeId();
     const startedAt = now();
     const controller = new AbortController();
+    const onParentAbort = (): void => controller.abort(options.signal?.reason);
+    if (options.signal) {
+      options.signal.addEventListener("abort", onParentAbort, { once: true });
+      if (options.signal.aborted) controller.abort(options.signal.reason);
+    }
     this.activeCycles.add(controller);
     const lanes = {} as Record<WorkerLane, WorkerLaneResult>;
     const metrics = { laneRuns: 0, laneFailures: 0, budgetExceeded: 0, backpressureEvents: 0, poisonMessages: 0, handlerAttempts: 0, handlerSucceeded: 0, handlerRetried: 0, handlerQuarantined: 0, auditFailures: 0 };
@@ -433,7 +447,7 @@ export class CvgWorkerApplication {
       databasePool = { active: databasePoolSaturated(capacity), capacity };
     }
     let backpressure: WorkerCycleResult["backpressure"] = { active: databasePool.active, depth: null, limit: this.dependencies.persistence.outboxStats ? backpressureLimit : null, databasePool, workerLanes: workerBackpressure };
-    const heartbeatWriter = this.dependencies.persistence.recordWorkerHeartbeat;
+    const heartbeatWriter = this.dependencies.persistence.recordWorkerHeartbeat?.bind(this.dependencies.persistence);
     const heartbeatLeaseSeconds = Math.min(300, Math.max(1, Math.trunc(options.leaseSeconds ?? 30)));
     let heartbeatTimer: ReturnType<typeof setInterval> | undefined;
     let heartbeatStarted = false;
@@ -491,7 +505,7 @@ export class CvgWorkerApplication {
         const laneStarted = Date.now();
         try {
           metrics.laneRuns += 1;
-          outbox = await this.resources.run("provider", () => this.runOnce(organizationId, workerId, { ...options, cycleId }));
+          outbox = await this.resources.run("provider", () => this.runOnce(organizationId, workerId, { ...options, cycleId, signal: controller.signal }));
           metrics.handlerAttempts += outbox.claimed;
           metrics.handlerSucceeded += outbox.delivered;
           metrics.handlerRetried += outbox.retried;
@@ -555,6 +569,11 @@ export class CvgWorkerApplication {
           heartbeatFailure ??= error;
         }
       }
+      if (options.signal) options.signal.removeEventListener("abort", onParentAbort);
+      // A heartbeat write failure is intentionally fail-closed: the cycle may
+      // have completed work, but its lease is no longer observable. The
+      // surrounding cycle contract treats this as an unavailable worker.
+      // eslint-disable-next-line no-unsafe-finally -- lease observability failure must override a completed cycle result.
       if (heartbeatFailure) throw heartbeatFailure;
     }
   }
@@ -633,9 +652,10 @@ export class CvgWorkerApplication {
   }
 
   private defaultDurableJobRunner(lane: DurableWorkerLane, options: WorkerCycleOptions, metrics: WorkerCycleResult["metrics"]): WorkerLaneRunner | undefined {
-    const claimWorkerJobs = this.dependencies.persistence.claimWorkerJobs;
-    const completeWorkerJob = this.dependencies.persistence.completeWorkerJob;
-    const failWorkerJob = this.dependencies.persistence.failWorkerJob;
+    const persistence = this.dependencies.persistence;
+    const claimWorkerJobs = persistence.claimWorkerJobs?.bind(persistence);
+    const completeWorkerJob = persistence.completeWorkerJob?.bind(persistence);
+    const failWorkerJob = persistence.failWorkerJob?.bind(persistence);
     const definitions = this.dependencies.jobHandlerDefinitions;
     if (!claimWorkerJobs || !completeWorkerJob || !failWorkerJob || !definitions?.length || (this.dependencies.auditRequired && !this.dependencies.audit)) return undefined;
     return async (context) => {
@@ -679,11 +699,13 @@ export class CvgWorkerApplication {
           await this.recordAudit(job, context, "STARTED", 0, null, metrics);
           await this.resources.run(handler.resource, () => withAbortableTimeout((signal) => handler.handle(job, { ...context, signal }), handler.timeoutMs, context.signal));
           if (context.signal.aborted) throw new DomainError("BUDGET_EXCEEDED", "Worker cycle was cancelled before durable completion.", 503);
+          // CVG-AUD19-015: the durable acknowledgement is the success boundary.
+          // Audit and metrics only claim SUCCEEDED after completeWorkerJob lands.
+          await this.resources.run("database", () => completeWorkerJob(context.organizationId, job.id, context.workerId, job.fenceToken));
           const durationMs = Date.now() - attemptStarted;
           metrics.handlerSucceeded += 1;
           this.dependencies.metrics?.record({ name: "worker.handler.succeeded", lane, jobType: job.jobType, durationMs, cycleId: context.cycleId, jobId: job.id });
           await this.recordAudit(job, context, "SUCCEEDED", durationMs, null, metrics);
-          await this.resources.run("database", () => completeWorkerJob(context.organizationId, job.id, context.workerId, job.fenceToken));
           processed += 1;
         } catch (error) {
           const message = (error instanceof Error ? error.message : String(error)).trim().slice(0, 2_000) || "durable worker job failed";
@@ -742,9 +764,10 @@ export class CvgWorkerApplication {
   private defaultReconciliationRunner(): WorkerLaneRunner | undefined {
     if (!this.hasDefaultReconciliation()) return undefined;
     return async (context) => {
-      const listExternalEffects = this.dependencies.persistence.listExternalEffects!;
-      const reconcileExternalEffect = this.dependencies.persistence.reconcileExternalEffect!;
-      const claimExternalEffectForReconciliation = this.dependencies.persistence.claimExternalEffectForReconciliation;
+      const persistence = this.dependencies.persistence;
+      const listExternalEffects = persistence.listExternalEffects!.bind(persistence);
+      const reconcileExternalEffect = persistence.reconcileExternalEffect!.bind(persistence);
+      const claimExternalEffectForReconciliation = persistence.claimExternalEffectForReconciliation?.bind(persistence);
       const effects = await listExternalEffects(context.organizationId);
       let processed = 0;
       for (const effect of effects.filter((candidate) => candidate.status === "OUTCOME_UNKNOWN" || candidate.status === "RECONCILIATION_REQUIRED" || candidate.status === "RECONCILING").slice(0, 10)) {
@@ -782,14 +805,14 @@ function messagePayload(value: unknown): { messageId: string; channel: "SMS" | "
 }
 
 /** Builds the only enabled external sink; quarantine remains the safe default. */
-export function createConfiguredWorkerSink(config: Pick<CvgConfig, "workerSinkMode" | "messagingProviderEndpoint" | "messagingProviderAllowedHosts" | "messagingCredentialRef" | "messagingSendPath" | "messagingQueryPath" | "secretProvider" | "secretDir">): { sink: OutboxSink; sinkMode: "quarantine" | "enabled"; queryAdapter?: ExternalEffectQueryAdapter } {
+export function createConfiguredWorkerSink(config: Pick<CvgConfig, "workerSinkMode" | "messagingProviderEndpoint" | "messagingProviderAllowedHosts" | "messagingBlockedIpv6Prefixes" | "messagingCredentialRef" | "messagingSendPath" | "messagingQueryPath" | "secretProvider" | "secretDir">): { sink: OutboxSink; sinkMode: "quarantine" | "enabled"; queryAdapter?: ExternalEffectQueryAdapter } {
   if (config.workerSinkMode !== "enabled") return { sink: blockedWorkerSink, sinkMode: "quarantine" };
   if (!config.messagingProviderEndpoint || !config.messagingCredentialRef) throw new DomainError("CAPABILITY_DISABLED", "O sink de mensagens foi habilitado sem endpoint e referência de credencial aprovados.", 503);
   if (!config.messagingProviderAllowedHosts.length) throw new DomainError("CAPABILITY_DISABLED", "O sink de mensagens exige uma allowlist de hosts do provider.", 503);
   const secretProvider = configuredSecretProvider(config.secretProvider, process.env, config.secretDir);
   if (!secretProvider || secretProvider.status() !== "READY" || !secretProvider.resolve) throw new DomainError("CAPABILITY_DISABLED", "O sink de mensagens exige um SecretProvider pronto com resolução autorizada.", 503);
   if (!secretProvider.has(config.messagingCredentialRef)) throw new DomainError("CAPABILITY_DISABLED", "A referência de credencial do sink não está disponível no SecretProvider configurado.", 503);
-  const provider = new HttpMessagingProvider({ endpoint: config.messagingProviderEndpoint, allowedHosts: config.messagingProviderAllowedHosts, credentialRef: config.messagingCredentialRef, sendPath: config.messagingSendPath, ...(config.messagingQueryPath ? { queryPath: config.messagingQueryPath } : {}), resolveSecret: (reference) => secretProvider.resolve!(reference) });
+  const provider = new HttpMessagingProvider({ endpoint: config.messagingProviderEndpoint, allowedHosts: config.messagingProviderAllowedHosts, blockedIpv6Prefixes: config.messagingBlockedIpv6Prefixes, credentialRef: config.messagingCredentialRef, sendPath: config.messagingSendPath, ...(config.messagingQueryPath ? { queryPath: config.messagingQueryPath } : {}), resolveSecret: (reference) => secretProvider.resolve!(reference) });
   const sink = new MessagingOutboxSink(provider, (record, context) => {
     if (record.eventType !== "communication.message.approved") throw new DomainError("CAPABILITY_DISABLED", "O sink de mensagens recebeu um evento que não pertence à sua integração.", 503);
     const payload = messagePayload(record.payload);

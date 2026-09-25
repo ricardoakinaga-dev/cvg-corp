@@ -1,0 +1,1143 @@
+{
+  "criteria": [
+    {
+      "baseline": {
+        "actual": "Observed baseline: `npm run verify:control-plane` exits 1 with LAST_GATE_NOT_TAIL and LAST_EVENT_NOT_TAIL; `npm test` exits 1 with 667 pass, 1 fail, 1 skip; the failing known-bad is missing_transition.",
+        "status": "FAIL"
+      },
+      "conditions": "Use the exact worktree/candidate, domain, fixture, and environment required by the target; do not substitute source presence, plans, synthetic results, or stale evidence for observed acceptance.",
+      "dimension": "M0",
+      "evidence_method": "Execute the acceptance procedure and evidence scope named by MEL23-001 in the pinned backlog; record exact command/procedure, environment, exit/result, artifact, timestamp, and candidate fingerprint. For external/human requirements, require evidence from that real authority and environment.",
+      "id": "MEL23-001",
+      "license_notes": "Internal project acceptance criterion; no external assets or text are reused.",
+      "priority": "critical",
+      "required": true,
+      "snapshot_sha256": "af8ea7b2e112c174f36d815b0e75690644f855ddfa819102a29b08b2a724bb5a",
+      "source": "docs/backlog-2026-09-23.md#MEL23-001",
+      "source_type": "REPO",
+      "target": "Reconciliar `last_gate_record` e `last_event_id` por novo evento; `verify:control-plane` passa e ambos apontam às caudas corretas.",
+      "validity_notes": "The acceptance text is pinned to the 2026-09-23 source document. The selected evidence must reject the known-bad condition stated by the criterion and observe its actual boundary.",
+      "version": "2026-09-23"
+    },
+    {
+      "baseline": {
+        "actual": "Observed baseline: `npm run verify:control-plane` exits 1 with LAST_GATE_NOT_TAIL and LAST_EVENT_NOT_TAIL; `npm test` exits 1 with 667 pass, 1 fail, 1 skip; the failing known-bad is missing_transition.",
+        "status": "FAIL"
+      },
+      "conditions": "Use the exact worktree/candidate, domain, fixture, and environment required by the target; do not substitute source presence, plans, synthetic results, or stale evidence for observed acceptance.",
+      "dimension": "M0",
+      "evidence_method": "Execute the acceptance procedure and evidence scope named by MEL23-002 in the pinned backlog; record exact command/procedure, environment, exit/result, artifact, timestamp, and candidate fingerprint. For external/human requirements, require evidence from that real authority and environment.",
+      "id": "MEL23-002",
+      "license_notes": "Internal project acceptance criterion; no external assets or text are reused.",
+      "priority": "critical",
+      "required": true,
+      "snapshot_sha256": "af8ea7b2e112c174f36d815b0e75690644f855ddfa819102a29b08b2a724bb5a",
+      "source": "docs/backlog-2026-09-23.md#MEL23-002",
+      "source_type": "REPO",
+      "target": "Mutante `missing_transition` remove a transição do evento lido pelo verificador; known-bad é rejeitado e conhecido-bom passa.",
+      "validity_notes": "The acceptance text is pinned to the 2026-09-23 source document. The selected evidence must reject the known-bad condition stated by the criterion and observe its actual boundary.",
+      "version": "2026-09-23"
+    },
+    {
+      "baseline": {
+        "actual": "Observed baseline: `npm run verify:control-plane` exits 1 with LAST_GATE_NOT_TAIL and LAST_EVENT_NOT_TAIL; `npm test` exits 1 with 667 pass, 1 fail, 1 skip; the failing known-bad is missing_transition.",
+        "status": "FAIL"
+      },
+      "conditions": "Use the exact worktree/candidate, domain, fixture, and environment required by the target; do not substitute source presence, plans, synthetic results, or stale evidence for observed acceptance.",
+      "dimension": "M0",
+      "evidence_method": "Execute the acceptance procedure and evidence scope named by MEL23-003 in the pinned backlog; record exact command/procedure, environment, exit/result, artifact, timestamp, and candidate fingerprint. For external/human requirements, require evidence from that real authority and environment.",
+      "id": "MEL23-003",
+      "license_notes": "Internal project acceptance criterion; no external assets or text are reused.",
+      "priority": "critical",
+      "required": true,
+      "snapshot_sha256": "af8ea7b2e112c174f36d815b0e75690644f855ddfa819102a29b08b2a724bb5a",
+      "source": "docs/backlog-2026-09-23.md#MEL23-003",
+      "source_type": "REPO",
+      "target": "`npm test` termina com zero falhas no candidato observado; guardar contagens e exit status.",
+      "validity_notes": "The acceptance text is pinned to the 2026-09-23 source document. The selected evidence must reject the known-bad condition stated by the criterion and observe its actual boundary.",
+      "version": "2026-09-23"
+    },
+    {
+      "baseline": {
+        "actual": "No current criterion-specific result has been revalidated for this item.",
+        "status": "NOT_RUN"
+      },
+      "conditions": "Use the exact worktree/candidate, domain, fixture, and environment required by the target; do not substitute source presence, plans, synthetic results, or stale evidence for observed acceptance.",
+      "dimension": "M1",
+      "evidence_method": "Execute the acceptance procedure and evidence scope named by MEL23-004 in the pinned backlog; record exact command/procedure, environment, exit/result, artifact, timestamp, and candidate fingerprint. For external/human requirements, require evidence from that real authority and environment.",
+      "id": "MEL23-004",
+      "license_notes": "Internal project acceptance criterion; no external assets or text are reused.",
+      "priority": "critical",
+      "required": true,
+      "snapshot_sha256": "af8ea7b2e112c174f36d815b0e75690644f855ddfa819102a29b08b2a724bb5a",
+      "source": "docs/backlog-2026-09-23.md#MEL23-004",
+      "source_type": "REPO",
+      "target": "Revisão Git limpa e checkout novo reproduzem instalação, typecheck, build e manifesto; nenhuma alteração necessária fica untracked.",
+      "validity_notes": "The acceptance text is pinned to the 2026-09-23 source document. The selected evidence must reject the known-bad condition stated by the criterion and observe its actual boundary.",
+      "version": "2026-09-23"
+    },
+    {
+      "baseline": {
+        "actual": "No current criterion-specific result has been revalidated for this item.",
+        "status": "NOT_RUN"
+      },
+      "conditions": "Use the exact worktree/candidate, domain, fixture, and environment required by the target; do not substitute source presence, plans, synthetic results, or stale evidence for observed acceptance.",
+      "dimension": "M1",
+      "evidence_method": "Execute the acceptance procedure and evidence scope named by MEL23-005 in the pinned backlog; record exact command/procedure, environment, exit/result, artifact, timestamp, and candidate fingerprint. For external/human requirements, require evidence from that real authority and environment.",
+      "id": "MEL23-005",
+      "license_notes": "Internal project acceptance criterion; no external assets or text are reused.",
+      "priority": "critical",
+      "required": true,
+      "snapshot_sha256": "af8ea7b2e112c174f36d815b0e75690644f855ddfa819102a29b08b2a724bb5a",
+      "source": "docs/backlog-2026-09-23.md#MEL23-005",
+      "source_type": "REPO",
+      "target": "Fingerprint é recalculado dos bytes do candidato e coincide em checkout independente; repetir após qualquer mudança.",
+      "validity_notes": "The acceptance text is pinned to the 2026-09-23 source document. The selected evidence must reject the known-bad condition stated by the criterion and observe its actual boundary.",
+      "version": "2026-09-23"
+    },
+    {
+      "baseline": {
+        "actual": "No current criterion-specific result has been revalidated for this item.",
+        "status": "NOT_RUN"
+      },
+      "conditions": "Use the exact worktree/candidate, domain, fixture, and environment required by the target; do not substitute source presence, plans, synthetic results, or stale evidence for observed acceptance.",
+      "dimension": "M1",
+      "evidence_method": "Execute the acceptance procedure and evidence scope named by MEL23-006 in the pinned backlog; record exact command/procedure, environment, exit/result, artifact, timestamp, and candidate fingerprint. For external/human requirements, require evidence from that real authority and environment.",
+      "id": "MEL23-006",
+      "license_notes": "Internal project acceptance criterion; no external assets or text are reused.",
+      "priority": "critical",
+      "required": true,
+      "snapshot_sha256": "af8ea7b2e112c174f36d815b0e75690644f855ddfa819102a29b08b2a724bb5a",
+      "source": "docs/backlog-2026-09-23.md#MEL23-006",
+      "source_type": "REPO",
+      "target": "`verify:aud27-evidence-root` passa para o fingerprint exato; pacote externo contém recibos aplicáveis e atuais.",
+      "validity_notes": "The acceptance text is pinned to the 2026-09-23 source document. The selected evidence must reject the known-bad condition stated by the criterion and observe its actual boundary.",
+      "version": "2026-09-23"
+    },
+    {
+      "baseline": {
+        "actual": "No current criterion-specific result has been revalidated for this item.",
+        "status": "NOT_RUN"
+      },
+      "conditions": "Use the exact worktree/candidate, domain, fixture, and environment required by the target; do not substitute source presence, plans, synthetic results, or stale evidence for observed acceptance.",
+      "dimension": "M1",
+      "evidence_method": "Execute the acceptance procedure and evidence scope named by MEL23-007 in the pinned backlog; record exact command/procedure, environment, exit/result, artifact, timestamp, and candidate fingerprint. For external/human requirements, require evidence from that real authority and environment.",
+      "id": "MEL23-007",
+      "license_notes": "Internal project acceptance criterion; no external assets or text are reused.",
+      "priority": "critical",
+      "required": true,
+      "snapshot_sha256": "af8ea7b2e112c174f36d815b0e75690644f855ddfa819102a29b08b2a724bb5a",
+      "source": "docs/backlog-2026-09-23.md#MEL23-007",
+      "source_type": "REPO",
+      "target": "Adulteração de recibo/hash é rejeitada; outro checkout valida pacote, digest e origem sem depender da árvore original.",
+      "validity_notes": "The acceptance text is pinned to the 2026-09-23 source document. The selected evidence must reject the known-bad condition stated by the criterion and observe its actual boundary.",
+      "version": "2026-09-23"
+    },
+    {
+      "baseline": {
+        "actual": "No current criterion-specific result has been revalidated for this item.",
+        "status": "NOT_RUN"
+      },
+      "conditions": "Use the exact worktree/candidate, domain, fixture, and environment required by the target; do not substitute source presence, plans, synthetic results, or stale evidence for observed acceptance.",
+      "dimension": "M2",
+      "evidence_method": "Execute the acceptance procedure and evidence scope named by MEL23-008 in the pinned backlog; record exact command/procedure, environment, exit/result, artifact, timestamp, and candidate fingerprint. For external/human requirements, require evidence from that real authority and environment.",
+      "id": "MEL23-008",
+      "license_notes": "Internal project acceptance criterion; no external assets or text are reused.",
+      "priority": "critical",
+      "required": true,
+      "snapshot_sha256": "af8ea7b2e112c174f36d815b0e75690644f855ddfa819102a29b08b2a724bb5a",
+      "source": "docs/backlog-2026-09-23.md#MEL23-008",
+      "source_type": "REPO",
+      "target": "As 24 coleções residuais têm caminho de comando autoritativo; inventário final registra 0 `SNAPSHOT_PRIMARY`, sem fallback oculto.",
+      "validity_notes": "The acceptance text is pinned to the 2026-09-23 source document. The selected evidence must reject the known-bad condition stated by the criterion and observe its actual boundary.",
+      "version": "2026-09-23"
+    },
+    {
+      "baseline": {
+        "actual": "No current criterion-specific result has been revalidated for this item.",
+        "status": "NOT_RUN"
+      },
+      "conditions": "Use the exact worktree/candidate, domain, fixture, and environment required by the target; do not substitute source presence, plans, synthetic results, or stale evidence for observed acceptance.",
+      "dimension": "M2",
+      "evidence_method": "Execute the acceptance procedure and evidence scope named by MEL23-009 in the pinned backlog; record exact command/procedure, environment, exit/result, artifact, timestamp, and candidate fingerprint. For external/human requirements, require evidence from that real authority and environment.",
+      "id": "MEL23-009",
+      "license_notes": "Internal project acceptance criterion; no external assets or text are reused.",
+      "priority": "critical",
+      "required": true,
+      "snapshot_sha256": "af8ea7b2e112c174f36d815b0e75690644f855ddfa819102a29b08b2a724bb5a",
+      "source": "docs/backlog-2026-09-23.md#MEL23-009",
+      "source_type": "REPO",
+      "target": "Cada coleção possui backfill idempotente, contagem/digest/invariantes iguais e registro de divergência em quarentena.",
+      "validity_notes": "The acceptance text is pinned to the 2026-09-23 source document. The selected evidence must reject the known-bad condition stated by the criterion and observe its actual boundary.",
+      "version": "2026-09-23"
+    },
+    {
+      "baseline": {
+        "actual": "No current criterion-specific result has been revalidated for this item.",
+        "status": "NOT_RUN"
+      },
+      "conditions": "Use the exact worktree/candidate, domain, fixture, and environment required by the target; do not substitute source presence, plans, synthetic results, or stale evidence for observed acceptance.",
+      "dimension": "M2",
+      "evidence_method": "Execute the acceptance procedure and evidence scope named by MEL23-010 in the pinned backlog; record exact command/procedure, environment, exit/result, artifact, timestamp, and candidate fingerprint. For external/human requirements, require evidence from that real authority and environment.",
+      "id": "MEL23-010",
+      "license_notes": "Internal project acceptance criterion; no external assets or text are reused.",
+      "priority": "critical",
+      "required": true,
+      "snapshot_sha256": "af8ea7b2e112c174f36d815b0e75690644f855ddfa819102a29b08b2a724bb5a",
+      "source": "docs/backlog-2026-09-23.md#MEL23-010",
+      "source_type": "REPO",
+      "target": "Testes de concorrência, replay e idempotência rejeitam duplicata/divergência para cada novo comando em PostgreSQL.",
+      "validity_notes": "The acceptance text is pinned to the 2026-09-23 source document. The selected evidence must reject the known-bad condition stated by the criterion and observe its actual boundary.",
+      "version": "2026-09-23"
+    },
+    {
+      "baseline": {
+        "actual": "No current criterion-specific result has been revalidated for this item.",
+        "status": "NOT_RUN"
+      },
+      "conditions": "Use the exact worktree/candidate, domain, fixture, and environment required by the target; do not substitute source presence, plans, synthetic results, or stale evidence for observed acceptance.",
+      "dimension": "M2",
+      "evidence_method": "Execute the acceptance procedure and evidence scope named by MEL23-011 in the pinned backlog; record exact command/procedure, environment, exit/result, artifact, timestamp, and candidate fingerprint. For external/human requirements, require evidence from that real authority and environment.",
+      "id": "MEL23-011",
+      "license_notes": "Internal project acceptance criterion; no external assets or text are reused.",
+      "priority": "critical",
+      "required": true,
+      "snapshot_sha256": "af8ea7b2e112c174f36d815b0e75690644f855ddfa819102a29b08b2a724bb5a",
+      "source": "docs/backlog-2026-09-23.md#MEL23-011",
+      "source_type": "REPO",
+      "target": "Cada onda demonstra rollback e compatibilidade antes de retirar fallback; falha não perde nem duplica dados.",
+      "validity_notes": "The acceptance text is pinned to the 2026-09-23 source document. The selected evidence must reject the known-bad condition stated by the criterion and observe its actual boundary.",
+      "version": "2026-09-23"
+    },
+    {
+      "baseline": {
+        "actual": "No current criterion-specific result has been revalidated for this item.",
+        "status": "NOT_RUN"
+      },
+      "conditions": "Use the exact worktree/candidate, domain, fixture, and environment required by the target; do not substitute source presence, plans, synthetic results, or stale evidence for observed acceptance.",
+      "dimension": "M2",
+      "evidence_method": "Execute the acceptance procedure and evidence scope named by MEL23-012 in the pinned backlog; record exact command/procedure, environment, exit/result, artifact, timestamp, and candidate fingerprint. For external/human requirements, require evidence from that real authority and environment.",
+      "id": "MEL23-012",
+      "license_notes": "Internal project acceptance criterion; no external assets or text are reused.",
+      "priority": "critical",
+      "required": true,
+      "snapshot_sha256": "af8ea7b2e112c174f36d815b0e75690644f855ddfa819102a29b08b2a724bb5a",
+      "source": "docs/backlog-2026-09-23.md#MEL23-012",
+      "source_type": "REPO",
+      "target": "Restore e replay são executados sobre o esquema após cutover; hashes, escopo, quarentena e continuidade são conferidos.",
+      "validity_notes": "The acceptance text is pinned to the 2026-09-23 source document. The selected evidence must reject the known-bad condition stated by the criterion and observe its actual boundary.",
+      "version": "2026-09-23"
+    },
+    {
+      "baseline": {
+        "actual": "No current criterion-specific result has been revalidated for this item.",
+        "status": "NOT_RUN"
+      },
+      "conditions": "Use the exact worktree/candidate, domain, fixture, and environment required by the target; do not substitute source presence, plans, synthetic results, or stale evidence for observed acceptance.",
+      "dimension": "M3",
+      "evidence_method": "Execute the acceptance procedure and evidence scope named by MEL23-013 in the pinned backlog; record exact command/procedure, environment, exit/result, artifact, timestamp, and candidate fingerprint. For external/human requirements, require evidence from that real authority and environment.",
+      "id": "MEL23-013",
+      "license_notes": "Internal project acceptance criterion; no external assets or text are reused.",
+      "priority": "critical",
+      "required": true,
+      "snapshot_sha256": "af8ea7b2e112c174f36d815b0e75690644f855ddfa819102a29b08b2a724bb5a",
+      "source": "docs/backlog-2026-09-23.md#MEL23-013",
+      "source_type": "REPO",
+      "target": "As 10 ocorrências da allowlist recebem substituição ou decisão formal de política; `audit:licenses` passa para o lockfile candidato.",
+      "validity_notes": "The acceptance text is pinned to the 2026-09-23 source document. The selected evidence must reject the known-bad condition stated by the criterion and observe its actual boundary.",
+      "version": "2026-09-23"
+    },
+    {
+      "baseline": {
+        "actual": "No current criterion-specific result has been revalidated for this item.",
+        "status": "NOT_RUN"
+      },
+      "conditions": "Use the exact worktree/candidate, domain, fixture, and environment required by the target; do not substitute source presence, plans, synthetic results, or stale evidence for observed acceptance.",
+      "dimension": "M3",
+      "evidence_method": "Execute the acceptance procedure and evidence scope named by MEL23-014 in the pinned backlog; record exact command/procedure, environment, exit/result, artifact, timestamp, and candidate fingerprint. For external/human requirements, require evidence from that real authority and environment.",
+      "id": "MEL23-014",
+      "license_notes": "Internal project acceptance criterion; no external assets or text are reused.",
+      "priority": "critical",
+      "required": true,
+      "snapshot_sha256": "af8ea7b2e112c174f36d815b0e75690644f855ddfa819102a29b08b2a724bb5a",
+      "source": "docs/backlog-2026-09-23.md#MEL23-014",
+      "source_type": "REPO",
+      "target": "`LICENSE` ou `COPYING` de raiz corresponde à decisão do responsável e é verificado no pacote de release.",
+      "validity_notes": "The acceptance text is pinned to the 2026-09-23 source document. The selected evidence must reject the known-bad condition stated by the criterion and observe its actual boundary.",
+      "version": "2026-09-23"
+    },
+    {
+      "baseline": {
+        "actual": "No current criterion-specific result has been revalidated for this item.",
+        "status": "NOT_RUN"
+      },
+      "conditions": "Use the exact worktree/candidate, domain, fixture, and environment required by the target; do not substitute source presence, plans, synthetic results, or stale evidence for observed acceptance.",
+      "dimension": "M3",
+      "evidence_method": "Execute the acceptance procedure and evidence scope named by MEL23-015 in the pinned backlog; record exact command/procedure, environment, exit/result, artifact, timestamp, and candidate fingerprint. For external/human requirements, require evidence from that real authority and environment.",
+      "id": "MEL23-015",
+      "license_notes": "Internal project acceptance criterion; no external assets or text are reused.",
+      "priority": "critical",
+      "required": true,
+      "snapshot_sha256": "af8ea7b2e112c174f36d815b0e75690644f855ddfa819102a29b08b2a724bb5a",
+      "source": "docs/backlog-2026-09-23.md#MEL23-015",
+      "source_type": "REPO",
+      "target": "Smoke usa a imagem real: start, health, non-root, escrita/leitura controlada, shutdown e restart com resultado registrado.",
+      "validity_notes": "The acceptance text is pinned to the 2026-09-23 source document. The selected evidence must reject the known-bad condition stated by the criterion and observe its actual boundary.",
+      "version": "2026-09-23"
+    },
+    {
+      "baseline": {
+        "actual": "No current criterion-specific result has been revalidated for this item.",
+        "status": "NOT_RUN"
+      },
+      "conditions": "Use the exact worktree/candidate, domain, fixture, and environment required by the target; do not substitute source presence, plans, synthetic results, or stale evidence for observed acceptance.",
+      "dimension": "M3",
+      "evidence_method": "Execute the acceptance procedure and evidence scope named by MEL23-016 in the pinned backlog; record exact command/procedure, environment, exit/result, artifact, timestamp, and candidate fingerprint. For external/human requirements, require evidence from that real authority and environment.",
+      "id": "MEL23-016",
+      "license_notes": "Internal project acceptance criterion; no external assets or text are reused.",
+      "priority": "critical",
+      "required": true,
+      "snapshot_sha256": "af8ea7b2e112c174f36d815b0e75690644f855ddfa819102a29b08b2a724bb5a",
+      "source": "docs/backlog-2026-09-23.md#MEL23-016",
+      "source_type": "REPO",
+      "target": "Digests de API/web correspondem a SBOM, scan e proveniência OCI do mesmo build; divergência bloqueia release.",
+      "validity_notes": "The acceptance text is pinned to the 2026-09-23 source document. The selected evidence must reject the known-bad condition stated by the criterion and observe its actual boundary.",
+      "version": "2026-09-23"
+    },
+    {
+      "baseline": {
+        "actual": "No current criterion-specific result has been revalidated for this item.",
+        "status": "NOT_RUN"
+      },
+      "conditions": "Use the exact worktree/candidate, domain, fixture, and environment required by the target; do not substitute source presence, plans, synthetic results, or stale evidence for observed acceptance.",
+      "dimension": "M5",
+      "evidence_method": "Execute the acceptance procedure and evidence scope named by MEL23-017 in the pinned backlog; record exact command/procedure, environment, exit/result, artifact, timestamp, and candidate fingerprint. For external/human requirements, require evidence from that real authority and environment.",
+      "id": "MEL23-017",
+      "license_notes": "Internal project acceptance criterion; no external assets or text are reused.",
+      "priority": "critical",
+      "required": true,
+      "snapshot_sha256": "af8ea7b2e112c174f36d815b0e75690644f855ddfa819102a29b08b2a724bb5a",
+      "source": "docs/backlog-2026-09-23.md#MEL23-017",
+      "source_type": "REPO",
+      "target": "Staging autorizado prova Secret Authority, login, revogação e falha fechada sem segredos expostos em logs.",
+      "validity_notes": "The acceptance text is pinned to the 2026-09-23 source document. The selected evidence must reject the known-bad condition stated by the criterion and observe its actual boundary.",
+      "version": "2026-09-23"
+    },
+    {
+      "baseline": {
+        "actual": "No current criterion-specific result has been revalidated for this item.",
+        "status": "NOT_RUN"
+      },
+      "conditions": "Use the exact worktree/candidate, domain, fixture, and environment required by the target; do not substitute source presence, plans, synthetic results, or stale evidence for observed acceptance.",
+      "dimension": "M5",
+      "evidence_method": "Execute the acceptance procedure and evidence scope named by MEL23-018 in the pinned backlog; record exact command/procedure, environment, exit/result, artifact, timestamp, and candidate fingerprint. For external/human requirements, require evidence from that real authority and environment.",
+      "id": "MEL23-018",
+      "license_notes": "Internal project acceptance criterion; no external assets or text are reused.",
+      "priority": "critical",
+      "required": true,
+      "snapshot_sha256": "af8ea7b2e112c174f36d815b0e75690644f855ddfa819102a29b08b2a724bb5a",
+      "source": "docs/backlog-2026-09-23.md#MEL23-018",
+      "source_type": "REPO",
+      "target": "Provedores e DeepSeek reais passam casos positivo, negativo, timeout, receipt e reconciliação no mesmo candidato.",
+      "validity_notes": "The acceptance text is pinned to the 2026-09-23 source document. The selected evidence must reject the known-bad condition stated by the criterion and observe its actual boundary.",
+      "version": "2026-09-23"
+    },
+    {
+      "baseline": {
+        "actual": "No current criterion-specific result has been revalidated for this item.",
+        "status": "NOT_RUN"
+      },
+      "conditions": "Use the exact worktree/candidate, domain, fixture, and environment required by the target; do not substitute source presence, plans, synthetic results, or stale evidence for observed acceptance.",
+      "dimension": "M5",
+      "evidence_method": "Execute the acceptance procedure and evidence scope named by MEL23-019 in the pinned backlog; record exact command/procedure, environment, exit/result, artifact, timestamp, and candidate fingerprint. For external/human requirements, require evidence from that real authority and environment.",
+      "id": "MEL23-019",
+      "license_notes": "Internal project acceptance criterion; no external assets or text are reused.",
+      "priority": "critical",
+      "required": true,
+      "snapshot_sha256": "af8ea7b2e112c174f36d815b0e75690644f855ddfa819102a29b08b2a724bb5a",
+      "source": "docs/backlog-2026-09-23.md#MEL23-019",
+      "source_type": "REPO",
+      "target": "Restore em infraestrutura equivalente mede RTO/RPO aprovados e verifica não reativação de dados ou privilégios revogados.",
+      "validity_notes": "The acceptance text is pinned to the 2026-09-23 source document. The selected evidence must reject the known-bad condition stated by the criterion and observe its actual boundary.",
+      "version": "2026-09-23"
+    },
+    {
+      "baseline": {
+        "actual": "No current criterion-specific result has been revalidated for this item.",
+        "status": "NOT_RUN"
+      },
+      "conditions": "Use the exact worktree/candidate, domain, fixture, and environment required by the target; do not substitute source presence, plans, synthetic results, or stale evidence for observed acceptance.",
+      "dimension": "M6",
+      "evidence_method": "Execute the acceptance procedure and evidence scope named by MEL23-020 in the pinned backlog; record exact command/procedure, environment, exit/result, artifact, timestamp, and candidate fingerprint. For external/human requirements, require evidence from that real authority and environment.",
+      "id": "MEL23-020",
+      "license_notes": "Internal project acceptance criterion; no external assets or text are reused.",
+      "priority": "critical",
+      "required": true,
+      "snapshot_sha256": "af8ea7b2e112c174f36d815b0e75690644f855ddfa819102a29b08b2a724bb5a",
+      "source": "docs/backlog-2026-09-23.md#MEL23-020",
+      "source_type": "REPO",
+      "target": "Duas revisões independentes qualificam o mesmo fingerprint e a autoridade humana registra decisão explícita; sem qualquer gate, permanece bloqueado.",
+      "validity_notes": "The acceptance text is pinned to the 2026-09-23 source document. The selected evidence must reject the known-bad condition stated by the criterion and observe its actual boundary.",
+      "version": "2026-09-23"
+    },
+    {
+      "baseline": {
+        "actual": "No current criterion-specific result has been revalidated for this item.",
+        "status": "NOT_RUN"
+      },
+      "conditions": "Use the exact worktree/candidate, domain, fixture, and environment required by the target; do not substitute source presence, plans, synthetic results, or stale evidence for observed acceptance.",
+      "dimension": "M2",
+      "evidence_method": "Execute the acceptance procedure and evidence scope named by MEL23-021 in the pinned backlog; record exact command/procedure, environment, exit/result, artifact, timestamp, and candidate fingerprint. For external/human requirements, require evidence from that real authority and environment.",
+      "id": "MEL23-021",
+      "license_notes": "Internal project acceptance criterion; no external assets or text are reused.",
+      "priority": "high",
+      "required": true,
+      "snapshot_sha256": "af8ea7b2e112c174f36d815b0e75690644f855ddfa819102a29b08b2a724bb5a",
+      "source": "docs/backlog-2026-09-23.md#MEL23-021",
+      "source_type": "REPO",
+      "target": "Fixtures de respostas reais cobrem 105/105 rotas e satisfazem os 80 schemas específicos, incluindo erros versionados.",
+      "validity_notes": "The acceptance text is pinned to the 2026-09-23 source document. The selected evidence must reject the known-bad condition stated by the criterion and observe its actual boundary.",
+      "version": "2026-09-23"
+    },
+    {
+      "baseline": {
+        "actual": "No current criterion-specific result has been revalidated for this item.",
+        "status": "NOT_RUN"
+      },
+      "conditions": "Use the exact worktree/candidate, domain, fixture, and environment required by the target; do not substitute source presence, plans, synthetic results, or stale evidence for observed acceptance.",
+      "dimension": "M2",
+      "evidence_method": "Execute the acceptance procedure and evidence scope named by MEL23-022 in the pinned backlog; record exact command/procedure, environment, exit/result, artifact, timestamp, and candidate fingerprint. For external/human requirements, require evidence from that real authority and environment.",
+      "id": "MEL23-022",
+      "license_notes": "Internal project acceptance criterion; no external assets or text are reused.",
+      "priority": "high",
+      "required": true,
+      "snapshot_sha256": "af8ea7b2e112c174f36d815b0e75690644f855ddfa819102a29b08b2a724bb5a",
+      "source": "docs/backlog-2026-09-23.md#MEL23-022",
+      "source_type": "REPO",
+      "target": "Cada família de API rejeita campos sensíveis, payload excessivo e forma inválida antes do envio; casos negativos passam.",
+      "validity_notes": "The acceptance text is pinned to the 2026-09-23 source document. The selected evidence must reject the known-bad condition stated by the criterion and observe its actual boundary.",
+      "version": "2026-09-23"
+    },
+    {
+      "baseline": {
+        "actual": "No current criterion-specific result has been revalidated for this item.",
+        "status": "NOT_RUN"
+      },
+      "conditions": "Use the exact worktree/candidate, domain, fixture, and environment required by the target; do not substitute source presence, plans, synthetic results, or stale evidence for observed acceptance.",
+      "dimension": "M2",
+      "evidence_method": "Execute the acceptance procedure and evidence scope named by MEL23-023 in the pinned backlog; record exact command/procedure, environment, exit/result, artifact, timestamp, and candidate fingerprint. For external/human requirements, require evidence from that real authority and environment.",
+      "id": "MEL23-023",
+      "license_notes": "Internal project acceptance criterion; no external assets or text are reused.",
+      "priority": "high",
+      "required": true,
+      "snapshot_sha256": "af8ea7b2e112c174f36d815b0e75690644f855ddfa819102a29b08b2a724bb5a",
+      "source": "docs/backlog-2026-09-23.md#MEL23-023",
+      "source_type": "REPO",
+      "target": "Após cada onda, testes PostgreSQL negam leitura/escrita cross-tenant e cross-workspace nas tabelas afetadas.",
+      "validity_notes": "The acceptance text is pinned to the 2026-09-23 source document. The selected evidence must reject the known-bad condition stated by the criterion and observe its actual boundary.",
+      "version": "2026-09-23"
+    },
+    {
+      "baseline": {
+        "actual": "No current criterion-specific result has been revalidated for this item.",
+        "status": "NOT_RUN"
+      },
+      "conditions": "Use the exact worktree/candidate, domain, fixture, and environment required by the target; do not substitute source presence, plans, synthetic results, or stale evidence for observed acceptance.",
+      "dimension": "M2",
+      "evidence_method": "Execute the acceptance procedure and evidence scope named by MEL23-024 in the pinned backlog; record exact command/procedure, environment, exit/result, artifact, timestamp, and candidate fingerprint. For external/human requirements, require evidence from that real authority and environment.",
+      "id": "MEL23-024",
+      "license_notes": "Internal project acceptance criterion; no external assets or text are reused.",
+      "priority": "high",
+      "required": true,
+      "snapshot_sha256": "af8ea7b2e112c174f36d815b0e75690644f855ddfa819102a29b08b2a724bb5a",
+      "source": "docs/backlog-2026-09-23.md#MEL23-024",
+      "source_type": "REPO",
+      "target": "Fault injection entre commit, checkpoint e receipt retoma sem segundo efeito e sem falso sucesso.",
+      "validity_notes": "The acceptance text is pinned to the 2026-09-23 source document. The selected evidence must reject the known-bad condition stated by the criterion and observe its actual boundary.",
+      "version": "2026-09-23"
+    },
+    {
+      "baseline": {
+        "actual": "No current criterion-specific result has been revalidated for this item.",
+        "status": "NOT_RUN"
+      },
+      "conditions": "Use the exact worktree/candidate, domain, fixture, and environment required by the target; do not substitute source presence, plans, synthetic results, or stale evidence for observed acceptance.",
+      "dimension": "M4",
+      "evidence_method": "Execute the acceptance procedure and evidence scope named by MEL23-025 in the pinned backlog; record exact command/procedure, environment, exit/result, artifact, timestamp, and candidate fingerprint. For external/human requirements, require evidence from that real authority and environment.",
+      "id": "MEL23-025",
+      "license_notes": "Internal project acceptance criterion; no external assets or text are reused.",
+      "priority": "high",
+      "required": true,
+      "snapshot_sha256": "af8ea7b2e112c174f36d815b0e75690644f855ddfa819102a29b08b2a724bb5a",
+      "source": "docs/backlog-2026-09-23.md#MEL23-025",
+      "source_type": "REPO",
+      "target": "Metas e exceções de cobertura por área crítica são versionadas; gate rejeita regressão abaixo do limite aprovado.",
+      "validity_notes": "The acceptance text is pinned to the 2026-09-23 source document. The selected evidence must reject the known-bad condition stated by the criterion and observe its actual boundary.",
+      "version": "2026-09-23"
+    },
+    {
+      "baseline": {
+        "actual": "No current criterion-specific result has been revalidated for this item.",
+        "status": "NOT_RUN"
+      },
+      "conditions": "Use the exact worktree/candidate, domain, fixture, and environment required by the target; do not substitute source presence, plans, synthetic results, or stale evidence for observed acceptance.",
+      "dimension": "M4",
+      "evidence_method": "Execute the acceptance procedure and evidence scope named by MEL23-026 in the pinned backlog; record exact command/procedure, environment, exit/result, artifact, timestamp, and candidate fingerprint. For external/human requirements, require evidence from that real authority and environment.",
+      "id": "MEL23-026",
+      "license_notes": "Internal project acceptance criterion; no external assets or text are reused.",
+      "priority": "high",
+      "required": true,
+      "snapshot_sha256": "af8ea7b2e112c174f36d815b0e75690644f855ddfa819102a29b08b2a724bb5a",
+      "source": "docs/backlog-2026-09-23.md#MEL23-026",
+      "source_type": "REPO",
+      "target": "Mutantes relevantes de autorização, finanças, clínica e persistência são rejeitados; relatório identifica sobreviventes.",
+      "validity_notes": "The acceptance text is pinned to the 2026-09-23 source document. The selected evidence must reject the known-bad condition stated by the criterion and observe its actual boundary.",
+      "version": "2026-09-23"
+    },
+    {
+      "baseline": {
+        "actual": "No current criterion-specific result has been revalidated for this item.",
+        "status": "NOT_RUN"
+      },
+      "conditions": "Use the exact worktree/candidate, domain, fixture, and environment required by the target; do not substitute source presence, plans, synthetic results, or stale evidence for observed acceptance.",
+      "dimension": "M4",
+      "evidence_method": "Execute the acceptance procedure and evidence scope named by MEL23-027 in the pinned backlog; record exact command/procedure, environment, exit/result, artifact, timestamp, and candidate fingerprint. For external/human requirements, require evidence from that real authority and environment.",
+      "id": "MEL23-027",
+      "license_notes": "Internal project acceptance criterion; no external assets or text are reused.",
+      "priority": "high",
+      "required": true,
+      "snapshot_sha256": "af8ea7b2e112c174f36d815b0e75690644f855ddfa819102a29b08b2a724bb5a",
+      "source": "docs/backlog-2026-09-23.md#MEL23-027",
+      "source_type": "REPO",
+      "target": "Matriz E2E completa executa na CI para o candidato; falhas intermitentes têm reprodução e diagnóstico.",
+      "validity_notes": "The acceptance text is pinned to the 2026-09-23 source document. The selected evidence must reject the known-bad condition stated by the criterion and observe its actual boundary.",
+      "version": "2026-09-23"
+    },
+    {
+      "baseline": {
+        "actual": "No current criterion-specific result has been revalidated for this item.",
+        "status": "NOT_RUN"
+      },
+      "conditions": "Use the exact worktree/candidate, domain, fixture, and environment required by the target; do not substitute source presence, plans, synthetic results, or stale evidence for observed acceptance.",
+      "dimension": "M4",
+      "evidence_method": "Execute the acceptance procedure and evidence scope named by MEL23-028 in the pinned backlog; record exact command/procedure, environment, exit/result, artifact, timestamp, and candidate fingerprint. For external/human requirements, require evidence from that real authority and environment.",
+      "id": "MEL23-028",
+      "license_notes": "Internal project acceptance criterion; no external assets or text are reused.",
+      "priority": "high",
+      "required": true,
+      "snapshot_sha256": "af8ea7b2e112c174f36d815b0e75690644f855ddfa819102a29b08b2a724bb5a",
+      "source": "docs/backlog-2026-09-23.md#MEL23-028",
+      "source_type": "REPO",
+      "target": "WebKit executa em host suportado; jornadas prioritárias passam ou falhas ficam abertas com reprodução.",
+      "validity_notes": "The acceptance text is pinned to the 2026-09-23 source document. The selected evidence must reject the known-bad condition stated by the criterion and observe its actual boundary.",
+      "version": "2026-09-23"
+    },
+    {
+      "baseline": {
+        "actual": "No current criterion-specific result has been revalidated for this item.",
+        "status": "NOT_RUN"
+      },
+      "conditions": "Use the exact worktree/candidate, domain, fixture, and environment required by the target; do not substitute source presence, plans, synthetic results, or stale evidence for observed acceptance.",
+      "dimension": "M4",
+      "evidence_method": "Execute the acceptance procedure and evidence scope named by MEL23-029 in the pinned backlog; record exact command/procedure, environment, exit/result, artifact, timestamp, and candidate fingerprint. For external/human requirements, require evidence from that real authority and environment.",
+      "id": "MEL23-029",
+      "license_notes": "Internal project acceptance criterion; no external assets or text are reused.",
+      "priority": "high",
+      "required": true,
+      "snapshot_sha256": "af8ea7b2e112c174f36d815b0e75690644f855ddfa819102a29b08b2a724bb5a",
+      "source": "docs/backlog-2026-09-23.md#MEL23-029",
+      "source_type": "REPO",
+      "target": "Testes renderizados documentam contraste, foco/teclado, zoom e reflow nos estados principais.",
+      "validity_notes": "The acceptance text is pinned to the 2026-09-23 source document. The selected evidence must reject the known-bad condition stated by the criterion and observe its actual boundary.",
+      "version": "2026-09-23"
+    },
+    {
+      "baseline": {
+        "actual": "No current criterion-specific result has been revalidated for this item.",
+        "status": "NOT_RUN"
+      },
+      "conditions": "Use the exact worktree/candidate, domain, fixture, and environment required by the target; do not substitute source presence, plans, synthetic results, or stale evidence for observed acceptance.",
+      "dimension": "M4",
+      "evidence_method": "Execute the acceptance procedure and evidence scope named by MEL23-030 in the pinned backlog; record exact command/procedure, environment, exit/result, artifact, timestamp, and candidate fingerprint. For external/human requirements, require evidence from that real authority and environment.",
+      "id": "MEL23-030",
+      "license_notes": "Internal project acceptance criterion; no external assets or text are reused.",
+      "priority": "high",
+      "required": true,
+      "snapshot_sha256": "af8ea7b2e112c174f36d815b0e75690644f855ddfa819102a29b08b2a724bb5a",
+      "source": "docs/backlog-2026-09-23.md#MEL23-030",
+      "source_type": "REPO",
+      "target": "Revisão com tecnologia assistiva cobre login e jornadas clínicas/administrativas prioritárias, com achados e correção.",
+      "validity_notes": "The acceptance text is pinned to the 2026-09-23 source document. The selected evidence must reject the known-bad condition stated by the criterion and observe its actual boundary.",
+      "version": "2026-09-23"
+    },
+    {
+      "baseline": {
+        "actual": "No current criterion-specific result has been revalidated for this item.",
+        "status": "NOT_RUN"
+      },
+      "conditions": "Use the exact worktree/candidate, domain, fixture, and environment required by the target; do not substitute source presence, plans, synthetic results, or stale evidence for observed acceptance.",
+      "dimension": "M2",
+      "evidence_method": "Execute the acceptance procedure and evidence scope named by MEL23-031 in the pinned backlog; record exact command/procedure, environment, exit/result, artifact, timestamp, and candidate fingerprint. For external/human requirements, require evidence from that real authority and environment.",
+      "id": "MEL23-031",
+      "license_notes": "Internal project acceptance criterion; no external assets or text are reused.",
+      "priority": "high",
+      "required": true,
+      "snapshot_sha256": "af8ea7b2e112c174f36d815b0e75690644f855ddfa819102a29b08b2a724bb5a",
+      "source": "docs/backlog-2026-09-23.md#MEL23-031",
+      "source_type": "REPO",
+      "target": "Responsabilidades de `persistence/index.ts` são extraídas por dono sem mudar contratos; testes de banco e imports passam.",
+      "validity_notes": "The acceptance text is pinned to the 2026-09-23 source document. The selected evidence must reject the known-bad condition stated by the criterion and observe its actual boundary.",
+      "version": "2026-09-23"
+    },
+    {
+      "baseline": {
+        "actual": "No current criterion-specific result has been revalidated for this item.",
+        "status": "NOT_RUN"
+      },
+      "conditions": "Use the exact worktree/candidate, domain, fixture, and environment required by the target; do not substitute source presence, plans, synthetic results, or stale evidence for observed acceptance.",
+      "dimension": "M2",
+      "evidence_method": "Execute the acceptance procedure and evidence scope named by MEL23-032 in the pinned backlog; record exact command/procedure, environment, exit/result, artifact, timestamp, and candidate fingerprint. For external/human requirements, require evidence from that real authority and environment.",
+      "id": "MEL23-032",
+      "license_notes": "Internal project acceptance criterion; no external assets or text are reused.",
+      "priority": "high",
+      "required": true,
+      "snapshot_sha256": "af8ea7b2e112c174f36d815b0e75690644f855ddfa819102a29b08b2a724bb5a",
+      "source": "docs/backlog-2026-09-23.md#MEL23-032",
+      "source_type": "REPO",
+      "target": "Rotas/serviços saem de `app.ts` com ownership explícito; inventário runtime e testes HTTP continuam verdes.",
+      "validity_notes": "The acceptance text is pinned to the 2026-09-23 source document. The selected evidence must reject the known-bad condition stated by the criterion and observe its actual boundary.",
+      "version": "2026-09-23"
+    },
+    {
+      "baseline": {
+        "actual": "No current criterion-specific result has been revalidated for this item.",
+        "status": "NOT_RUN"
+      },
+      "conditions": "Use the exact worktree/candidate, domain, fixture, and environment required by the target; do not substitute source presence, plans, synthetic results, or stale evidence for observed acceptance.",
+      "dimension": "M2",
+      "evidence_method": "Execute the acceptance procedure and evidence scope named by MEL23-033 in the pinned backlog; record exact command/procedure, environment, exit/result, artifact, timestamp, and candidate fingerprint. For external/human requirements, require evidence from that real authority and environment.",
+      "id": "MEL23-033",
+      "license_notes": "Internal project acceptance criterion; no external assets or text are reused.",
+      "priority": "high",
+      "required": true,
+      "snapshot_sha256": "af8ea7b2e112c174f36d815b0e75690644f855ddfa819102a29b08b2a724bb5a",
+      "source": "docs/backlog-2026-09-23.md#MEL23-033",
+      "source_type": "REPO",
+      "target": "Domínio e contratos centrais são decompostos sem ciclos de import ou alteração pública não versionada.",
+      "validity_notes": "The acceptance text is pinned to the 2026-09-23 source document. The selected evidence must reject the known-bad condition stated by the criterion and observe its actual boundary.",
+      "version": "2026-09-23"
+    },
+    {
+      "baseline": {
+        "actual": "No current criterion-specific result has been revalidated for this item.",
+        "status": "NOT_RUN"
+      },
+      "conditions": "Use the exact worktree/candidate, domain, fixture, and environment required by the target; do not substitute source presence, plans, synthetic results, or stale evidence for observed acceptance.",
+      "dimension": "M4",
+      "evidence_method": "Execute the acceptance procedure and evidence scope named by MEL23-034 in the pinned backlog; record exact command/procedure, environment, exit/result, artifact, timestamp, and candidate fingerprint. For external/human requirements, require evidence from that real authority and environment.",
+      "id": "MEL23-034",
+      "license_notes": "Internal project acceptance criterion; no external assets or text are reused.",
+      "priority": "high",
+      "required": true,
+      "snapshot_sha256": "af8ea7b2e112c174f36d815b0e75690644f855ddfa819102a29b08b2a724bb5a",
+      "source": "docs/backlog-2026-09-23.md#MEL23-034",
+      "source_type": "REPO",
+      "target": "Carga sustentada prova limites de fila, backpressure, drenagem e retomada sem claim indevido do worker.",
+      "validity_notes": "The acceptance text is pinned to the 2026-09-23 source document. The selected evidence must reject the known-bad condition stated by the criterion and observe its actual boundary.",
+      "version": "2026-09-23"
+    },
+    {
+      "baseline": {
+        "actual": "No current criterion-specific result has been revalidated for this item.",
+        "status": "NOT_RUN"
+      },
+      "conditions": "Use the exact worktree/candidate, domain, fixture, and environment required by the target; do not substitute source presence, plans, synthetic results, or stale evidence for observed acceptance.",
+      "dimension": "M4",
+      "evidence_method": "Execute the acceptance procedure and evidence scope named by MEL23-035 in the pinned backlog; record exact command/procedure, environment, exit/result, artifact, timestamp, and candidate fingerprint. For external/human requirements, require evidence from that real authority and environment.",
+      "id": "MEL23-035",
+      "license_notes": "Internal project acceptance criterion; no external assets or text are reused.",
+      "priority": "high",
+      "required": true,
+      "snapshot_sha256": "af8ea7b2e112c174f36d815b0e75690644f855ddfa819102a29b08b2a724bb5a",
+      "source": "docs/backlog-2026-09-23.md#MEL23-035",
+      "source_type": "REPO",
+      "target": "Timeout/resposta perdida produzem `OUTCOME_UNKNOWN` e consulta/reconciliação; nenhum retry cego duplica efeito.",
+      "validity_notes": "The acceptance text is pinned to the 2026-09-23 source document. The selected evidence must reject the known-bad condition stated by the criterion and observe its actual boundary.",
+      "version": "2026-09-23"
+    },
+    {
+      "baseline": {
+        "actual": "No current criterion-specific result has been revalidated for this item.",
+        "status": "NOT_RUN"
+      },
+      "conditions": "Use the exact worktree/candidate, domain, fixture, and environment required by the target; do not substitute source presence, plans, synthetic results, or stale evidence for observed acceptance.",
+      "dimension": "M5",
+      "evidence_method": "Execute the acceptance procedure and evidence scope named by MEL23-036 in the pinned backlog; record exact command/procedure, environment, exit/result, artifact, timestamp, and candidate fingerprint. For external/human requirements, require evidence from that real authority and environment.",
+      "id": "MEL23-036",
+      "license_notes": "Internal project acceptance criterion; no external assets or text are reused.",
+      "priority": "high",
+      "required": true,
+      "snapshot_sha256": "af8ea7b2e112c174f36d815b0e75690644f855ddfa819102a29b08b2a724bb5a",
+      "source": "docs/backlog-2026-09-23.md#MEL23-036",
+      "source_type": "REPO",
+      "target": "SLOs recebem dono, baseline, janela e meta aprovada; queries medem os SLIs em tráfego representativo.",
+      "validity_notes": "The acceptance text is pinned to the 2026-09-23 source document. The selected evidence must reject the known-bad condition stated by the criterion and observe its actual boundary.",
+      "version": "2026-09-23"
+    },
+    {
+      "baseline": {
+        "actual": "No current criterion-specific result has been revalidated for this item.",
+        "status": "NOT_RUN"
+      },
+      "conditions": "Use the exact worktree/candidate, domain, fixture, and environment required by the target; do not substitute source presence, plans, synthetic results, or stale evidence for observed acceptance.",
+      "dimension": "M5",
+      "evidence_method": "Execute the acceptance procedure and evidence scope named by MEL23-037 in the pinned backlog; record exact command/procedure, environment, exit/result, artifact, timestamp, and candidate fingerprint. For external/human requirements, require evidence from that real authority and environment.",
+      "id": "MEL23-037",
+      "license_notes": "Internal project acceptance criterion; no external assets or text are reused.",
+      "priority": "high",
+      "required": true,
+      "snapshot_sha256": "af8ea7b2e112c174f36d815b0e75690644f855ddfa819102a29b08b2a724bb5a",
+      "source": "docs/backlog-2026-09-23.md#MEL23-037",
+      "source_type": "REPO",
+      "target": "Falha de serviço dispara alerta entregue; retenção e perda de telemetria são observadas e não substituem auditoria.",
+      "validity_notes": "The acceptance text is pinned to the 2026-09-23 source document. The selected evidence must reject the known-bad condition stated by the criterion and observe its actual boundary.",
+      "version": "2026-09-23"
+    },
+    {
+      "baseline": {
+        "actual": "No current criterion-specific result has been revalidated for this item.",
+        "status": "NOT_RUN"
+      },
+      "conditions": "Use the exact worktree/candidate, domain, fixture, and environment required by the target; do not substitute source presence, plans, synthetic results, or stale evidence for observed acceptance.",
+      "dimension": "M5",
+      "evidence_method": "Execute the acceptance procedure and evidence scope named by MEL23-038 in the pinned backlog; record exact command/procedure, environment, exit/result, artifact, timestamp, and candidate fingerprint. For external/human requirements, require evidence from that real authority and environment.",
+      "id": "MEL23-038",
+      "license_notes": "Internal project acceptance criterion; no external assets or text are reused.",
+      "priority": "high",
+      "required": true,
+      "snapshot_sha256": "af8ea7b2e112c174f36d815b0e75690644f855ddfa819102a29b08b2a724bb5a",
+      "source": "docs/backlog-2026-09-23.md#MEL23-038",
+      "source_type": "REPO",
+      "target": "Carga e caos em staging registram workload, janela, limites, recuperação e critério de parada.",
+      "validity_notes": "The acceptance text is pinned to the 2026-09-23 source document. The selected evidence must reject the known-bad condition stated by the criterion and observe its actual boundary.",
+      "version": "2026-09-23"
+    },
+    {
+      "baseline": {
+        "actual": "No current criterion-specific result has been revalidated for this item.",
+        "status": "NOT_RUN"
+      },
+      "conditions": "Use the exact worktree/candidate, domain, fixture, and environment required by the target; do not substitute source presence, plans, synthetic results, or stale evidence for observed acceptance.",
+      "dimension": "M3",
+      "evidence_method": "Execute the acceptance procedure and evidence scope named by MEL23-039 in the pinned backlog; record exact command/procedure, environment, exit/result, artifact, timestamp, and candidate fingerprint. For external/human requirements, require evidence from that real authority and environment.",
+      "id": "MEL23-039",
+      "license_notes": "Internal project acceptance criterion; no external assets or text are reused.",
+      "priority": "high",
+      "required": true,
+      "snapshot_sha256": "af8ea7b2e112c174f36d815b0e75690644f855ddfa819102a29b08b2a724bb5a",
+      "source": "docs/backlog-2026-09-23.md#MEL23-039",
+      "source_type": "REPO",
+      "target": "Compose das imagens finais passa inspeção de usuário, capabilities, filesystem, rede e secrets conforme threat model.",
+      "validity_notes": "The acceptance text is pinned to the 2026-09-23 source document. The selected evidence must reject the known-bad condition stated by the criterion and observe its actual boundary.",
+      "version": "2026-09-23"
+    },
+    {
+      "baseline": {
+        "actual": "No current criterion-specific result has been revalidated for this item.",
+        "status": "NOT_RUN"
+      },
+      "conditions": "Use the exact worktree/candidate, domain, fixture, and environment required by the target; do not substitute source presence, plans, synthetic results, or stale evidence for observed acceptance.",
+      "dimension": "M0",
+      "evidence_method": "Execute the acceptance procedure and evidence scope named by MEL23-040 in the pinned backlog; record exact command/procedure, environment, exit/result, artifact, timestamp, and candidate fingerprint. For external/human requirements, require evidence from that real authority and environment.",
+      "id": "MEL23-040",
+      "license_notes": "Internal project acceptance criterion; no external assets or text are reused.",
+      "priority": "high",
+      "required": true,
+      "snapshot_sha256": "af8ea7b2e112c174f36d815b0e75690644f855ddfa819102a29b08b2a724bb5a",
+      "source": "docs/backlog-2026-09-23.md#MEL23-040",
+      "source_type": "REPO",
+      "target": "Relatório automático liga cada requisito obrigatório a teste, recibo, ambiente, resultado e fingerprint; lacunas falham.",
+      "validity_notes": "The acceptance text is pinned to the 2026-09-23 source document. The selected evidence must reject the known-bad condition stated by the criterion and observe its actual boundary.",
+      "version": "2026-09-23"
+    },
+    {
+      "baseline": {
+        "actual": "No current criterion-specific result has been revalidated for this item.",
+        "status": "NOT_RUN"
+      },
+      "conditions": "Use the exact worktree/candidate, domain, fixture, and environment required by the target; do not substitute source presence, plans, synthetic results, or stale evidence for observed acceptance.",
+      "dimension": "M0",
+      "evidence_method": "Execute the acceptance procedure and evidence scope named by MEL23-041 in the pinned backlog; record exact command/procedure, environment, exit/result, artifact, timestamp, and candidate fingerprint. For external/human requirements, require evidence from that real authority and environment.",
+      "id": "MEL23-041",
+      "license_notes": "Internal project acceptance criterion; no external assets or text are reused.",
+      "priority": "medium",
+      "required": true,
+      "snapshot_sha256": "af8ea7b2e112c174f36d815b0e75690644f855ddfa819102a29b08b2a724bb5a",
+      "source": "docs/backlog-2026-09-23.md#MEL23-041",
+      "source_type": "REPO",
+      "target": "`docs/README.md` aponta à fotografia atual; não chama 78/80 schemas genéricos nem raiz externa ausente de fatos atuais.",
+      "validity_notes": "The acceptance text is pinned to the 2026-09-23 source document. The selected evidence must reject the known-bad condition stated by the criterion and observe its actual boundary.",
+      "version": "2026-09-23"
+    },
+    {
+      "baseline": {
+        "actual": "No current criterion-specific result has been revalidated for this item.",
+        "status": "NOT_RUN"
+      },
+      "conditions": "Use the exact worktree/candidate, domain, fixture, and environment required by the target; do not substitute source presence, plans, synthetic results, or stale evidence for observed acceptance.",
+      "dimension": "M0",
+      "evidence_method": "Execute the acceptance procedure and evidence scope named by MEL23-042 in the pinned backlog; record exact command/procedure, environment, exit/result, artifact, timestamp, and candidate fingerprint. For external/human requirements, require evidence from that real authority and environment.",
+      "id": "MEL23-042",
+      "license_notes": "Internal project acceptance criterion; no external assets or text are reused.",
+      "priority": "medium",
+      "required": true,
+      "snapshot_sha256": "af8ea7b2e112c174f36d815b0e75690644f855ddfa819102a29b08b2a724bb5a",
+      "source": "docs/backlog-2026-09-23.md#MEL23-042",
+      "source_type": "REPO",
+      "target": "`12-estado-da-implementacao.md` distingue o último checkpoint dos registros históricos e reflete os gates atuais.",
+      "validity_notes": "The acceptance text is pinned to the 2026-09-23 source document. The selected evidence must reject the known-bad condition stated by the criterion and observe its actual boundary.",
+      "version": "2026-09-23"
+    },
+    {
+      "baseline": {
+        "actual": "No current criterion-specific result has been revalidated for this item.",
+        "status": "NOT_RUN"
+      },
+      "conditions": "Use the exact worktree/candidate, domain, fixture, and environment required by the target; do not substitute source presence, plans, synthetic results, or stale evidence for observed acceptance.",
+      "dimension": "M0",
+      "evidence_method": "Execute the acceptance procedure and evidence scope named by MEL23-043 in the pinned backlog; record exact command/procedure, environment, exit/result, artifact, timestamp, and candidate fingerprint. For external/human requirements, require evidence from that real authority and environment.",
+      "id": "MEL23-043",
+      "license_notes": "Internal project acceptance criterion; no external assets or text are reused.",
+      "priority": "medium",
+      "required": true,
+      "snapshot_sha256": "af8ea7b2e112c174f36d815b0e75690644f855ddfa819102a29b08b2a724bb5a",
+      "source": "docs/backlog-2026-09-23.md#MEL23-043",
+      "source_type": "REPO",
+      "target": "`production-readiness-vNext.md` é rotulado como histórico ou revalidado; contagens/gates vencidos não são apresentados como atuais.",
+      "validity_notes": "The acceptance text is pinned to the 2026-09-23 source document. The selected evidence must reject the known-bad condition stated by the criterion and observe its actual boundary.",
+      "version": "2026-09-23"
+    },
+    {
+      "baseline": {
+        "actual": "No current criterion-specific result has been revalidated for this item.",
+        "status": "NOT_RUN"
+      },
+      "conditions": "Use the exact worktree/candidate, domain, fixture, and environment required by the target; do not substitute source presence, plans, synthetic results, or stale evidence for observed acceptance.",
+      "dimension": "M0",
+      "evidence_method": "Execute the acceptance procedure and evidence scope named by MEL23-044 in the pinned backlog; record exact command/procedure, environment, exit/result, artifact, timestamp, and candidate fingerprint. For external/human requirements, require evidence from that real authority and environment.",
+      "id": "MEL23-044",
+      "license_notes": "Internal project acceptance criterion; no external assets or text are reused.",
+      "priority": "medium",
+      "required": true,
+      "snapshot_sha256": "af8ea7b2e112c174f36d815b0e75690644f855ddfa819102a29b08b2a724bb5a",
+      "source": "docs/backlog-2026-09-23.md#MEL23-044",
+      "source_type": "REPO",
+      "target": "Cada ADR tem número único; referências ao antigo ADR 036 são resolvidas sem quebrar rastreabilidade histórica.",
+      "validity_notes": "The acceptance text is pinned to the 2026-09-23 source document. The selected evidence must reject the known-bad condition stated by the criterion and observe its actual boundary.",
+      "version": "2026-09-23"
+    },
+    {
+      "baseline": {
+        "actual": "No current criterion-specific result has been revalidated for this item.",
+        "status": "NOT_RUN"
+      },
+      "conditions": "Use the exact worktree/candidate, domain, fixture, and environment required by the target; do not substitute source presence, plans, synthetic results, or stale evidence for observed acceptance.",
+      "dimension": "M0",
+      "evidence_method": "Execute the acceptance procedure and evidence scope named by MEL23-045 in the pinned backlog; record exact command/procedure, environment, exit/result, artifact, timestamp, and candidate fingerprint. For external/human requirements, require evidence from that real authority and environment.",
+      "id": "MEL23-045",
+      "license_notes": "Internal project acceptance criterion; no external assets or text are reused.",
+      "priority": "medium",
+      "required": true,
+      "snapshot_sha256": "af8ea7b2e112c174f36d815b0e75690644f855ddfa819102a29b08b2a724bb5a",
+      "source": "docs/backlog-2026-09-23.md#MEL23-045",
+      "source_type": "REPO",
+      "target": "Índices mostram claramente estado atual, plano proposto e histórico datado; links internos passam.",
+      "validity_notes": "The acceptance text is pinned to the 2026-09-23 source document. The selected evidence must reject the known-bad condition stated by the criterion and observe its actual boundary.",
+      "version": "2026-09-23"
+    },
+    {
+      "baseline": {
+        "actual": "No current criterion-specific result has been revalidated for this item.",
+        "status": "NOT_RUN"
+      },
+      "conditions": "Use the exact worktree/candidate, domain, fixture, and environment required by the target; do not substitute source presence, plans, synthetic results, or stale evidence for observed acceptance.",
+      "dimension": "M0",
+      "evidence_method": "Execute the acceptance procedure and evidence scope named by MEL23-046 in the pinned backlog; record exact command/procedure, environment, exit/result, artifact, timestamp, and candidate fingerprint. For external/human requirements, require evidence from that real authority and environment.",
+      "id": "MEL23-046",
+      "license_notes": "Internal project acceptance criterion; no external assets or text are reused.",
+      "priority": "medium",
+      "required": true,
+      "snapshot_sha256": "af8ea7b2e112c174f36d815b0e75690644f855ddfa819102a29b08b2a724bb5a",
+      "source": "docs/backlog-2026-09-23.md#MEL23-046",
+      "source_type": "REPO",
+      "target": "Vocabulário de status/evidência é único entre docs, backlog e `.agent`; verificador rejeita sinônimos ambíguos.",
+      "validity_notes": "The acceptance text is pinned to the 2026-09-23 source document. The selected evidence must reject the known-bad condition stated by the criterion and observe its actual boundary.",
+      "version": "2026-09-23"
+    },
+    {
+      "baseline": {
+        "actual": "No current criterion-specific result has been revalidated for this item.",
+        "status": "NOT_RUN"
+      },
+      "conditions": "Use the exact worktree/candidate, domain, fixture, and environment required by the target; do not substitute source presence, plans, synthetic results, or stale evidence for observed acceptance.",
+      "dimension": "M2",
+      "evidence_method": "Execute the acceptance procedure and evidence scope named by MEL23-047 in the pinned backlog; record exact command/procedure, environment, exit/result, artifact, timestamp, and candidate fingerprint. For external/human requirements, require evidence from that real authority and environment.",
+      "id": "MEL23-047",
+      "license_notes": "Internal project acceptance criterion; no external assets or text are reused.",
+      "priority": "medium",
+      "required": true,
+      "snapshot_sha256": "af8ea7b2e112c174f36d815b0e75690644f855ddfa819102a29b08b2a724bb5a",
+      "source": "docs/backlog-2026-09-23.md#MEL23-047",
+      "source_type": "REPO",
+      "target": "Contratos principais incluem exemplos válidos de request, success e erro que passam pelos schemas atuais.",
+      "validity_notes": "The acceptance text is pinned to the 2026-09-23 source document. The selected evidence must reject the known-bad condition stated by the criterion and observe its actual boundary.",
+      "version": "2026-09-23"
+    },
+    {
+      "baseline": {
+        "actual": "No current criterion-specific result has been revalidated for this item.",
+        "status": "NOT_RUN"
+      },
+      "conditions": "Use the exact worktree/candidate, domain, fixture, and environment required by the target; do not substitute source presence, plans, synthetic results, or stale evidence for observed acceptance.",
+      "dimension": "M3",
+      "evidence_method": "Execute the acceptance procedure and evidence scope named by MEL23-048 in the pinned backlog; record exact command/procedure, environment, exit/result, artifact, timestamp, and candidate fingerprint. For external/human requirements, require evidence from that real authority and environment.",
+      "id": "MEL23-048",
+      "license_notes": "Internal project acceptance criterion; no external assets or text are reused.",
+      "priority": "medium",
+      "required": true,
+      "snapshot_sha256": "af8ea7b2e112c174f36d815b0e75690644f855ddfa819102a29b08b2a724bb5a",
+      "source": "docs/backlog-2026-09-23.md#MEL23-048",
+      "source_type": "REPO",
+      "target": "`CONTRIBUTING.md` documenta checks focais por área, pré-requisitos e execução sem alterar dados compartilhados.",
+      "validity_notes": "The acceptance text is pinned to the 2026-09-23 source document. The selected evidence must reject the known-bad condition stated by the criterion and observe its actual boundary.",
+      "version": "2026-09-23"
+    },
+    {
+      "baseline": {
+        "actual": "No current criterion-specific result has been revalidated for this item.",
+        "status": "NOT_RUN"
+      },
+      "conditions": "Use the exact worktree/candidate, domain, fixture, and environment required by the target; do not substitute source presence, plans, synthetic results, or stale evidence for observed acceptance.",
+      "dimension": "M2",
+      "evidence_method": "Execute the acceptance procedure and evidence scope named by MEL23-049 in the pinned backlog; record exact command/procedure, environment, exit/result, artifact, timestamp, and candidate fingerprint. For external/human requirements, require evidence from that real authority and environment.",
+      "id": "MEL23-049",
+      "license_notes": "Internal project acceptance criterion; no external assets or text are reused.",
+      "priority": "medium",
+      "required": true,
+      "snapshot_sha256": "af8ea7b2e112c174f36d815b0e75690644f855ddfa819102a29b08b2a724bb5a",
+      "source": "docs/backlog-2026-09-23.md#MEL23-049",
+      "source_type": "REPO",
+      "target": "Changelog registra cada cutover e mudança pública por versão, com migração/rollback e compatibilidade.",
+      "validity_notes": "The acceptance text is pinned to the 2026-09-23 source document. The selected evidence must reject the known-bad condition stated by the criterion and observe its actual boundary.",
+      "version": "2026-09-23"
+    },
+    {
+      "baseline": {
+        "actual": "No current criterion-specific result has been revalidated for this item.",
+        "status": "NOT_RUN"
+      },
+      "conditions": "Use the exact worktree/candidate, domain, fixture, and environment required by the target; do not substitute source presence, plans, synthetic results, or stale evidence for observed acceptance.",
+      "dimension": "M3",
+      "evidence_method": "Execute the acceptance procedure and evidence scope named by MEL23-050 in the pinned backlog; record exact command/procedure, environment, exit/result, artifact, timestamp, and candidate fingerprint. For external/human requirements, require evidence from that real authority and environment.",
+      "id": "MEL23-050",
+      "license_notes": "Internal project acceptance criterion; no external assets or text are reused.",
+      "priority": "medium",
+      "required": true,
+      "snapshot_sha256": "af8ea7b2e112c174f36d815b0e75690644f855ddfa819102a29b08b2a724bb5a",
+      "source": "docs/backlog-2026-09-23.md#MEL23-050",
+      "source_type": "REPO",
+      "target": "Gate documental detecta links quebrados, ADR duplicado e referência a arquivo removido; fixture negativa falha.",
+      "validity_notes": "The acceptance text is pinned to the 2026-09-23 source document. The selected evidence must reject the known-bad condition stated by the criterion and observe its actual boundary.",
+      "version": "2026-09-23"
+    },
+    {
+      "baseline": {
+        "actual": "Initial audit verdict is PROMOTION_BLOCKED / AAA_NOT_PROVEN; final-candidate external proof, independent reviews, and human decision are not established.",
+        "status": "FAIL"
+      },
+      "conditions": "All evidence must be current for the final candidate and use disposable local resources or authorized external environments only.",
+      "dimension": "Traceability",
+      "evidence_method": "Inspect the complete crosswalk and canonical .agent backlog; validate complete good/bad fixtures.",
+      "id": "GLOBAL-RECONCILIATION",
+      "license_notes": "User-provided acceptance text.",
+      "priority": "critical",
+      "required": true,
+      "snapshot_sha256": "06664e51dc5072ec52d4358605c753a7c7961ffb78102e0a61d6b15d9ae5a753",
+      "source": "/home/ricardo/.codex/attachments/f4efcc33-cccd-4cb2-b3e8-f1925b82b08b/pasted-text-1.txt",
+      "source_type": "USER",
+      "target": "All 50 MEL23 IDs have explicit AUD27 parent links; acceptance gaps are added to those parents; no duplicate active tasks exist; any new scope is justified.",
+      "validity_notes": "Hard aggregate gates: missing or failing evidence cannot be offset by unrelated local scores or synthetic evidence.",
+      "version": "user-current"
+    },
+    {
+      "baseline": {
+        "actual": "Initial audit verdict is PROMOTION_BLOCKED / AAA_NOT_PROVEN; final-candidate external proof, independent reviews, and human decision are not established.",
+        "status": "FAIL"
+      },
+      "conditions": "All evidence must be current for the final candidate and use disposable local resources or authorized external environments only.",
+      "dimension": "Correctness",
+      "evidence_method": "Run `npm run verify:control-plane` and `npm test`; inspect historical ledger-prefix preservation.",
+      "id": "GLOBAL-CONTROL-PLANE",
+      "license_notes": "User-provided acceptance text.",
+      "priority": "critical",
+      "required": true,
+      "snapshot_sha256": "06664e51dc5072ec52d4358605c753a7c7961ffb78102e0a61d6b15d9ae5a753",
+      "source": "/home/ricardo/.codex/attachments/f4efcc33-cccd-4cb2-b3e8-f1925b82b08b/pasted-text-1.txt",
+      "source_type": "USER",
+      "target": "Append-only control-plane tails agree with state; strict verifier and complete npm suite pass with zero failures.",
+      "validity_notes": "Hard aggregate gates: missing or failing evidence cannot be offset by unrelated local scores or synthetic evidence.",
+      "version": "user-current"
+    },
+    {
+      "baseline": {
+        "actual": "Initial audit verdict is PROMOTION_BLOCKED / AAA_NOT_PROVEN; final-candidate external proof, independent reviews, and human decision are not established.",
+        "status": "FAIL"
+      },
+      "conditions": "All evidence must be current for the final candidate and use disposable local resources or authorized external environments only.",
+      "dimension": "Reproducibility",
+      "evidence_method": "Reproduce in a new checkout and validate package bytes/digests against the exact final candidate.",
+      "id": "GLOBAL-CANDIDATE",
+      "license_notes": "User-provided acceptance text.",
+      "priority": "critical",
+      "required": true,
+      "snapshot_sha256": "06664e51dc5072ec52d4358605c753a7c7961ffb78102e0a61d6b15d9ae5a753",
+      "source": "/home/ricardo/.codex/attachments/f4efcc33-cccd-4cb2-b3e8-f1925b82b08b/pasted-text-1.txt",
+      "source_type": "USER",
+      "target": "A clean checkout reproduces build and fingerprint; evidence package is intact and bound to the same final candidate.",
+      "validity_notes": "Hard aggregate gates: missing or failing evidence cannot be offset by unrelated local scores or synthetic evidence.",
+      "version": "user-current"
+    },
+    {
+      "baseline": {
+        "actual": "Initial audit verdict is PROMOTION_BLOCKED / AAA_NOT_PROVEN; final-candidate external proof, independent reviews, and human decision are not established.",
+        "status": "FAIL"
+      },
+      "conditions": "All evidence must be current for the final candidate and use disposable local resources or authorized external environments only.",
+      "dimension": "Data integrity",
+      "evidence_method": "Run per-slice checks on representative disposable PostgreSQL and reconcile the full 32-slice inventory.",
+      "id": "GLOBAL-DATA",
+      "license_notes": "User-provided acceptance text.",
+      "priority": "critical",
+      "required": true,
+      "snapshot_sha256": "06664e51dc5072ec52d4358605c753a7c7961ffb78102e0a61d6b15d9ae5a753",
+      "source": "/home/ricardo/.codex/attachments/f4efcc33-cccd-4cb2-b3e8-f1925b82b08b/pasted-text-1.txt",
+      "source_type": "USER",
+      "target": "All 24 cutovers complete; 0/32 collections remain SNAPSHOT_PRIMARY; per-slice parity, concurrency, replay, rollback, and restore are proven.",
+      "validity_notes": "Hard aggregate gates: missing or failing evidence cannot be offset by unrelated local scores or synthetic evidence.",
+      "version": "user-current"
+    },
+    {
+      "baseline": {
+        "actual": "Initial audit verdict is PROMOTION_BLOCKED / AAA_NOT_PROVEN; final-candidate external proof, independent reviews, and human decision are not established.",
+        "status": "FAIL"
+      },
+      "conditions": "All evidence must be current for the final candidate and use disposable local resources or authorized external environments only.",
+      "dimension": "API contracts",
+      "evidence_method": "Exercise every route through runtime HTTP boundary with valid and invalid response fixtures.",
+      "id": "GLOBAL-CONTRACTS",
+      "license_notes": "User-provided acceptance text.",
+      "priority": "critical",
+      "required": true,
+      "snapshot_sha256": "06664e51dc5072ec52d4358605c753a7c7961ffb78102e0a61d6b15d9ae5a753",
+      "source": "/home/ricardo/.codex/attachments/f4efcc33-cccd-4cb2-b3e8-f1925b82b08b/pasted-text-1.txt",
+      "source_type": "USER",
+      "target": "105/105 actual route responses validate against the 80/80 specific schemas.",
+      "validity_notes": "Hard aggregate gates: missing or failing evidence cannot be offset by unrelated local scores or synthetic evidence.",
+      "version": "user-current"
+    },
+    {
+      "baseline": {
+        "actual": "Initial audit verdict is PROMOTION_BLOCKED / AAA_NOT_PROVEN; final-candidate external proof, independent reviews, and human decision are not established.",
+        "status": "FAIL"
+      },
+      "conditions": "All evidence must be current for the final candidate and use disposable local resources or authorized external environments only.",
+      "dimension": "Supply chain and operations",
+      "evidence_method": "Run named gates on the same candidate; distinguish local synthetic checks from real external runs.",
+      "id": "GLOBAL-QUALIFICATION",
+      "license_notes": "User-provided acceptance text.",
+      "priority": "critical",
+      "required": true,
+      "snapshot_sha256": "06664e51dc5072ec52d4358605c753a7c7961ffb78102e0a61d6b15d9ae5a753",
+      "source": "/home/ricardo/.codex/attachments/f4efcc33-cccd-4cb2-b3e8-f1925b82b08b/pasted-text-1.txt",
+      "source_type": "USER",
+      "target": "Licenses, images, SBOM/scan/provenance, browsers/accessibility, observability, load/chaos, and DR pass in required environments.",
+      "validity_notes": "Hard aggregate gates: missing or failing evidence cannot be offset by unrelated local scores or synthetic evidence.",
+      "version": "user-current"
+    },
+    {
+      "baseline": {
+        "actual": "Initial audit verdict is PROMOTION_BLOCKED / AAA_NOT_PROVEN; final-candidate external proof, independent reviews, and human decision are not established.",
+        "status": "FAIL"
+      },
+      "conditions": "All evidence must be current for the final candidate and use disposable local resources or authorized external environments only.",
+      "dimension": "Independent review and authority",
+      "evidence_method": "Verify two distinct sealed review packets and exact fingerprint bindings, then inspect a real human decision receipt.",
+      "id": "GLOBAL-DECISION",
+      "license_notes": "User-provided acceptance text.",
+      "priority": "critical",
+      "required": true,
+      "snapshot_sha256": "06664e51dc5072ec52d4358605c753a7c7961ffb78102e0a61d6b15d9ae5a753",
+      "source": "/home/ricardo/.codex/attachments/f4efcc33-cccd-4cb2-b3e8-f1925b82b08b/pasted-text-1.txt",
+      "source_type": "USER",
+      "target": "Two independent reviews qualify the same frozen fingerprint and a human authority records an explicit decision; otherwise promotion stays blocked.",
+      "validity_notes": "Hard aggregate gates: missing or failing evidence cannot be offset by unrelated local scores or synthetic evidence.",
+      "version": "user-current"
+    }
+  ],
+  "frozen_at": "2026-09-23T04:27:35Z",
+  "goal": "Complete and reconcile MEL23-001..050 against AUD27, implement all locally authorized work, prepare external gates without simulating authority, and retain PROMOTION_BLOCKED unless every mandatory criterion has current evidence.",
+  "revision_log": [],
+  "schema_version": 1,
+  "sources": [
+    {
+      "license_notes": "Task constraints and global acceptance",
+      "location": "/home/ricardo/.codex/attachments/f4efcc33-cccd-4cb2-b3e8-f1925b82b08b/pasted-text-1.txt",
+      "snapshot_sha256": "06664e51dc5072ec52d4358605c753a7c7961ffb78102e0a61d6b15d9ae5a753",
+      "type": "USER",
+      "version": "user-provided task text"
+    },
+    {
+      "license_notes": "Initial audit snapshot; historical, not current proof",
+      "location": "docs/auditoria-repositorio-2026-09-23.md",
+      "snapshot_sha256": "b73fcf096aba157272cb4190964e894e4fc82d116eea6e8c5f5d20585fbe8fa3",
+      "type": "REPO",
+      "version": "2026-09-23"
+    },
+    {
+      "license_notes": "Execution framing",
+      "location": "docs/plano-executivo-2026-09-23.md",
+      "snapshot_sha256": "54c7a77131d109f7c3bda66ff1d5094fe0d624c4aa42eb1b07b88ba314ef426f",
+      "type": "REPO",
+      "version": "2026-09-23"
+    },
+    {
+      "license_notes": "Milestone order and gates",
+      "location": "docs/roadmap-2026-09-23.md",
+      "snapshot_sha256": "e70ab1e5e56c7b8e9171ab69238ceedd8fb699445149e4c65f0dbb38af1b1952",
+      "type": "REPO",
+      "version": "2026-09-23"
+    },
+    {
+      "license_notes": "Acceptance criteria MEL23-001..050",
+      "location": "docs/backlog-2026-09-23.md",
+      "snapshot_sha256": "af8ea7b2e112c174f36d815b0e75690644f855ddfa819102a29b08b2a724bb5a",
+      "type": "REPO",
+      "version": "2026-09-23"
+    },
+    {
+      "license_notes": "Stable MEL23 identifiers",
+      "location": "docs/melhorias-50-priorizadas-2026-09-23.md",
+      "snapshot_sha256": "4280bb7ffa7a7a5749e1915082b9da5760e44a008687ef4799d3f1ac904068c9",
+      "type": "REPO",
+      "version": "2026-09-23"
+    },
+    {
+      "license_notes": "Canonical operational AUD27 task boundaries",
+      "location": "docs/backlog-melhorias-cvg-aud27-2026-09-21.md",
+      "snapshot_sha256": "ae36a0235e6a15d968b964496c6563d24f84e802ae41905f62d7616a545e279a",
+      "type": "REPO",
+      "version": "2026-09-21"
+    }
+  ],
+  "version": "mel23-v1"
+}

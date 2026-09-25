@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import type { FastifyInstance, HTTPMethods, onRouteHookHandler } from "fastify";
-import { API_ROUTE_CATALOG, type ApiRouteDescriptor } from "@cvg/contracts";
+import { API_ROUTE_CATALOG, validateApiRouteCatalog, type ApiRouteDescriptor } from "@cvg/contracts";
 import { applicationPolicyFor } from "@cvg/agent-policy";
 
 export interface RuntimeRouteDescriptor {
@@ -8,6 +8,10 @@ export interface RuntimeRouteDescriptor {
   readonly path: string;
   readonly operation: string;
   readonly auth: string;
+  readonly requestSchema: string | null;
+  readonly responseSchema: string;
+  readonly idempotent: boolean;
+  readonly deprecation: string | null;
   readonly kind: "API" | "INFRASTRUCTURE" | "DERIVED_HEAD";
 }
 
@@ -25,16 +29,17 @@ export class RouteCatalogError extends Error {
 }
 
 const infrastructure: readonly RuntimeRouteDescriptor[] = [
-  { method: "OPTIONS", path: "*", operation: "cors.preflight", auth: "CORS_PREFLIGHT", kind: "INFRASTRUCTURE" },
-  { method: "GET", path: "/internal/metrics", operation: "metrics.scrape", auth: "INTERNAL_NETWORK", kind: "INFRASTRUCTURE" }
+  { method: "OPTIONS", path: "*", operation: "cors.preflight", auth: "CORS_PREFLIGHT", requestSchema: null, responseSchema: "CorsPreflightResponse", idempotent: false, deprecation: null, kind: "INFRASTRUCTURE" },
+  { method: "GET", path: "/internal/metrics", operation: "metrics.scrape", auth: "INTERNAL_NETWORK", requestSchema: null, responseSchema: "MetricsScrapeResponse", idempotent: false, deprecation: null, kind: "INFRASTRUCTURE" }
 ];
 
 /** Build expected metadata from the canonical contract, never from observed routes. */
 export function runtimeRouteCatalog(api: readonly ApiRouteDescriptor[] = API_ROUTE_CATALOG, includeInfrastructure = true): readonly RuntimeRouteDescriptor[] {
+  validateApiRouteCatalog(api);
   const result: RuntimeRouteDescriptor[] = [];
   for (const route of api) {
     if (route.auth !== "PUBLIC" && !applicationPolicyFor(route.operation)) throw new RouteCatalogError(`missing policy for ${route.operation}`);
-    result.push({ method: route.method, path: `/api/v1${route.path}`, operation: route.operation, auth: route.auth, kind: "API" });
+    result.push({ method: route.method, path: `/api/v1${route.path}`, operation: route.operation, auth: route.auth, requestSchema: route.requestSchema, responseSchema: route.responseSchema, idempotent: route.idempotent, deprecation: route.deprecation, kind: "API" });
   }
   if (includeInfrastructure) result.push(...infrastructure);
   for (const route of [...result]) if (route.method === "GET") result.push({ ...route, method: "HEAD", kind: "DERIVED_HEAD" });

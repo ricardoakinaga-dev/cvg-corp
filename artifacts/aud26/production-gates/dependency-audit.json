@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "label": "dependency audit",
+  "command": [
+    "npm",
+    "audit",
+    "--omit=dev"
+  ],
+  "capturedAt": "2026-09-22T00:29:29.121Z",
+  "exitStatus": 0,
+  "signal": null,
+  "stdout": "found 0 vulnerabilities\n",
+  "stderr": ""
+}

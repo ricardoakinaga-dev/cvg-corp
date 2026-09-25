@@ -6,6 +6,9 @@ groups:
         for: 2m
         labels:
           severity: critical
+          owner: platform-ops
+          channel: local-ops
+          window: 30d
           runbook: docs/runbooks/database-incident.md
         annotations:
           summary: CVG API is unavailable
@@ -14,6 +17,9 @@ groups:
         for: 2m
         labels:
           severity: critical
+          owner: worker-ops
+          channel: local-ops
+          window: 30d
           runbook: docs/runbooks/worker-backlog.md
         annotations:
           summary: CVG worker heartbeat is stale
@@ -22,6 +28,9 @@ groups:
         for: 5m
         labels:
           severity: warning
+          owner: worker-ops
+          channel: local-ops
+          window: 30d
           runbook: docs/runbooks/worker-backlog.md
         annotations:
           summary: CVG outbox backlog is above the proposed threshold
@@ -30,6 +39,9 @@ groups:
         for: 2m
         labels:
           severity: critical
+          owner: ai-ops
+          channel: local-ops
+          window: 30d
           runbook: docs/runbooks/deepseek-bridge-outage.md
         annotations:
           summary: DeepSeek runtime is unavailable
@@ -38,6 +50,9 @@ groups:
         for: 2m
         labels:
           severity: critical
+          owner: data-ops
+          channel: local-ops
+          window: 30d
           runbook: docs/runbooks/database-incident.md
         annotations:
           summary: CVG database dependency is unavailable
@@ -46,6 +61,9 @@ groups:
         for: 5m
         labels:
           severity: critical
+          owner: integration-ops
+          channel: local-ops
+          window: 30d
           runbook: docs/runbooks/provider-outage.md
         annotations:
           summary: CVG has external outcomes requiring reconciliation
@@ -54,6 +72,9 @@ groups:
         for: 5m
         labels:
           severity: warning
+          owner: integration-ops
+          channel: local-ops
+          window: 30d
           runbook: docs/runbooks/provider-outage.md
         annotations:
           summary: CVG external reconciliation backlog is non-zero
@@ -62,6 +83,55 @@ groups:
         for: 5m
         labels:
           severity: warning
+          owner: worker-ops
+          channel: local-ops
+          window: 30d
           runbook: docs/runbooks/worker-backlog.md
         annotations:
           summary: CVG has quarantined outbox messages
+      - alert: CvgApiErrorRatioHigh
+        expr: rate(cvg_api_errors_total[5m]) / clamp_min(rate(cvg_api_requests_total[5m]), 1) > 0.01
+        for: 5m
+        labels:
+          severity: critical
+          owner: platform-ops
+          channel: local-ops
+          window: 30d
+          runbook: docs/runbooks/observability-slo-alerts.md
+        annotations:
+          summary: CVG API error ratio exceeds the proposed SLO
+          description: This alert is a local rule contract; validate the current evidence window before escalation.
+      - alert: CvgApiP95LatencyHigh
+        expr: cvg_api_latency_ms{quantile="0.95"} > 300
+        for: 5m
+        labels:
+          severity: warning
+          owner: platform-ops
+          channel: local-ops
+          window: 30d
+          runbook: docs/runbooks/observability-slo-alerts.md
+        annotations:
+          summary: CVG API p95 latency exceeds the proposed target
+      - alert: CvgTelemetryDrops
+        expr: cvg_telemetry_dropped > 0
+        for: 2m
+        labels:
+          severity: warning
+          owner: observability-ops
+          channel: local-ops
+          window: 30d
+          runbook: docs/runbooks/observability-logs.md
+        annotations:
+          summary: CVG telemetry is dropping bounded records or sink writes
+      - alert: CvgRestoreRtoRpoUnknown
+        expr: cvg_restore_rto_rpo_known == 0
+        for: 5m
+        labels:
+          severity: critical
+          owner: dr-ops
+          channel: local-ops
+          window: 30d
+          runbook: docs/runbooks/restore.md
+        annotations:
+          summary: Current approved restore RTO/RPO evidence is unavailable
+          description: UNKNOWN is intentional until equivalent external backup and restore infrastructure is exercised.

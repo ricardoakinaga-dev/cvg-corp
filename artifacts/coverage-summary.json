@@ -1,0 +1,208 @@
+{
+  "schemaVersion": 2,
+  "policy": {
+    "global": {
+      "line": 80,
+      "branch": 65,
+      "functions": 75,
+      "statements": 80
+    },
+    "criticalAreas": {
+      "security": {
+        "paths": [
+          "packages/auth/src",
+          "packages/agent-policy/src"
+        ],
+        "line": 90,
+        "branch": 65,
+        "functions": 85,
+        "statements": 90
+      },
+      "contracts": {
+        "paths": [
+          "packages/contracts/src"
+        ],
+        "line": 85,
+        "branch": 60,
+        "functions": 70,
+        "statements": 85
+      },
+      "persistence": {
+        "paths": [
+          "packages/persistence/src"
+        ],
+        "line": 80,
+        "branch": 60,
+        "functions": 80,
+        "statements": 80
+      },
+      "domain": {
+        "paths": [
+          "packages/domain/src"
+        ],
+        "line": 90,
+        "branch": 75,
+        "functions": 85,
+        "statements": 90
+      }
+    }
+  },
+  "ratchetPolicy": {
+    "schemaVersion": 1,
+    "kind": "CVG-AUD27-COVERAGE-RATCHET",
+    "baselineSourceSha": "c990914148a8f375082cd12bbdb2ad20cfe1900f",
+    "baselineCapturedAt": "2026-09-22T12:22:00-03:00",
+    "fingerprintStatus": "OBSERVED_ONLY_UNFROZEN_UNTIL_AUD27-004",
+    "global": {
+      "line": 88.4,
+      "branch": 75.6,
+      "functions": 86.2,
+      "statements": 88.4
+    },
+    "criticalAreas": {
+      "security": {
+        "line": 93.98,
+        "branch": 71.43,
+        "functions": 90.32,
+        "statements": 93.98
+      },
+      "contracts": {
+        "line": 92.7,
+        "branch": 63.54,
+        "functions": 79.03,
+        "statements": 92.7
+      },
+      "persistence": {
+        "line": 84.2,
+        "branch": 66.2,
+        "functions": 84.7,
+        "statements": 84.2
+      },
+      "domain": {
+        "line": 95.1,
+        "branch": 78,
+        "functions": 93.1,
+        "statements": 95.1
+      }
+    }
+  },
+  "summary": {
+    "line": 88.48,
+    "branch": 76.71,
+    "functions": 88.08,
+    "statements": 88.48,
+    "statementMetric": {
+      "value": 88.48,
+      "source": "node-native-line-coverage",
+      "justification": "Node's native test-coverage report exposes line, branch, and function metrics but no statement count; statements is therefore an explicit line-coverage equivalent derived from the emitted coverage data, not an unreported native statement count."
+    }
+  },
+  "criticalAreas": {
+    "security": {
+      "files": 2,
+      "summary": {
+        "line": 93.98,
+        "branch": 71.43,
+        "functions": 90.32,
+        "statements": 93.98,
+        "statementMetric": {
+          "value": 93.98,
+          "source": "node-native-line-coverage",
+          "justification": "Node's native test-coverage report exposes line, branch, and function metrics but no statement count; statements is therefore an explicit line-coverage equivalent derived from the emitted coverage data, not an unreported native statement count."
+        }
+      },
+      "thresholds": {
+        "paths": [
+          "packages/auth/src",
+          "packages/agent-policy/src"
+        ],
+        "line": 90,
+        "branch": 65,
+        "functions": 85,
+        "statements": 90
+      }
+    },
+    "contracts": {
+      "files": 3,
+      "summary": {
+        "line": 92.7,
+        "branch": 63.54,
+        "functions": 79.03,
+        "statements": 92.7,
+        "statementMetric": {
+          "value": 92.7,
+          "source": "node-native-line-coverage",
+          "justification": "Node's native test-coverage report exposes line, branch, and function metrics but no statement count; statements is therefore an explicit line-coverage equivalent derived from the emitted coverage data, not an unreported native statement count."
+        }
+      },
+      "thresholds": {
+        "paths": [
+          "packages/contracts/src"
+        ],
+        "line": 85,
+        "branch": 60,
+        "functions": 70,
+        "statements": 85
+      }
+    },
+    "persistence": {
+      "files": 17,
+      "summary": {
+        "line": 85.29,
+        "branch": 68.18,
+        "functions": 86.55,
+        "statements": 85.29,
+        "statementMetric": {
+          "value": 85.29,
+          "source": "node-native-line-coverage",
+          "justification": "Node's native test-coverage report exposes line, branch, and function metrics but no statement count; statements is therefore an explicit line-coverage equivalent derived from the emitted coverage data, not an unreported native statement count."
+        }
+      },
+      "thresholds": {
+        "paths": [
+          "packages/persistence/src"
+        ],
+        "line": 80,
+        "branch": 60,
+        "functions": 80,
+        "statements": 80
+      }
+    },
+    "domain": {
+      "files": 6,
+      "summary": {
+        "line": 96.84,
+        "branch": 79.07,
+        "functions": 96.95,
+        "statements": 96.84,
+        "statementMetric": {
+          "value": 96.84,
+          "source": "node-native-line-coverage",
+          "justification": "Node's native test-coverage report exposes line, branch, and function metrics but no statement count; statements is therefore an explicit line-coverage equivalent derived from the emitted coverage data, not an unreported native statement count."
+        }
+      },
+      "thresholds": {
+        "paths": [
+          "packages/domain/src"
+        ],
+        "line": 90,
+        "branch": 75,
+        "functions": 85,
+        "statements": 90
+      }
+    }
+  },
+  "knownBadMutation": {
+    "id": "global-line-threshold-minus-0.01",
+    "result": "REJECTED",
+    "mutationTesting": "NOT_RUN",
+    "note": "This is a deterministic gate fixture, not a mutation-testing execution or mutation score."
+  },
+  "ratchet": {
+    "result": "PASS",
+    "failures": [],
+    "knownBad": "REJECTED"
+  },
+  "exitStatus": 0,
+  "signal": null
+}

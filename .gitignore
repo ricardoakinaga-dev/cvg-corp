@@ -15,6 +15,7 @@ artifacts/runs/**
 
 # Local control-plane caches; durable project state remains reviewable.
 .gauntlet/cache/
+.gauntlet/.writer.lock
 
 # Local agent-session state (opencode runtime); never part of the product.
 .opencode/

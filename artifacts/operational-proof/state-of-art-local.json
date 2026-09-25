@@ -1,15 +1,15 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-16T21:50:34.769Z",
-  "subjectSha": "0759f7d1c4bc84d3968436aaa64f9741308044b6",
+  "generatedAt": "2026-09-17T17:41:52.687Z",
+  "subjectSha": "141d7671f25c84a0d8f0ad34f649011e87b45269",
   "evidenceClass": "LOCAL_REAL",
   "status": "STATE_OF_ART_LOCAL_VERIFIED",
   "blockedGates": [
     {
       "gate": "verify:production (full browser matrix)",
-      "status": "BLOCKED_ENVIRONMENT",
-      "reason": "WebKit host libraries are missing (libgstcodecparsers-1.0.so.0); the full Playwright matrix cannot launch WebKit on this host",
-      "handling": "The supported local subset test:e2e:smoke (Chromium/Firefox) runs here; the full production structural gate remains a CI/staging requirement with `npx playwright install --with-deps`."
+      "status": "NOT_RUN",
+      "reason": "The full browser matrix is not included in this composition; host library availability is not inferred",
+      "handling": "This composition runs test:e2e:smoke:serial. Record separately executed full-matrix and production verification with their own current evidence."
     },
     {
       "gate": "verify:deepseek-real / verify:provider-real / verify:staging / verify:load",
@@ -23,7 +23,7 @@
       "gate": "typecheck",
       "status": "PASS",
       "exitCode": 0,
-      "seconds": 8.3
+      "seconds": 7.2
     },
     {
       "gate": "lint",
@@ -35,7 +35,7 @@
       "gate": "test",
       "status": "PASS",
       "exitCode": 0,
-      "seconds": 18.7
+      "seconds": 18.4
     },
     {
       "gate": "test:contract",
@@ -53,7 +53,7 @@
       "gate": "test:database",
       "status": "PASS",
       "exitCode": 0,
-      "seconds": 13
+      "seconds": 12.8
     },
     {
       "gate": "test:fault",
@@ -65,7 +65,7 @@
       "gate": "build",
       "status": "PASS",
       "exitCode": 0,
-      "seconds": 8.4
+      "seconds": 7.6
     },
     {
       "gate": "verify:architecture",
@@ -77,7 +77,7 @@
       "gate": "verify:pdp-universal",
       "status": "PASS",
       "exitCode": 0,
-      "seconds": 3.7
+      "seconds": 3.4
     },
     {
       "gate": "verify:authoritative-writes",
@@ -101,7 +101,7 @@
       "gate": "verify:agent-runtime",
       "status": "PASS",
       "exitCode": 0,
-      "seconds": 3.5
+      "seconds": 3.4
     },
     {
       "gate": "verify:embedded-harness",
@@ -113,19 +113,19 @@
       "gate": "verify:agent-security",
       "status": "PASS",
       "exitCode": 0,
-      "seconds": 1.7
+      "seconds": 1.6
     },
     {
       "gate": "verify:plugins",
       "status": "PASS",
       "exitCode": 0,
-      "seconds": 0.4
+      "seconds": 0.3
     },
     {
       "gate": "verify:skills",
       "status": "PASS",
       "exitCode": 0,
-      "seconds": 0.4
+      "seconds": 0.3
     },
     {
       "gate": "verify:agent-evals",
@@ -137,19 +137,19 @@
       "gate": "verify:ai-disabled",
       "status": "PASS",
       "exitCode": 0,
-      "seconds": 0.9
+      "seconds": 0.8
     },
     {
       "gate": "verify:agent-runtime-smoke",
       "status": "PASS",
       "exitCode": 0,
-      "seconds": 0.6
+      "seconds": 0.5
     },
     {
       "gate": "verify:agent-chaos",
       "status": "PASS",
       "exitCode": 0,
-      "seconds": 1.7
+      "seconds": 1.6
     },
     {
       "gate": "benchmark:agent-runtime",
@@ -161,19 +161,19 @@
       "gate": "verify:evidence-snapshot",
       "status": "PASS",
       "exitCode": 0,
-      "seconds": 0.3
+      "seconds": 0.2
     },
     {
       "gate": "test:e2e:smoke:serial",
       "status": "PASS",
       "exitCode": 0,
-      "seconds": 510.7
+      "seconds": 532.4
     },
     {
       "gate": "verify:evidence-snapshot",
       "status": "PASS",
       "exitCode": 0,
-      "seconds": 0.3
+      "seconds": 0.2
     },
     {
       "gate": "verify:static",

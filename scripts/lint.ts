@@ -1,7 +1,7 @@
 import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
 
-const roots = ["apps", "packages", "scripts", "db", "docker"];
+const roots = ["apps", "packages", "scripts", "tests/e2e", "db", "docker"];
 const sourceExtensions = /\.(ts|tsx|sql|css|json)$/;
 const ignoredDirectories = new Set([".git", "artifacts", "dist", "node_modules", ".vite"]);
 const failures: string[] = [];
@@ -26,6 +26,7 @@ for (const path of files.sort()) {
   if (/-----BEGIN [A-Z ]*PRIVATE KEY-----|\bAKIA[0-9A-Z]{16}\b|\bsk-[A-Za-z0-9]{20,}\b|\bgh[pousr]_[A-Za-z0-9]{20,}\b/.test(content)) failures.push(`${path}: credential-like literal is forbidden`);
   if (/\b(?:localStorage|sessionStorage)\s*[.[]/.test(content)) failures.push(`${path}: browser storage is forbidden for the offline/composer contract`);
   if (path.startsWith("packages/domain/") && /from\s+["']@cvg\/(?:harness|harness-adapters|integrations|agent-runtime)["']/.test(content)) failures.push(`${path}: domain must not import runtime/provider/integration packages`);
+  if (path.startsWith("tests/e2e/") && /test\.skip\s*\([\s\S]{0,240}project\.name[\s\S]{0,120}webkit/i.test(content)) failures.push(`${path}: WebKit must be executed explicitly; do not skip the browser unconditionally`);
 }
 
 const apiSource = await readFile("apps/api/src/app.ts", "utf8");

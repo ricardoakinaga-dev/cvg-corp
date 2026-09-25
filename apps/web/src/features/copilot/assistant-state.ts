@@ -95,6 +95,8 @@ export function failureMessageForError(error: unknown): string {
         return "Limite de uso de IA atingido para este escopo.";
       case "POLICY_DENIED":
         return "Operação não permitida para o perfil, escopo ou recurso atuais.";
+      case "DIVERGENT":
+        return "Os identificadores informados não correspondem ao mesmo recurso.";
       case "OUTCOME_UNKNOWN":
         return "Resultado externo em reconciliação; nenhum retry cego será feito.";
       case "DEPENDENCY_UNAVAILABLE":

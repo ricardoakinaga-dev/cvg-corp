@@ -24,6 +24,16 @@ processors:
         action: delete
       - key: credential
         action: delete
+      - key: authorization
+        action: delete
+      - key: cookie
+        action: delete
+      - key: http.url
+        action: delete
+      - key: http.query
+        action: delete
+      - key: db.statement
+        action: delete
       - key: prompt
         action: delete
       - key: clinical.content

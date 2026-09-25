@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import type { ApiClient } from "../../api/client";
 import { Icon } from "../../components/Icon";
-import { PageHeader, StatePanel, StatusBadge } from "../../components/ui";
+import { Dialog, PageHeader, StatePanel, StatusBadge } from "../../components/ui";
 import { formatDate } from "../../state/formatters";
 import type { ContextOption } from "../../state/types";
 
@@ -23,34 +23,6 @@ type DialogState =
   | null;
 
 const PRIORITY_LABELS: Record<string, string> = { ROUTINE: "Rotina", URGENT: "Prioridade", EMERGENCY: "Emergência" };
-
-function Dialog({ titleId, title, description, onClose, closeDisabled = false, children }: { titleId: string; title: string; description: string; onClose: () => void; closeDisabled?: boolean; children: ReactNode }) {
-  const cardRef = useRef<HTMLElement | null>(null);
-  const returnFocusRef = useRef<HTMLElement | null>(null);
-  useEffect(() => {
-    returnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const target = cardRef.current?.querySelector<HTMLElement>("input, select, textarea") ?? cardRef.current?.querySelector<HTMLElement>("button");
-    target?.focus();
-    return () => returnFocusRef.current?.focus();
-  }, []);
-  useEffect(() => {
-    const focusable = () => Array.from(cardRef.current?.querySelectorAll<HTMLElement>("button, select, input, textarea, [href]") ?? []).filter((element) => !element.hasAttribute("disabled") && element.getAttribute("aria-hidden") !== "true");
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") { if (!closeDisabled) onClose(); return; }
-      if (event.key !== "Tab") return;
-      const items = focusable();
-      const first = items[0];
-      const last = items[items.length - 1];
-      if (!first || !last) return;
-      if (!cardRef.current?.contains(document.activeElement)) { event.preventDefault(); first.focus(); return; }
-      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
-      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [closeDisabled, onClose]);
-  return <div className="dialog-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !closeDisabled) onClose(); }}><section ref={cardRef} className="dialog-card" style={{ maxHeight: "min(88vh, 760px)", overflowY: "auto" }} role="dialog" aria-modal="true" aria-labelledby={titleId} aria-describedby={`${titleId}-description`}><div className="dialog-head"><div><span className="eyebrow">JORNADA DE AGENDA</span><h2 id={titleId}>{title}</h2></div><button className="icon-button" type="button" aria-label="Fechar" onClick={onClose} disabled={closeDisabled}><Icon name="close" size={17} /></button></div><p id={`${titleId}-description`} className="dialog-description">{description}</p>{children}</section></div>;
-}
 
 function formatDayLabel(date: Date): string {
   const day = new Intl.DateTimeFormat("pt-BR", { day: "2-digit" }).format(date);
@@ -134,9 +106,10 @@ export function Agenda({ client, context, notify }: { client: ApiClient; context
   }, [client, context, mode]);
 
   useEffect(() => {
+    const requestVersionRef = requestVersion;
     activeLoad.current = load;
     void load();
-    return () => { activeLoad.current = null; requestVersion.current++; };
+    return () => { activeLoad.current = null; requestVersionRef.current++; };
   }, [load]);
   useEffect(() => {
     const nextDay = new Date(clock.getFullYear(), clock.getMonth(), clock.getDate() + 1);
@@ -347,7 +320,7 @@ export function Agenda({ client, context, notify }: { client: ApiClient; context
         })}</tbody></table></div>}
       </section>
 
-      {dialog?.kind === "create" && <Dialog titleId="agenda-create-title" title="Novo horário" description="A reserva ocupa profissional e recurso na janela escolhida; conflitos são negados pelo servidor." onClose={closeDialog} closeDisabled={submitting}>
+      {dialog?.kind === "create" && <Dialog eyebrow="JORNADA DE AGENDA" titleId="agenda-create-title" title="Novo horário" description="A reserva ocupa profissional e recurso na janela escolhida; conflitos são negados pelo servidor." onClose={closeDialog} closeDisabled={submitting}>
         <form onSubmit={submitCreate} className="dialog-form">
           <label htmlFor="agenda-patient">Paciente<select id="agenda-patient" value={patientId} onChange={(event) => setPatientId(event.target.value)} required><option value="">Selecione…</option>{patients.map((patient) => <option key={patient.id} value={patient.id}>{patient.name} · {patient.species}</option>)}</select></label>
           <label htmlFor="agenda-service">Serviço<select id="agenda-service" value={serviceId} onChange={(event) => setServiceId(event.target.value)} required><option value="">Selecione…</option>{(options?.services ?? []).map((service) => <option key={service.id} value={service.id}>{service.name} · {service.durationMinutes} min</option>)}</select></label>
@@ -363,14 +336,14 @@ export function Agenda({ client, context, notify }: { client: ApiClient; context
         </form>
       </Dialog>}
 
-      {dialog?.kind === "confirm" && <Dialog titleId="agenda-confirm-title" title="Confirmar reserva" description="A confirmação marca a reserva como confirmada e registra o receipt; repetir a mesma chave não duplica." onClose={closeDialog} closeDisabled={submitting}>
+      {dialog?.kind === "confirm" && <Dialog eyebrow="JORNADA DE AGENDA" titleId="agenda-confirm-title" title="Confirmar reserva" description="A confirmação marca a reserva como confirmada e registra o receipt; repetir a mesma chave não duplica." onClose={closeDialog} closeDisabled={submitting}>
         <form onSubmit={submitConfirm} className="dialog-form">
           {formError && <div className="inline-error" role="alert"><Icon name="alert" size={16} />{formError}</div>}
           <div className="dialog-foot"><span className="table-sub">{dialog.appointment.patient?.name ?? "Paciente"} · {formatDate(dialog.appointment.startsAt)}</span><button className="button button-ghost" type="button" onClick={closeDialog} disabled={submitting}>Cancelar</button><button className="button button-primary" type="submit" disabled={submitting}>{submitting ? "Confirmando…" : "Confirmar reserva"}</button></div>
         </form>
       </Dialog>}
 
-      {dialog?.kind === "reschedule" && <Dialog titleId="agenda-reschedule-title" title="Reagendar reserva" description="A nova janela é validada contra profissional e recurso; conflitos são negados com o estado atual preservado." onClose={closeDialog} closeDisabled={submitting}>
+      {dialog?.kind === "reschedule" && <Dialog eyebrow="JORNADA DE AGENDA" titleId="agenda-reschedule-title" title="Reagendar reserva" description="A nova janela é validada contra profissional e recurso; conflitos são negados com o estado atual preservado." onClose={closeDialog} closeDisabled={submitting}>
         <form onSubmit={submitReschedule} className="dialog-form">
           <label htmlFor="agenda-reschedule-date">Nova data<input id="agenda-reschedule-date" type="date" value={date} onChange={(event) => setDate(event.target.value)} required /></label>
           <label htmlFor="agenda-reschedule-time">Novo início<input id="agenda-reschedule-time" type="time" value={time} onChange={(event) => setTime(event.target.value)} required /></label>
@@ -379,7 +352,7 @@ export function Agenda({ client, context, notify }: { client: ApiClient; context
         </form>
       </Dialog>}
 
-      {dialog?.kind === "cancel" && <Dialog titleId="agenda-cancel-title" title="Cancelar reserva" description="O cancelamento é auditado com motivo. Se o paciente já estiver em triagem ou atendimento, a fila deve ser concluída antes." onClose={closeDialog} closeDisabled={submitting}>
+      {dialog?.kind === "cancel" && <Dialog eyebrow="JORNADA DE AGENDA" titleId="agenda-cancel-title" title="Cancelar reserva" description="O cancelamento é auditado com motivo. Se o paciente já estiver em triagem ou atendimento, a fila deve ser concluída antes." onClose={closeDialog} closeDisabled={submitting}>
         <form onSubmit={submitCancel} className="dialog-form">
           <label htmlFor="agenda-cancel-reason">Motivo<input id="agenda-cancel-reason" value={cancelReason} onChange={(event) => setCancelReason(event.target.value)} required minLength={3} maxLength={300} /></label>
           {formError && <div className="inline-error" role="alert"><Icon name="alert" size={16} />{formError}</div>}
@@ -387,7 +360,7 @@ export function Agenda({ client, context, notify }: { client: ApiClient; context
         </form>
       </Dialog>}
 
-      {dialog?.kind === "triage" && <Dialog titleId="agenda-triage-title" title="Triagem" description="A prioridade fica registrada com autoria e pode ser revista enquanto o paciente está na fila." onClose={closeDialog} closeDisabled={submitting}>
+      {dialog?.kind === "triage" && <Dialog eyebrow="JORNADA DE AGENDA" titleId="agenda-triage-title" title="Triagem" description="A prioridade fica registrada com autoria e pode ser revista enquanto o paciente está na fila." onClose={closeDialog} closeDisabled={submitting}>
         <form onSubmit={submitTriage} className="dialog-form">
           <label htmlFor="agenda-priority">Prioridade<select id="agenda-priority" value={priority} onChange={(event) => setPriority(event.target.value as typeof priority)}><option value="ROUTINE">Rotina</option><option value="URGENT">Prioridade</option><option value="EMERGENCY">Emergência</option></select></label>
           {formError && <div className="inline-error" role="alert"><Icon name="alert" size={16} />{formError}</div>}
@@ -395,7 +368,7 @@ export function Agenda({ client, context, notify }: { client: ApiClient; context
         </form>
       </Dialog>}
 
-      {dialog?.kind === "handoff" && <Dialog titleId="agenda-handoff-title" title="Handoff para atendimento" description="Abre o atendimento clínico vinculado à reserva e move a fila para em atendimento; repetir a chave devolve o mesmo atendimento." onClose={closeDialog} closeDisabled={submitting}>
+      {dialog?.kind === "handoff" && <Dialog eyebrow="JORNADA DE AGENDA" titleId="agenda-handoff-title" title="Handoff para atendimento" description="Abre o atendimento clínico vinculado à reserva e move a fila para em atendimento; repetir a chave devolve o mesmo atendimento." onClose={closeDialog} closeDisabled={submitting}>
         <form onSubmit={submitHandoff} className="dialog-form">
           <label htmlFor="agenda-chief">Queixa principal<input id="agenda-chief" value={chiefComplaint} onChange={(event) => setChiefComplaint(event.target.value)} required minLength={3} maxLength={500} /></label>
           <label htmlFor="agenda-urgency">Urgência<select id="agenda-urgency" value={urgency} onChange={(event) => setUrgency(event.target.value as typeof urgency)}><option value="ROUTINE">Rotina</option><option value="URGENT">Prioridade</option><option value="EMERGENCY">Emergência</option></select></label>

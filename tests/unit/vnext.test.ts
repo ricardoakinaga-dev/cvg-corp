@@ -218,6 +218,8 @@ test("typed configuration rejects unknown CVG keys and insecure production", () 
     NODE_ENV: "production", CVG_HOST: "0.0.0.0", CVG_DEMO_MODE: "false", CVG_WEB_ORIGIN: "https://example.test", CVG_RELEASE_SHA: "0123456789abcdef0123456789abcdef01234567", CVG_RELEASE_ARTIFACT_DIGEST: "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef", CVG_STORAGE: "postgres", DATABASE_URL: "postgresql://cvg_runtime:password@db.example.test/cvg", CVG_SECRET_PROVIDER: "file", CVG_AUTH_MFA_MODE: "required", CVG_DEEPSEEK_RUNTIME_ENABLED: "true", CVG_DEEPSEEK_BASE_URL: "https://harness.example.test", CVG_DEEPSEEK_EXPECTED_ENGINE_COMMIT: "abcdefabcdefabcdefabcdefabcdefabcdefabcd", CVG_DEEPSEEK_EXPECTED_MANIFEST_VERSION: "approved", CVG_DEEPSEEK_BEARER_TOKEN_REF: "harness.token", CVG_DEEPSEEK_CONTEXT_SIGNING_SECRET_REF: "harness.context", CVG_RATE_LIMIT_BACKEND: "distributed", CVG_TRUST_PROXY: "true", CVG_TRUSTED_PROXY_IPS: "loopback"
   };
   assert.doesNotThrow(() => loadCvgConfig(production));
+  assert.deepEqual(loadCvgConfig({ ...production, CVG_MESSAGING_BLOCKED_IPV6_PREFIXES: "2001:4860:100::/48, 64:ff9b::/96" }).messagingBlockedIpv6Prefixes, ["2001:4860:100::/48", "64:ff9b::/96"]);
+  assert.throws(() => loadCvgConfig({ ...production, CVG_MESSAGING_BLOCKED_IPV6_PREFIXES: "not-a-cidr" }), (error: unknown) => error instanceof ConfigError);
   assert.deepEqual(loadCvgConfig({ ...production, CVG_TRUSTED_PROXY_IPS: "10.0.0.0/8,loopback" }).trustedProxyIps, ["10.0.0.0/8", "loopback"]);
   assert.throws(() => loadCvgConfig({ ...production, CVG_TRUSTED_PROXY_IPS: "" }), (error: unknown) => error instanceof ConfigError);
   assert.throws(() => loadCvgConfig({ ...production, CVG_DEEPSEEK_EXPECTED_ENGINE_COMMIT: "0000000000000000000000000000000000000000" }), (error: unknown) => error instanceof ConfigError);
@@ -240,11 +242,13 @@ test("worker configuration has a role-specific production contract", () => {
     CVG_SECRET_PROVIDER: "file",
     CVG_MESSAGING_PROVIDER_ENDPOINT: "https://provider.example.test",
     CVG_MESSAGING_PROVIDER_ALLOWED_HOSTS: "provider.example.test",
+    CVG_MESSAGING_BLOCKED_IPV6_PREFIXES: "2001:4860:100::/48",
     CVG_MESSAGING_CREDENTIAL_REF: "provider.credential"
   });
   assert.equal(worker.nodeEnv, "production");
   assert.equal(worker.storageMode, "postgres");
   assert.equal(worker.workerSinkMode, "enabled");
+  assert.deepEqual(worker.messagingBlockedIpv6Prefixes, ["2001:4860:100::/48"]);
   assert.throws(() => loadWorkerConfig({
     NODE_ENV: "production",
     CVG_STORAGE: "postgres",

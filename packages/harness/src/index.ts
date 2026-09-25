@@ -153,7 +153,7 @@ export class GovernedHarness {
   }
 
   createSession(context: CvgContext, input: Pick<AiTurnInput, "purpose" | "patientId" | "encounterId">): AiSession {
-    enforceApplicationPolicy(context, `ai.turn.${input.purpose}`, { resourceId: input.patientId ?? input.encounterId });
+    enforceApplicationPolicy(context, `ai.turn.${input.purpose}`, this.authorizedTurnResource(context, input));
     this.store.requireRole(context, ["admin", "veterinario", "recepcao"], "ai:session");
     const session: AiSession = { id: makeId(), organizationId: context.organizationId, actorId: context.actorId, unitId: context.unitId, workspaceId: context.workspaceId, patientId: input.patientId, encounterId: input.encounterId, purpose: input.purpose, engineCommit: DSH_ENGINE_COMMIT, profileDigest: this.profileDigest, status: "ACTIVE", createdAt: now() };
     return this.store.persistAiSession(session);
@@ -171,7 +171,7 @@ export class GovernedHarness {
 
   async executeTurn(context: CvgContext, input: AiTurnInput, approvalId: OpaqueId | null = null): Promise<HarnessTurnResult> {
     this.store.validateContext(context);
-    enforceApplicationPolicy(context, `ai.turn.${input.purpose}`, { resourceId: input.resourceId ?? input.encounterId ?? input.patientId });
+    enforceApplicationPolicy(context, `ai.turn.${input.purpose}`, this.authorizedTurnResource(context, input));
     const executionKey = this.executionKey(context, input);
     const existing = this.findExistingTurn(context, input);
     if (existing) {
@@ -190,7 +190,7 @@ export class GovernedHarness {
   }
 
   private async executeTurnOnce(context: CvgContext, input: AiTurnInput, approvalId: OpaqueId | null): Promise<HarnessTurnResult> {
-    enforceApplicationPolicy(context, `ai.turn.${input.purpose}`, { resourceId: input.resourceId ?? input.encounterId ?? input.patientId });
+    enforceApplicationPolicy(context, `ai.turn.${input.purpose}`, this.authorizedTurnResource(context, input));
     const session = this.getOrCreateSession(context, input);
     if (!isInContext(session, context) || session.patientId !== input.patientId || session.encounterId !== input.encounterId || session.purpose !== input.purpose) throw new DomainError("POLICY_DENIED", "O contexto do turno não pode mudar a finalidade, o escopo, o paciente ou atendimento de uma sessão existente.", 403);
     const prompt = input.prompt;
@@ -427,6 +427,26 @@ export class GovernedHarness {
     };
     if (approval) request.approval = { approvalId: approval.id, actorId: approval.actorId, approverId: approval.decidedBy, requestDigest: approval.requestDigest, policyRevision: approval.policyRevision, expiresAt: approval.expiresAt, oneShot: true, consumed: approval.decision === "consumed" };
     return request;
+  }
+
+  private authorizedTurnResource(context: CvgContext, input: { resourceId?: OpaqueId | null | undefined; encounterId?: OpaqueId | null | undefined; patientId?: OpaqueId | null | undefined; requestedTool?: string | null | undefined }): { resourceId: OpaqueId | null; resourceUnitId?: OpaqueId | null; resourceWorkspaceId?: OpaqueId | null } {
+    const resolution = this.store.resolveAgentResource({ resourceId: input.resourceId ?? null, encounterId: input.encounterId ?? null, patientId: input.patientId ?? null });
+    // The legacy harness also exercises stock and finance tools whose opaque
+    // resource IDs are not patient/encounter IDs. Resolve only the identity
+    // families governed by this resolver, while still rejecting contradictions.
+    const shouldResolve = (input.patientId !== undefined && input.patientId !== null)
+      || (input.encounterId !== undefined && input.encounterId !== null)
+      || input.requestedTool === "cvg.patient.read"
+      || input.requestedTool === "cvg.clinical.draft";
+    if (!shouldResolve) return { resourceId: input.resourceId ?? null };
+    const hasResource = (input.resourceId !== undefined && input.resourceId !== null)
+      || (input.encounterId !== undefined && input.encounterId !== null)
+      || (input.patientId !== undefined && input.patientId !== null);
+    if (!hasResource) return { resourceId: null };
+    if (resolution.status === "DIVERGENT") throw new DomainError("DIVERGENT", "Os identificadores do recurso não correspondem entre si.", 409);
+    if (resolution.status !== "RESOLVED") throw new DomainError("NOT_FOUND", "Recurso não encontrado.", 404);
+    if (!isInContext(resolution.resource, context)) throw new DomainError("POLICY_DENIED", "O recurso não pertence ao contexto autenticado.", 403);
+    return { resourceId: resolution.resource.resourceId, resourceUnitId: resolution.resource.unitId, resourceWorkspaceId: resolution.resource.workspaceId };
   }
 
   private estimateInput(prompt: string): number {

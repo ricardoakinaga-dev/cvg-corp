@@ -2,10 +2,10 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { CvgStore, DomainError } from "@cvg/domain";
 import type { CvgContext } from "@cvg/contracts";
-import { EmbeddedAgentRuntime } from "@cvg/embedded-agent-runtime";
+import { EmbeddedAgentRuntime, type EmbeddedToolExecutor } from "@cvg/embedded-agent-runtime";
 import { MemoryAgentSessionStore } from "@cvg/agent-session";
 import { MockModelProvider, type MockModelStep } from "@cvg/model-adapters";
-import type { ModelProviderCapabilities, ModelResponse } from "@cvg/model-runtime";
+import type { ModelProviderCapabilities, ModelRequest, ModelResponse } from "@cvg/model-runtime";
 
 const DIGEST = "a".repeat(64);
 
@@ -30,6 +30,7 @@ function makeRuntime(store: CvgStore, script: MockModelStep[], options: {
   controls?: () => { aiEnabled: boolean; safeMode: boolean; disabledProviders: string[]; disabledTools: string[]; disabledPlugins: string[] };
   sessionStore?: MemoryAgentSessionStore;
   instanceId?: string;
+  toolExecutor?: EmbeddedToolExecutor;
 } = {}) {
   const provider = new MockModelProvider({
     script,
@@ -42,6 +43,7 @@ function makeRuntime(store: CvgStore, script: MockModelStep[], options: {
     ...(options.sessionStore ? { sessionStore: options.sessionStore } : {}),
     ...(options.controls ? { controls: options.controls } : {}),
     ...(options.instanceId ? { instanceId: options.instanceId } : {}),
+    ...(options.toolExecutor ? { toolExecutor: options.toolExecutor } : {}),
     runtimeCommit: "test-commit"
   });
   return { runtime, provider };
@@ -99,6 +101,25 @@ test("embedded runtime executes a read-only tool through the governed gateway", 
   assert.equal(result.turn.status, "COMPLETED");
   const successfulReceipts = [...store.commandReceipts.values()].filter((receipt) => receipt.operation === "tool.patients.read" && receipt.status === "SUCCEEDED");
   assert.equal(successfulReceipts.length, 1);
+});
+
+test("embedded runtime rejects divergent identities before provider dispatch", async () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const ctx = veterinarian(store);
+  const patient = inScopePatient(store, ctx);
+  assert.ok(patient, "fixture patient must exist in scope");
+  const encounter = store.createEncounter(ctx, { patientId: patient.id, appointmentId: null, chiefComplaint: "identidade divergente", urgency: "ROUTINE" });
+  let providerCalls = 0;
+  const { runtime } = makeRuntime(store, [() => {
+    providerCalls += 1;
+    return message("não deveria executar");
+  }]);
+
+  await assert.rejects(
+    runtime.executeTurn(ctx, { sessionId: null, prompt: "leia o paciente", purpose: "OPERATIONS", patientId: patient.id, encounterId: encounter.id, resourceId: patient.id, requestedTool: "cvg.patient.read", approvalId: null, idempotencyKey: "embedded-divergent-identity-1" }),
+    (error: unknown) => error instanceof DomainError && error.code === "DIVERGENT"
+  );
+  assert.equal(providerCalls, 0, "divergent identity must stop before provider dispatch");
 });
 
 test("embedded runtime pauses for approval, resumes via checkpoint and consumes the approval once", async () => {
@@ -267,6 +288,106 @@ test("embedded runtime denies concurrent execution of the same session across in
     runtimeB.executeTurn(ctx, { sessionId: created.id, prompt: "concorrente", purpose: "SUMMARY", patientId: null, encounterId: null, requestedTool: null, approvalId: null, idempotencyKey: "embedded-lease-1" }),
     (error: unknown) => error instanceof DomainError && error.code === "ADMISSION_IN_PROGRESS"
   );
+});
+
+test("CVG-AUD19-008: different idempotency keys cannot overlap on the same session", async () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const ctx = veterinarian(store);
+  const sessionStore = new MemoryAgentSessionStore();
+  const { runtime } = makeRuntime(store, [message("primeira"), message("segunda")], { sessionStore, instanceId: "mutex-instance" });
+  const created = await runtime.createSession(ctx, { purpose: "SUMMARY", patientId: null, encounterId: null });
+  const base = { sessionId: created.id, prompt: "execução concorrente", purpose: "SUMMARY" as const, patientId: null, encounterId: null, requestedTool: null, approvalId: null };
+  const outcomes = await Promise.allSettled([
+    runtime.executeTurn(ctx, { ...base, idempotencyKey: "mutex-key-a" }),
+    runtime.executeTurn(ctx, { ...base, idempotencyKey: "mutex-key-b" })
+  ]);
+  const fulfilled = outcomes.filter((outcome) => outcome.status === "fulfilled");
+  const rejected = outcomes.filter((outcome) => outcome.status === "rejected");
+  assert.equal(fulfilled.length, 1, JSON.stringify(outcomes.map((outcome) => outcome.status)));
+  assert.equal(rejected.length, 1);
+  const rejection = rejected[0] as PromiseRejectedResult;
+  assert.ok(rejection.reason instanceof DomainError && rejection.reason.code === "ADMISSION_IN_PROGRESS", String(rejection.reason));
+  const turns = [...store.aiTurns.values()].filter((turn) => turn.sessionId === created.id);
+  assert.equal(turns.length, 1, "only the lease holder may persist a turn");
+});
+
+test("CVG-AUD19-008: a lost fence stops the next tool dispatch before any effect", async () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const ctx = veterinarian(store);
+  const patient = inScopePatient(store, ctx);
+  assert.ok(patient);
+  const sessionStore = new MemoryAgentSessionStore();
+  const executions: string[] = [];
+  const toolExecutor: EmbeddedToolExecutor = async ({ tool }) => {
+    executions.push(tool.name);
+    return { status: "COMPLETED", resultDigest: DIGEST, resultPreview: `executado ${tool.name}` };
+  };
+  const { runtime, provider } = makeRuntime(store, [toolCall("cvg.patient.read", { id: patient.id }), toolCall("cvg.agenda.read", {})], { sessionStore, instanceId: "fence-owner", toolExecutor });
+  const created = await runtime.createSession(ctx, { purpose: "SUMMARY", patientId: patient.id, encounterId: null });
+  const originalComplete = provider.complete.bind(provider);
+  let calls = 0;
+  provider.complete = async (request: ModelRequest) => {
+    calls += 1;
+    if (calls === 2) {
+      // The runtime holds fence 1; release it and let another owner take over
+      // with a higher fence while the turn is still running.
+      await sessionStore.releaseLease({ sessionId: String(created.id), organizationId: String(ctx.organizationId), ownerId: "fence-owner", fence: 1 });
+      const stolen = await sessionStore.acquireLease({ sessionId: String(created.id), organizationId: String(ctx.organizationId), ownerId: "fence-thief", ttlMs: 60_000 });
+      assert.equal(stolen?.fence, 2);
+    }
+    return originalComplete(request);
+  };
+  await assert.rejects(
+    runtime.executeTurn(ctx, { sessionId: created.id, prompt: "ler paciente e agenda", purpose: "SUMMARY", patientId: patient.id, encounterId: null, requestedTool: null, approvalId: null, idempotencyKey: "fence-loss-1" }),
+    (error: unknown) => error instanceof DomainError && error.code === "DENIED_STALE_FENCE"
+  );
+  assert.equal(executions.length, 1, `only the pre-theft tool may run: ${executions.join(",")}`);
+  assert.equal(executions[0], "cvg.patient.read");
+});
+
+test("CVG-AUD19-008: a fence stolen before the next provider call stops the model egress", async () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const ctx = veterinarian(store);
+  const patient = inScopePatient(store, ctx);
+  assert.ok(patient);
+  const sessionStore = new MemoryAgentSessionStore();
+  const executions: string[] = [];
+  const toolExecutor: EmbeddedToolExecutor = async ({ tool }) => {
+    executions.push(tool.name);
+    // The theft happens between the first effect and the next model call.
+    await sessionStore.releaseLease({ sessionId: String(session.id), organizationId: String(ctx.organizationId), ownerId: "provider-fence-owner", fence: 1 });
+    const stolen = await sessionStore.acquireLease({ sessionId: String(session.id), organizationId: String(ctx.organizationId), ownerId: "provider-fence-thief", ttlMs: 60_000 });
+    assert.equal(stolen?.fence, 2);
+    return { status: "COMPLETED", resultDigest: DIGEST, resultPreview: `executado ${tool.name}` };
+  };
+  const { runtime, provider } = makeRuntime(store, [toolCall("cvg.patient.read", { id: patient.id }), message("nunca deveria chegar")], { sessionStore, instanceId: "provider-fence-owner", toolExecutor });
+  const session = await runtime.createSession(ctx, { purpose: "SUMMARY", patientId: patient.id, encounterId: null });
+  let providerCalls = 0;
+  const originalComplete = provider.complete.bind(provider);
+  provider.complete = async (request: ModelRequest) => { providerCalls += 1; return originalComplete(request); };
+  await assert.rejects(
+    runtime.executeTurn(ctx, { sessionId: session.id, prompt: "ler paciente", purpose: "SUMMARY", patientId: patient.id, encounterId: null, requestedTool: null, approvalId: null, idempotencyKey: "provider-fence-loss-1" }),
+    (error: unknown) => error instanceof DomainError && error.code === "DENIED_STALE_FENCE"
+  );
+  assert.equal(executions.length, 1);
+  assert.equal(providerCalls, 1, "the provider must not be called after the fence is lost");
+});
+
+test("CVG-AUD19-006: an approval for one resource cannot authorize a changed resource", async () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const adminCtx = context(store);
+  const guardian = store.createGuardian(adminCtx, { displayName: "Responsável sintético", phone: "+55 11 90000-0100", email: null });
+  const first = store.createPatient(adminCtx, { guardianId: guardian.id, name: "Paciente A", species: "canino", breed: null, sex: "UNKNOWN", reproductiveStatus: "UNKNOWN", birthDate: null, identifiers: [] });
+  const second = store.createPatient(adminCtx, { guardianId: guardian.id, name: "Paciente B", species: "felino", breed: null, sex: "UNKNOWN", reproductiveStatus: "UNKNOWN", birthDate: null, identifiers: [] });
+  const ctx = veterinarian(store);
+  const { runtime } = makeRuntime(store, []);
+  const base = { prompt: "preparar comunicação", purpose: "OPERATIONS" as const, patientId: null, encounterId: null, requestedTool: "cvg.communication.stage", approvalId: null, sessionId: null, resourceId: first.id, idempotencyKey: "approval-resource-1" };
+  const paused = await runtime.executeTurn(ctx, base);
+  assert.ok(paused.approval);
+  await runtime.approve(ctx, paused.approval!.id, "allowed-once", "revisão humana");
+  const changed = await runtime.executeTurn(ctx, { ...base, sessionId: paused.session.id, resourceId: second.id, approvalId: paused.approval!.id, idempotencyKey: "approval-resource-2" });
+  assert.equal(changed.turn.status, "DENIED");
+  assert.equal(store.aiApprovals.get(paused.approval!.id)?.decision, "allowed-once", "a denied reuse must not consume the approval");
 });
 
 test("embedded runtime replay returns a stable digest of persisted turns", async () => {

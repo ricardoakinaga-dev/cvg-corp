@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "program": "CVG-AUD26",
+  "sourceSha": "c990914148a8f375082cd12bbdb2ad20cfe1900f",
+  "candidateFingerprint": "sha256:084a6b1079bf317dd975f10bdbebbc9d87b4b61a6b203b7e7bc14bda4e8d925e",
+  "observedAt": "2026-09-22T00:13:13-03:00",
+  "scope": "local-gates",
+  "status": "PASS_WITH_LIMITATIONS",
+  "receipt": "VER-CVG-AUD27-001-021",
+  "checks": {
+    "full_test": "PASS: 633 tests; 632 passed; 0 failed; 1 skipped",
+    "typecheck": "PASS",
+    "lint": "PASS: custom 269 repository source files and ESLint zero warnings",
+    "build": "PASS: web entry 393070B; CSS 73188B; route chunks emitted",
+    "coverage": "PASS: line/statements 88.25%; branch 75.56%; functions 85.98%; contracts branch 63.54%",
+    "postgres_restore": "PASS: postgres:16-alpine; restore corpus 18; SQL oracle 10/10; migrations 46",
+    "postgres_repeatability": "PASS: two disposable rounds; inventory unchanged; database removed",
+    "snapshot_command_migration": "PASS_WITH_LIMITATIONS: 32 collections; 8 command-authoritative; 24 snapshot-primary residual",
+    "provider_sandbox": "PASS: bounded responses and egress policy harness",
+    "secrets_tokens_contrast": "PASS: secrets scan clean; 56 tokens; 12/12 contrast pairs",
+    "pdp_and_runtime": "PASS: universal PDP and runtime route gates",
+    "local_operations": "PASS_WITH_LIMITATIONS: load, chaos and DR harnesses synthetic-only",
+    "full_browser_matrix": "INCONCLUSIVE: current 354-case Chromium/Firefox attempt stopped after 10 minutes without final aggregate summary; WebKit blocked by host dependency; assistive technology remains human",
+    "production_structural": "PASS_WITH_LIMITATIONS: Dockerfile release digest aligned; full structural suite retains WebKit/license blockers",
+    "license_policy": "BLOCKED_HUMAN: 10 transitive SPDX entries require owner/legal disposition",
+    "mutation_testing": "PASS_WITH_LIMITATIONS: expanded API response boundary lane 13/13 killed; score 100%; current subject is unfrozen",
+    "container_hardening": "PASS_WITH_LIMITATIONS: rebuilt image sha256:0723ebfe01b3e9f76bf208b749a57a7f6b5aa8f406f53dca73239ab8ff8ebc45; node; read_only_rootfs=true; cap_drop=ALL; no_new_privileges=true; health=200; ready=200; docker_diff=empty"
+  },
+  "limitations": [
+    "24 snapshot-primary slices still require forward-only backfill/reconciliation before full M3 closure",
+    "external provider, durable collector/alerts, managed restore and production-like RTO/RPO were not authorized or available",
+    "specific response schemas for the complete catalog are now 80/80 locally executable",
+    "mutation score covers the expanded API response boundary lane, not the whole repository, and is not bound to an AUD27-004 frozen candidate",
+    "container proof used development memory mode with synthetic data; authenticated provider/worker/production-like health remains external",
+    "license policy needs explicit legal/maintainer disposition for BlueOak-1.0.0, Python-2.0, BSD-2-Clause and CC0-1.0 dependencies",
+    "current visual and assistive-technology evidence is not claimed"
+  ]
+}

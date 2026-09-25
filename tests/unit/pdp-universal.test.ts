@@ -73,3 +73,51 @@ test("AST store guard follows function argument and return aliases", () => {
     { collection: "patients", operation: "set" }
   ]);
 });
+
+test("CVG-AUD20-007: route inventory follows verified wrappers and rejects deferred or unguarded ones", async () => {
+  const { inspectHttpRouteInventory } = await import("../../scripts/pdp-route-inventory.ts");
+  const catalog = [{ version: "v1", method: "POST", path: "/ai/turns", operation: "ai.turn", auth: "SESSION", requestSchema: null, responseSchema: "x", idempotent: true, deprecation: null }] as never;
+  const verified = inspectHttpRouteInventory([{ path: "fixture-verified.ts", source: `import fastify from "fastify";\n    import { AsyncLocalStorage } from "node:async_hooks";\n    const storeScope = new AsyncLocalStorage();\n    const app = fastify();
+     const runWithRequestFork = async (request, handler) => { return storeScope.run(fork, handler); };
+     app.post("/api/v1/ai/turns", async (request, reply) => runWithRequestFork(request, async () => {
+       const { context } = requestContext(request, \`ai.turn.\${input.purpose}\`);
+       return context;
+     }));
+  ` }], catalog);
+  assert.deepEqual(verified.findings, []);
+
+  const deferred = inspectHttpRouteInventory([{ path: "fixture-deferred.ts", source: `import fastify from "fastify";\n    const app = fastify();
+    const runWithRequestFork = (request, handler) => { setTimeout(handler, 0); };
+    app.post("/api/v1/ai/turns", async (request, reply) => runWithRequestFork(request, async () => {
+      const { context } = requestContext(request, \`ai.turn.\${input.purpose}\`);
+      return context;
+    }));
+  ` }], catalog);
+  assert.ok(deferred.findings.some((finding) => finding.code === "ROUTE_OPERATION_MISMATCH"), JSON.stringify(deferred.findings));
+
+  const unguarded = inspectHttpRouteInventory([{ path: "fixture-unguarded.ts", source: `import fastify from "fastify";\n    const app = fastify();
+    const runWithRequestFork = async (request, handler) => storeScope.run(fork, handler);
+    app.post("/api/v1/ai/turns", async (request, reply) => runWithRequestFork(request, async () => {
+      return { ok: true };
+    }));
+  ` }], catalog);
+  assert.ok(unguarded.findings.some((finding) => finding.code === "ROUTE_OPERATION_MISMATCH"), JSON.stringify(unguarded.findings));
+
+  const microtask = inspectHttpRouteInventory([{ path: "fixture-microtask.ts", source: `import fastify from "fastify";\n    const app = fastify();
+    const runWithRequestFork = (request, handler) => Promise.resolve().then(handler);
+    app.post("/api/v1/ai/turns", async (request, reply) => runWithRequestFork(request, async () => {
+      const { context } = requestContext(request, \`ai.turn.\${input.purpose}\`);
+      return context;
+    }));
+  ` }], catalog);
+  assert.ok(microtask.findings.some((finding) => finding.code === "ROUTE_OPERATION_MISMATCH"), JSON.stringify(microtask.findings));
+
+  const unknownCallback = inspectHttpRouteInventory([{ path: "fixture-unknown-callback.ts", source: `import fastify from "fastify";\n    const app = fastify();
+    const runWithRequestFork = (request, handler) => unknownInvoker(handler);
+    app.post("/api/v1/ai/turns", async (request, reply) => runWithRequestFork(request, async () => {
+      const { context } = requestContext(request, \`ai.turn.\${input.purpose}\`);
+      return context;
+    }));
+  ` }], catalog);
+  assert.ok(unknownCallback.findings.some((finding) => finding.code === "ROUTE_OPERATION_MISMATCH"), JSON.stringify(unknownCallback.findings));
+});

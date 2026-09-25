@@ -1,0 +1,629 @@
+{
+  "schemaVersion": 1,
+  "kind": "AUD27-018-REAL-MUTATION-LOCAL",
+  "sourceSha": "c990914148a8f375082cd12bbdb2ad20cfe1900f",
+  "observedSubjectFingerprint": "sha256:da0315d229a18145f80f20616e16b72d1040041dc1d4270efc59cab75fe8ea50",
+  "fingerprintStatus": "UNFROZEN_UNTIL_AUD27-004",
+  "testFiles": [
+    "tests/unit/api-response-contract-auth-ops.test.ts",
+    "tests/unit/api-response-contract-clinical.test.ts",
+    "tests/unit/api-response-contract-remaining.test.ts",
+    "tests/unit/api-response-contract.test.ts",
+    "tests/unit/auth.test.ts",
+    "tests/unit/vnext.test.ts",
+    "tests/unit/aud27-migration-harness.test.ts",
+    "tests/unit/finance-balance.test.ts",
+    "tests/unit/domain.test.ts"
+  ],
+  "plan": [
+    {
+      "id": "AUD27-018-RC-001",
+      "file": "apps/api/src/response-contract.ts",
+      "lane": "api-response-contract",
+      "tests": [
+        "tests/unit/api-response-contract-auth-ops.test.ts",
+        "tests/unit/api-response-contract-clinical.test.ts",
+        "tests/unit/api-response-contract-remaining.test.ts",
+        "tests/unit/api-response-contract.test.ts"
+      ],
+      "rationale": "An unregistered successful API route must remain fail-closed."
+    },
+    {
+      "id": "AUD27-018-RC-002",
+      "file": "apps/api/src/response-contract.ts",
+      "lane": "api-response-contract",
+      "tests": [
+        "tests/unit/api-response-contract-auth-ops.test.ts",
+        "tests/unit/api-response-contract-clinical.test.ts",
+        "tests/unit/api-response-contract-remaining.test.ts",
+        "tests/unit/api-response-contract.test.ts"
+      ],
+      "rationale": "Only a 204 response receives the empty-body contract."
+    },
+    {
+      "id": "AUD27-018-RC-003",
+      "file": "apps/api/src/response-contract.ts",
+      "lane": "api-response-contract",
+      "tests": [
+        "tests/unit/api-response-contract-auth-ops.test.ts",
+        "tests/unit/api-response-contract-clinical.test.ts",
+        "tests/unit/api-response-contract-remaining.test.ts",
+        "tests/unit/api-response-contract.test.ts"
+      ],
+      "rationale": "JSON payloads must reach envelope and payload validation instead of the text budget branch."
+    },
+    {
+      "id": "AUD27-018-RC-004",
+      "file": "apps/api/src/response-contract.ts",
+      "lane": "api-response-contract",
+      "tests": [
+        "tests/unit/api-response-contract-auth-ops.test.ts",
+        "tests/unit/api-response-contract-clinical.test.ts",
+        "tests/unit/api-response-contract-remaining.test.ts",
+        "tests/unit/api-response-contract.test.ts"
+      ],
+      "rationale": "A valid success envelope must not be rejected as an invalid envelope."
+    },
+    {
+      "id": "AUD27-018-RC-005",
+      "file": "apps/api/src/response-contract.ts",
+      "lane": "api-response-contract",
+      "tests": [
+        "tests/unit/api-response-contract-auth-ops.test.ts",
+        "tests/unit/api-response-contract-clinical.test.ts",
+        "tests/unit/api-response-contract-remaining.test.ts",
+        "tests/unit/api-response-contract.test.ts"
+      ],
+      "rationale": "Unsafe output must be rejected while safe output remains serializable."
+    },
+    {
+      "id": "AUD27-018-RC-006",
+      "file": "apps/api/src/response-contract.ts",
+      "lane": "api-response-contract",
+      "tests": [
+        "tests/unit/api-response-contract-auth-ops.test.ts",
+        "tests/unit/api-response-contract-clinical.test.ts",
+        "tests/unit/api-response-contract-remaining.test.ts",
+        "tests/unit/api-response-contract.test.ts"
+      ],
+      "rationale": "Registered routes must not bypass their envelope and payload validators."
+    },
+    {
+      "id": "AUD27-018-SCHEMA-001",
+      "file": "apps/api/src/response-schemas/clinical.ts",
+      "lane": "api-response-contract",
+      "tests": [
+        "tests/unit/api-response-contract-auth-ops.test.ts",
+        "tests/unit/api-response-contract-clinical.test.ts",
+        "tests/unit/api-response-contract-remaining.test.ts",
+        "tests/unit/api-response-contract.test.ts"
+      ],
+      "rationale": "Clinical list contracts must preserve the tested 100-item page boundary."
+    },
+    {
+      "id": "AUD27-018-SCHEMA-002",
+      "file": "apps/api/src/response-schemas/clinical.ts",
+      "lane": "api-response-contract",
+      "tests": [
+        "tests/unit/api-response-contract-auth-ops.test.ts",
+        "tests/unit/api-response-contract-clinical.test.ts",
+        "tests/unit/api-response-contract-remaining.test.ts",
+        "tests/unit/api-response-contract.test.ts"
+      ],
+      "rationale": "Clinical document and appointment versions must accept the initial version 1."
+    },
+    {
+      "id": "AUD27-018-SCHEMA-003",
+      "file": "apps/api/src/response-schemas/clinical.ts",
+      "lane": "api-response-contract",
+      "tests": [
+        "tests/unit/api-response-contract-auth-ops.test.ts",
+        "tests/unit/api-response-contract-clinical.test.ts",
+        "tests/unit/api-response-contract-remaining.test.ts",
+        "tests/unit/api-response-contract.test.ts"
+      ],
+      "rationale": "Clinical bounded text fields must reject empty labels and descriptions."
+    },
+    {
+      "id": "AUD27-018-SCHEMA-004",
+      "file": "apps/api/src/response-schemas/remaining.ts",
+      "lane": "api-response-contract",
+      "tests": [
+        "tests/unit/api-response-contract-auth-ops.test.ts",
+        "tests/unit/api-response-contract-clinical.test.ts",
+        "tests/unit/api-response-contract-remaining.test.ts",
+        "tests/unit/api-response-contract.test.ts"
+      ],
+      "rationale": "Remaining list contracts must preserve the tested 200-item page boundary."
+    },
+    {
+      "id": "AUD27-018-SCHEMA-005",
+      "file": "apps/api/src/response-schemas/auth-ops.ts",
+      "lane": "api-response-contract",
+      "tests": [
+        "tests/unit/api-response-contract-auth-ops.test.ts",
+        "tests/unit/api-response-contract-clinical.test.ts",
+        "tests/unit/api-response-contract-remaining.test.ts",
+        "tests/unit/api-response-contract.test.ts"
+      ],
+      "rationale": "Health responses must advertise liveness only with the true literal."
+    },
+    {
+      "id": "AUD27-018-SCHEMA-006",
+      "file": "apps/api/src/response-schemas/auth-ops.ts",
+      "lane": "api-response-contract",
+      "tests": [
+        "tests/unit/api-response-contract-auth-ops.test.ts",
+        "tests/unit/api-response-contract-clinical.test.ts",
+        "tests/unit/api-response-contract-remaining.test.ts",
+        "tests/unit/api-response-contract.test.ts"
+      ],
+      "rationale": "Operational counters and revoked-session counts must allow zero."
+    },
+    {
+      "id": "AUD27-018-SCHEMA-007",
+      "file": "apps/api/src/response-schemas/auth-ops.ts",
+      "lane": "api-response-contract",
+      "tests": [
+        "tests/unit/api-response-contract-auth-ops.test.ts",
+        "tests/unit/api-response-contract-clinical.test.ts",
+        "tests/unit/api-response-contract-remaining.test.ts",
+        "tests/unit/api-response-contract.test.ts"
+      ],
+      "rationale": "Recovery challenge identifiers must preserve the tested 40-character valid boundary."
+    },
+    {
+      "id": "AUD27-018-AUTH-001",
+      "file": "packages/auth/src/index.ts",
+      "lane": "auth",
+      "tests": [
+        "tests/unit/auth.test.ts"
+      ],
+      "rationale": "Password policy must reject values below the minimum length, not values above it."
+    },
+    {
+      "id": "AUD27-018-AUTH-002",
+      "file": "packages/auth/src/index.ts",
+      "lane": "auth",
+      "tests": [
+        "tests/unit/auth.test.ts"
+      ],
+      "rationale": "Password policy must enforce an uppercase character independently of the lowercase rule."
+    },
+    {
+      "id": "AUD27-018-AUTH-003",
+      "file": "packages/auth/src/index.ts",
+      "lane": "auth",
+      "tests": [
+        "tests/unit/auth.test.ts"
+      ],
+      "rationale": "WebAuthn assertions must be rejected once the challenge is no longer pending."
+    },
+    {
+      "id": "AUD27-018-AUTH-004",
+      "file": "packages/auth/src/index.ts",
+      "lane": "auth",
+      "tests": [
+        "tests/unit/auth.test.ts"
+      ],
+      "rationale": "A nonzero WebAuthn counter must advance strictly beyond the registered counter."
+    },
+    {
+      "id": "AUD27-018-PDP-001",
+      "file": "packages/agent-policy/src/index.ts",
+      "lane": "pdp",
+      "tests": [
+        "tests/unit/vnext.test.ts"
+      ],
+      "rationale": "The PDP must deny a request whose capability differs from the canonical operation rule."
+    },
+    {
+      "id": "AUD27-018-PDP-002",
+      "file": "packages/agent-policy/src/index.ts",
+      "lane": "pdp",
+      "tests": [
+        "tests/unit/vnext.test.ts"
+      ],
+      "rationale": "High-impact requests without a bound approval must remain approval-required."
+    },
+    {
+      "id": "AUD27-018-PDP-003",
+      "file": "packages/agent-policy/src/index.ts",
+      "lane": "pdp",
+      "tests": [
+        "tests/unit/vnext.test.ts"
+      ],
+      "rationale": "The PDP must allow only actors whose current role snapshot intersects the descriptor roles."
+    },
+    {
+      "id": "AUD27-018-MIG-001",
+      "file": "packages/persistence/src/migration-harness.ts",
+      "lane": "migration",
+      "tests": [
+        "tests/unit/aud27-migration-harness.test.ts"
+      ],
+      "rationale": "A resumed migration run must quarantine source drift instead of accepting the changed source."
+    },
+    {
+      "id": "AUD27-018-MIG-002",
+      "file": "packages/persistence/src/migration-harness.ts",
+      "lane": "migration",
+      "tests": [
+        "tests/unit/aud27-migration-harness.test.ts"
+      ],
+      "rationale": "A migration without an aborted signal must be allowed to enter the execution protocol."
+    },
+    {
+      "id": "AUD27-018-MIG-003",
+      "file": "packages/persistence/src/migration-harness.ts",
+      "lane": "migration",
+      "tests": [
+        "tests/unit/aud27-migration-harness.test.ts"
+      ],
+      "rationale": "Migration parity must reject a digest mismatch even when row counts happen to match."
+    },
+    {
+      "id": "MEL23-026-FINANCE-001",
+      "file": "packages/domain/src/index.ts",
+      "lane": "finance",
+      "tests": [
+        "tests/unit/finance-balance.test.ts"
+      ],
+      "rationale": "A single-currency financial balance must reject mixed currencies instead of reporting a settled amount."
+    },
+    {
+      "id": "MEL23-026-CLINICAL-001",
+      "file": "packages/domain/src/index.ts",
+      "lane": "clinical",
+      "tests": [
+        "tests/unit/domain.test.ts"
+      ],
+      "rationale": "Clinical signing must require an explicitly reviewed document while rejecting draft signatures."
+    }
+  ],
+  "results": [
+    {
+      "id": "AUD27-018-RC-001",
+      "file": "apps/api/src/response-contract.ts",
+      "find": "if (versionedApiPath && !route && input.statusCode !== 404)",
+      "replace": "if (versionedApiPath && !route && input.statusCode === 404)",
+      "rationale": "An unregistered successful API route must remain fail-closed.",
+      "status": "KILLED",
+      "exitStatus": 1,
+      "signal": null,
+      "output": "1ms)\n✔ rejects malformed list items and pagination outside the bounded contract (2.045102ms)\n✔ exports exactly the assigned response-schema names (2.957989ms)\n✔ accepts live success payload shapes, receipts, nulls, empty lists and bounded pagination (41.256064ms)\n✔ rejects missing and unknown top-level payload fields (0.662993ms)\n✔ rejects unsafe/redacted fields and invalid primitive values at nested boundaries (1.261786ms)\n✔ rejects representative malformed domain and AI payloads (0.983248ms)\n✔ every cataloged API response has an executable egress contract (0.980904ms)\n✔ MEL23-047 request, success, and error examples in the API guide match current schemas (8.593525ms)\n✔ known-bad response names fail closed and dead mappings stay unregistered (0.519796ms)\n✔ known-good JSON, error, text and empty responses cross the bounded boundary (4.452507ms)\n✖ known-bad output is rejected before it can be serialized to the client (3.58247ms)\n✔ rejects a schema-valid audit payload that exceeds the JSON response byte budget (8.162874ms)\nℹ tests 21\nℹ suites 0\nℹ pass 20\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 449.175685\n\n✖ failing tests:\n\ntest at tests/unit/api-response-contract.test.ts:1:8429\n✖ known-bad output is rejected before it can be serialized to the client (3.58247ms)\n  AssertionError [ERR_ASSERTION]: Missing expected exception.\n      at TestContext.<anonymous> (/tmp/cvg-aud27-mutation-NtLVFH/tests/unit/api-response-contract.test.ts:147:10)\n      at Test.runInAsyncScope (node:async_hooks:227:14)\n      at Test.run (node:internal/test_runner/test:1397:25)\n      at Test.processPendingSubtests (node:internal/test_runner/test:969:18)\n      at Test.postRun (node:internal/test_runner/test:1537:19)\n      at Test.run (node:internal/test_runner/test:1462:12)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {\n    generatedMessage: false,\n    code: 'ERR_ASSERTION',\n    actual: undefined,\n    operator: 'throws',\n    diff: 'simple'\n  }..."
+    },
+    {
+      "id": "AUD27-018-RC-002",
+      "file": "apps/api/src/response-contract.ts",
+      "find": "if (input.statusCode === 204)",
+      "replace": "if (input.statusCode !== 204)",
+      "rationale": "Only a 204 response receives the empty-body contract.",
+      "status": "KILLED",
+      "exitStatus": 1,
+      "signal": null,
+      "output": "est_runner/test:1462:12)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {\n    responseSchema: 'HealthResponse',\n    reason: '204 responses must not carry a body'\n  }\n\ntest at tests/unit/api-response-contract.test.ts:1:9663\n✖ rejects a schema-valid audit payload that exceeds the JSON response byte budget (12.66829ms)\n  AssertionError [ERR_ASSERTION]: The validation function is expected to return \"true\". Received false\n  \n  Caught error:\n  \n  ApiResponseContractError: API response did not satisfy its egress contract\n      at TestContext.<anonymous> (/tmp/cvg-aud27-mutation-NtLVFH/tests/unit/api-response-contract.test.ts:182:10)\n      at Test.runInAsyncScope (node:async_hooks:227:14)\n      at Test.run (node:internal/test_runner/test:1397:25)\n      at Test.processPendingSubtests (node:internal/test_runner/test:969:18)\n      at Test.postRun (node:internal/test_runner/test:1537:19)\n      at Test.run (node:internal/test_runner/test:1462:12)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {\n    generatedMessage: true,\n    code: 'ERR_ASSERTION',\n    actual: ApiResponseContractError: API response did not satisfy its egress contract\n        at validateApiResponseEgress (/tmp/cvg-aud27-mutation-NtLVFH/apps/api/src/response-contract.ts:89:47)\n        at <anonymous> (/tmp/cvg-aud27-mutation-NtLVFH/tests/unit/api-response-contract.test.ts:183:11)\n        at getActual (node:assert:611:5)\n        at strict.throws (node:assert:759:24)\n        at TestContext.<anonymous> (/tmp/cvg-aud27-mutation-NtLVFH/tests/unit/api-response-contract.test.ts:182:10)\n        at Test.runInAsyncScope (node:async_hooks:227:14)\n        at Test.run (node:internal/test_runner/test:1397:25)\n        at Test.processPendingSubtests (node:internal/test_runner/test:969:18)\n        at Test.postRun (node:internal/test_runner/test:1537:19)\n        at Test.run (node:internal/test_runner/test:1462:12),\n    operator: 'throws',\n    diff: 'simple'\n  }..."
+    },
+    {
+      "id": "AUD27-018-RC-003",
+      "file": "apps/api/src/response-contract.ts",
+      "find": "if (mode === \"TEXT\")",
+      "replace": "if (mode !== \"TEXT\")",
+      "rationale": "JSON payloads must reach envelope and payload validation instead of the text budget branch.",
+      "status": "KILLED",
+      "exitStatus": 1,
+      "signal": null,
+      "output": "sync Test.processPendingSubtests (node:internal/test_runner/test:969:7) {\n    generatedMessage: false,\n    code: 'ERR_ASSERTION',\n    actual: undefined,\n    operator: 'throws',\n    diff: 'simple'\n  }\n\ntest at tests/unit/api-response-contract.test.ts:1:9663\n✖ rejects a schema-valid audit payload that exceeds the JSON response byte budget (12.586178ms)\n  AssertionError [ERR_ASSERTION]: The validation function is expected to return \"true\". Received false\n  \n  Caught error:\n  \n  ApiResponseContractError: API response did not satisfy its egress contract\n      at TestContext.<anonymous> (/tmp/cvg-aud27-mutation-NtLVFH/tests/unit/api-response-contract.test.ts:182:10)\n      at Test.runInAsyncScope (node:async_hooks:227:14)\n      at Test.run (node:internal/test_runner/test:1397:25)\n      at Test.processPendingSubtests (node:internal/test_runner/test:969:18)\n      at Test.postRun (node:internal/test_runner/test:1537:19)\n      at Test.run (node:internal/test_runner/test:1462:12)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {\n    generatedMessage: true,\n    code: 'ERR_ASSERTION',\n    actual: ApiResponseContractError: API response did not satisfy its egress contract\n        at validateApiResponseEgress (/tmp/cvg-aud27-mutation-NtLVFH/apps/api/src/response-contract.ts:94:52)\n        at <anonymous> (/tmp/cvg-aud27-mutation-NtLVFH/tests/unit/api-response-contract.test.ts:183:11)\n        at getActual (node:assert:611:5)\n        at strict.throws (node:assert:759:24)\n        at TestContext.<anonymous> (/tmp/cvg-aud27-mutation-NtLVFH/tests/unit/api-response-contract.test.ts:182:10)\n        at Test.runInAsyncScope (node:async_hooks:227:14)\n        at Test.run (node:internal/test_runner/test:1397:25)\n        at Test.processPendingSubtests (node:internal/test_runner/test:969:18)\n        at Test.postRun (node:internal/test_runner/test:1537:19)\n        at Test.run (node:internal/test_runner/test:1462:12),\n    operator: 'throws',\n    diff: 'simple'\n  }..."
+    },
+    {
+      "id": "AUD27-018-RC-004",
+      "file": "apps/api/src/response-contract.ts",
+      "find": "if (!success.success) throw new ApiResponseContractError(route.responseSchema, \"response envelope failed schema validation\");",
+      "replace": "if (success.success) throw new ApiResponseContractError(route.responseSchema, \"response envelope failed schema validation\");",
+      "rationale": "A valid success envelope must not be rejected as an invalid envelope.",
+      "status": "KILLED",
+      "exitStatus": 1,
+      "signal": null,
+      "output": "he assigned response-schema names (1.520096ms)\n✔ accepts live success payload shapes, receipts, nulls, empty lists and bounded pagination (37.784982ms)\n✔ rejects missing and unknown top-level payload fields (0.519896ms)\n✔ rejects unsafe/redacted fields and invalid primitive values at nested boundaries (1.026048ms)\n✔ rejects representative malformed domain and AI payloads (0.857223ms)\n✔ every cataloged API response has an executable egress contract (0.905353ms)\n✔ MEL23-047 request, success, and error examples in the API guide match current schemas (7.720102ms)\n✔ known-bad response names fail closed and dead mappings stay unregistered (0.486575ms)\n✖ known-good JSON, error, text and empty responses cross the bounded boundary (1.380496ms)\n✔ known-bad output is rejected before it can be serialized to the client (3.163691ms)\n✔ rejects a schema-valid audit payload that exceeds the JSON response byte budget (14.304142ms)\nℹ tests 21\nℹ suites 0\nℹ pass 20\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 358.987106\n\n✖ failing tests:\n\ntest at tests/unit/api-response-contract.test.ts:1:7594\n✖ known-good JSON, error, text and empty responses cross the bounded boundary (1.380496ms)\n  Error [ApiResponseContractError]: API response did not satisfy its egress contract\n      at validateApiResponseEgress (/tmp/cvg-aud27-mutation-NtLVFH/apps/api/src/response-contract.ts:114:30)\n      at TestContext.<anonymous> (/tmp/cvg-aud27-mutation-NtLVFH/tests/unit/api-response-contract.test.ts:124:3)\n      at Test.runInAsyncScope (node:async_hooks:227:14)\n      at Test.run (node:internal/test_runner/test:1397:25)\n      at Test.processPendingSubtests (node:internal/test_runner/test:969:18)\n      at Test.postRun (node:internal/test_runner/test:1537:19)\n      at Test.run (node:internal/test_runner/test:1462:12)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {\n    responseSchema: 'HealthResponse',\n    reason: 'response envelope failed schema validation'\n  }..."
+    },
+    {
+      "id": "AUD27-018-RC-005",
+      "file": "apps/api/src/response-contract.ts",
+      "find": "if (!visit(value, 0)) throw new ApiResponseContractError(responseSchema, \"response contains unsafe or non-serializable output fields\");",
+      "replace": "if (visit(value, 0)) throw new ApiResponseContractError(responseSchema, \"response contains unsafe or non-serializable output fields\");",
+      "rationale": "Unsafe output must be rejected while safe output remains serializable.",
+      "status": "KILLED",
+      "exitStatus": 1,
+      "signal": null,
+      "output": "(node:internal/test_runner/test:969:7) {\n    responseSchema: 'HealthResponse',\n    reason: 'response contains unsafe or non-serializable output fields'\n  }\n\ntest at tests/unit/api-response-contract.test.ts:1:9663\n✖ rejects a schema-valid audit payload that exceeds the JSON response byte budget (13.578784ms)\n  AssertionError [ERR_ASSERTION]: The validation function is expected to return \"true\". Received false\n  \n  Caught error:\n  \n  ApiResponseContractError: API response did not satisfy its egress contract\n      at TestContext.<anonymous> (/tmp/cvg-aud27-mutation-NtLVFH/tests/unit/api-response-contract.test.ts:182:10)\n      at Test.runInAsyncScope (node:async_hooks:227:14)\n      at Test.run (node:internal/test_runner/test:1397:25)\n      at Test.processPendingSubtests (node:internal/test_runner/test:969:18)\n      at Test.postRun (node:internal/test_runner/test:1537:19)\n      at Test.run (node:internal/test_runner/test:1462:12)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {\n    generatedMessage: true,\n    code: 'ERR_ASSERTION',\n    actual: ApiResponseContractError: API response did not satisfy its egress contract\n        at assertSafeApiOutput (/tmp/cvg-aud27-mutation-NtLVFH/apps/api/src/response-contract.ts:203:30)\n        at validateApiResponseEgress (/tmp/cvg-aud27-mutation-NtLVFH/apps/api/src/response-contract.ts:105:3)\n        at <anonymous> (/tmp/cvg-aud27-mutation-NtLVFH/tests/unit/api-response-contract.test.ts:183:11)\n        at getActual (node:assert:611:5)\n        at strict.throws (node:assert:759:24)\n        at TestContext.<anonymous> (/tmp/cvg-aud27-mutation-NtLVFH/tests/unit/api-response-contract.test.ts:182:10)\n        at Test.runInAsyncScope (node:async_hooks:227:14)\n        at Test.run (node:internal/test_runner/test:1397:25)\n        at Test.processPendingSubtests (node:internal/test_runner/test:969:18)\n        at Test.postRun (node:internal/test_runner/test:1537:19),\n    operator: 'throws',\n    diff: 'simple'\n  }..."
+    },
+    {
+      "id": "AUD27-018-RC-006",
+      "file": "apps/api/src/response-contract.ts",
+      "find": "if (!route) return;",
+      "replace": "if (route) return;",
+      "rationale": "Registered routes must not bypass their envelope and payload validators.",
+      "status": "KILLED",
+      "exitStatus": 1,
+      "signal": null,
+      "output": "\n✖ known-bad output is rejected before it can be serialized to the client (1.891236ms)\n✖ rejects a schema-valid audit payload that exceeds the JSON response byte budget (11.348046ms)\nℹ tests 21\nℹ suites 0\nℹ pass 19\nℹ fail 2\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 345.620007\n\n✖ failing tests:\n\ntest at tests/unit/api-response-contract.test.ts:1:8429\n✖ known-bad output is rejected before it can be serialized to the client (1.891236ms)\n  AssertionError [ERR_ASSERTION]: Missing expected exception.\n      at TestContext.<anonymous> (/tmp/cvg-aud27-mutation-NtLVFH/tests/unit/api-response-contract.test.ts:131:10)\n      at Test.runInAsyncScope (node:async_hooks:227:14)\n      at Test.run (node:internal/test_runner/test:1397:25)\n      at Test.processPendingSubtests (node:internal/test_runner/test:969:18)\n      at Test.postRun (node:internal/test_runner/test:1537:19)\n      at Test.run (node:internal/test_runner/test:1462:12)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {\n    generatedMessage: false,\n    code: 'ERR_ASSERTION',\n    actual: undefined,\n    operator: 'throws',\n    diff: 'simple'\n  }\n\ntest at tests/unit/api-response-contract.test.ts:1:9663\n✖ rejects a schema-valid audit payload that exceeds the JSON response byte budget (11.348046ms)\n  AssertionError [ERR_ASSERTION]: Missing expected exception.\n      at TestContext.<anonymous> (/tmp/cvg-aud27-mutation-NtLVFH/tests/unit/api-response-contract.test.ts:182:10)\n      at Test.runInAsyncScope (node:async_hooks:227:14)\n      at Test.run (node:internal/test_runner/test:1397:25)\n      at Test.processPendingSubtests (node:internal/test_runner/test:969:18)\n      at Test.postRun (node:internal/test_runner/test:1537:19)\n      at Test.run (node:internal/test_runner/test:1462:12)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {\n    generatedMessage: false,\n    code: 'ERR_ASSERTION',\n    actual: undefined,\n    operator: 'throws',\n    diff: 'simple'\n  }..."
+    },
+    {
+      "id": "AUD27-018-SCHEMA-001",
+      "file": "apps/api/src/response-schemas/clinical.ts",
+      "find": "const MAX_PAGE_ITEMS = 100;",
+      "replace": "const MAX_PAGE_ITEMS = 99;",
+      "rationale": "Clinical list contracts must preserve the tested 100-item page boundary.",
+      "status": "KILLED",
+      "exitStatus": 1,
+      "signal": null,
+      "output": "id primitive values at nested boundaries (1.141642ms)\n✔ rejects representative malformed domain and AI payloads (1.014866ms)\n✔ every cataloged API response has an executable egress contract (1.138145ms)\n✔ MEL23-047 request, success, and error examples in the API guide match current schemas (9.031469ms)\n✔ known-bad response names fail closed and dead mappings stay unregistered (0.763178ms)\n✔ known-good JSON, error, text and empty responses cross the bounded boundary (6.994423ms)\n✔ known-bad output is rejected before it can be serialized to the client (1.874183ms)\n✔ rejects a schema-valid audit payload that exceeds the JSON response byte budget (7.376393ms)\nℹ tests 21\nℹ suites 0\nℹ pass 20\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 371.189651\n\n✖ failing tests:\n\ntest at tests/unit/api-response-contract-clinical.test.ts:1:3739\n✖ accepts actual clinical and diagnostic success payloads (13.809732ms)\n  AssertionError [ERR_ASSERTION]: EncounterListResponse rejected a valid payload: [\n    {\n      \"origin\": \"array\",\n      \"code\": \"too_big\",\n      \"maximum\": 99,\n      \"inclusive\": true,\n      \"path\": [\n        \"items\"\n      ],\n      \"message\": \"Too big: expected array to have <=99 items\"\n    }\n  ]\n      at accepts (/tmp/cvg-aud27-mutation-NtLVFH/tests/unit/api-response-contract-clinical.test.ts:131:31)\n      at TestContext.<anonymous> (/tmp/cvg-aud27-mutation-NtLVFH/tests/unit/api-response-contract-clinical.test.ts:168:3)\n      at Test.runInAsyncScope (node:async_hooks:227:14)\n      at Test.run (node:internal/test_runner/test:1397:25)\n      at Test.processPendingSubtests (node:internal/test_runner/test:969:18)\n      at Test.postRun (node:internal/test_runner/test:1537:19)\n      at Test.run (node:internal/test_runner/test:1462:12)\n      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {\n    generatedMessage: false,\n    code: 'ERR_ASSERTION',\n    actual: undefined,\n    expected: undefined,\n    operator: 'fail',\n    diff: 'simple'\n  }..."
+    },
+    {
+      "id": "AUD27-018-SCHEMA-002",
+      "file": "apps/api/src/response-schemas/clinical.ts",
+      "find": "const versionSchema = z.number().int().min(1).max(1_000_000_000);",
+      "replace": "const versionSchema = z.number().int().min(2).max(1_000_000_000);",
+      "rationale": "Clinical document and appointment versions must accept the initial version 1.",
+      "status": "KILLED",
+      "exitStatus": 1,
+      "signal": null,
+      "output": "ndaries (1.225128ms)\n✔ rejects representative malformed domain and AI payloads (0.979791ms)\n✔ every cataloged API response has an executable egress contract (0.962889ms)\n✔ MEL23-047 request, success, and error examples in the API guide match current schemas (7.789921ms)\n✔ known-bad response names fail closed and dead mappings stay unregistered (0.512883ms)\n✔ known-good JSON, error, text and empty responses cross the bounded boundary (3.239972ms)\n✔ known-bad output is rejected before it can be serialized to the client (5.675461ms)\n✔ rejects a schema-valid audit payload that exceeds the JSON response byte budget (11.095296ms)\nℹ tests 21\nℹ suites 0\nℹ pass 20\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 367.146875\n\n✖ failing tests:\n\ntest at tests/unit/api-response-contract-clinical.test.ts:1:3739\n✖ accepts actual clinical and diagnostic success payloads (7.863649ms)\n  AssertionError [ERR_ASSERTION]: ClinicalDocumentListResponse rejected a valid payload: [\n    {\n      \"origin\": \"number\",\n      \"code\": \"too_small\",\n      \"minimum\": 2,\n      \"inclusive\": true,\n      \"path\": [\n        \"items\",\n        0,\n        \"version\"\n      ],\n      \"message\": \"Too small: expected number to be >=2\"\n    }\n  ]\n      at accepts (/tmp/cvg-aud27-mutation-NtLVFH/tests/unit/api-response-contract-clinical.test.ts:131:31)\n      at TestContext.<anonymous> (/tmp/cvg-aud27-mutation-NtLVFH/tests/unit/api-response-contract-clinical.test.ts:151:3)\n      at Test.runInAsyncScope (node:async_hooks:227:14)\n      at Test.run (node:internal/test_runner/test:1397:25)\n      at Test.processPendingSubtests (node:internal/test_runner/test:969:18)\n      at Test.postRun (node:internal/test_runner/test:1537:19)\n      at Test.run (node:internal/test_runner/test:1462:12)\n      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {\n    generatedMessage: false,\n    code: 'ERR_ASSERTION',\n    actual: undefined,\n    expected: undefined,\n    operator: 'fail',\n    diff: 'simple'\n  }..."
+    },
+    {
+      "id": "AUD27-018-SCHEMA-003",
+      "file": "apps/api/src/response-schemas/clinical.ts",
+      "find": "const boundedText = (maximum: number) => z.string().trim().min(1).max(maximum);",
+      "replace": "const boundedText = (maximum: number) => z.string().trim().min(0).max(maximum);",
+      "rationale": "Clinical bounded text fields must reject empty labels and descriptions.",
+      "status": "KILLED",
+      "exitStatus": 1,
+      "signal": null,
+      "output": "es, receipts, nulls, empty lists and bounded pagination (41.052877ms)\n✔ rejects missing and unknown top-level payload fields (0.514036ms)\n✔ rejects unsafe/redacted fields and invalid primitive values at nested boundaries (1.056735ms)\n✔ rejects representative malformed domain and AI payloads (0.932384ms)\n✔ every cataloged API response has an executable egress contract (0.961788ms)\n✔ MEL23-047 request, success, and error examples in the API guide match current schemas (8.254806ms)\n✔ known-bad response names fail closed and dead mappings stay unregistered (0.513845ms)\n✔ known-good JSON, error, text and empty responses cross the bounded boundary (3.493365ms)\n✔ known-bad output is rejected before it can be serialized to the client (5.687863ms)\n✔ rejects a schema-valid audit payload that exceeds the JSON response byte budget (12.582441ms)\nℹ tests 21\nℹ suites 0\nℹ pass 20\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 367.646804\n\n✖ failing tests:\n\ntest at tests/unit/api-response-contract-clinical.test.ts:1:6623\n✖ rejects malformed list items and pagination outside the bounded contract (2.136442ms)\n  AssertionError [ERR_ASSERTION]: SpecimenListResponse accepted an invalid payload\n  \n  true !== false\n  \n      at rejects (/tmp/cvg-aud27-mutation-NtLVFH/tests/unit/api-response-contract-clinical.test.ts:135:10)\n      at TestContext.<anonymous> (/tmp/cvg-aud27-mutation-NtLVFH/tests/unit/api-response-contract-clinical.test.ts:218:3)\n      at Test.runInAsyncScope (node:async_hooks:227:14)\n      at Test.run (node:internal/test_runner/test:1397:25)\n      at Test.processPendingSubtests (node:internal/test_runner/test:969:18)\n      at Test.postRun (node:internal/test_runner/test:1537:19)\n      at Test.run (node:internal/test_runner/test:1462:12)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {\n    generatedMessage: false,\n    code: 'ERR_ASSERTION',\n    actual: true,\n    expected: false,\n    operator: 'strictEqual',\n    diff: 'simple'\n  }..."
+    },
+    {
+      "id": "AUD27-018-SCHEMA-004",
+      "file": "apps/api/src/response-schemas/remaining.ts",
+      "find": "const MAX_PAGE_ITEMS = 200;",
+      "replace": "const MAX_PAGE_ITEMS = 199;",
+      "rationale": "Remaining list contracts must preserve the tested 200-item page boundary.",
+      "status": "KILLED",
+      "exitStatus": 1,
+      "signal": null,
+      "output": "orts exactly the assigned response-schema names (1.174202ms)\n✖ accepts live success payload shapes, receipts, nulls, empty lists and bounded pagination (38.577906ms)\n✔ rejects missing and unknown top-level payload fields (0.576712ms)\n✔ rejects unsafe/redacted fields and invalid primitive values at nested boundaries (1.099374ms)\n✔ rejects representative malformed domain and AI payloads (0.841544ms)\n✔ every cataloged API response has an executable egress contract (0.883753ms)\n✔ MEL23-047 request, success, and error examples in the API guide match current schemas (7.222317ms)\n✔ known-bad response names fail closed and dead mappings stay unregistered (0.440148ms)\n✔ known-good JSON, error, text and empty responses cross the bounded boundary (6.515342ms)\n✔ known-bad output is rejected before it can be serialized to the client (2.334971ms)\n✔ rejects a schema-valid audit payload that exceeds the JSON response byte budget (12.096107ms)\nℹ tests 21\nℹ suites 0\nℹ pass 20\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 375.301345\n\n✖ failing tests:\n\ntest at tests/unit/api-response-contract-remaining.test.ts:1:11876\n✖ accepts live success payload shapes, receipts, nulls, empty lists and bounded pagination (38.577906ms)\n  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n  \n  false !== true\n  \n      at TestContext.<anonymous> (/tmp/cvg-aud27-mutation-NtLVFH/tests/unit/api-response-contract-remaining.test.ts:210:10)\n      at Test.runInAsyncScope (node:async_hooks:227:14)\n      at Test.run (node:internal/test_runner/test:1397:25)\n      at Test.processPendingSubtests (node:internal/test_runner/test:969:18)\n      at Test.postRun (node:internal/test_runner/test:1537:19)\n      at Test.run (node:internal/test_runner/test:1462:12)\n      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {\n    generatedMessage: true,\n    code: 'ERR_ASSERTION',\n    actual: false,\n    expected: true,\n    operator: 'strictEqual',\n    diff: 'simple'\n  }..."
+    },
+    {
+      "id": "AUD27-018-SCHEMA-005",
+      "file": "apps/api/src/response-schemas/auth-ops.ts",
+      "find": "live: z.literal(true),",
+      "replace": "live: z.literal(false),",
+      "rationale": "Health responses must advertise liveness only with the true literal.",
+      "status": "KILLED",
+      "exitStatus": 1,
+      "signal": null,
+      "output": "nError [ERR_ASSERTION]: HealthResponse should accept fixture: [\n    {\n      \"code\": \"invalid_value\",\n      \"values\": [\n        false\n      ],\n      \"path\": [\n        \"live\"\n      ],\n      \"message\": \"Invalid input: expected false\"\n    }\n  ]\n  \n  false !== true\n  \n      at assertAccepts (/tmp/cvg-aud27-mutation-NtLVFH/tests/unit/api-response-contract-auth-ops.test.ts:202:10)\n      at TestContext.<anonymous> (/tmp/cvg-aud27-mutation-NtLVFH/tests/unit/api-response-contract-auth-ops.test.ts:215:48)\n      at Test.runInAsyncScope (node:async_hooks:227:14)\n      at Test.run (node:internal/test_runner/test:1397:25)\n      at Test.processPendingSubtests (node:internal/test_runner/test:969:18)\n      at Test.postRun (node:internal/test_runner/test:1537:19)\n      at Test.run (node:internal/test_runner/test:1462:12)\n      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {\n    generatedMessage: false,\n    code: 'ERR_ASSERTION',\n    actual: false,\n    expected: true,\n    operator: 'strictEqual',\n    diff: 'simple'\n  }\n\ntest at tests/unit/api-response-contract.test.ts:1:7594\n✖ known-good JSON, error, text and empty responses cross the bounded boundary (2.182086ms)\n  Error [ApiResponseContractError]: API response did not satisfy its egress contract\n      at validateApiResponseEgress (/tmp/cvg-aud27-mutation-NtLVFH/apps/api/src/response-contract.ts:120:13)\n      at TestContext.<anonymous> (/tmp/cvg-aud27-mutation-NtLVFH/tests/unit/api-response-contract.test.ts:124:3)\n      at Test.runInAsyncScope (node:async_hooks:227:14)\n      at Test.run (node:internal/test_runner/test:1397:25)\n      at Test.processPendingSubtests (node:internal/test_runner/test:969:18)\n      at Test.postRun (node:internal/test_runner/test:1537:19)\n      at Test.run (node:internal/test_runner/test:1462:12)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {\n    responseSchema: 'HealthResponse',\n    reason: 'response payload failed schema validation'\n  }..."
+    },
+    {
+      "id": "AUD27-018-SCHEMA-006",
+      "file": "apps/api/src/response-schemas/auth-ops.ts",
+      "find": "const nonNegativeIntegerSchema = z.number().int().nonnegative();",
+      "replace": "const nonNegativeIntegerSchema = z.number().int().positive();",
+      "rationale": "Operational counters and revoked-session counts must allow zero.",
+      "status": "KILLED",
+      "exitStatus": 1,
+      "signal": null,
+      "output": "6446\n✖ accepts actual success payload shapes, receipts, nulls, and empty collections (5.615429ms)\n  AssertionError [ERR_ASSERTION]: ReadinessResponse should accept fixture: [\n    {\n      \"origin\": \"number\",\n      \"code\": \"too_small\",\n      \"minimum\": 0,\n      \"inclusive\": false,\n      \"path\": [\n        \"checks\",\n        \"queue\",\n        \"outboxDepth\"\n      ],\n      \"message\": \"Too small: expected number to be >0\"\n    },\n    {\n      \"origin\": \"number\",\n      \"code\": \"too_small\",\n      \"minimum\": 0,\n      \"inclusive\": false,\n      \"path\": [\n        \"checks\",\n        \"queue\",\n        \"poisonMessages\"\n      ],\n      \"message\": \"Too small: expected number to be >0\"\n    },\n    {\n      \"origin\": \"number\",\n      \"code\": \"too_small\",\n      \"minimum\": 0,\n      \"inclusive\": false,\n      \"path\": [\n        \"checks\",\n        \"queue\",\n        \"reconciliationLag\"\n      ],\n      \"message\": \"Too small: expected number to be >0\"\n    },\n    {\n      \"origin\": \"number\",\n      \"code\": \"too_small\",\n      \"minimum\": 0,\n      \"inclusive\": false,\n      \"path\": [\n        \"checks\",\n        \"queue\",\n        \"workerHeartbeatCount\"\n      ],\n      \"message\": \"Too small: expected number to be >0\"\n    }\n  ]\n  \n  false !== true\n  \n      at assertAccepts (/tmp/cvg-aud27-mutation-NtLVFH/tests/unit/api-response-contract-auth-ops.test.ts:202:10)\n      at TestContext.<anonymous> (/tmp/cvg-aud27-mutation-NtLVFH/tests/unit/api-response-contract-auth-ops.test.ts:215:48)\n      at Test.runInAsyncScope (node:async_hooks:227:14)\n      at Test.run (node:internal/test_runner/test:1397:25)\n      at Test.processPendingSubtests (node:internal/test_runner/test:969:18)\n      at Test.postRun (node:internal/test_runner/test:1537:19)\n      at Test.run (node:internal/test_runner/test:1462:12)\n      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {\n    generatedMessage: false,\n    code: 'ERR_ASSERTION',\n    actual: false,\n    expected: true,\n    operator: 'strictEqual',\n    diff: 'simple'\n  }..."
+    },
+    {
+      "id": "AUD27-018-SCHEMA-007",
+      "file": "apps/api/src/response-schemas/auth-ops.ts",
+      "find": "challengeId: z.string().trim().regex(/^[A-Za-z0-9_-]{32,160}$/),",
+      "replace": "challengeId: z.string().trim().regex(/^[A-Za-z0-9_-]{32,39}$/),",
+      "rationale": "Recovery challenge identifiers must preserve the tested 40-character valid boundary.",
+      "status": "KILLED",
+      "exitStatus": 1,
+      "signal": null,
+      "output": " payloads (0.970003ms)\n✔ every cataloged API response has an executable egress contract (1.030756ms)\n✔ MEL23-047 request, success, and error examples in the API guide match current schemas (9.689472ms)\n✔ known-bad response names fail closed and dead mappings stay unregistered (0.541476ms)\n✔ known-good JSON, error, text and empty responses cross the bounded boundary (4.246675ms)\n✔ known-bad output is rejected before it can be serialized to the client (6.488782ms)\n✔ rejects a schema-valid audit payload that exceeds the JSON response byte budget (12.918235ms)\nℹ tests 21\nℹ suites 0\nℹ pass 20\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 379.190855\n\n✖ failing tests:\n\ntest at tests/unit/api-response-contract-auth-ops.test.ts:1:6446\n✖ accepts actual success payload shapes, receipts, nulls, and empty collections (7.554224ms)\n  AssertionError [ERR_ASSERTION]: RecoveryStartResponse should accept fixture: [\n    {\n      \"origin\": \"string\",\n      \"code\": \"invalid_format\",\n      \"format\": \"regex\",\n      \"pattern\": \"/^[A-Za-z0-9_-]{32,39}$/\",\n      \"path\": [\n        \"challengeId\"\n      ],\n      \"message\": \"Invalid string: must match pattern /^[A-Za-z0-9_-]{32,39}$/\"\n    }\n  ]\n  \n  false !== true\n  \n      at assertAccepts (/tmp/cvg-aud27-mutation-NtLVFH/tests/unit/api-response-contract-auth-ops.test.ts:202:10)\n      at TestContext.<anonymous> (/tmp/cvg-aud27-mutation-NtLVFH/tests/unit/api-response-contract-auth-ops.test.ts:215:48)\n      at Test.runInAsyncScope (node:async_hooks:227:14)\n      at Test.run (node:internal/test_runner/test:1397:25)\n      at Test.processPendingSubtests (node:internal/test_runner/test:969:18)\n      at Test.postRun (node:internal/test_runner/test:1537:19)\n      at Test.run (node:internal/test_runner/test:1462:12)\n      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {\n    generatedMessage: false,\n    code: 'ERR_ASSERTION',\n    actual: false,\n    expected: true,\n    operator: 'strictEqual',\n    diff: 'simple'\n  }..."
+    },
+    {
+      "id": "AUD27-018-AUTH-001",
+      "file": "packages/auth/src/index.ts",
+      "find": "if (password.length < policy.minLength)",
+      "replace": "if (password.length > policy.minLength)",
+      "rationale": "Password policy must reject values below the minimum length, not values above it.",
+      "lane": "auth",
+      "tests": [
+        "tests/unit/auth.test.ts"
+      ],
+      "status": "KILLED",
+      "exitStatus": 1,
+      "signal": null,
+      "output": "✔ TOTP accepts the current time step and rejects malformed or stale codes (1.697957ms)\n✖ password policy is explicit and recovery codes are one-way values (5.789042ms)\n✔ WebAuthn and break-glass boundaries fail closed before provider cryptography (0.710691ms)\n✔ WebAuthn cryptographic verification binds origin, relying party and monotonic counter (16.616771ms)\n✔ break-glass lifecycle requires explicit activation, expires automatically and records independent review (1.562224ms)\n✔ password hasher stores algorithm parameters, migrates legacy hashes and limits derivation concurrency (944.144084ms)\nℹ tests 6\nℹ suites 0\nℹ pass 5\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 1126.348663\n\n✖ failing tests:\n\ntest at tests/unit/auth.test.ts:1:1559\n✖ password policy is explicit and recovery codes are one-way values (5.789042ms)\n  AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:\n  \n    assert.ok(weak.length >= 4)\n  \n      at TestContext.<anonymous> (/tmp/cvg-aud27-mutation-NtLVFH/tests/unit/auth.test.ts:41:10)\n      at Test.runInAsyncScope (node:async_hooks:227:14)\n      at Test.run (node:internal/test_runner/test:1397:25)\n      at Test.processPendingSubtests (node:internal/test_runner/test:969:18)\n      at Test.postRun (node:internal/test_runner/test:1537:19)\n      at Test.run (node:internal/test_runner/test:1462:12)\n      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {\n    generatedMessage: true,\n    code: 'ERR_ASSERTION',\n    actual: false,\n    expected: true,\n    operator: '==',\n    diff: 'simple'\n  }"
+    },
+    {
+      "id": "AUD27-018-AUTH-002",
+      "file": "packages/auth/src/index.ts",
+      "find": "if (policy.requireUppercase && !/[A-Z]/.test(password))",
+      "replace": "if (policy.requireUppercase && !/[a-z]/.test(password))",
+      "rationale": "Password policy must enforce an uppercase character independently of the lowercase rule.",
+      "lane": "auth",
+      "tests": [
+        "tests/unit/auth.test.ts"
+      ],
+      "status": "KILLED",
+      "exitStatus": 1,
+      "signal": null,
+      "output": "✔ TOTP accepts the current time step and rejects malformed or stale codes (1.385967ms)\n✖ password policy is explicit and recovery codes are one-way values (5.170642ms)\n✔ WebAuthn and break-glass boundaries fail closed before provider cryptography (0.506933ms)\n✔ WebAuthn cryptographic verification binds origin, relying party and monotonic counter (22.768236ms)\n✔ break-glass lifecycle requires explicit activation, expires automatically and records independent review (0.852755ms)\n✔ password hasher stores algorithm parameters, migrates legacy hashes and limits derivation concurrency (950.222386ms)\nℹ tests 6\nℹ suites 0\nℹ pass 5\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 1123.308012\n\n✖ failing tests:\n\ntest at tests/unit/auth.test.ts:1:1559\n✖ password policy is explicit and recovery codes are one-way values (5.170642ms)\n  AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:\n  \n    assert.ok(weak.length >= 4)\n  \n      at TestContext.<anonymous> (/tmp/cvg-aud27-mutation-NtLVFH/tests/unit/auth.test.ts:41:10)\n      at Test.runInAsyncScope (node:async_hooks:227:14)\n      at Test.run (node:internal/test_runner/test:1397:25)\n      at Test.processPendingSubtests (node:internal/test_runner/test:969:18)\n      at Test.postRun (node:internal/test_runner/test:1537:19)\n      at Test.run (node:internal/test_runner/test:1462:12)\n      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {\n    generatedMessage: true,\n    code: 'ERR_ASSERTION',\n    actual: false,\n    expected: true,\n    operator: '==',\n    diff: 'simple'\n  }"
+    },
+    {
+      "id": "AUD27-018-AUTH-003",
+      "file": "packages/auth/src/index.ts",
+      "find": "if (challenge.status !== \"PENDING\")",
+      "replace": "if (challenge.status === \"PENDING\")",
+      "rationale": "WebAuthn assertions must be rejected once the challenge is no longer pending.",
+      "lane": "auth",
+      "tests": [
+        "tests/unit/auth.test.ts"
+      ],
+      "status": "KILLED",
+      "exitStatus": 1,
+      "signal": null,
+      "output": "18)\n      at Test.postRun (node:internal/test_runner/test:1537:19)\n      at Test.run (node:internal/test_runner/test:1462:12)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {\n    generatedMessage: false,\n    code: 'ERR_ASSERTION',\n    actual: Error: WebAuthn challenge is not pending\n        at validateWebAuthnAssertion (/tmp/cvg-aud27-mutation-NtLVFH/packages/auth/src/index.ts:182:45)\n        at <anonymous> (/tmp/cvg-aud27-mutation-NtLVFH/tests/unit/auth.test.ts:55:29)\n        at getActual (node:assert:611:5)\n        at strict.doesNotThrow (node:assert:779:32)\n        at TestContext.<anonymous> (/tmp/cvg-aud27-mutation-NtLVFH/tests/unit/auth.test.ts:55:10)\n        at Test.runInAsyncScope (node:async_hooks:227:14)\n        at Test.run (node:internal/test_runner/test:1397:25)\n        at Test.processPendingSubtests (node:internal/test_runner/test:969:18)\n        at Test.postRun (node:internal/test_runner/test:1537:19)\n        at Test.run (node:internal/test_runner/test:1462:12),\n    expected: undefined,\n    operator: 'doesNotThrow',\n    diff: 'simple'\n  }\n\ntest at tests/unit/auth.test.ts:1:3540\n✖ WebAuthn cryptographic verification binds origin, relying party and monotonic counter (36.413392ms)\n  Error: WebAuthn challenge is not pending\n      at validateWebAuthnAssertion (/tmp/cvg-aud27-mutation-NtLVFH/packages/auth/src/index.ts:182:45)\n      at verifyWebAuthnAssertionCryptographically (/tmp/cvg-aud27-mutation-NtLVFH/packages/auth/src/index.ts:217:3)\n      at TestContext.<anonymous> (/tmp/cvg-aud27-mutation-NtLVFH/tests/unit/auth.test.ts:73:20)\n      at Test.runInAsyncScope (node:async_hooks:227:14)\n      at Test.run (node:internal/test_runner/test:1397:25)\n      at Test.processPendingSubtests (node:internal/test_runner/test:969:18)\n      at Test.postRun (node:internal/test_runner/test:1537:19)\n      at Test.run (node:internal/test_runner/test:1462:12)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7)..."
+    },
+    {
+      "id": "AUD27-018-AUTH-004",
+      "file": "packages/auth/src/index.ts",
+      "find": "if (credential.signCount !== 0 && signCount !== 0 && signCount <= credential.signCount)",
+      "replace": "if (credential.signCount !== 0 && signCount !== 0 && signCount > credential.signCount)",
+      "rationale": "A nonzero WebAuthn counter must advance strictly beyond the registered counter.",
+      "lane": "auth",
+      "tests": [
+        "tests/unit/auth.test.ts"
+      ],
+      "status": "KILLED",
+      "exitStatus": 1,
+      "signal": null,
+      "output": "✔ TOTP accepts the current time step and rejects malformed or stale codes (1.30702ms)\n✔ password policy is explicit and recovery codes are one-way values (0.691556ms)\n✔ WebAuthn and break-glass boundaries fail closed before provider cryptography (0.501933ms)\n✖ WebAuthn cryptographic verification binds origin, relying party and monotonic counter (23.335901ms)\n✔ break-glass lifecycle requires explicit activation, expires automatically and records independent review (0.84417ms)\n✔ password hasher stores algorithm parameters, migrates legacy hashes and limits derivation concurrency (963.804106ms)\nℹ tests 6\nℹ suites 0\nℹ pass 5\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 1128.32497\n\n✖ failing tests:\n\ntest at tests/unit/auth.test.ts:1:3540\n✖ WebAuthn cryptographic verification binds origin, relying party and monotonic counter (23.335901ms)\n  AssertionError [ERR_ASSERTION]: Missing expected exception.\n      at TestContext.<anonymous> (/tmp/cvg-aud27-mutation-NtLVFH/tests/unit/auth.test.ts:75:10)\n      at Test.runInAsyncScope (node:async_hooks:227:14)\n      at Test.run (node:internal/test_runner/test:1397:25)\n      at Test.processPendingSubtests (node:internal/test_runner/test:969:18)\n      at Test.postRun (node:internal/test_runner/test:1537:19)\n      at Test.run (node:internal/test_runner/test:1462:12)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {\n    generatedMessage: false,\n    code: 'ERR_ASSERTION',\n    actual: undefined,\n    expected: undefined,\n    operator: 'throws',\n    diff: 'simple'\n  }"
+    },
+    {
+      "id": "AUD27-018-PDP-001",
+      "file": "packages/agent-policy/src/index.ts",
+      "find": "if (registeredRule.capability !== request.capability)",
+      "replace": "if (registeredRule.capability === request.capability)",
+      "rationale": "The PDP must deny a request whose capability differs from the canonical operation rule.",
+      "lane": "pdp",
+      "tests": [
+        "tests/unit/vnext.test.ts"
+      ],
+      "status": "KILLED",
+      "exitStatus": 1,
+      "signal": null,
+      "output": "tmp/cvg-aud27-mutation-NtLVFH/tests/unit/vnext.test.ts:157:33)\n      at async Test.run (node:internal/test_runner/test:1404:7)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {\n    code: 'POLICY_DENIED',\n    decision: { status: 'DENY', policyRevision: '1', reason: 'A capability não corresponde à operação registrada.', obligations: [ [Object] ] }\n  }\n\ntest at tests/unit/vnext.test.ts:1:21613\n✖ tool gateway reports an unknown outcome when an executor exceeds its deadline (156.372548ms)\n  AssertionError [ERR_ASSERTION]: The validation function is expected to return \"true\". Received false\n  \n  Caught error:\n  \n  ToolGatewayError: A capability não corresponde à operação registrada.\n      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n      at async TestContext.<anonymous> (/tmp/cvg-aud27-mutation-NtLVFH/tests/unit/vnext.test.ts:336:3)\n      at async Test.run (node:internal/test_runner/test:1404:7)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {\n    generatedMessage: true,\n    code: 'ERR_ASSERTION',\n    actual: ToolGatewayError: A capability não corresponde à operação registrada.\n        at ToolGateway.authorize (/tmp/cvg-aud27-mutation-NtLVFH/packages/agent-tools/src/index.ts:201:13)\n        at ToolGateway.execute (/tmp/cvg-aud27-mutation-NtLVFH/packages/agent-tools/src/index.ts:207:29)\n        at <anonymous> (/tmp/cvg-aud27-mutation-NtLVFH/tests/unit/vnext.test.ts:336:38)\n        at waitForActual (node:assert:632:21)\n        at strict.rejects (node:assert:769:31)\n        at TestContext.<anonymous> (/tmp/cvg-aud27-mutation-NtLVFH/tests/unit/vnext.test.ts:336:16)\n        at Test.runInAsyncScope (node:async_hooks:227:14)\n        at Test.run (node:internal/test_runner/test:1397:25)\n        at Test.processPendingSubtests (node:internal/test_runner/test:969:18)\n        at Test.postRun (node:internal/test_runner/test:1537:19),\n    operator: 'rejects',\n    diff: 'simple'\n  }..."
+    },
+    {
+      "id": "AUD27-018-PDP-002",
+      "file": "packages/agent-policy/src/index.ts",
+      "find": "if (!request.approval) return approvalRequired(this.revision, request);",
+      "replace": "if (request.approval) return approvalRequired(this.revision, request);",
+      "rationale": "High-impact requests without a bound approval must remain approval-required.",
+      "lane": "pdp",
+      "tests": [
+        "tests/unit/vnext.test.ts"
+      ],
+      "status": "KILLED",
+      "exitStatus": 1,
+      "signal": null,
+      "output": "text authorization failures force a safe revalidation boundary (0.246689ms)\n✔ permission and stale states remain stable until an explicit retry (0.143707ms)\n✔ initial authentication failure remains a login state instead of a session-expired state (3.461055ms)\nℹ tests 22\nℹ suites 0\nℹ pass 21\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 2571.240057\n\n✖ failing tests:\n\ntest at tests/unit/vnext.test.ts:1:1541\n✖ vNext PDP rejects foreign scope and requires independent approval (177.485727ms)\n  AssertionError [ERR_ASSERTION]: The validation function is expected to return \"true\". Received false\n  \n  Caught error:\n  \n  TypeError: Cannot read properties of undefined (reading 'actorId')\n      at async TestContext.<anonymous> (/tmp/cvg-aud27-mutation-NtLVFH/tests/unit/vnext.test.ts:56:3)\n      at async Test.run (node:internal/test_runner/test:1404:7)\n      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {\n    generatedMessage: true,\n    code: 'ERR_ASSERTION',\n    actual: TypeError: Cannot read properties of undefined (reading 'actorId')\n        at approvalIsValid (/tmp/cvg-aud27-mutation-NtLVFH/packages/agent-policy/src/index.ts:90:19)\n        at StaticPolicyDecisionPoint.evaluate (/tmp/cvg-aud27-mutation-NtLVFH/packages/agent-policy/src/index.ts:142:12)\n        at ToolGateway.authorize (/tmp/cvg-aud27-mutation-NtLVFH/packages/agent-tools/src/index.ts:198:34)\n        at ToolGateway.execute (/tmp/cvg-aud27-mutation-NtLVFH/packages/agent-tools/src/index.ts:207:29)\n        at <anonymous> (/tmp/cvg-aud27-mutation-NtLVFH/tests/unit/vnext.test.ts:56:38)\n        at waitForActual (node:assert:632:21)\n        at strict.rejects (node:assert:769:31)\n        at TestContext.<anonymous> (/tmp/cvg-aud27-mutation-NtLVFH/tests/unit/vnext.test.ts:56:16)\n        at async Test.run (node:internal/test_runner/test:1404:7)\n        at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3),\n    operator: 'rejects',\n    diff: 'simple'\n  }..."
+    },
+    {
+      "id": "AUD27-018-PDP-003",
+      "file": "packages/agent-policy/src/index.ts",
+      "find": "if (!context.actorRoleSnapshot.some((role) => request.allowedRoles.includes(role)))",
+      "replace": "if (context.actorRoleSnapshot.some((role) => request.allowedRoles.includes(role)))",
+      "rationale": "The PDP must allow only actors whose current role snapshot intersects the descriptor roles.",
+      "lane": "pdp",
+      "tests": [
+        "tests/unit/vnext.test.ts"
+      ],
+      "status": "KILLED",
+      "exitStatus": 1,
+      "signal": null,
+      "output": "on-NtLVFH/tests/unit/vnext.test.ts:157:33)\n      at async Test.run (node:internal/test_runner/test:1404:7)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {\n    code: 'POLICY_DENIED',\n    decision: { status: 'DENY', policyRevision: '1', reason: 'O ator não possui uma role permitida para esta capability.', obligations: [ [Object] ] }\n  }\n\ntest at tests/unit/vnext.test.ts:1:21613\n✖ tool gateway reports an unknown outcome when an executor exceeds its deadline (160.19782ms)\n  AssertionError [ERR_ASSERTION]: The validation function is expected to return \"true\". Received false\n  \n  Caught error:\n  \n  ToolGatewayError: O ator não possui uma role permitida para esta capability.\n      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n      at async TestContext.<anonymous> (/tmp/cvg-aud27-mutation-NtLVFH/tests/unit/vnext.test.ts:336:3)\n      at async Test.run (node:internal/test_runner/test:1404:7)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {\n    generatedMessage: true,\n    code: 'ERR_ASSERTION',\n    actual: ToolGatewayError: O ator não possui uma role permitida para esta capability.\n        at ToolGateway.authorize (/tmp/cvg-aud27-mutation-NtLVFH/packages/agent-tools/src/index.ts:201:13)\n        at ToolGateway.execute (/tmp/cvg-aud27-mutation-NtLVFH/packages/agent-tools/src/index.ts:207:29)\n        at <anonymous> (/tmp/cvg-aud27-mutation-NtLVFH/tests/unit/vnext.test.ts:336:38)\n        at waitForActual (node:assert:632:21)\n        at strict.rejects (node:assert:769:31)\n        at TestContext.<anonymous> (/tmp/cvg-aud27-mutation-NtLVFH/tests/unit/vnext.test.ts:336:16)\n        at Test.runInAsyncScope (node:async_hooks:227:14)\n        at Test.run (node:internal/test_runner/test:1397:25)\n        at Test.processPendingSubtests (node:internal/test_runner/test:969:18)\n        at Test.postRun (node:internal/test_runner/test:1537:19),\n    operator: 'rejects',\n    diff: 'simple'\n  }..."
+    },
+    {
+      "id": "AUD27-018-MIG-001",
+      "file": "packages/persistence/src/migration-harness.ts",
+      "find": "if (current && current.sourceDigest !== sourceDigest)",
+      "replace": "if (current && current.sourceDigest === sourceDigest)",
+      "rationale": "A resumed migration run must quarantine source drift instead of accepting the changed source.",
+      "lane": "migration",
+      "tests": [
+        "tests/unit/aud27-migration-harness.test.ts"
+      ],
+      "status": "KILLED",
+      "exitStatus": 1,
+      "signal": null,
+      "output": "g and rolls back failed batches (0.43594ms)\n✔ AUD27 migration harness rejects a tampered target through parity (0.437544ms)\n✔ AUD27 migration harness rejects a concurrent owner for the same run key (0.72636ms)\nℹ tests 5\nℹ suites 0\nℹ pass 3\nℹ fail 2\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 324.802782\n\n✖ failing tests:\n\ntest at tests/unit/aud27-migration-harness.test.ts:1:1493\n✖ AUD27 migration harness supports dry-run, checkpoints, parity and replay (6.83137ms)\n  Error [Aud27MigrationError]: source digest changed for an existing migration run\n      at Aud27MigrationExecutor.runExclusive (/tmp/cvg-aud27-mutation-NtLVFH/packages/persistence/src/migration-harness.ts:149:65)\n      at async InMemoryAud27MigrationCheckpointStore.runExclusive (/tmp/cvg-aud27-mutation-NtLVFH/packages/persistence/src/migration-harness.ts:213:14) {\n    code: 'SOURCE_DRIFT'\n  }\n\ntest at tests/unit/aud27-migration-harness.test.ts:1:2303\n✖ AUD27 migration harness quarantines a drifted target during replay (2.021327ms)\n  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /reconciled target drifted/. Input:\n  \n  'Aud27MigrationError: source digest changed for an existing migration run'\n  \n      at async TestContext.<anonymous> (/tmp/cvg-aud27-mutation-NtLVFH/tests/unit/aud27-migration-harness.test.ts:63:3)\n      at async Test.run (node:internal/test_runner/test:1404:7)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {\n    generatedMessage: true,\n    code: 'ERR_ASSERTION',\n    actual: Aud27MigrationError: source digest changed for an existing migration run\n        at Aud27MigrationExecutor.runExclusive (/tmp/cvg-aud27-mutation-NtLVFH/packages/persistence/src/migration-harness.ts:149:65)\n        at async InMemoryAud27MigrationCheckpointStore.runExclusive (/tmp/cvg-aud27-mutation-NtLVFH/packages/persistence/src/migration-harness.ts:213:14),\n    expected: /reconciled target drifted/,\n    operator: 'rejects',\n    diff: 'simple'\n  }..."
+    },
+    {
+      "id": "AUD27-018-MIG-002",
+      "file": "packages/persistence/src/migration-harness.ts",
+      "find": "if (input.signal?.aborted) throw new Aud27MigrationError(\"ABORTED\", \"migration was aborted before start\");",
+      "replace": "if (!input.signal?.aborted) throw new Aud27MigrationError(\"ABORTED\", \"migration was aborted before start\");",
+      "rationale": "A migration without an aborted signal must be allowed to enter the execution protocol.",
+      "lane": "migration",
+      "tests": [
+        "tests/unit/aud27-migration-harness.test.ts"
+      ],
+      "status": "KILLED",
+      "exitStatus": 1,
+      "signal": null,
+      "output": "7:3)\n      at async Test.run (node:internal/test_runner/test:1404:7)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {\n    generatedMessage: true,\n    code: 'ERR_ASSERTION',\n    actual: Aud27MigrationError: migration was aborted before start\n        at Aud27MigrationExecutor.run (/tmp/cvg-aud27-mutation-NtLVFH/packages/persistence/src/migration-harness.ts:133:39)\n        at <anonymous> (/tmp/cvg-aud27-mutation-NtLVFH/tests/unit/aud27-migration-harness.test.ts:87:39)\n        at waitForActual (node:assert:632:21)\n        at strict.rejects (node:assert:769:31)\n        at TestContext.<anonymous> (/tmp/cvg-aud27-mutation-NtLVFH/tests/unit/aud27-migration-harness.test.ts:87:16)\n        at Test.runInAsyncScope (node:async_hooks:227:14)\n        at Test.run (node:internal/test_runner/test:1397:25)\n        at Test.processPendingSubtests (node:internal/test_runner/test:969:18)\n        at Test.postRun (node:internal/test_runner/test:1537:19)\n        at Test.run (node:internal/test_runner/test:1462:12),\n    expected: /target parity failed/,\n    operator: 'rejects',\n    diff: 'simple'\n  }\n\ntest at tests/unit/aud27-migration-harness.test.ts:1:4246\n✖ AUD27 migration harness rejects a concurrent owner for the same run key (4.545791ms)\n  Error [Aud27MigrationError]: migration was aborted before start\n      at Aud27MigrationExecutor.run (/tmp/cvg-aud27-mutation-NtLVFH/packages/persistence/src/migration-harness.ts:133:39)\n      at TestContext.<anonymous> (/tmp/cvg-aud27-mutation-NtLVFH/tests/unit/aud27-migration-harness.test.ts:102:34)\n      at Test.runInAsyncScope (node:async_hooks:227:14)\n      at Test.run (node:internal/test_runner/test:1397:25)\n      at Test.processPendingSubtests (node:internal/test_runner/test:969:18)\n      at Test.postRun (node:internal/test_runner/test:1537:19)\n      at Test.run (node:internal/test_runner/test:1462:12)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {\n    code: 'ABORTED'\n  }..."
+    },
+    {
+      "id": "AUD27-018-MIG-003",
+      "file": "packages/persistence/src/migration-harness.ts",
+      "find": "if (target.length !== source.length || targetDigest !== sourceDigest)",
+      "replace": "if (target.length !== source.length && targetDigest !== sourceDigest)",
+      "rationale": "Migration parity must reject a digest mismatch even when row counts happen to match.",
+      "lane": "migration",
+      "tests": [
+        "tests/unit/aud27-migration-harness.test.ts"
+      ],
+      "status": "KILLED",
+      "exitStatus": 1,
+      "signal": null,
+      "output": "✔ AUD27 migration harness supports dry-run, checkpoints, parity and replay (10.051676ms)\n✔ AUD27 migration harness quarantines a drifted target during replay (0.757187ms)\n✔ AUD27 migration harness rejects tenant crossing and rolls back failed batches (0.411555ms)\n✖ AUD27 migration harness rejects a tampered target through parity (1.840631ms)\n✔ AUD27 migration harness rejects a concurrent owner for the same run key (0.821678ms)\nℹ tests 5\nℹ suites 0\nℹ pass 4\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 316.989198\n\n✖ failing tests:\n\ntest at tests/unit/aud27-migration-harness.test.ts:1:3546\n✖ AUD27 migration harness rejects a tampered target through parity (1.840631ms)\n  AssertionError [ERR_ASSERTION]: Missing expected rejection.\n      at async TestContext.<anonymous> (/tmp/cvg-aud27-mutation-NtLVFH/tests/unit/aud27-migration-harness.test.ts:87:3)\n      at async Test.run (node:internal/test_runner/test:1404:7)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {\n    generatedMessage: false,\n    code: 'ERR_ASSERTION',\n    actual: undefined,\n    expected: /target parity failed/,\n    operator: 'rejects',\n    diff: 'simple'\n  }"
+    },
+    {
+      "id": "MEL23-026-FINANCE-001",
+      "file": "packages/domain/src/index.ts",
+      "find": "if (currencies.size > 1) return unresolved(\"UNKNOWN\");",
+      "replace": "if (currencies.size > 2) return unresolved(\"UNKNOWN\");",
+      "rationale": "A single-currency financial balance must reject mixed currencies instead of reporting a settled amount.",
+      "lane": "finance",
+      "tests": [
+        "tests/unit/finance-balance.test.ts"
+      ],
+      "status": "KILLED",
+      "exitStatus": 1,
+      "signal": null,
+      "output": "✔ a paid charge of 10000 cents never increases the open amount (2.909879ms)\n✔ partial payment reports the exact remaining cents without double counting (0.320085ms)\n✔ an open charge reports the full amount and a refund stays explicitly unresolved (0.628589ms)\n✔ a refunded charge without an observed refunded payment is UNKNOWN, not a settled state (0.153325ms)\n✔ multiple settled payments sum once and close the charge (0.156702ms)\n✔ payments from another charge or context do not leak into the balance (0.153385ms)\n✖ mixed currencies cannot be represented as a single settled balance (1.555722ms)\nℹ tests 7\nℹ suites 0\nℹ pass 6\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 304.379425\n\n✖ failing tests:\n\ntest at tests/unit/finance-balance.test.ts:1:3166\n✖ mixed currencies cannot be represented as a single settled balance (1.555722ms)\n  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n  \n  'OPEN' !== 'UNKNOWN'\n  \n      at TestContext.<anonymous> (/tmp/cvg-aud27-mutation-NtLVFH/tests/unit/finance-balance.test.ts:76:10)\n      at Test.runInAsyncScope (node:async_hooks:227:14)\n      at Test.run (node:internal/test_runner/test:1397:25)\n      at Test.processPendingSubtests (node:internal/test_runner/test:969:18)\n      at Test.postRun (node:internal/test_runner/test:1537:19)\n      at Test.run (node:internal/test_runner/test:1462:12)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {\n    generatedMessage: true,\n    code: 'ERR_ASSERTION',\n    actual: 'OPEN',\n    expected: 'UNKNOWN',\n    operator: 'strictEqual',\n    diff: 'simple'\n  }"
+    },
+    {
+      "id": "MEL23-026-CLINICAL-001",
+      "file": "packages/domain/src/index.ts",
+      "find": "if (document.status !== \"REVIEW\") throw new DomainError(\"INVALID_STATE\", \"O documento precisa passar por revisão explícita antes da assinatura.\", 409, { status: document.status });",
+      "replace": "if (document.status === \"REVIEW\") throw new DomainError(\"INVALID_STATE\", \"O documento precisa passar por revisão explícita antes da assinatura.\", 409, { status: document.status });",
+      "rationale": "Clinical signing must require an explicitly reviewed document while rejecting draft signatures.",
+      "lane": "clinical",
+      "tests": [
+        "tests/unit/domain.test.ts"
+      ],
+      "status": "KILLED",
+      "exitStatus": 1,
+      "signal": null,
+      "output": "nner/test:969:7) {\n    code: 'INVALID_STATE',\n    statusCode: 409,\n    details: { status: 'REVIEW' }\n  }\n\ntest at tests/unit/domain.test.ts:1:55400\n✖ clinical documents require review before signature, stay immutable and accept only addenda (156.042336ms)\n  Error [DomainError]: O documento precisa passar por revisão explícita antes da assinatura.\n      at CvgStore.signClinicalDocument (/tmp/cvg-aud27-mutation-NtLVFH/packages/domain/src/index.ts:1515:45)\n      at TestContext.<anonymous> (/tmp/cvg-aud27-mutation-NtLVFH/tests/unit/domain.test.ts:858:24)\n      at Test.runInAsyncScope (node:async_hooks:227:14)\n      at Test.run (node:internal/test_runner/test:1397:25)\n      at Test.processPendingSubtests (node:internal/test_runner/test:969:18)\n      at Test.postRun (node:internal/test_runner/test:1537:19)\n      at Test.run (node:internal/test_runner/test:1462:12)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {\n    code: 'INVALID_STATE',\n    statusCode: 409,\n    details: { status: 'REVIEW' }\n  }\n\ntest at tests/unit/domain.test.ts:1:60535\n✖ hospitalization enforces bed admission, distinct medication facts, duplicate protection and discharge pendencies (157.078822ms)\n  Error [DomainError]: O documento precisa passar por revisão explícita antes da assinatura.\n      at CvgStore.signClinicalDocument (/tmp/cvg-aud27-mutation-NtLVFH/packages/domain/src/index.ts:1515:45)\n      at TestContext.<anonymous> (/tmp/cvg-aud27-mutation-NtLVFH/tests/unit/domain.test.ts:957:9)\n      at Test.runInAsyncScope (node:async_hooks:227:14)\n      at Test.run (node:internal/test_runner/test:1397:25)\n      at Test.processPendingSubtests (node:internal/test_runner/test:969:18)\n      at Test.postRun (node:internal/test_runner/test:1537:19)\n      at Test.run (node:internal/test_runner/test:1462:12)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {\n    code: 'INVALID_STATE',\n    statusCode: 409,\n    details: { status: 'REVIEW' }\n  }..."
+    }
+  ],
+  "score": {
+    "killed": 25,
+    "survived": 0,
+    "invalid": 0,
+    "score": 1,
+    "percentage": 100
+  },
+  "policy": {
+    "minimumPlanSize": 25,
+    "minimumScore": 1,
+    "maximumSurvived": 0,
+    "maximumInvalid": 0,
+    "planSize": 25,
+    "pass": true
+  },
+  "limitations": [
+    "Selective local mutation lanes cover API response contracts, auth/PDP, finance, clinical signing, and persistence migration; this is not a whole-repository mutation score.",
+    "The subject is dirty and not yet bound to an AUD27-004 candidate fingerprint.",
+    "External staging, browser, license and human gates remain outside this local run."
+  ]
+}

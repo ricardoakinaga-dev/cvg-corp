@@ -77,7 +77,6 @@ test("tool fora do catálogo ou role sem alçada resultam em DENY com turno pers
 test("ação com aprovação exige decisão humana independente e consome uma única vez", async () => {
   const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
   const veterinarian = context(store, userByLogin(store, "ana."));
-  const reception = context(store, userByLogin(store, "bia."));
   const { budget } = budgetRecorder();
   const governance: DeepSeekAcpGovernance = createDurableDeepSeekAcpGovernance({ store, budget });
   const session = await governance.createSession(veterinarian, { purpose: "OPERATIONS", patientId: null, encounterId: null }, facts);

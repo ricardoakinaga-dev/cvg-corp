@@ -1,4 +1,4 @@
-import { createHash, randomBytes, randomUUID, scryptSync, timingSafeEqual } from "node:crypto";
+import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import type {
   AiApproval,
   AiDraft,
@@ -38,7 +38,6 @@ import type {
   Resource,
   Role,
   RoleAssignment,
-  ScopeType,
   Session,
   ServiceCatalogItem,
   Specimen,
@@ -49,18 +48,21 @@ import type {
   Workspace
 } from "@cvg/contracts";
 import { digestRecoveryCode, generateRecoveryCodes } from "@cvg/auth";
-import { CAPABILITY_ROLES, evaluateCapability, isGrantableRole, sameRoleSet } from "./authorization.js";
+import { evaluateCapability, isGrantableRole, sameRoleSet } from "./authorization.js";
 import { validateSnapshotSemantics } from "./snapshot-validation.js";
 export { validateSnapshotSemantics } from "./snapshot-validation.js";
+import { DomainError } from "./errors.js";
+export { DomainError } from "./errors.js";
+import { digest, makeId, now } from "./primitives.js";
+export { digest, makeId, now } from "./primitives.js";
+export * from "./idempotency.js";
 import { id } from "@cvg/contracts";
 import type {
-  AiTurnInput,
   AppointmentInput,
   ChargeInput,
   ClinicalDocumentInput,
   ContextSelector,
   DiagnosticRequestInput,
-  LoginInput,
   PatientInput,
   PaymentInput,
   PatientMergeInput,
@@ -68,22 +70,6 @@ import type {
   RoleAssignmentInput,
   StockMovementInput
 } from "@cvg/contracts";
-
-export class DomainError extends Error {
-  public readonly code: string;
-  public readonly statusCode: number;
-  public readonly details: Record<string, unknown> | undefined;
-
-  constructor(code: string, message: string, statusCode = 400, details?: Record<string, unknown>) {
-    super(message);
-    this.name = "DomainError";
-    this.code = code;
-    this.statusCode = statusCode;
-    this.details = details;
-  }
-}
-
-export const now = (): string => new Date().toISOString();
 
 export function appointmentRangeBounds(range: AppointmentRange, clock = new Date()): { start: Date; end: Date } {
   if (typeof range !== "string") return { start: new Date(range.startsAt), end: new Date(range.endsAt) };
@@ -129,10 +115,6 @@ export function verifyPassword(password: string, encoded: string): boolean {
   } catch {
     return false;
   }
-}
-
-export function digest(value: unknown): string {
-  return createHash("sha256").update(JSON.stringify(value, canonicalReplacer)).digest("hex");
 }
 
 /** Hashes an audit record without allowing the hash field to hash itself. */
@@ -204,15 +186,6 @@ export function verifyAuditChain(records: readonly AuditRecord[]): AuditChainVer
   };
 }
 
-function canonicalReplacer(_key: string, value: unknown): unknown {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
-  return Object.fromEntries(Object.entries(value as Record<string, unknown>).sort(([a], [b]) => a.localeCompare(b)));
-}
-
-export function makeId(): OpaqueId {
-  return id(randomUUID());
-}
-
 function clone<T>(value: T): T {
   return structuredClone(value);
 }
@@ -249,6 +222,32 @@ export interface ContextOption {
   unit: Unit;
   workspace: Workspace;
   roles: Role[];
+}
+
+/**
+ * Authoritative identity of the resource targeted by a governed agent tool.
+ * Every field is derived from the repository, never from the caller's
+ * declarations (CVG-AUD19-004/AUD-2026-001).
+ */
+export interface ResolvedAgentResource {
+  kind: "PATIENT" | "ENCOUNTER";
+  resourceId: OpaqueId;
+  organizationId: OpaqueId;
+  unitId: OpaqueId | null;
+  workspaceId: OpaqueId | null;
+  patientId: OpaqueId | null;
+  encounterId: OpaqueId | null;
+}
+
+export type AgentResourceResolution =
+  | { status: "RESOLVED"; resource: ResolvedAgentResource }
+  | { status: "NOT_FOUND" }
+  | { status: "DIVERGENT" };
+
+export interface AgentResourceInput {
+  resourceId?: OpaqueId | null;
+  encounterId?: OpaqueId | null;
+  patientId?: OpaqueId | null;
 }
 
 export interface StoreSnapshot {
@@ -743,6 +742,18 @@ export class CvgStore {
     this.healthStatusValue = snapshot.healthStatus;
   }
 
+  /**
+   * CVG-AUD19-014: isolated copy of a durable baseline for a request that
+   * crosses an external boundary.  Mutations on the fork never touch the
+   * canonical store; the application boundary adopts the fork under the commit
+   * coordinator only after the external call returns.
+   */
+  fork(baseline: StoreSnapshot = this.snapshot()): CvgStore {
+    const isolated = new CvgStore();
+    isolated.hydrate(baseline);
+    return isolated;
+  }
+
   private loadSnapshot(snapshot: StoreSnapshot): void {
     const entries: Array<[Map<string, unknown>, unknown[]]> = [
       [this.organizationsStore, snapshot.organizations], [this.unitsStore, snapshot.units], [this.workspacesStore, snapshot.workspaces], [this.usersStore, snapshot.users], [this.roleAssignmentsStore, snapshot.roleAssignments], [this.sessionsStore, snapshot.sessions], [this.auditRecordsStore, snapshot.auditRecords], [this.commandReceiptsStore, snapshot.commandReceipts], [this.guardiansStore, snapshot.guardians], [this.patientsStore, snapshot.patients], [this.providersStore, snapshot.providers], [this.servicesStore, snapshot.services], [this.resourcesStore, snapshot.resources], [this.appointmentsStore, snapshot.appointments], [this.queueEntriesStore, snapshot.queueEntries], [this.encountersStore, snapshot.encounters], [this.clinicalDocumentsStore, snapshot.clinicalDocuments], [this.clinicalAddendaStore, snapshot.clinicalAddenda], [this.diagnosticRequestsStore, snapshot.diagnosticRequests], [this.specimensStore, snapshot.specimens], [this.diagnosticResultsStore, snapshot.diagnosticResults], [this.hospitalEpisodesStore, snapshot.hospitalEpisodes], [this.bedsStore, snapshot.beds], [this.medicationOrdersStore, snapshot.medicationOrders], [this.dispensationsStore, snapshot.dispensations], [this.productsStore, snapshot.products], [this.lotsStore, snapshot.lots], [this.stockLocationsStore, snapshot.stockLocations], [this.stockMovementsStore, snapshot.stockMovements], [this.chargesStore, snapshot.charges], [this.paymentsStore, snapshot.payments], [this.ledgerEntriesStore, snapshot.ledgerEntries], [this.messagesStore, snapshot.messages], [this.knowledgeDocumentsStore, snapshot.knowledgeDocuments], [this.aiSessionsStore, snapshot.aiSessions], [this.aiTurnsStore, snapshot.aiTurns], [this.aiDraftsStore, snapshot.aiDrafts], [this.aiApprovalsStore, snapshot.aiApprovals], [this.budgetReservationsStore, snapshot.budgetReservations], [this.administrationOccurrencesStore, snapshot.administrationOccurrences], [this.authChallengesStore, snapshot.authChallenges]
@@ -1169,6 +1180,61 @@ export class CvgStore {
     return clone(this.findPatientRecord(context, patientId));
   }
 
+  /**
+   * Resolves the real type and ownership of an agent tool target from the
+   * repository. Divergence between resourceId, encounterId and patientId is a
+   * distinct outcome: the caller must never be able to name a resource with
+   * facts that contradict the authoritative record.
+   */
+  resolveAgentResource(input: AgentResourceInput): AgentResourceResolution {
+    const hasResourceId = input.resourceId !== undefined && input.resourceId !== null;
+    const hasEncounterId = input.encounterId !== undefined && input.encounterId !== null;
+    const hasPatientId = input.patientId !== undefined && input.patientId !== null;
+    const encounterByResourceId = hasResourceId ? this.encountersStore.get(input.resourceId!) : undefined;
+    const patientByResourceId = hasResourceId && !encounterByResourceId ? this.patientsStore.get(input.resourceId!) : undefined;
+    const encounterById = input.encounterId ? this.encountersStore.get(input.encounterId) : undefined;
+    const patientById = input.patientId ? this.patientsStore.get(input.patientId) : undefined;
+    const hasKnownIdentity = Boolean(encounterByResourceId || patientByResourceId || encounterById || patientById);
+    const hasUnknownExplicitId = (hasResourceId && !encounterByResourceId && !patientByResourceId)
+      || (hasEncounterId && !encounterById)
+      || (hasPatientId && !patientById);
+    // Once one supplied identifier resolves, another supplied-but-unknown
+    // identifier is a disagreement, not an observable not-found result.
+    if (hasKnownIdentity && hasUnknownExplicitId) return { status: "DIVERGENT" };
+    if (!hasKnownIdentity) return { status: "NOT_FOUND" };
+
+    const fromEncounter = (encounter: Encounter, resourceId: OpaqueId): AgentResourceResolution => {
+      if (input.encounterId && input.encounterId !== encounter.id) return { status: "DIVERGENT" };
+      if (input.patientId && input.patientId !== encounter.patientId) return { status: "DIVERGENT" };
+      return {
+        status: "RESOLVED",
+        resource: { kind: "ENCOUNTER", resourceId, organizationId: encounter.organizationId, unitId: encounter.unitId, workspaceId: encounter.workspaceId, patientId: encounter.patientId, encounterId: encounter.id }
+      };
+    };
+    if (encounterByResourceId) return fromEncounter(encounterByResourceId, encounterByResourceId.id);
+    if (patientByResourceId) {
+      const patient = patientByResourceId;
+      if (input.patientId && input.patientId !== patient.id) return { status: "DIVERGENT" };
+      // CVG-AUD20-006: naming a patient as resourceId while also naming an
+      // encounter is a disagreement, never a silent retarget.  The caller must
+      // send one canonical identity.
+      if (hasEncounterId) return { status: "DIVERGENT" };
+      return {
+        status: "RESOLVED",
+        resource: { kind: "PATIENT", resourceId: patient.id, organizationId: patient.organizationId, unitId: patient.unitId, workspaceId: patient.workspaceId, patientId: patient.id, encounterId: null }
+      };
+    }
+    if (encounterById) return fromEncounter(encounterById, encounterById.id);
+    if (patientById) {
+      const patient = patientById;
+      return {
+        status: "RESOLVED",
+        resource: { kind: "PATIENT", resourceId: patient.id, organizationId: patient.organizationId, unitId: patient.unitId, workspaceId: patient.workspaceId, patientId: patient.id, encounterId: null }
+      };
+    }
+    return { status: "NOT_FOUND" };
+  }
+
   listPatients(context: CvgContext, query = ""): Array<AnimalPatient & { guardian: Pick<Guardian, "id" | "displayName" | "phone"> | null }> {
     this.requireRole(context, ["admin", "veterinario", "recepcao", "financeiro", "estoque"], "patients:read");
     const normalized = query.trim().toLowerCase();
@@ -1299,7 +1365,7 @@ export class CvgStore {
     return clone(appointment);
   }
 
-  cancelAppointment(context: CvgContext, appointmentId: OpaqueId, reason: string, expectedVersion?: number | null): Appointment {
+  cancelAppointment(context: CvgContext, appointmentId: OpaqueId, _reason: string, expectedVersion?: number | null): Appointment {
     this.requireRole(context, ["admin", "recepcao", "veterinario"], "appointments:cancel");
     const appointment = this.findAppointmentRecord(context, appointmentId);
     this.requireAppointmentVersion(appointment, expectedVersion);
@@ -1669,7 +1735,7 @@ export class CvgStore {
   createProduct(context: CvgContext, input: { sku: string; name: string; category: string; unit: string; reorderPoint: number }): Product {
     this.requireRole(context, ["admin", "estoque"], "stock:write");
     const sku = input.sku.trim().toUpperCase();
-    const duplicate = [...this.productsStore.values()].find((product) => product.organizationId === context.organizationId && product.sku.toUpperCase() === sku && product.status === "ACTIVE");
+    const duplicate = [...this.productsStore.values()].find((product) => product.organizationId === context.organizationId && product.sku.toUpperCase() === sku);
     if (duplicate) throw new DomainError("CONFLICT", "SKU já cadastrado nesta organização.", 409, { productId: duplicate.id });
     const product: Product = { id: makeId(), organizationId: context.organizationId, sku, name: input.name, category: input.category, unit: input.unit, reorderPoint: input.reorderPoint, status: "ACTIVE" };
     this.productsStore.set(product.id, product);
@@ -1852,177 +1918,6 @@ export class CvgStore {
     }
     message.status = decision === "approved" ? "QUEUED" : "FAILED";
     return clone(message);
-  }
-}
-
-export interface IdempotencyInput {
-  organizationId: OpaqueId;
-  actorId: OpaqueId;
-  /** Binds a command receipt to the authenticated session that created it. */
-  sessionId?: OpaqueId | null;
-  operation: string;
-  key: string;
-  resourceId: OpaqueId | null;
-  unitId: OpaqueId | null;
-  workspaceId: OpaqueId | null;
-  body: unknown;
-}
-
-export const COMMAND_CLAIM_LEASE_MS = 60_000;
-
-export function newCommandReceipt(input: IdempotencyInput): CommandReceipt {
-  return {
-    id: makeId(),
-    organizationId: input.organizationId,
-    actorId: input.actorId,
-    unitId: input.unitId,
-    workspaceId: input.workspaceId,
-    auditRecordId: null,
-    operation: input.operation,
-    idempotencyLookup: idempotencyLookup(input),
-    bodyDigest: digest({ v: 1, body: input.body }),
-    status: "IN_FLIGHT",
-    result: null,
-    createdAt: now(),
-    completedAt: null,
-    claimEpoch: 1,
-    claimExpiresAt: new Date(Date.now() + COMMAND_CLAIM_LEASE_MS).toISOString(),
-    dispatchState: "NOT_STARTED",
-    failurePhase: null
-  };
-}
-
-/**
- * Stable server-scoped identity per docs04 §7: organization, actor, operation,
- * key, resource and scope. The session is deliberately excluded so a re-login
- * still replays the original receipt instead of creating a second effect.
- * Absent optional scopes use an explicit marker so absence never degrades to a
- * null/empty mismatch.
- */
-export function idempotencyLookup(input: IdempotencyInput): string {
-  return digest({
-    v: 3,
-    organizationId: input.organizationId,
-    actorId: input.actorId,
-    operation: input.operation,
-    key: input.key,
-    resourceId: input.resourceId ?? "ABSENT",
-    unitId: input.unitId ?? "ABSENT",
-    workspaceId: input.workspaceId ?? "ABSENT"
-  });
-}
-
-/** Legacy v2 lookup that included the session; read-only compatibility path. */
-export function legacyIdempotencyLookup(input: IdempotencyInput): string {
-  return digest({ v: 2, organizationId: input.organizationId, actorId: input.actorId, sessionId: input.sessionId ?? null, operation: input.operation, key: input.key, resourceId: input.resourceId, unitId: input.unitId, workspaceId: input.workspaceId });
-}
-
-export function commandReceiptLookups(input: IdempotencyInput): string[] {
-  const stable = idempotencyLookup(input);
-  const legacy = legacyIdempotencyLookup(input);
-  return stable === legacy ? [stable] : [stable, legacy];
-}
-
-function findReceiptByLookups(store: CvgStore, input: IdempotencyInput): CommandReceipt | undefined {
-  for (const lookup of commandReceiptLookups(input)) {
-    const receipt = store.commandReceipts.get(lookup);
-    if (receipt) return receipt;
-  }
-  return undefined;
-}
-
-/**
- * Resolves an existing receipt for a repeated command. An expired claim is
- * reconciled with its fence: an attempt that never crossed dispatch is
- * finalized as FAILED/PRE_DISPATCH (new intent requires a new key), while an
- * attempt that may have reached the provider stays OUTCOME_UNKNOWN and is
- * never retried blindly.
- */
-export function resolveExistingReceipt(store: CvgStore, input: IdempotencyInput, existing: CommandReceipt): { receipt: CommandReceipt; replayed: boolean } {
-  const bodyDigest = digest({ v: 1, body: input.body });
-  if (existing.bodyDigest !== bodyDigest) throw new DomainError("IDEMPOTENCY_CONFLICT", "A chave já foi usada com outro corpo.", 409);
-  if (existing.status === "SUCCEEDED") return { receipt: existing, replayed: true };
-  if (existing.status === "FAILED") {
-    const phase = existing.failurePhase === "PRE_DISPATCH" ? " (finalizada antes do dispatch)" : "";
-    throw new DomainError("CONFLICT", `A execução anterior falhou${phase}; use uma nova intenção.`, 409, { receiptId: existing.id, failurePhase: existing.failurePhase ?? null });
-  }
-  if (existing.status === "OUTCOME_UNKNOWN") throw new DomainError("OUTCOME_UNKNOWN", "A execução anterior permanece em reconciliação; nenhum retry cego é permitido.", 409, { receiptId: existing.id });
-  const expiresAt = existing.claimExpiresAt ? Date.parse(existing.claimExpiresAt) : Number.NaN;
-  // Legacy claims without a deadline cannot prove that an owner is still
-  // alive. Reconcile them immediately under the dispatch marker.
-  const expired = !Number.isFinite(expiresAt) || expiresAt <= Date.now();
-  if (!expired) throw new DomainError("ADMISSION_IN_PROGRESS", "A mesma chave já possui uma admissão em andamento.", 409, { receiptId: existing.id, claimExpiresAt: existing.claimExpiresAt ?? null });
-  const notStarted = (existing.dispatchState ?? "NOT_STARTED") === "NOT_STARTED";
-  const finalized = store.updateCommandReceipt(existing.idempotencyLookup, {
-    status: notStarted ? "FAILED" : "OUTCOME_UNKNOWN",
-    result: null,
-    completedAt: now()
-  });
-  const settled: CommandReceipt = { ...finalized, claimExpiresAt: null, failurePhase: notStarted ? "PRE_DISPATCH" : "POST_DISPATCH" };
-  store.setCommandReceipt(settled);
-  if (notStarted) throw new DomainError("CLAIM_ABANDONED", "O claim expirou antes de qualquer dispatch e foi finalizado como falha segura.", 409, { receiptId: settled.id, failurePhase: "PRE_DISPATCH" });
-  throw new DomainError("OUTCOME_UNKNOWN", "O claim expirou após possível dispatch; a execução permanece em reconciliação.", 409, { receiptId: settled.id, failurePhase: "POST_DISPATCH" });
-}
-
-function commandFailureState(receipt: CommandReceipt, error: unknown): { status: CommandReceipt["status"]; failurePhase: "PRE_DISPATCH" | "POST_DISPATCH" } {
-  const dispatched = (receipt.dispatchState ?? "NOT_STARTED") === "DISPATCHED";
-  const outcomeUnknown = dispatched || (error instanceof DomainError && error.code === "OUTCOME_UNKNOWN");
-  return {
-    status: outcomeUnknown ? "OUTCOME_UNKNOWN" : "FAILED",
-    failurePhase: outcomeUnknown ? (dispatched ? "POST_DISPATCH" : receipt.failurePhase ?? "PRE_DISPATCH") : "PRE_DISPATCH"
-  };
-}
-
-export function idempotent<T>(store: CvgStore, input: IdempotencyInput, execute: () => T): { receipt: CommandReceipt; value: T; replayed: boolean } {
-  const existing = findReceiptByLookups(store, input);
-  if (existing) {
-    const resolved = resolveExistingReceipt(store, input, existing);
-    if (resolved.replayed) return { receipt: resolved.receipt, value: resolved.receipt.result as T, replayed: true };
-  }
-  const receipt = newCommandReceipt(input);
-  store.setCommandReceipt(receipt);
-  try {
-    const value = execute();
-    const settled = store.updateCommandReceipt(receipt.idempotencyLookup, { status: "SUCCEEDED", result: value, completedAt: now() });
-    const completed: CommandReceipt = { ...settled, claimExpiresAt: null, failurePhase: null };
-    store.setCommandReceipt(completed);
-    return { receipt: completed, value, replayed: false };
-  } catch (error) {
-    const failure = commandFailureState(receipt, error);
-    const failed = store.updateCommandReceipt(receipt.idempotencyLookup, { status: failure.status, result: null, completedAt: now() });
-    store.setCommandReceipt({ ...failed, claimExpiresAt: null, failurePhase: failure.failurePhase });
-    throw error;
-  }
-}
-
-export interface IdempotentAsyncOptions {
-  /** A database-backed IN_FLIGHT receipt reserved before the command starts. */
-  reservedReceipt?: CommandReceipt;
-}
-
-/** Runs one idempotent command whose implementation crosses an asynchronous adapter. */
-export async function idempotentAsync<T>(store: CvgStore, input: IdempotencyInput, execute: () => Promise<T>, options: IdempotentAsyncOptions = {}): Promise<{ receipt: CommandReceipt; value: T; replayed: boolean }> {
-  const bodyDigest = digest({ v: 1, body: input.body });
-  const reservedReceipt = options.reservedReceipt;
-  if (reservedReceipt && (!commandReceiptLookups(input).includes(reservedReceipt.idempotencyLookup) || reservedReceipt.bodyDigest !== bodyDigest || reservedReceipt.status !== "IN_FLIGHT")) throw new DomainError("INVALID_INPUT", "A reserva de idempotência não corresponde ao comando.", 400);
-  const existing = findReceiptByLookups(store, input);
-  if (existing && (!reservedReceipt || existing.id !== reservedReceipt.id)) {
-    const resolved = resolveExistingReceipt(store, input, existing);
-    if (resolved.replayed) return { receipt: resolved.receipt, value: resolved.receipt.result as T, replayed: true };
-  }
-  const claimed = reservedReceipt ?? newCommandReceipt(input);
-  store.setCommandReceipt(claimed);
-  try {
-    const value = await execute();
-    const settled = store.updateCommandReceipt(claimed.idempotencyLookup, { status: "SUCCEEDED", result: value, completedAt: now() });
-    const completed: CommandReceipt = { ...settled, claimExpiresAt: null, failurePhase: null };
-    store.setCommandReceipt(completed);
-    return { receipt: completed, value, replayed: false };
-  } catch (error) {
-    const failure = commandFailureState(claimed, error);
-    const failed = store.updateCommandReceipt(claimed.idempotencyLookup, { status: failure.status, result: null, completedAt: now() });
-    store.setCommandReceipt({ ...failed, claimExpiresAt: null, failurePhase: failure.failurePhase });
-    throw error;
   }
 }
 

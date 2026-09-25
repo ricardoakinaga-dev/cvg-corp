@@ -1,7 +1,6 @@
-import { createHash } from "node:crypto";
 import { id as opaqueId } from "@cvg/contracts";
 import type { AiApproval, AiDraft, AiSession, AiTurn, AiTurnInput, AiTurnUsage, CvgContext, DataClass, OpaqueId } from "@cvg/contracts";
-import { CvgStore, DomainError, digest, isInContext, makeId, now } from "@cvg/domain";
+import { CvgStore, DomainError, digest, isInContext, makeId, now, type ResolvedAgentResource } from "@cvg/domain";
 import { enforceApplicationPolicy } from "@cvg/agent-policy";
 import {
   AGENT_RUNTIME_CONTRACT_VERSION,
@@ -401,7 +400,7 @@ export class EmbeddedAgentRuntime implements AgentRuntime {
 
   async executeTurn(context: CvgContext, input: AiTurnInput, approvalId: OpaqueId | null = null): Promise<AgentTurnResult> {
     this.options.store.validateContext(context);
-    enforceApplicationPolicy(context, `ai.turn.${input.purpose}`, { resourceId: input.resourceId ?? input.encounterId ?? input.patientId });
+    enforceApplicationPolicy(context, `ai.turn.${input.purpose}`, this.authorizedTurnResource(context, input));
     const controls = this.controls();
     if (!controls.aiEnabled) throw new DomainError("DEPENDENCY_UNAVAILABLE", "O runtime de IA está desabilitado.", 503, { reason: "AI_DISABLED" });
     const executionKey = this.executionKey(context, input);
@@ -498,7 +497,7 @@ export class EmbeddedAgentRuntime implements AgentRuntime {
   }
 
   private async executeTurnCore(context: CvgContext, input: AiTurnInput, approvalId: OpaqueId | null): Promise<AgentTurnResult> {
-    enforceApplicationPolicy(context, `ai.turn.${input.purpose}`, { resourceId: input.resourceId ?? input.encounterId ?? input.patientId });
+    enforceApplicationPolicy(context, `ai.turn.${input.purpose}`, this.authorizedTurnResource(context, input));
     if (!context.sessionId) throw new DomainError("POLICY_DENIED", "A execução de IA exige uma sessão autenticada.", 403);
     await this.reconcilePluginKillSwitches();
     const session = await this.getOrCreateSession(context, input);
@@ -619,7 +618,11 @@ export class EmbeddedAgentRuntime implements AgentRuntime {
             maxOutput: capabilities.maxOutput
           };
         },
-        invoke: async (request, signal) => this.invokeModel(request, signal, runState, profile, controller, context)
+        invoke: async (request, signal) => {
+          // CVG-AUD19-008: a lost fence stops the loop before any provider call.
+          await this.assertLeaseHeld(context, session.id, lease);
+          return this.invokeModel(request, signal, runState, profile, controller, context);
+        }
       },
       context: {
         build: async (kernelInput) => this.buildContext(context, session, input, profile, kernelInput, runState)
@@ -906,14 +909,26 @@ export class EmbeddedAgentRuntime implements AgentRuntime {
     if (controls.safeMode && tool.risk !== "READ_ONLY") return deniedTool("SAFE_MODE_READ_ONLY");
     if (tool.risk === "HIGH_IMPACT" && !profile.riskLimits.allowHighImpact) return deniedTool("PROFILE_RISK_LIMIT");
     if (controller.signal.aborted) return cancelledTool();
+    // CVG-AUD19-008: the fence is revalidated before every tool dispatch, so a
+    // stolen/expired lease can never start a new effect.
+    if (!(await this.renewLeaseForFence(context, session.id, fence))) return deniedTool("LEASE_LOST");
     const descriptor = this.gateway.get(tool.name) as ToolDescriptor | undefined;
     if (!descriptor) return deniedTool("CAPABILITY_DISABLED");
     const approval = approvalId ? this.options.store.aiApprovals.get(approvalId) : undefined;
-    const gatewayRequest = this.gatewayRequest(context, session, input, tool, request.input, approval);
+    // CVG-AUD19-001/004/005: the target resource is resolved from the
+    // repository before the PDP, before the tool and before any provider
+    // egress.  A caller-declared resourceId can never fabricate scope facts.
+    const resolution = this.resolveToolResource(context, input, tool);
+    if (resolution.status === "DENIED") {
+      this.options.telemetry?.increment("agent_tool_resource_denied", 1);
+      return deniedTool(resolution.code);
+    }
+    const resolvedResource = resolution.status === "RESOLVED" ? resolution.resource : null;
+    const gatewayRequest = this.gatewayRequest(context, session, input, tool, request.input, approval, resolvedResource);
     const requestDigest = toolExecutionDigest(descriptor, gatewayRequest, gatewayRequest.input);
 
     if (tool.requiresApproval) {
-      const validApproval = approvalId ? this.validateApproval(context, session, input, tool, approvalId, requestDigest) : null;
+      const validApproval = approvalId ? this.validateApproval(context, session, input, tool, approvalId, requestDigest, resolvedResource) : null;
       if (approvalId && !validApproval) return deniedTool("APPROVAL_INVALID_OR_CONSUMED");
       if (approval && validApproval && approval.decision === "allowed-once") {
         // Consume the one-shot approval BEFORE the effect: a crash after
@@ -930,7 +945,7 @@ export class EmbeddedAgentRuntime implements AgentRuntime {
           outputTokens: runState.consumedUnits
         });
         runState.pausedTurn = pausedTurn;
-        const pendingApproval = this.createPendingApproval(context, session, input, tool, requestDigest, pausedTurn.id);
+        const pendingApproval = this.createPendingApproval(context, session, input, tool, requestDigest, pausedTurn.id, resolvedResource);
         return {
           status: "APPROVAL_REQUIRED",
           resultDigest: null,
@@ -972,7 +987,7 @@ export class EmbeddedAgentRuntime implements AgentRuntime {
             outputTokens: runState.consumedUnits
           });
           runState.pausedTurn = pausedTurn;
-          const pendingApproval = this.createPendingApproval(context, session, input, tool, requestDigest, pausedTurn.id);
+          const pendingApproval = this.createPendingApproval(context, session, input, tool, requestDigest, pausedTurn.id, resolvedResource);
           return { status: "APPROVAL_REQUIRED", resultDigest: null, resultPreview: null, errorCode: null, errorMessage: null, approval: { approvalId: pendingApproval.id, requestDigest, expiresAt: pendingApproval.expiresAt }, progress: null, retryable: false };
         }
         return deniedTool(error.code);
@@ -986,12 +1001,14 @@ export class EmbeddedAgentRuntime implements AgentRuntime {
     return Promise.resolve({ status: "COMPLETED", resultDigest: null, resultPreview: "executor sintético local; nenhum efeito externo foi executado" });
   }
 
-  private validateApproval(context: CvgContext, session: AiSession, input: AiTurnInput, tool: GovernedTool, approvalId: OpaqueId, requestDigest: string): boolean {
+  private validateApproval(context: CvgContext, session: AiSession, input: AiTurnInput, tool: GovernedTool, approvalId: OpaqueId, requestDigest: string, resolved: ResolvedAgentResource | null): boolean {
     const approval = this.options.store.aiApprovals.get(approvalId);
     if (!approval) return false;
     if (approval.organizationId !== context.organizationId || approval.actorId !== session.actorId || approval.sessionId !== session.id || approval.toolName !== tool.name) return false;
-    if (approval.resourceId !== (input.resourceId ?? input.encounterId ?? input.patientId)) return false;
-    if (approval.patientId !== input.patientId || approval.encounterId !== input.encounterId) return false;
+    // The approval is bound to the resolved resource, so a policy/approval
+    // issued for one target can never authorize a changed target (CVG-AUD19-006).
+    if (approval.resourceId !== (resolved ? resolved.resourceId : input.resourceId ?? input.encounterId ?? input.patientId)) return false;
+    if (approval.patientId !== (resolved ? resolved.patientId : input.patientId) || approval.encounterId !== (resolved ? resolved.encounterId : input.encounterId)) return false;
     if (approval.unitId !== context.unitId || approval.workspaceId !== context.workspaceId || approval.purpose !== input.purpose) return false;
     if (approval.policyRevision !== context.policyRevision || approval.requestDigest !== requestDigest) return false;
     if (Date.parse(approval.expiresAt) <= Date.now()) return false;
@@ -1002,7 +1019,7 @@ export class EmbeddedAgentRuntime implements AgentRuntime {
     return true;
   }
 
-  private createPendingApproval(context: CvgContext, session: AiSession, input: AiTurnInput, tool: GovernedTool, requestDigest: string, turnId: OpaqueId): AiApproval {
+  private createPendingApproval(context: CvgContext, session: AiSession, input: AiTurnInput, tool: GovernedTool, requestDigest: string, turnId: OpaqueId, resolved: ResolvedAgentResource | null): AiApproval {
     const existing = [...this.options.store.aiApprovals.values()].find((candidate) => candidate.sessionId === session.id && candidate.toolName === tool.name && candidate.requestDigest === requestDigest && candidate.decision === "unavailable" && Date.parse(candidate.expiresAt) > Date.now());
     if (existing) return existing;
     const pending: AiApproval = {
@@ -1012,11 +1029,11 @@ export class EmbeddedAgentRuntime implements AgentRuntime {
       sessionId: session.id,
       turnId,
       toolName: tool.name,
-      resourceId: input.resourceId ?? input.encounterId ?? input.patientId,
-      patientId: input.patientId,
-      encounterId: input.encounterId,
-      unitId: context.unitId,
-      workspaceId: context.workspaceId,
+      resourceId: resolved ? resolved.resourceId : input.resourceId ?? input.encounterId ?? input.patientId,
+      patientId: resolved ? resolved.patientId : input.patientId,
+      encounterId: resolved ? resolved.encounterId : input.encounterId,
+      unitId: resolved ? resolved.unitId : context.unitId,
+      workspaceId: resolved ? resolved.workspaceId : context.workspaceId,
       purpose: input.purpose,
       requestDigest,
       policyRevision: context.policyRevision,
@@ -1029,16 +1046,55 @@ export class EmbeddedAgentRuntime implements AgentRuntime {
     return this.options.store.persistAiApproval(pending);
   }
 
-  private gatewayRequest(context: CvgContext, session: AiSession, input: AiTurnInput, tool: GovernedTool, toolInput: unknown, approval: AiApproval | undefined): ToolExecutionRequest {
+  private gatewayRequest(context: CvgContext, session: AiSession, input: AiTurnInput, tool: GovernedTool, toolInput: unknown, approval: AiApproval | undefined, resolved: ResolvedAgentResource | null): ToolExecutionRequest {
+    const resourceId = resolved ? resolved.resourceId : input.resourceId ?? input.encounterId ?? input.patientId;
+    const patientId = resolved ? resolved.patientId : input.patientId;
+    const encounterId = resolved ? resolved.encounterId : input.encounterId;
     const request: ToolExecutionRequest = {
       context,
       sessionId: context.sessionId!,
-      resource: { organizationId: context.organizationId, unitId: context.unitId, workspaceId: context.workspaceId, resourceId: input.resourceId ?? input.encounterId ?? input.patientId, dataClass: input.patientId ? "D3" : tool.acceptedDataClasses[0] ?? "D0" },
-      input: { aiSessionId: session.id, prompt: input.prompt, purpose: input.purpose, patientId: input.patientId, encounterId: input.encounterId, resourceId: input.resourceId, toolInput },
+      resource: {
+        organizationId: resolved ? resolved.organizationId : context.organizationId,
+        unitId: resolved ? resolved.unitId : context.unitId,
+        workspaceId: resolved ? resolved.workspaceId : context.workspaceId,
+        resourceId,
+        dataClass: patientId ? "D3" : tool.acceptedDataClasses[0] ?? "D0"
+      },
+      input: { aiSessionId: session.id, prompt: input.prompt, purpose: input.purpose, patientId, encounterId, resourceId, toolInput },
       idempotencyKey: input.idempotencyKey
     };
     if (approval) request.approval = { approvalId: approval.id, actorId: approval.actorId, approverId: approval.decidedBy, requestDigest: approval.requestDigest, policyRevision: approval.policyRevision, expiresAt: approval.expiresAt, oneShot: true, consumed: approval.decision === "consumed" };
     return request;
+  }
+
+  /**
+   * CVG-AUD19-004/005: the PDP for a turn receives the target resource identity
+   * and scope resolved from the repository.  A turn without any resource
+   * identifier keeps the previous organization-scoped behavior; approval,
+   * draft and replay resources keep their own verified lookups.
+   */
+  private authorizedTurnResource(context: CvgContext, input: AiTurnInput): { resourceId: OpaqueId | null; resourceUnitId?: OpaqueId | null; resourceWorkspaceId?: OpaqueId | null } {
+    const resolution = this.options.store.resolveAgentResource({ resourceId: input.resourceId ?? null, encounterId: input.encounterId ?? null, patientId: input.patientId ?? null });
+    if (resolution.status !== "RESOLVED" && !(input.resourceId ?? input.encounterId ?? input.patientId)) return { resourceId: null };
+    if (resolution.status === "DIVERGENT") throw new DomainError("DIVERGENT", "Os identificadores do recurso não correspondem entre si.", 409);
+    if (resolution.status !== "RESOLVED") throw new DomainError("NOT_FOUND", "Recurso não encontrado.", 404);
+    if (!isInContext(resolution.resource, context)) throw new DomainError("POLICY_DENIED", "O recurso não pertence ao contexto autenticado.", 403);
+    return { resourceId: resolution.resource.resourceId, resourceUnitId: resolution.resource.unitId, resourceWorkspaceId: resolution.resource.workspaceId };
+  }
+
+  /**
+   * Resolves the authoritative target for tools whose expected resource type is
+   * known.  Tools with an unresolved kind keep the previous gateway path and
+   * still fail closed at their own application binding.
+   */
+  private resolveToolResource(context: CvgContext, input: AiTurnInput, tool: GovernedTool): { status: "RESOLVED"; resource: ResolvedAgentResource } | { status: "UNRESOLVED" } | { status: "DENIED"; code: string } {
+    const expectedKind: ResolvedAgentResource["kind"] | null = tool.name === "cvg.patient.read" ? "PATIENT" : tool.name === "cvg.clinical.draft" ? "ENCOUNTER" : null;
+    if (!expectedKind) return { status: "UNRESOLVED" };
+    const resolution = this.options.store.resolveAgentResource({ resourceId: input.resourceId ?? null, encounterId: input.encounterId ?? null, patientId: input.patientId ?? null });
+    if (resolution.status !== "RESOLVED") return { status: "DENIED", code: resolution.status === "DIVERGENT" ? "DIVERGENT" : "RESOURCE_NOT_FOUND" };
+    if (resolution.resource.kind !== expectedKind) return { status: "DENIED", code: "RESOURCE_TYPE_MISMATCH" };
+    if (!isInContext(resolution.resource, context)) return { status: "DENIED", code: "RESOURCE_OUT_OF_SCOPE" };
+    return { status: "RESOLVED", resource: resolution.resource };
   }
 
   private async acquireLease(context: CvgContext, sessionId: OpaqueId, wallBudgetMs: number): Promise<AgentLease> {
@@ -1062,6 +1118,16 @@ export class EmbeddedAgentRuntime implements AgentRuntime {
   private async assertLeaseHeld(context: CvgContext, sessionId: OpaqueId, lease: AgentLease): Promise<void> {
     const renewed = await this.sessionStore.renewLease({ sessionId: String(sessionId), organizationId: String(context.organizationId), ownerId: lease.ownerId, ttlMs: 180_000, fence: lease.fence });
     if (!renewed) throw new DomainError("DENIED_STALE_FENCE", "O lease da sessão foi perdido antes da escrita autoritativa.", 409);
+  }
+
+  /** Non-throwing fence revalidation used before tool dispatch. */
+  private async renewLeaseForFence(context: CvgContext, sessionId: OpaqueId, fence: number): Promise<boolean> {
+    try {
+      const renewed = await this.sessionStore.renewLease({ sessionId: String(sessionId), organizationId: String(context.organizationId), ownerId: this.instanceId, ttlMs: 180_000, fence });
+      return renewed !== null;
+    } catch {
+      return false;
+    }
   }
 
   private async releaseLease(sessionId: OpaqueId, lease: AgentLease | null): Promise<void> {

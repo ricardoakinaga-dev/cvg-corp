@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "frozen_at": "2026-09-24T07:40:27.413724Z",
+  "scope": "MEL23-023 scoped DML gap: audit_records, command_receipts, role_assignments",
+  "source_bar": {
+    "path": ".gauntlet/bar-mel23-20260923-v1.json",
+    "version": "mel23-v1",
+    "sha256": "12bb9d4c0dee2c1042d580675abf5d6625be38819e315fb809cc367957eee723",
+    "criterion": {
+      "id": "MEL23-023",
+      "source_type": "REPO",
+      "source": "docs/backlog-2026-09-23.md#MEL23-023",
+      "dimension": "M2",
+      "target": "Após cada onda, testes PostgreSQL negam leitura/escrita cross-tenant e cross-workspace nas tabelas afetadas.",
+      "evidence_method": "Execute the acceptance procedure and evidence scope named by MEL23-023 in the pinned backlog; record exact command/procedure, environment, exit/result, artifact, timestamp, and candidate fingerprint. For external/human requirements, require evidence from that real authority and environment.",
+      "required": true,
+      "priority": "high",
+      "baseline": {
+        "status": "NOT_RUN",
+        "actual": "No current criterion-specific result has been revalidated for this item."
+      },
+      "conditions": "Use the exact worktree/candidate, domain, fixture, and environment required by the target; do not substitute source presence, plans, synthetic results, or stale evidence for observed acceptance.",
+      "version": "2026-09-23",
+      "snapshot_sha256": "af8ea7b2e112c174f36d815b0e75690644f855ddfa819102a29b08b2a724bb5a",
+      "license_notes": "Internal project acceptance criterion; no external assets or text are reused.",
+      "validity_notes": "The acceptance text is pinned to the 2026-09-23 source document. The selected evidence must reject the known-bad condition stated by the criterion and observe its actual boundary."
+    }
+  },
+  "acceptance": [
+    "Use only a forward migration; latest schema marker and checksum verification must include it.",
+    "Under a restricted PostgreSQL role, known-good application writes for all three row families still work with matching unit/workspace context.",
+    "Known-bad inserts for each row family are rejected with PostgreSQL SQLSTATE 42501 for mismatched workspace context and for mismatched organization context.",
+    "Command receipt claim, dispatch, settlement/reconciliation, append-only audit, canonical snapshot replay, and role snapshot projection remain compatible.",
+    "The disposable PostgreSQL wrapper proves migration, normal PostgreSQL behavior, role/RLS checks, container inventory unchanged, and cleanup; no shared database is allowed.",
+    "Run focused relevant checks plus npm test; do not promote MEL23-023 unless the coverage includes every table in its defined wave."
+  ],
+  "known_limits": [
+    "This slice does not prove cross-scope isolation for all 24 SNAPSHOT_PRIMARY domain tables.",
+    "External authority, production-like cutover, backup restore after cutover, and human release approval remain outside this local slice."
+  ],
+  "gauntlet_parent_state": "Existing MEL23 state validation is still blocked by the protected artifact SHA mismatch; this scoped bar is a work freeze and does not repair or replace that state."
+}

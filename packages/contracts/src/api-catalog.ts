@@ -1,10 +1,11 @@
-import { API_SCHEMA_VERSION } from "./version.js";
+import { API_SCHEMA_VERSION, API_VERSION } from "./version.js";
 
+export type ApiCatalogHttpMethod = "GET" | "POST" | "DELETE";
 export type ApiCatalogAuth = "PUBLIC" | "SESSION" | "SESSION+CSRF" | "SESSION+ROLE" | "SESSION+CSRF+ROLE";
 
 export interface ApiRouteDescriptor {
   version: "v1";
-  method: "GET" | "POST" | "DELETE";
+  method: ApiCatalogHttpMethod;
   path: string;
   operation: string;
   auth: ApiCatalogAuth;
@@ -14,8 +15,99 @@ export interface ApiRouteDescriptor {
   deprecation: string | null;
 }
 
+export type ApiResponseSchemaCoverage = "PAYLOAD_AND_ENVELOPE" | "ENVELOPE_ONLY";
+export type ApiResponseSchemaLegacyStatus = "CURRENT" | "LEGACY_UNMIGRATED";
+
+export interface ApiResponseSchemaDescriptor {
+  readonly name: string;
+  readonly owner: string;
+  readonly version: typeof API_VERSION;
+  readonly schemaVersion: typeof API_SCHEMA_VERSION;
+  readonly consumers: readonly string[];
+  readonly domain: string;
+  readonly coverage: ApiResponseSchemaCoverage;
+  readonly legacyStatus: ApiResponseSchemaLegacyStatus;
+}
+
+/** The frozen nominal response-name set for the 105-route v1 surface. */
+const API_RESPONSE_SCHEMA_NAMES = [
+  "HealthResponse", "ReadinessResponse", "InboxReceipt", "LoginResponse", "MfaFactorResponse", "RecoveryStartResponse", "DemoLoginResponse", "LogoutResponse", "SessionListResponse", "SessionRevokeResponse", "IdentityResponse", "ContextListResponse", "ContextResponse", "UserListResponse", "RoleAssignmentResponse", "AuditListResponse", "GuardianListResponse", "GuardianResponse", "PatientListResponse", "PatientResponse", "PatientMergeResponse", "AppointmentListResponse", "AppointmentResponse", "QueueListResponse", "QueueEntryResponse", "QueueHandoffResponse", "SchedulingOptionsResponse", "EncounterListResponse", "EncounterResponse", "ClinicalDocumentListResponse", "ClinicalDocumentResponse", "ClinicalAddendumListResponse", "ClinicalAddendumResponse", "DiagnosticRequestListResponse", "DiagnosticRequestResponse", "SpecimenListResponse", "SpecimenResponse", "ResultResponse", "ResultListResponse", "StockListResponse", "StockMovementListResponse", "StockLocationListResponse", "ProductResponse", "LotResponse", "InventoryCountResponse", "StockMovementResponse", "BedListResponse", "HospitalEpisodeListResponse", "HospitalEpisodeResponse", "MedicationOrderListResponse", "DispensationListResponse", "AdministrationListResponse", "MedicationOrderResponse", "DispensationResponse", "AdministrationResponse", "ChargeListResponse", "ChargeResponse", "PaymentResponse", "PaymentListResponse", "LedgerListResponse", "CommunicationListResponse", "CommunicationResponse", "KnowledgeListResponse", "KnowledgeDocumentResponse", "KnowledgeSearchResponse", "KnowledgeIndexResponse", "CapabilityListResponse", "OperationsSummary", "OperationsReport", "MetricsResponse", "SnapshotResponse", "EncryptedRecoveryBundle", "RestoreResponse", "AgentRuntimeHealth", "AiReadinessResponse", "AiSessionListResponse", "AgentTurnResult", "AiApprovalResponse", "AgentDraftPromotion", "AgentReplayResult"
+] as const;
+
+const apiResponseSchemaNameSet = new Set<string>(API_RESPONSE_SCHEMA_NAMES);
+
+export class ApiCatalogError extends Error {
+  readonly code = "API_CATALOG_INVALID" as const;
+
+  constructor(detail: string) {
+    super(`API route catalog rejected: ${detail}`);
+    this.name = "ApiCatalogError";
+  }
+}
+
+export interface ApiCatalogValidationOptions {
+  /**
+   * Inventory fixtures may intentionally use a synthetic response name while
+   * exercising route/PDP structure. Runtime catalogs keep this strict.
+   */
+  readonly requireRegisteredResponseSchemas?: boolean;
+}
+
+const catalogNamePattern = /^[A-Za-z][A-Za-z0-9]*$/;
+const catalogOperationPattern = /^[a-z][a-z0-9._:-]{1,119}$/;
+const catalogPlaceholderPattern = /\b(?:TODO|TBD|PLACEHOLDER|UNKNOWN|UNDEFINED|EXAMPLE|SAMPLE)\b|\$\{|<[^>]+>/i;
+const catalogAuthValues = new Set<ApiCatalogAuth>(["PUBLIC", "SESSION", "SESSION+CSRF", "SESSION+ROLE", "SESSION+CSRF+ROLE"]);
+const catalogMethods = new Set<ApiCatalogHttpMethod>(["GET", "POST", "DELETE"]);
+
+function validateCatalogName(value: unknown, field: string, key: string): void {
+  if (typeof value !== "string" || !catalogNamePattern.test(value) || catalogPlaceholderPattern.test(value)) {
+    throw new ApiCatalogError(`${key} has an invalid ${field} schema name`);
+  }
+}
+
+function validateCatalogPath(path: unknown, key: string): void {
+  if (typeof path !== "string" || path.length === 0 || path.length > 200 || !path.startsWith("/") || path === "*" || path.includes("?") || path.includes("#") || path.includes("//") || (path.length > 1 && path.endsWith("/")) || catalogPlaceholderPattern.test(path)) {
+    throw new ApiCatalogError(`${key} has an invalid or placeholder path`);
+  }
+  const parameters = new Set<string>();
+  for (const segment of path.split("/")) {
+    if (!segment.startsWith(":")) continue;
+    if (!/^:[A-Za-z][A-Za-z0-9_]*$/.test(segment) || parameters.has(segment)) {
+      throw new ApiCatalogError(`${key} has a duplicate or invalid path parameter ${segment}`);
+    }
+    parameters.add(segment);
+  }
+}
+
+/** Validate the executable contract before any runtime or AST inventory consumes it. */
+export function validateApiRouteCatalog(catalog: readonly ApiRouteDescriptor[], options: ApiCatalogValidationOptions = {}): void {
+  if (!Array.isArray(catalog)) throw new ApiCatalogError("catalog must be an array");
+  const keys = new Set<string>();
+  for (const route of catalog) {
+    if (!route || typeof route !== "object") throw new ApiCatalogError("route descriptor must be an object");
+    const key = `${String(route.method)} ${String(route.path)}`;
+    if (keys.has(key)) throw new ApiCatalogError(`duplicate route ${key}`);
+    keys.add(key);
+    if (route.version !== "v1") throw new ApiCatalogError(`${key} has unsupported version`);
+    if (!catalogMethods.has(route.method)) throw new ApiCatalogError(`${key} has an unsupported HTTP method`);
+    validateCatalogPath(route.path, key);
+    if (typeof route.operation !== "string" || !catalogOperationPattern.test(route.operation) || catalogPlaceholderPattern.test(route.operation)) throw new ApiCatalogError(`${key} has an invalid operation`);
+    if (!catalogAuthValues.has(route.auth)) throw new ApiCatalogError(`${key} has an invalid auth contract`);
+    if (route.requestSchema !== null) validateCatalogName(route.requestSchema, "request", key);
+    validateCatalogName(route.responseSchema, "response", key);
+    if (options.requireRegisteredResponseSchemas !== false && !apiResponseSchemaNameSet.has(route.responseSchema)) throw new ApiCatalogError(`${key} references an unregistered response schema ${route.responseSchema}`);
+    if (typeof route.idempotent !== "boolean") throw new ApiCatalogError(`${key} has an invalid idempotency flag`);
+    if (route.deprecation !== null && (typeof route.deprecation !== "string" || catalogPlaceholderPattern.test(route.deprecation))) throw new ApiCatalogError(`${key} has an invalid deprecation marker`);
+  }
+}
+
+export function defineApiRouteCatalog<const T extends readonly ApiRouteDescriptor[]>(catalog: T): Readonly<T> {
+  validateApiRouteCatalog(catalog);
+  return Object.freeze(catalog.map((route) => Object.freeze({ ...route }))) as unknown as Readonly<T>;
+}
+
 /** Machine-readable public contract inventory. It is intentionally data-only so CI can diff it. */
-export const API_ROUTE_CATALOG: readonly ApiRouteDescriptor[] = [
+export const API_ROUTE_CATALOG = defineApiRouteCatalog([
   { version: "v1", method: "GET", path: "/health", operation: "health.read", auth: "PUBLIC", requestSchema: null, responseSchema: "HealthResponse", idempotent: false, deprecation: null },
   { version: "v1", method: "GET", path: "/ready", operation: "readiness.read", auth: "PUBLIC", requestSchema: null, responseSchema: "ReadinessResponse", idempotent: false, deprecation: null },
   { version: "v1", method: "POST", path: "/integrations/:provider/events", operation: "integration.inbox", auth: "PUBLIC", requestSchema: "IntegrationInboxEvent", responseSchema: "InboxReceipt", idempotent: true, deprecation: null },
@@ -121,7 +213,35 @@ export const API_ROUTE_CATALOG: readonly ApiRouteDescriptor[] = [
   { version: "v1", method: "POST", path: "/ai/approvals/:id/retry", operation: "ai.approval.retry", auth: "SESSION+CSRF", requestSchema: "AiTurnInput", responseSchema: "AgentTurnResult", idempotent: true, deprecation: null },
   { version: "v1", method: "POST", path: "/ai/drafts/:id/promote", operation: "ai.draft.promote", auth: "SESSION+CSRF", requestSchema: null, responseSchema: "AgentDraftPromotion", idempotent: true, deprecation: null },
   { version: "v1", method: "GET", path: "/ai/sessions/:id/replay", operation: "ai.replay", auth: "SESSION+ROLE", requestSchema: null, responseSchema: "AgentReplayResult", idempotent: false, deprecation: null }
-] as const;
+] as const);
+
+function responseSchemaDomain(routes: readonly ApiRouteDescriptor[], schemaName: string): string {
+  const domains = new Set(routes.filter((route) => route.responseSchema === schemaName).map((route) => route.operation.split(".")[0] ?? "shared"));
+  if (domains.size === 0) throw new ApiCatalogError(`response schema ${schemaName} has no route consumer`);
+  return domains.size === 1 ? [...domains][0]! : "shared";
+}
+
+function responseSchemaConsumers(routes: readonly ApiRouteDescriptor[], schemaName: string): readonly string[] {
+  const consumers = routes.filter((route) => route.responseSchema === schemaName).map((route) => `${route.method} /api/${route.version}${route.path} (${route.operation})`);
+  if (consumers.length === 0) throw new ApiCatalogError(`response schema ${schemaName} has no route consumer`);
+  return Object.freeze(consumers);
+}
+
+/**
+ * Nominal metadata for every response name.  Payload validation is deliberately
+ * owned by the API runtime; this catalog freezes ownership and consumer
+ * coverage without claiming that legacy envelopes are payload-migrated.
+ */
+export const API_RESPONSE_SCHEMA_CATALOG: readonly ApiResponseSchemaDescriptor[] = Object.freeze(API_RESPONSE_SCHEMA_NAMES.map((name) => Object.freeze({
+  name,
+  owner: "api-contracts",
+  version: API_VERSION,
+  schemaVersion: API_SCHEMA_VERSION,
+  consumers: responseSchemaConsumers(API_ROUTE_CATALOG, name),
+  domain: responseSchemaDomain(API_ROUTE_CATALOG, name),
+  coverage: "ENVELOPE_ONLY",
+  legacyStatus: "LEGACY_UNMIGRATED"
+} satisfies ApiResponseSchemaDescriptor)));
 
 export type ApiVersionedValue = Readonly<Record<string, unknown>>;
 

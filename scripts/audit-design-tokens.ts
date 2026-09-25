@@ -1,5 +1,5 @@
 import { readdir, readFile } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { join, relative, resolve } from "node:path";
 
 type Finding = {
   code: string;
@@ -8,8 +8,11 @@ type Finding = {
   message: string;
 };
 
-const root = resolve(process.argv.find((argument) => !argument.startsWith("-") && argument !== process.argv[0] && argument !== process.argv[1]) ?? "apps/web/src");
+const args = process.argv.slice(2);
+const strict = args.includes("--strict");
+const root = resolve(args.find((argument) => !argument.startsWith("-")) ?? "apps/web/src");
 const files: string[] = [];
+
 const walk = async (directory: string): Promise<void> => {
   for (const entry of await readdir(directory, { withFileTypes: true })) {
     const path = join(directory, entry.name);
@@ -17,12 +20,14 @@ const walk = async (directory: string): Promise<void> => {
     else if (/\.(css|ts|tsx)$/.test(entry.name)) files.push(path);
   }
 };
+
 await walk(root);
 
 const findings: Finding[] = [];
 const colors = new Set<string>();
 for (const path of files) {
   const content = await readFile(path, "utf8");
+  const relativePath = relative(root, path);
   const governedPersistenceAdapter = /(?:^|[/\\])state[/\\]persistence\.ts$/.test(path);
   if (!governedPersistenceAdapter && /\b(?:localStorage|sessionStorage|indexedDB)\b/.test(content)) {
     findings.push({ code: "storage_bypass", severity: "high", category: "state", message: `${path}: browser persistence must use an explicitly governed adapter` });
@@ -32,18 +37,26 @@ for (const path of files) {
     colors.add(value);
     if (!path.endsWith("styles.css")) findings.push({ code: "inline_color", severity: "high", category: "color", message: `${path}: use a design token instead of ${value}` });
   }
-}
-
-const rgb = (value: string): [number, number, number] => [Number.parseInt(value.slice(1, 3), 16), Number.parseInt(value.slice(3, 5), 16), Number.parseInt(value.slice(5, 7), 16)];
-const ordered = [...colors].sort();
-for (let left = 0; left < ordered.length; left += 1) {
-  for (let right = left + 1; right < ordered.length; right += 1) {
-    const leftColor = ordered[left]!;
-    const rightColor = ordered[right]!;
-    const a = rgb(leftColor);
-    const b = rgb(rightColor);
-    const distance = Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
-    if (distance < 10) findings.push({ code: "near_duplicate_color", severity: "medium", category: "color", message: `token colors ${leftColor} and ${rightColor} are visually near-duplicates (distance ${distance.toFixed(2)})` });
+  if (path.endsWith("styles.css")) {
+    const requiredTokens = [
+      "color-canvas",
+      "color-surface",
+      "color-content-primary",
+      "color-content-secondary",
+      "color-content-muted",
+      "color-border-subtle",
+      "color-action",
+      "color-focus",
+      "color-success",
+      "color-warning",
+      "color-danger",
+      "size-touch-target"
+    ];
+    for (const token of requiredTokens) {
+      if (!new RegExp(`--${token}\\s*:`).test(content)) {
+        findings.push({ code: "missing_semantic_token", severity: "high", category: "token", message: `${relativePath}: required semantic token --${token} is missing` });
+      }
+    }
   }
 }
 
@@ -51,5 +64,19 @@ const summary = {
   high: findings.filter((finding) => finding.severity === "high").length,
   medium: findings.filter((finding) => finding.severity === "medium").length
 };
-process.stdout.write(`${JSON.stringify({ schema_version: 1, root, files_scanned: files.map((path) => path.replace(`${root}/`, "")).sort(), findings, summary, limitations: ["Static source scan only; browser cascade and computed styles are not evaluated.", "Near-duplicate colors use Euclidean RGB distance, not perceptual Delta E."] }, null, 2)}\n`);
-if (summary.high > 0) process.exitCode = 1;
+const output = {
+  schema_version: 2,
+  root,
+  strict,
+  files_scanned: files.map((path) => relative(root, path)).sort(),
+  registered_colors: colors.size,
+  findings,
+  summary,
+  blocking_findings: summary.high > 0 || (strict && summary.medium > 0),
+  limitations: [
+    "Static source scan only; browser cascade and computed styles are not evaluated.",
+    "Palette consolidation is checked through named semantic roles; visually similar primitive values remain valid when they represent distinct surfaces or states."
+  ]
+};
+process.stdout.write(`${JSON.stringify(output, null, 2)}\n`);
+if (output.blocking_findings) process.exitCode = 1;

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { API_ROUTE_CATALOG } from "@cvg/contracts";
+import { API_ROUTE_CATALOG, ApiCatalogError, validateApiRouteCatalog } from "@cvg/contracts";
 import { inspectHttpRouteInventory } from "../../scripts/pdp-route-inventory.ts";
 
 const patient = API_ROUTE_CATALOG.find((route) => route.path === "/patients" && route.method === "GET")!;
@@ -34,6 +34,23 @@ test("HTTP inventory rejects dynamic URL, named handler, duplicate and missing r
   assert.ok(inspect("").findings.some((finding) => finding.code === "MISSING_ROUTE"));
   const route = `app.get('/api/v1/patients', async (request) => requestContext(request, 'patients.read'));`;
   assert.ok(inspect(route + route).findings.some((finding) => finding.code === "DUPLICATE_ROUTE"));
+});
+
+test("HTTP inventory distinguishes a wrong verb from an unknown path", () => {
+  const result = inspect(`app.post('/api/v1/patients', async (request) => requestContext(request, 'patients.read'));`);
+  assert.ok(result.findings.some((finding) => finding.code === "METHOD_MISMATCH"));
+  assert.equal(result.findings.some((finding) => finding.code === "UNREGISTERED_ROUTE"), false);
+});
+
+test("HTTP inventory rejects duplicate path parameters and unexpected aliases", () => {
+  const placeholder = inspect(`app.get('/api/v1/knowledge/:id/:id', async (request) => requestContext(request, 'patients.read'));`);
+  assert.ok(placeholder.findings.some((finding) => finding.code === "PLACEHOLDER_ROUTE"));
+  const alias = inspect(`app.get('/api/v1/patients/', async (request) => requestContext(request, 'patients.read'));`);
+  assert.ok(alias.findings.some((finding) => finding.code === "UNEXPECTED_ALIAS"));
+});
+
+test("typed catalog rejects placeholder schema metadata before inventory", () => {
+  assert.throws(() => validateApiRouteCatalog([{ ...patient, responseSchema: "PLACEHOLDER" }] as never), ApiCatalogError);
 });
 
 test("HTTP inventory covers route objects, method arrays and bracket registration", () => {

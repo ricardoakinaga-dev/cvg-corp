@@ -161,6 +161,7 @@ test("durable worker admission is tenant-scoped and idempotent by immutable dige
   assert.equal(replay.id, jobId);
   assert.equal(fake.jobs.length, 1);
   await assert.rejects(() => persistence.enqueueWorkerJob(input({ payload: { patientId: "different" } })), (error: unknown) => error instanceof PersistenceCorruptionError && error.message.includes("immutable admission"));
+  await assert.rejects(() => persistence.enqueueWorkerJob(input({ maxAttempts: 0 })), (error: unknown) => error instanceof PersistenceStateError && error.message.includes("maxAttempts is invalid"));
   assert.ok(fake.statements.includes("BEGIN"));
   assert.ok(fake.statements.includes("ROLLBACK"));
 });

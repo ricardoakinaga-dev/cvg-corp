@@ -1,0 +1,6 @@
+# Repository owner is the current accountable reviewer until a maintainer team
+# is established. CODEOWNERS does not constitute approval by itself.
+* @ricardoakinaga-dev
+/.github/workflows/ @ricardoakinaga-dev
+/Dockerfile* @ricardoakinaga-dev
+/docker/ @ricardoakinaga-dev

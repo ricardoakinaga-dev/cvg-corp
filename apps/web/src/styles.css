@@ -113,6 +113,32 @@
   --space-pct-90: 90%;
   --font-body: "Avenir Next", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
   --font-display: Georgia, "Times New Roman", serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* semantic roles: components consume these aliases instead of owning palette choices */
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-surface-subtle: var(--surface-soft);
+  --color-content-strong: var(--ink-950);
+  --color-content-primary: var(--ink-900);
+  --color-content-secondary: var(--ink-700);
+  --color-content-muted: var(--ink-600);
+  --color-content-inverse: var(--surface);
+  --color-border-subtle: var(--ink-200);
+  --color-border-strong: var(--ink-300);
+  --color-action: var(--teal-700);
+  --color-action-hover: var(--color-009);
+  --color-focus: var(--teal-700);
+  --color-success: var(--teal-700);
+  --color-success-surface: var(--teal-100);
+  --color-warning: var(--amber-700);
+  --color-warning-surface: var(--amber-100);
+  --color-danger: var(--coral-700);
+  --color-danger-surface: var(--coral-100);
+  --size-touch-target: 44px;
+  --size-control: 42px;
+  --space-dialog-padding: clamp(20px, 4vw, 32px);
+  --type-body-line: 1.6;
 
   /* primitive aliases consumed by component styles; visual exceptions stay explicit in this registry */
   --color-001: rgb(39 182 161 / 38%);
@@ -469,6 +495,12 @@ a { color: inherit; }
 
 /* App shell */
 .app-shell { min-height: 100vh; display: flex; background: var(--canvas); }
+.error-boundary { align-items: center; justify-content: center; padding: var(--space-8); }
+.error-boundary .content { width: min(100%, 680px); margin: var(--space-auto); padding: var(--space-12); border: 1px solid var(--ink-200); border-radius: var(--radius-lg); background: var(--surface); box-shadow: var(--shadow-md); }
+.error-boundary .content h1 { margin: var(--space-zero) var(--space-zero) var(--space-4); color: var(--ink-950); font-family: var(--font-display); font-size: clamp(2rem, 5vw, 3.5rem); line-height: 1.05; }
+.error-boundary .content p { max-width: 560px; margin: var(--space-4) var(--space-zero); color: var(--ink-600); font-size: 1rem; line-height: 1.6; }
+.error-boundary .content code { color: var(--ink-900); font-family: var(--font-mono, ui-monospace, monospace); font-size: .9em; overflow-wrap: anywhere; }
+.error-boundary-actions { display: flex; flex-wrap: wrap; gap: var(--space-3); margin-top: var(--space-8); }
 .sidebar { width: var(--space-036); flex: 0 0 246px; display: flex; flex-direction: column; padding: var(--space-037) var(--space-011) var(--space-012); color: var(--color-028); background: var(--ink-950); }
 .sidebar-head { display: flex; align-items: baseline; gap: var(--space-014); padding: var(--space-zero) var(--space-016); }
 .sidebar .brand-caption { color: var(--color-029); }
@@ -687,3 +719,41 @@ a { color: inherit; }
 .approval-preview { margin-top: var(--space-px-10); padding: var(--space-008) var(--space-016); border-left: 3px solid var(--amber-700); background: var(--surface); }
 .approval-preview p { margin: var(--space-px-3) var(--space-zero) var(--space-zero); color: var(--ink-700); font-size: var(--type-013); }
 .approval-actions { display: flex; flex-direction: column; gap: var(--space-009); }
+
+/* Shared quality seams: semantic roles, resilient controls and bounded overlays. */
+body { color: var(--color-content-primary); background: var(--color-canvas); }
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline-color: var(--color-focus); }
+.button { min-height: var(--size-touch-target); }
+.button-primary { color: var(--color-content-inverse); background: var(--color-action); }
+.button-primary:hover:not(:disabled) { background: var(--color-action-hover); }
+.button-dark { color: var(--color-content-inverse); background: var(--color-content-primary); }
+.button-ghost { color: var(--color-content-secondary); border-color: var(--color-border-subtle); background: var(--color-surface); }
+.button-ghost:hover:not(:disabled) { border-color: var(--color-border-strong); background: var(--color-surface-subtle); }
+.icon-button { width: var(--size-touch-target); height: var(--size-touch-target); min-width: var(--size-touch-target); min-height: var(--size-touch-target); }
+.text-button { min-height: var(--size-touch-target); }
+.state-panel { width: 100%; }
+.state-panel[data-state="error"] { border-color: var(--color-danger); }
+.inline-error { flex-wrap: wrap; color: var(--color-danger); background: var(--color-danger-surface); }
+.surface-head { flex-wrap: wrap; }
+.segmented button { min-height: var(--size-touch-target); }
+.offline-live-banner { color: var(--color-content-primary); background: var(--color-warning-surface); }
+.dialog-card { max-height: min(88vh, 760px); overflow-y: auto; padding: var(--space-dialog-padding); }
+.dialog-form input, .dialog-form select, .dialog-form textarea { width: 100%; min-height: var(--size-control); padding: var(--space-zero) var(--space-016); border: 1px solid var(--color-border-subtle); border-radius: var(--radius-004); color: var(--color-content-primary); background: var(--color-surface-subtle); }
+.dialog-form textarea { min-height: 96px; padding-top: var(--space-009); padding-bottom: var(--space-009); resize: vertical; }
+.dialog-form input:focus-visible, .dialog-form select:focus-visible, .dialog-form textarea:focus-visible { border-color: var(--color-action); }
+.error-boundary { min-height: 100vh; }
+.error-boundary .content { width: min(100%, 680px); max-width: 100%; }
+.error-boundary-actions .button { flex: 1 1 180px; }
+.content:focus { outline: 3px solid var(--color-focus); outline-offset: -3px; }
+.content:focus-visible { outline: 3px solid var(--color-focus); outline-offset: -3px; }
+
+@media (max-width: 600px) {
+  .error-boundary { padding: var(--space-014); }
+  .error-boundary .content { padding: var(--space-006); }
+  .error-boundary-actions { flex-direction: column; }
+  .error-boundary-actions .button { width: 100%; }
+  .dialog-backdrop { padding: var(--space-009); }
+  .dialog-card { width: 100%; max-height: calc(100vh - var(--space-012)); border-radius: var(--radius-md) var(--radius-md) var(--radius-sm) var(--radius-sm); }
+  .dialog-foot .button { min-width: 0; }
+  .offline-live-banner { line-height: var(--type-body-line); }
+}

@@ -40,6 +40,7 @@ export const errorCodes = [
   "RECOVERY_INVALID",
   "FORBIDDEN",
   "NOT_FOUND",
+  "DIVERGENT",
   "CONFLICT",
   "REVISION_CONFLICT",
   "IDEMPOTENCY_CONFLICT",

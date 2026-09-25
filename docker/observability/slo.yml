@@ -1,0 +1,52 @@
+schemaVersion: 1
+profile: local-synthetic
+window: 30d
+status: PROPOSED
+owner: platform-ops
+channel: local-ops
+sli:
+  - id: API_AVAILABILITY
+    target: 0.999
+    unit: ratio
+    evidence: NOT_RUN
+    runbook: docs/runbooks/database-incident.md
+  - id: API_P95_LATENCY
+    targetMs: 300
+    evidence: NOT_RUN
+    runbook: docs/runbooks/observability-slo-alerts.md
+  - id: API_ERROR_RATIO
+    target: 0.01
+    unit: ratio
+    evidence: NOT_RUN
+    runbook: docs/runbooks/observability-slo-alerts.md
+  - id: DEPENDENCY_AVAILABILITY
+    target: 0.999
+    unit: ratio
+    evidence: NOT_RUN
+    runbook: docs/runbooks/database-incident.md
+  - id: OUTBOX_PROCESSING_DELAY
+    targetMs: UNKNOWN
+    evidence: NOT_RUN
+    runbook: docs/runbooks/worker-backlog.md
+  - id: WORKER_HEARTBEAT
+    targetMs: 60000
+    evidence: NOT_RUN
+    runbook: docs/runbooks/worker-backlog.md
+  - id: TELEMETRY_DROPS
+    target: 0
+    unit: count
+    evidence: NOT_RUN
+    runbook: docs/runbooks/observability-logs.md
+  - id: RESTORE_RTO
+    targetMs: UNKNOWN
+    evidence: UNKNOWN
+    runbook: docs/runbooks/restore.md
+  - id: RESTORE_RPO
+    targetMs: UNKNOWN
+    evidence: UNKNOWN
+    runbook: docs/runbooks/restore.md
+
+alertContract:
+  requiredFields: [severity, window, runbook, owner, channel]
+  externalDelivery: BLOCKED_EXTERNAL
+  localDelivery: SYNTHETIC_ONLY

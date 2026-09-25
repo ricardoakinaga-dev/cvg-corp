@@ -31,6 +31,8 @@ test("runtime inventory is unavailable until readiness and captures the actual G
   assert.equal(inventory.scope, "REGISTRATION_ONLY");
   assert.match(inventory.digest, /^[a-f0-9]{64}$/);
   assert.deepEqual(inventory.routes, catalog);
+  assert.equal(inventory.routes[0]?.requestSchema, null);
+  assert.equal(inventory.routes[0]?.responseSchema, "PatientListResponse");
   assert.ok(Object.isFrozen(inventory));
   assert.ok(Object.isFrozen(inventory.routes));
   assert.ok(inventory.routes.every(Object.isFrozen));

@@ -1,5 +1,7 @@
 # Estado da implementação local
 
+> **Regra temporal:** este arquivo é um log cronológico. Expressões como “atual” ou “corrente” valem somente para o checkpoint datado em que aparecem. O checkpoint AUD27 de 21/09 é histórico; consulte a última entrada ao fim do arquivo para a revalidação mais recente.
+
 ## Continuação AAA2-02/E01 — nova auditoria em 13/09/2026
 
 A [auditoria da continuação](auditoria-continuacao-aaa2-02-2026-09-13.md) confirmou a correção de medicação no recorte local com probe HTTP independente. E01 permanece aprovado localmente com ressalva de PostgreSQL multiprocesso; AUD13-16 permanece incompleto e AUD13-17 parcial. Nesta rodada npm test teve 386 pass/1 skip; build, lint e static passaram. A falha static da auditoria anterior é histórica.
@@ -318,3 +320,447 @@ Browser E2E: recibo de criação presente, linha ausente na lista). O checkpoint
 publica timeout de asserção ampliado (15 s) e diagnóstico de anexos com o
 snapshot da página para a próxima run. Veredito global permanece
 `AAA_NOT_PROVEN`; provas externas e aprovação humana continuam ausentes.
+
+## Checkpoint 2026-09-20 — Reauditoria CVG-AUD20
+
+A reauditoria do worktree AUD19 rejeitou o fechamento para promoção. Embora
+typecheck, lint e a suíte de 543 testes tenham passado, contraprovas reproduziram
+IDs divergentes aceitos pelo tool gateway, escrita após sessão terminal, bypass
+de fence no caminho de restore, default privileges amplos em tabelas futuras e
+readiness aceitando schema 039 sem as migrations 040/041. O gate universal de
+PDP e `verify:static` estão vermelhos.
+
+Os E2Es AUD19 018–020 também falham: a busca de pacientes fica presa sob
+`StrictMode`, e os contratos frontend aceitam payloads semanticamente
+corrompidos. Cancelamento do worker não alcança o provider de outbox. Receipts
+AUD19 possuem problemas temporais e não vinculam exatamente os bytes do
+worktree.
+
+O estado corrente é `FAIL / PARTIAL / AAA_NOT_PROVEN`. Os documentos
+autoritativos desta rodada são a
+[reauditoria](auditoria-resultado-cvg-aud19-2026-09-20.md), o
+[roadmap](roadmap-melhorias-cvg-aud20-2026-09-20.md) e o
+[backlog](backlog-melhorias-cvg-aud20-2026-09-20.md). O próximo trabalho é
+`CVG-AUD20-001`; nenhuma promoção, release ou declaração AAA está autorizada.
+
+## Checkpoint 2026-09-20 — Reauditoria CVG-AUD21
+
+A execução parcial AUD20 foi auditada por três críticos frescos e rejeitada
+para promoção. O estado global `PARTIAL / AAA_NOT_PROVEN` estava correto, mas
+sete itens marcados `DONE` não atendem ao aceite: 001, 002, 006, 007, 009, 012
+e 013.
+
+Contraprovas reproduziram renovação de lease após `COMPLETED`, wrapper PDP por
+`Promise.then` aceito, sucesso/ack após abort durante provider, divergência de
+IDs convertida em `NOT_FOUND` e payloads web semanticamente corrompidos aceitos.
+Na jornada primária, a rota Conhecimento caiu no `RootErrorBoundary` em
+Chromium e Firefox por campo `createdAt` removido pelo schema. O gate do control
+plane continuou verde apesar de ExecPlan, checkpoint, last event e evidência
+corrente divergirem.
+
+As migrations 042/043, o manifesto 043 e a correção principal da corrida de
+busca são preservados como progresso, mas não como prova suficiente de
+fechamento. `git diff --check` também está vermelho por três whitespaces. A
+qualificação local dupla, staging, providers reais, browser/AT completo,
+carga/chaos/RTO-RPO, crítica F0–F38 e decisão humana continuam ausentes.
+
+O estado corrente permanece `FAIL / PARTIAL / AAA_NOT_PROVEN`. As fontes
+autoritativas para a próxima execução são a
+[reauditoria AUD20](auditoria-resultado-cvg-aud20-2026-09-20.md), o
+[roadmap AUD21](roadmap-melhorias-cvg-aud21-2026-09-20.md) e o
+[backlog AUD21](backlog-melhorias-cvg-aud21-2026-09-20.md). A próxima ação é
+`CVG-AUD21-001`; nenhum commit, deploy, release ou declaração AAA foi
+autorizado por esta atualização documental.
+
+## Checkpoint 2026-09-20 — CVG-AUD21 R0
+
+AUD21-001 e AUD21-021 foram executadas no control plane: o catalogo AUD21 foi
+importado, os sete fechamentos AUD20 falsos foram reabertos sem editar receipts
+ou eventos antigos, e os tres trailing whitespaces de
+`tests/unit/pdp-universal.test.ts` foram removidos. `git diff --check` passou.
+
+O proximo passo canonico e `CVG-AUD21-002:TERMINALITY-RESTORE-AUTHORITY`.
+R0 permanece `PARTIAL` porque o fingerprint exact-subject reproduzivel ainda
+depende de AUD21-018. O estado global permanece `FAIL / REJECT / AAA_NOT_PROVEN`;
+nenhum commit, deploy, release ou declaracao AAA foi autorizado.
+
+## Checkpoint 2026-09-20 — CVG-AUD21-002
+
+Foi corrigida a contraprova de terminalidade no store em memoria e no store
+PostgreSQL: `renewLease` exige sessao `ACTIVE`, `complete` remove a lease e
+`QUARANTINED_RESTORE` continua reservado ao restore. A migration 044 adiciona o
+papel `cvg_restore_authority`, bloqueia escrita direta do owner generico/runtime
+em sessoes terminais e executa a projeção de restore sob esse papel dentro da
+transação de commit, incluindo a autoridade no evento de journal.
+
+Provas locais: typecheck, 548 testes (`547` pass, `1` skip), schema manifest,
+control plane e `git diff --check` passaram. `npm run verify:postgres` não foi
+executado além do bloqueio inicial porque `DATABASE_URL` não está autorizado;
+portanto a prova PostgreSQL, a autoridade de restore em banco e a qualificação
+AAA continuam `PARTIAL / BLOCKED_EXTERNAL`.
+
+## Checkpoint 2026-09-20 — Auditoria do fechamento CVG-AUD21-013
+
+O fechamento declarado de `CVG-AUD21-013` foi reavaliado contra o worktree
+real, com três críticos independentes somente leitura e PostgreSQL 16
+descartável. O progresso é material: o drill corrente restaurou o conhecido-bom
+em `revision=1`/`QUARANTINED`, rejeitou seu corpus de known-bads, preservou a
+origem e fez rollback na falha tardia. Typecheck, lint, build, manifesto 044,
+diff, JSON/JSONL e 560 testes (`559` pass, `0` fail, `1` skip) passaram.
+
+O fechamento, porém, foi rejeitado. Contraprovas re-hashadas mostraram que o
+validator ainda aceita `usageRecordId` órfão e lease com fence zero. O método
+público de commit/restore aceita projeções `recoveredAgent*` sem tornar a
+validação do bundle completo uma pré-condição interna. O verificador do control
+plane também retorna verde com o plano marcando 013 e state/backlog marcando
+014; há dependências e timestamps incoerentes. Além disso, harnesses ainda
+contêm `GRANT USAGE, SELECT ON ALL SEQUENCES`, contrariando o aceite de least
+privilege.
+
+Assim, `CVG-AUD21-013` e `CVG-AUD21-011` são `REOPEN`; implementações AUD21 sem
+fingerprint exato permanecem `IMPLEMENTED_UNVERIFIED`. O estado global é
+`PARTIAL / REJECT / AAA_NOT_PROVEN`, com promoção bloqueada. As fontes correntes
+são a [auditoria AUD21-013](auditoria-resultado-cvg-aud21-013-2026-09-20.md), o
+[roadmap AUD22](roadmap-melhorias-cvg-aud22-2026-09-20.md) e o
+[backlog AUD22](backlog-melhorias-cvg-aud22-2026-09-20.md). A próxima ação é
+`CVG-AUD22-001`; nenhum commit, push, deploy, credencial ou dado real foi usado.
+
+## Checkpoint 2026-09-20 — Auditoria da entrega CVG-AUD22-002
+
+A troca do guard SQL de `usageRecordId` de `$11` para `$10` está implementada e
+o teste focado confirma a ordem `$10/$11`. A suíte local passou com 567 testes
+(`566` pass, `0` fail, `1` skip), além de 18/18 focados, typecheck, lint,
+manifesto de schema e diff. O build consta como aprovado no relato do agente e
+não foi reexecutado nesta auditoria porque escreve artefatos no worktree.
+
+O fechamento foi rejeitado. O teste do guard inspeciona SQL e parâmetros, mas o
+executor falso não avalia a referência de usage; a prova comportamental em
+PostgreSQL não rodou porque as URLs estavam ausentes e terminou com exit `2`.
+Essa ausência é `TODO_LOCAL / NOT_RUN` enquanto um PostgreSQL 16 descartável
+puder ser provisionado localmente, e não prova por si só bloqueio externo.
+
+Críticos independentes também confirmaram grants amplos de sequência nos
+harnesses, arrays `recoveredAgent*` ainda públicos e um false-green material no
+control plane: `CVG-AUD22-002` está ativa apesar de depender de 001 ainda
+`PARTIAL`, e o receipt agregado informa exit `0` apesar do restore exit `2`.
+Por isso, o verde de `verify:control-plane` não é evidência válida de
+fechamento.
+
+O estado corrente é `PARTIAL / REJECT / AAA_NOT_PROVEN`, com promoção
+bloqueada. As fontes correntes são a
+[auditoria AUD22-002](auditoria-entrega-cvg-aud22-002-2026-09-20.md), o
+[roadmap AUD23](roadmap-melhorias-cvg-aud23-2026-09-20.md) e o
+[backlog AUD23](backlog-melhorias-cvg-aud23-2026-09-20.md). A próxima ação é
+`CVG-AUD23-001:CONTROL-PLANE-SEMANTICS`. Esta atualização não alterou `.agent`,
+bancos ou containers e não realizou commit, push ou deploy.
+
+## Checkpoint 2026-09-20 — Auditoria da entrega CVG-AUD23-004
+
+O caminho direto de restore avançou: `PostgresPersistence.restore()` valida o
+bundle antes da conexão, produz snapshot/sessões em quarentena e não revive
+leases. Em PostgreSQL 16 descartável, 44 migrations e o conhecido-bom passaram;
+o inventário Docker ficou idêntico antes/depois. A regressão local passou com
+570 testes (`569` pass, `0` fail, `1` skip), persistência 59/59, typecheck,
+lint e diff.
+
+O fechamento `CVG-AUD23-004 = DONE` foi rejeitado. Uma contraprova pela API
+exportada mostrou que `commit()` ainda aceita propriedades `recoveredAgent*`
+extras em runtime, assume `cvg_restore_authority` e grava sem bundle,
+fingerprint ou autoridade do entrypoint `restore()`. O conhecido-ruim de
+rollback chama `commit()`, não `restore()`, usa oracle circular e o harness
+concede privilégio amplo sobre sequences. A afirmação de origem inalterada
+também parte de uma fotografia posterior à criação das fixtures.
+
+O control plane continua verde somente por comparar strings de fingerprint,
+sem recalculá-las do worktree; possui addendum antigo e status de dependências
+incoerentes. `verify:static` permanece vermelho por SHA/freshness de snapshots
+operacionais antigos. Assim, AUD23-004 é `PARTIAL / REOPEN`, AUD23-005 não
+pode fechar e o programa permanece `FAIL / REJECT / AAA_NOT_PROVEN`.
+
+As fontes correntes são a
+[auditoria AUD23-004](auditoria-entrega-cvg-aud23-004-2026-09-20.md), o
+[roadmap AUD24](roadmap-melhorias-cvg-aud24-2026-09-20.md) e o
+[backlog AUD24](backlog-melhorias-cvg-aud24-2026-09-20.md). A próxima ação é
+`CVG-AUD24-001:EXACT-SUBJECT-CONTROL-RECONCILIATION`. Esta atualização foi
+somente documental: não alterou `.agent`, produto, banco ou container e não
+realizou commit, push ou deploy.
+
+## Checkpoint 2026-09-20 — Auditoria da entrega CVG-AUD24-003
+
+O exact-subject e a fronteira pública de restore avançaram: o fingerprint
+`sha256:5963cc8c…0c5a` foi recalculado e conferido antes desta atualização
+documental; `commit()` rejeita campos de recovery; o conhecido-bom restaurou em
+PostgreSQL 16 com 44 migrations, revision `1`, quarentena, continuidade do
+runtime do agente, leases descartados e cleanup. A regressão auditada passou
+com 576 testes (`575` pass, `0` fail, `1` skip), database 71/71, fault 34/34,
+typecheck, lint de 238 arquivos, JSON/JSONL e diff.
+
+O fechamento `CVG-AUD24-003 = DONE`, porém, foi rejeitado. O preflight lê
+identidade, owner, membership e `schema_migrations` em um client e o libera;
+`commitInternal()` adquire outro client e chega a `BEGIN`/DML sem verificar sua
+identidade. Uma contraprova pública split-client observou duas conexões, zero
+checagem de identidade na conexão de commit e `insert into organizations`
+executado. O contrato também não verifica `CREATEDB`, `CREATEROLE` e
+`REPLICATION`, e os known-bads de identidade/membership/drift existem apenas no
+fake pool, não numa matriz PostgreSQL direta.
+
+O drill positivo não prova rollback de restore: a falha tardia chama
+`commit()`, e o oracle de destino usa `exportRecoveryBundle()` da mesma
+implementação. Helpers ainda auto-provisionam roles/grants, incluindo `ON ALL
+SEQUENCES`. `verify:static` continua falhando em 15 checks de SHA/freshness.
+
+O estado correto é `AUD24-003 = PARTIAL / REOPEN`, programa `FAIL / REJECT /
+AAA_NOT_PROVEN` e promoção bloqueada. As fontes correntes são a
+[auditoria AUD24-003](auditoria-entrega-cvg-aud24-003-2026-09-20.md), o
+[roadmap AUD25](roadmap-melhorias-cvg-aud25-2026-09-20.md) e o
+[backlog AUD25](backlog-melhorias-cvg-aud25-2026-09-20.md). A próxima ação é
+`CVG-AUD25-001:REOPEN-AUTHORITY-CONTROL`. Esta edição não altera `.agent`; a
+reconciliação deve ocorrer por append e recalcular o sujeito depois das mudanças
+documentais.
+
+## Checkpoint 2026-09-21 — Reauditoria técnica da entrega CVG-AUD26
+
+A [auditoria CVG-AUD27](auditoria-resultado-cvg-aud27-2026-09-21.md) confirmou a
+contagem declarada de 36 tarefas AUD26: 15 `DONE`, 19 `PARTIAL`, 1
+`BLOCKED_EXTERNAL` e 1 `BLOCKED_HUMAN`. Antes desta atualização documental,
+foram reexecutados `verify:control-plane`, `verify:aud26-evidence`,
+`verify:static`, 599 testes (`598` pass, `0` fail e `1` skip), typecheck e lint,
+todos verdes. O gate de licenças permaneceu vermelho em 10 dependências. Um
+sentinela pre/post confirmou que as validações não mutaram o sujeito auditado.
+
+O veredito global AUD26 estava correto, mas a reauditoria encontrou divergência
+semântica entre IDs, títulos, achados originais e quality bar. O control plane
+prova a forma dos registros, não que cada tarefa preserva o significado do
+achado. `CVG-AUD26-024` foi marcado `DONE` embora contraste/tokens permaneçam
+parciais; `CVG-AUD26-026` não possui smoke real da imagem; F38 foi declarado
+`PASS_LOCAL` sem `LICENSE`/`COPYING`. Há ainda 78/80 schemas de resposta
+genéricos, 24 slices snapshot-primary, 14 parciais sem evidence refs, evidence
+root externo ausente e candidato dependente de uma árvore Git modificada e
+não consolidada.
+
+A nota auditada é 69/100 para a entrega técnica e 40/100 para prontidão
+de produção. O estado formal AUD26 continua `IN_PROGRESS`; portanto,
+“execução concluída” representa apenas o encerramento do handoff anterior. O
+[roadmap AUD27](roadmap-melhorias-cvg-aud27-2026-09-21.md) e o
+[backlog AUD27](backlog-melhorias-cvg-aud27-2026-09-21.md) são `PROPOSED` e
+não alteram `.agent`. O fingerprint AUD26 `sha256:585ac671…` identifica a
+fotografia anterior a estes documentos e agora é histórico. O veredito
+permanece `PROMOTION_BLOCKED — AAA_NOT_PROVEN`.
+
+## Checkpoint intermediário MEL23 — 2026-09-23
+
+O apontamento `last_gate_record`/`last_event_id` foi reconciliado por novos
+registros append-only; os registros anteriores permanecem intactos. A mutação
+`missing_transition` agora altera o evento resolvido por `state.last_event_id`,
+e os demais mutantes de receipt alteram a evidência efetivamente apontada. O
+caso conhecido-bom e os conhecidos-ruins passaram nos testes focados.
+
+Na última regressão local, `npm test` terminou com 681 testes (`680` pass,
+`0` fail, `1` skip). Typecheck, build, `verify:static` (250 artefatos/284
+fontes), `verify:docs-integrity` (251 arquivos/0 achados), manifesto de
+schemas/migrations e arquitetura passaram. Coverage ficou em 88,41% de linhas,
+75,95% de branches e 86,63% de funções; a campanha seletiva matou 25/25
+mutantes. A suíte focal da API passou 90/90; o catálogo mantém 105 rotas e 80
+schemas específicos. `test:fault` passou 34/34.
+
+O relatório MEL23 gera 50 linhas ligadas aos owners AUD27, incluindo alvos,
+comandos, receipts, ambientes, resultados e fingerprint. Dezesseis critérios
+estão qualificados PASS no sujeito local observado: control plane, regressão,
+verificadores e documentação, cobertura/mutação seletiva, invariantes locais
+de timeout/reconciliação e contratos principais da API. Os outros 34 têm
+receipts que registram PARTIAL ou BLOCKED e mantêm o gate global fechado;
+nenhum status foi copiado para um segundo backlog.
+
+PostgreSQL 16 descartável demonstrou RLS, paridade de escrita normalizada
+24/24, replay e rollback, mas cutover não foi reivindicado e 24 das 32 fatias
+continuam sem autoridade de comando final. Carga, caos e restore locais usam
+harness sintético; RTO/RPO são desconhecidos. A matriz browser permanece
+parcial por skips, runtime WebKit descartável e falta de avaliação assistiva
+e aceite humano.
+
+Limites daquele checkpoint: a árvore continuava dirty e
+`UNFROZEN_UNTIL_AUD27-004`; `audit:licenses` ainda rejeitava dependências sem
+decisão legal. Os números acima foram supersedidos pela atualização abaixo.
+
+## Atualização de verificação MEL23 — 23/09/2026
+
+A topologia Compose agora separa a rede `backend` (internal) da rede `edge`.
+Postgres, migração, API, web e worker só participam das redes internas; apenas o
+proxy participa também de `edge`, necessária para publicar a porta no host. A
+overlay de produção conserva essa separação e continua controlando bind/TLS por
+variáveis de configuração. A edge concede egress de rede ao proxy; filtragem de
+saída em produção permanece uma decisão operacional pendente.
+
+O smoke Compose local confirmou a publicação em `127.0.0.1:45001`. Pela porta do
+host, login sintético, criação idempotente de guardian, listagem, reinício da API,
+novo login e leitura do registro persistido passaram. Os containers estavam
+saudáveis e os serviços de aplicação não entraram na rede `edge`. Esse resultado
+é local e sintético, sem afirmar TLS, endpoint externo ou dado clínico real.
+
+No checkpoint revalidado, `npm test` passou com 684 testes (683 pass, 0 fail,
+1 skip), na última execução coverage registrou 89,08% linhas, 76,21% branches e
+87,98% funções, e
+25/25 mutantes foram mortos. Typecheck, lint, `verify:static` (250 artefatos / 291
+fontes), integridade documental, manifesto e control plane passaram. O audit npm
+de licenças passou para 183 pacotes e SPDX aprovados; a decisão humana sobre a
+licença raiz e avisos legais não foi tomada.
+
+E2E: 503/540 casos passaram, 37 foram skips explícitos e zero falharam, nos 12
+projetos; houve workaround local temporário para WebKit. Avaliação assistiva e
+aceite humano continuam ausentes. Trivy local reportou API: zero altas/críticas,
+15 médias e 7 baixas; web: zero vulnerabilidades; nenhum dos dois scans reportou
+segredos. A verificação de secrets do repositório ainda aponta um valor genérico
+com formato de API key em trace Playwright gerado; nenhuma allowlist foi
+adicionada. SBOM e proveniência BuildKit existem apenas em OCI local e não têm
+publicação/assinatura/issuer externo aceito. Harnesses locais de carga, caos,
+restore e observabilidade são sintéticos; `verify:load` permanece bloqueado por
+falta de endpoint e parâmetros autorizados e RTO/RPO seguem desconhecidos.
+
+Naquele checkpoint intermediário, o crosswalk conservava 50 requisitos e 16/50
+critérios qualificados; parcial não virava PASS por haver runtime local. A árvore continuava dirty e
+`UNFROZEN_UNTIL_AUD27-004`; pacote externo AUD27, staging, registry/proveniência,
+providers, autoridade de segredo, decisão legal e aceite humano seguem abertos.
+O veredito permanece `PROMOTION_BLOCKED / AAA_NOT_PROVEN`.
+
+## Atualização MEL23-015/016/039 — 23/09/2026
+
+As imagens locais foram reconstruídas após as correções de entrada de migração e
+inicialização do volume de backup. A API r4 aplicou 48 migrations com o comando
+nu `migrate`, passou login sintético, escrita/leitura de Guardian e leitura
+persistida depois de stop/start. O container foi validado como UID 65532, root
+filesystem somente leitura, `cap_drop: ALL` e `no-new-privileges`. A imagem web
+r2 serviu a página e dois assets estáticos; saúde e headers de segurança
+passaram como UID 101 com o mesmo isolamento de capabilities e filesystem.
+BuildKit SPDX/SLSA e Trivy foram ligados aos manifestos e configs das imagens.
+
+O scan API reportou 22 vulnerabilidades OS (15 médias, 7 baixas), todas sem
+versão de correção indicada; web reportou zero. Não foi definida política de
+aceite de risco. A configuração de produção Compose resolveu com ambiente
+sintético e sem iniciar serviços. O Postgres pinado executou como UID 999 com
+capabilities removidas; o probe de backup confirmou criação/leitura pelo worker
+sem alterar bytes, modo ou owner de arquivo preexistente. A rede `edge` mantém
+egress para o proxy; filtragem de saída, TLS/segredos externos e operação de
+produção não foram testados. O relato e artefatos estão em
+[`mel23-container-smoke-supply-chain-2026-09-23.md`](verification/mel23-container-smoke-supply-chain-2026-09-23.md).
+
+Naquele ponto intermediário, a matriz estava em 0/50 qualificados porque nenhum
+receipt focal correspondia ao fingerprint então observado. A continuação abaixo
+registra a requalificação posterior. HEAD continua `c990914148a8f375082cd12bbdb2ad20cfe1900f`,
+árvore dirty, candidato não congelado e licença raiz sem decisão humana.
+`PROMOTION_BLOCKED / AAA_NOT_PROVEN` continua sendo o veredito.
+
+A rodada Gauntlet 10 permanece sem registro válido: o verificador de evidências
+sobrescreveu o `mel23-evidence-matrix.json` imutável registrado na rodada 9 e
+seu SHA-256 anterior não foi recuperado. A gravação da rodada continua suspensa;
+nenhum arquivo `.gauntlet` foi ajustado manualmente. Uma crítica fresh também
+não foi obtida dentro do limite de agentes da sessão, portanto não há aprovação
+independente final.
+
+## Continuação local M0 e fatia inicial de products — 23/09/2026
+
+O validador de saída composta do control plane agora rejeita resultado de
+subprocesso ausente, lista de subprocessos vazia, status agregado malformado e
+divergência entre o status agregado e os resultados individuais; eventos
+isolados com um exit status inteiro válido continuam aceitos. Os testes focados,
+`npm run verify:control-plane`, `npm run verify:aud27-semantics` e `npm test`
+passaram; a regressão completa terminou com 722 testes (721 pass, 0 fail,
+1 skip). `npm run typecheck` e `npm run verify:docs-integrity` também passaram.
+
+O gerador da matriz MEL23 agora grava por padrão em
+`mel23-evidence-matrix-current.json` e rejeita como destino o arquivo da matriz
+registrada no Gauntlet. O capture do control plane também grava em
+`mel23-control-plane-current.json` e preserva o artefato histórico registrado.
+Testes cobrem ambos os destinos seguros. A matriz out-of-tree atual qualifica
+14/50 critérios no sujeito observado; MEL23-008..012 permanecem PARTIAL pela
+fatia de `products`, sem reatribuir recibos históricos ao sujeito dirty atual.
+Nenhuma rodada ou registro `.gauntlet` foi reescrito.
+
+A primeira fatia de stock foi a criação de `products`: a API e o Postgres fazem
+a escrita dedicada na mesma transação do snapshot, e replay confirma que a linha
+normalizada já existe e corresponde ao snapshot sem emitir DML. Em PostgreSQL
+16 descartável, o verificador passou paridade de projeção e contagem 24/24,
+replay, rollback geral e rejeição da exclusão de uma linha-semente inalterada;
+para `products`, passou criação, replay sem DML, rollback do commit, rejeição do
+SKU duplicado dentro da mesma organização e aceitação do mesmo SKU em outra
+organização, pela restrição `(organization_id, sku)`. A regra de domínio reserva
+também SKUs de produtos inativos, e a violação conhecida da restrição vira HTTP
+409 com recibo `FAILED/PRE_DISPATCH`, depois do rollback. O resultado não cobre
+backfill completo, concorrência de comandos, restore pós-cutover, remoção de
+fallback ou leitura inteiramente relacional. `products` continua
+`SNAPSHOT_PRIMARY`, com escopo organizacional.
+
+O audit de licenças segue PASS somente para os 183 pacotes no lockfile atual; a
+licença raiz e as dez ocorrências históricas ainda requerem resolução e decisão
+humana. O sujeito permanece dirty e sem fingerprint de candidato congelado.
+Rotas/schemas reais completos, matriz atual de browsers, AT humana, cutovers e
+restore relacionais das 24 coleções, CI remoto, evidência externa de supply
+chain, staging, RTO/RPO e decisão de promoção continuam sem qualificação.
+Veredito: `PROMOTION_BLOCKED / AAA_NOT_PROVEN`.
+
+## Checkpoint MEL23 M0 — 24/09/2026 (anterior à revalidação atual)
+
+`npm test` passou com 722 testes (721 pass, 0 fail, 1 skip). O control plane
+passou com 334 itens e manteve `AUD27-001:SEMANTIC-RECONCILIATION` ativo; a
+verificação semântica reportou 39 findings e rejeitou 5/5 conhecidos-ruins.
+As provas MEL23-001..003 e os itens documentais M0 foram reavaliados no sujeito
+local observado e registrados por recibos focais append-only. O relatório
+[`mel23-evidence-matrix-current.json`](../artifacts/operational-proof/mel23-evidence-matrix-current.json)
+é a fonte do total qualificado, dos recibos e do fingerprint observado; os
+checkpoints anteriores permanecem históricos.
+
+O sujeito segue dirty e `UNFROZEN_UNTIL_AUD27-004`. As 24 coleções
+`SNAPSHOT_PRIMARY`, autoridade externa, gates de provider/staging, revisão
+independente, decisão humana e demais critérios sem evidência atual continuam
+abertos. Estado global: `AAA_NOT_PROVEN`; promoção: `PROMOTION_BLOCKED`.
+
+## Checkpoint MEL23 M2 e telemetria — 24/09/2026 (anterior à revalidação atual)
+
+A suíte passou com 723 testes (722 pass, 0 fail, 1 skip), typecheck passou e `git diff --check` não encontrou erros. O teste de respostas chamou as 105 rotas, validou 41/45 respostas GET autenticadas contra os schemas específicos, confirmou quatro 404 versionados para IDs sintéticos inexistentes e repetiu 35 fixtures válidas de sucesso. O verificador PostgreSQL passou nas rotas de inbox e exportação criptografada; o container temporário foi removido e o inventário Docker permaneceu igual. A revalidação encontrou e corrigiu um 500 em `/metrics`: chaves de contador derivadas de caminhos com nomes sensíveis agora são redigidas e contadores coincidentes são agregados.
+
+`verify:control-plane` continua em 334 itens; a verificação semântica rejeitou 5/5 conhecidos-ruins, integridade documental passou em 255 arquivos e a verificação estática passou em 250 artefatos/293 fontes. A matriz [`mel23-evidence-matrix-current.json`](../artifacts/operational-proof/mel23-evidence-matrix-current.json) é a fonte autoritativa para a qualificação e o fingerprint após esta rodada. MEL23-021 permanece PARTIAL: 103/105 rotas têm fixtures explícitas de sucesso validadas, com 45/45 GETs; ingresso de integração e exportação governada continuam sem sucesso de fixture no runtime local e falham fechados. O sujeito segue dirty e unfrozen; staging, provedores, autoridade externa, restore pós-cutover, revisões independentes e decisão humana continuam sem prova. Veredito: `PROMOTION_BLOCKED / AAA_NOT_PROVEN`.
+
+## Revalidação MEL23 M0/M2 e documentação — 24/09/2026
+
+Esta é a fotografia local mais recente; os checkpoints anteriores preservam os resultados das respectivas execuções. `npm test` passou com 724 testes (723 pass, 0 fail, 1 skip), `npm run typecheck` passou, e os testes semânticos rejeitaram 11 casos conhecidos-ruins. O control plane verificou 334 itens e manteve `AUD27-001:SEMANTIC-RECONCILIATION` ativo. A validação documental cobre 256 arquivos sem findings. Os resultados exatos dos verificadores e o fingerprint observado estão ligados pelo [manifest da revalidação atual](../artifacts/operational-proof/mel23-current-doc-revalidation-20260924-da0315/verification-manifest.json) e pelos recibos focais atuais.
+
+A chamada de 105 rotas manteve envelopes versionados, validou schemas em 41/45 respostas GET autenticadas e agora executa fixtures explícitas de sucesso para 103/105 rotas, com 45/45 GETs. Fluxos sintéticos exercitam sucesso de payload em auth/MFA/recuperação, clínica, diagnóstico, estoque, medicação, internação, finanças, conhecimento e aprovação de IA. Ingresso de integração requer PostgreSQL e verificação de assinatura; exportação governada permanece desabilitada no runtime isolado de memória. O verificador PostgreSQL passou em duas rotas duráveis; o container descartável foi removido e o inventário Docker ficou igual. MEL23-021 segue PARTIAL enquanto as duas exceções não tiverem fixtures de sucesso validadas no ambiente adequado. A matriz [`mel23-evidence-matrix-current.json`](../artifacts/operational-proof/mel23-evidence-matrix-current.json) é a fonte autoritativa para o total qualificado e os bloqueios no fingerprint atual.
+
+O sujeito segue dirty e `UNFROZEN_UNTIL_AUD27-004`. A raiz externa AUD27, o cutover e restore pós-cutover, provedores, staging, autoridade de segredo, decisão legal, revisão independente e aprovação humana permanecem sem prova. Estado global: `AAA_NOT_PROVEN`; promoção: `PROMOTION_BLOCKED`.
+
+## Revalidação MEL23 M0 após reconciliação documental — 24/09/2026
+
+Esta entrada supersede somente a afirmação de atualidade do checkpoint imediatamente anterior; os resultados datados anteriores permanecem como histórico. A suíte corrente passou com 726 testes (725 pass, 0 fail, 1 skip). O typecheck passou. O lint passou após ajustar a limpeza do advisory lock para não lançar exceções dentro de `finally` e tornar constante a coleção `products`. O harness local de migração passou 5/5; ele valida o protocolo com fixtures e não representa cutover de dados existentes.
+
+O catálogo de respostas continua com fixtures explícitas de sucesso e schema para 103/105 rotas, incluindo 45/45 GETs. Ingresso de integração ainda exige PostgreSQL e verificação de assinatura; exportação governada continua indisponível no runtime isolado em memória. Permanecem 24/32 coleções `SNAPSHOT_PRIMARY`; as provas PostgreSQL disponíveis para os slices são sintéticas e não qualificam backfill, autoridade relacional ou cutover.
+
+`npm run audit:licenses` passou para 183 pacotes de terceiros sob a allowlist existente, sem ampliar a política. A decisão jurídica e a licença raiz continuam pendentes. A raiz externa AUD27 continua sem correspondência ao fingerprint atual. O arquivo registrado de matriz MEL23 permanece byte a byte sem alteração porque a cópia original com o digest esperado não está disponível; a revalidação corrente usa o sidecar separado [`mel23-evidence-matrix-current.json`](../artifacts/operational-proof/mel23-evidence-matrix-current.json). Consulte nele o fingerprint observado, os recibos focais, a qualificação e os bloqueios atuais; este arquivo de estado não fixa um fingerprint que se tornaria obsoleto após a próxima mudança.
+
+Esses resultados qualificam apenas a árvore local observada. O candidato continua dirty e unfrozen; staging, provedores reais, autoridade de segredo, restore operacional pós-cutover, revisões independentes e decisão humana seguem sem prova. Estado global: `AAA_NOT_PROVEN`; promoção: `PROMOTION_BLOCKED`.
+
+## Revalidação corrente MEL23/AUD27 — 24/09/2026
+
+Esta entrada substitui as afirmações de atualidade dos checkpoints anteriores; os resultados de cada rodada permanecem preservados. `npm test` passou com 735 testes (734 aprovados, 0 falhas e 1 skip). Typecheck, lint, build, schema manifest, static, semântica AUD27, migration harness (5/5), integridade documental (256 arquivos/0 findings) e control plane (334 itens) também passaram.
+
+As 105 rotas mantêm probes de envelope versionado; os 80 schemas específicos executáveis foram conferidos, com 103/105 fixtures de sucesso em memória e as duas respostas restantes validadas em PostgreSQL descartável: callback HMAC `202/PROCESSED` e exportação AES-256-GCM `201`. Os 45 GETs têm fixture explícita de sucesso e schema; 41/45 respostas autenticadas carregam payload de dados, e as quatro rotas por ID sintético também retêm probes 404 versionados.
+
+No PostgreSQL 16 sintético, o backfill sombra de `products` passou dry-run sem DML, digest integral, replay sem DML, quarentena de drift, rollback/retomada, crash pós-commit recuperado por executor novo depois de SIGKILL, escopo tenant e concorrência de SKU. Provas independentes de normalized-writes e dos 24 slices passaram escrita/removal, paridade de linha/contagem 24/24, replay e rollback. O protocolo geral AUD27 aplicou 49 migrations e passou recuperação/replay/rollback e limpeza identificada de records/checkpoints. Todos os bancos sintéticos foram descartados com seus containers tmpfs e o inventário dos 21 containers preexistentes permaneceu igual.
+
+Essas execuções qualificam somente comportamento local com dados sintéticos. Não alegam cutover, restore pós-cutover, autoridade relacional ou backfill completo; 24/32 coleções continuam `SNAPSHOT_PRIMARY`. O sidecar [`mel23-evidence-matrix-current.json`](../artifacts/operational-proof/mel23-evidence-matrix-current.json) registra o fingerprint observado, recibos focais e qualificação após esta rodada. O candidato continua dirty e `UNFROZEN_UNTIL_AUD27-004`; a raiz externa AUD27 segue sem correspondência ao sujeito, e staging, providers reais, autoridade de segredo, decisão legal, revisões independentes e aprovação humana permanecem pendentes. A cópia registrada `mel23-evidence-matrix.json` não foi alterada: a versão original com o digest esperado não está disponível. Estado global: `AAA_NOT_PROVEN`; promoção: `PROMOTION_BLOCKED`.
+
+## Gates locais adicionais — 24/09/2026
+
+A cobertura completa passou no piso observado: 88,41% linhas, 76,62% branches e 87,96% funções; a métrica de declarações é equivalente à cobertura de linhas nativa do Node. A coleta executou 735 testes (734 aprovados, 0 falhas, 1 skip). O verificador real de mutação matou 25/25 mutações (100%, nenhuma sobrevivente ou inválida). O projeto Playwright `chromium-stress` passou 5 testes e ignorou 1 cenário condicional.
+
+O E2E completo continua sem aprovação: Chromium e Firefox terminaram seus projetos, mas o WebKit não iniciou por dependências do sistema ausentes (`libgstcodecparsers-1.0.so.0`, `libWPEWebKit-2.0.so.1`, `libbacktrace.so.0`, `libjxl.so.0.8` e `libavif.so.16`). A tentativa integral terminou com falhas de inicialização no WebKit e casos não executados. Não houve instalação de dependências de sistema. Registros: [`coverage-final.log`](../artifacts/operational-proof/mel23-final-revalidation-20260924-r2/coverage-final.log), [`mutation-final.log`](../artifacts/operational-proof/mel23-final-revalidation-20260924-r2/mutation-final.log), [`e2e-chromium-stress.log`](../artifacts/operational-proof/mel23-final-revalidation-20260924-r2/e2e-chromium-stress.log) e [`e2e.log`](../artifacts/operational-proof/mel23-final-revalidation-20260924-r2/e2e.log).
+
+Os testes adicionais exercitam rejeições de produto nulo, SKU não textual, estado desconhecido e tenant sem UUID. Eles não alteram limites de cobertura nem comportamento de produção. No sujeito atual, repetimos o backfill PostgreSQL de `products`, as duas rotas duráveis, o protocolo de migração (49 migrations), normalized writes e a paridade/rollback dos 24 slices; os verificadores removeram seus containers exatos e mantiveram o inventário preexistente. Logs: [`migrations.log`](../artifacts/operational-proof/mel23-final-revalidation-20260924-r2/products-backfill-postgres/migrations.log), [`products-backfill.log`](../artifacts/operational-proof/mel23-final-revalidation-20260924-r2/products-backfill-postgres/products-backfill.log), [`api-response-postgres-final.log`](../artifacts/operational-proof/mel23-final-revalidation-20260924-r2/api-response-postgres-final.log), [`aud27-migration-postgres-final.log`](../artifacts/operational-proof/mel23-final-revalidation-20260924-r2/aud27-migration-postgres-final.log), [`aud27-normalized-writes-postgres-final.log`](../artifacts/operational-proof/mel23-final-revalidation-20260924-r2/aud27-normalized-writes-postgres-final.log) e [`aud27-24-slices-postgres-final.log`](../artifacts/operational-proof/mel23-final-revalidation-20260924-r2/aud27-24-slices-postgres-final.log). O artefato de matriz registrado continua intacto e indisponível em sua forma original; o sujeito permanece dirty e unfrozen, sem cutover, autoridade externa, aprovação humana ou promoção.
+
+## Revalidação pós-auditoria MEL24 (M0/M1 local) — 24/09/2026
+
+Esta entrada substitui as afirmações de atualidade dos checkpoints anteriores sem reescrever os resultados datados. A árvore local corrigiu a divergência entre o duplo de teste `fakePool` e o contrato de commit durável — o duplo passou a devolver `snapshot`/`snapshot_digest` e a projetar a tabela `products` — restaurando a suíte: `npm test` passou com 741 testes (740 aprovados, 0 falhas, 1 skip). Também passaram typecheck, lint, build, static (250 artefatos/298 fontes), schema manifest, semântica AUD27, migration harness, integridade documental (264 arquivos/0 achados), control plane (334 itens), `verify:coverage` (ratchet 88,40%; execuções consecutivas entre 88,43%–88,48% de linhas e 76,69%–76,74% de branches, sempre acima do piso; artefato `artifacts/coverage-summary.json`), `verify:architecture`, `verify:authoritative-writes` (32 domínios/8 comandos/24 snapshot-primary), `verify:secrets`, `verify:production --structural --skip-local-gates` e o projeto Playwright `chromium-wide-1440` (56 aprovados, 2 skips, 0 falhas). A mutação permaneceu 25/25 e o worker 6 policies/38 testes focados.
+
+O seam AUD27 de escrita normalizada recebeu teste de contrato das 24 projeções e a declaração explícita `AUD27_TRANSITIONAL_WRITE_FIELDS` para a fatia `products`, que permanece `SNAPSHOT_PRIMARY`; nenhum cutover foi executado. A cobertura ganhou margem com testes reais de continuidade da IA desabilitada e das distinções de erro/resultado do copiloto. O scan de segredos manteve a exceção existente (restrita a `generic-api-key` em `.agent/`, `.gauntlet/`, `artifacts/`, `tests/`, testes de `apps`/`packages` e dois scripts) e acrescentou somente o estado local `.opencode/` (gitignored, nunca parte do produto); as demais regras continuam falhando. A exceção preexistente é uma decisão do projeto com revisão marcada para 2026-12-31 e permanece como risco residual declarado: `tests/` e `artifacts/` não são gitignored. O gate `verify:production` ganhou o flag documentado `--skip-local-gates` para execução local limitada, sem alterar o padrão da CI.
+
+Reconciliação de contradições: o fingerprint `sha256:585ac671…` pertence ao pacote AUD26 (o índice o atribuía também à reauditoria AUD27); as 105 rotas têm fixtures de sucesso 103/105 em memória + 2/2 PostgreSQL, e a classificação `PARTIAL` de MEL23-021 decorre do vínculo de fingerprint, não da ausência de fixture; os gates locais de PostgreSQL usam 16.15 enquanto a CI fixa `postgres:18.0` — os dois ambientes estão declarados e não são equivalentes.
+
+Limites: nada aqui qualifica candidato congelado. O sujeito continua dirty e `UNFROZEN_UNTIL_AUD27-004`; 24/32 coleções `SNAPSHOT_PRIMARY`; congelamento Git, licença de raiz, staging, provedores reais, autoridade de segredo, observabilidade externa, carga/caos/DR, WebKit/tecnologia assistiva, revisões independentes e decisão humana seguem pendentes. Estado global: `AAA_NOT_PROVEN`; promoção: `PROMOTION_BLOCKED`.

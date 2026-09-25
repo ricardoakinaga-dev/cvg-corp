@@ -1,0 +1,194 @@
+{
+  "schema_version": 1,
+  "program": "MEL23 M0 current local revalidation",
+  "generated_at": "2026-09-24T11:16:09.314Z",
+  "source_sha": "c990914148a8f375082cd12bbdb2ad20cfe1900f",
+  "observed_subject_fingerprint": "sha256:8fb0204b60e989dce7f2869e9d7ad4b71ae8dd1c91d381e929de1ff216e42daa",
+  "candidate_fingerprint": null,
+  "fingerprint_status": "UNFROZEN_UNTIL_AUD27-004",
+  "worktree": {
+    "dirty": true,
+    "porcelain_v2_entries": 439
+  },
+  "control_plane": {
+    "state_revision": 620,
+    "last_gate_record": "VER-CVG-AUD27-001-144",
+    "last_event_id": "EVT-CVG-AUD27-001-144",
+    "capture_result": "PASS",
+    "capture_sha256": "b5199ce9fe313ffea6c4cb13fe1668690de45aaca00f6764d3d76c6b6ada2f4c"
+  },
+  "qualification": {
+    "requirements": 50,
+    "mapped": 50,
+    "qualified": 11,
+    "unqualified": 39,
+    "qualified_ids": [
+      "MEL23-001",
+      "MEL23-002",
+      "MEL23-003",
+      "MEL23-013",
+      "MEL23-040",
+      "MEL23-041",
+      "MEL23-042",
+      "MEL23-043",
+      "MEL23-044",
+      "MEL23-045",
+      "MEL23-046"
+    ],
+    "note": "unqualified is not synonymous with explicit BLOCKED; see each row's result and issues."
+  },
+  "metrics": {
+    "tests": {
+      "total": 726,
+      "passed": 725,
+      "failed": 0,
+      "skipped": 1
+    },
+    "routes": {
+      "catalogued": 105,
+      "success_schema_fixtures": 103,
+      "get_success_fixtures": 45,
+      "authenticated_get_schema_sweep": "41/45"
+    },
+    "migration_harness": {
+      "tests_passed": 5,
+      "disposable_database_cutover_claimed": false
+    },
+    "docs_integrity": {
+      "files": 256,
+      "findings": 0
+    },
+    "static": {
+      "required_artifacts": 250,
+      "source_files": 295
+    },
+    "aud27_semantics": {
+      "findings": 39,
+      "known_bads_rejected": "5/5"
+    },
+    "licenses": {
+      "third_party_packages": 183,
+      "policy_pass": true,
+      "allowlist_expanded": false
+    },
+    "domain_migrations": {
+      "snapshot_primary": 24,
+      "command_authoritative": 8,
+      "cutover_claimed": false
+    }
+  },
+  "criterion_notes": {
+    "MEL23-013": "PASS: license audit and current lockfile policy; root license is separate MEL23-014.",
+    "MEL23-014": "BLOCKED: root license/notices and legal-owner decision absent.",
+    "MEL23-021": "PARTIAL: integration ingress and governed export have no local successful payload fixture; both remain fail-closed.",
+    "MEL23-040..046": "PASS: current-subject documentary and traceability receipts; status document preserves history and supersedes the 724-test claim."
+  },
+  "registered_matrix": {
+    "path": "artifacts/operational-proof/mel23-evidence-matrix.json",
+    "bytes": 99409,
+    "expected_sha256": "4f88513a5a0efbfe16da5d1da5e69e1bd3aee4ef0a1b9e44dfec53c5f1db3028",
+    "observed_sha256": "f46355276df64e6ebcf1c1afe17785b92df62622bfc0ea950faa298c0b737ec0",
+    "unchanged": true,
+    "restoration_claimed": false
+  },
+  "commands": [
+    {
+      "command": "npm test",
+      "exit_status": 0,
+      "expected_exit_status": 0,
+      "observed": "726 tests; 725 pass; 0 fail; 1 skip."
+    },
+    {
+      "command": "npm run typecheck",
+      "exit_status": 0,
+      "expected_exit_status": 0,
+      "observed": "TypeScript check passed."
+    },
+    {
+      "command": "npm run lint",
+      "exit_status": 0,
+      "expected_exit_status": 0,
+      "observed": "Custom lint checked 298 source files; Oxlint passed with --deny-warnings."
+    },
+    {
+      "command": "npm run verify:docs-integrity",
+      "exit_status": 0,
+      "expected_exit_status": 0,
+      "observed": "256 files; 0 findings."
+    },
+    {
+      "command": "npm run verify:docs-provenance",
+      "exit_status": 0,
+      "expected_exit_status": 0,
+      "observed": "HEAD c990914148a8f375082cd12bbdb2ad20cfe1900f; dirty=true."
+    },
+    {
+      "command": "npm run verify:static",
+      "exit_status": 0,
+      "expected_exit_status": 0,
+      "observed": "250 required artifacts; 295 source files."
+    },
+    {
+      "command": "npm run verify:aud27-semantics",
+      "exit_status": 0,
+      "expected_exit_status": 0,
+      "observed": "39 findings; 5/5 known-bads rejected."
+    },
+    {
+      "command": "npm run audit:licenses",
+      "exit_status": 0,
+      "expected_exit_status": 0,
+      "observed": "183 third-party packages allowed; approved SPDX set unchanged."
+    },
+    {
+      "command": "node --import tsx --test tests/unit/aud27-migration-harness.test.ts",
+      "exit_status": 0,
+      "expected_exit_status": 0,
+      "observed": "5 tests passed, 0 failed."
+    },
+    {
+      "command": "node --import tsx --test tests/unit/control-plane-aud23.test.ts tests/unit/mel23-evidence.test.ts tests/unit/docs-integrity.test.ts",
+      "exit_status": 0,
+      "expected_exit_status": 0,
+      "observed": "16 focused tests passed, 0 failed."
+    },
+    {
+      "command": "npm run verify:control-plane",
+      "exit_status": 0,
+      "expected_exit_status": 0,
+      "observed": "334 tasks; active AUD27-001:SEMANTIC-RECONCILIATION; post-append tails consistent."
+    },
+    {
+      "command": "npm run verify:mel23-control-plane",
+      "exit_status": 0,
+      "expected_exit_status": 0,
+      "observed": "Capture PASS; state, receipt and event tails point to VER-CVG-AUD27-001-144/EVT-CVG-AUD27-001-144."
+    },
+    {
+      "command": "npm run verify:mel23-evidence",
+      "exit_status": 1,
+      "expected_exit_status": 1,
+      "observed": "Expected fail-closed exit 1 because 39 of 50 requirements remain unqualified; global issues=0."
+    }
+  ],
+  "artifacts": {
+    "artifacts/operational-proof/mel23-m0-doc-revalidation-20260924-current/npm-test.log": "3d44c9e89bc08a5f7ac573365ef1ddd770587168d24305e5d3537a4049c9cfa2",
+    "artifacts/operational-proof/mel23-m0-doc-revalidation-20260924-current/typecheck.log": "19c71cde12d596f5abd6f07b9713c068230e6bd3a8086d6bdf9ba3a34d1a9409",
+    "artifacts/operational-proof/mel23-m0-doc-revalidation-20260924-current/lint.log": "da585be7a3e8c3c02c2f7e2ab71f7284af94a833f36cbc58889a0f8fed333d03",
+    "artifacts/operational-proof/mel23-m0-doc-revalidation-20260924-current/docs-integrity.log": "f360836136be58ef1c6d062f6ddc113fdf47560c596ce4ecb98f848712771185",
+    "artifacts/operational-proof/mel23-m0-doc-revalidation-20260924-current/docs-provenance.log": "60330de1d74fe15f34f97387682e0d287b0dbb4e97ccf9fbff5f804ee89ed3fd",
+    "artifacts/operational-proof/mel23-m0-doc-revalidation-20260924-current/static.log": "13dfa9b04c6ea4d990b6c439116072ddcbb2cc93774021e84600b770384e1cb8",
+    "artifacts/operational-proof/mel23-m0-doc-revalidation-20260924-current/aud27-semantics.log": "79be9e002a09d40436d3dd788902b324d3f9bbf42e3193a195e9cd72fe85d628",
+    "artifacts/operational-proof/mel23-m0-doc-revalidation-20260924-current/license-audit.log": "ddeffc1193c3129acad00ec58f0768e5c03426ddf3d62063ab5c61aa1992758e",
+    "artifacts/operational-proof/mel23-m0-doc-revalidation-20260924-current/migration-harness.log": "92a39f4376b12fcf78d3bc1f07ad8c16865445ed474a5aeccf7ed4f5acbdadb0",
+    "artifacts/operational-proof/mel23-m0-doc-revalidation-20260924-current/diff-check.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "artifacts/operational-proof/mel23-m0-doc-revalidation-20260924-current/m0-focused-tests.log": "a635c7564f15329b9e82f24475f418448ea1960c7e952b911061c37ccba42dd1",
+    "artifacts/operational-proof/mel23-m0-doc-revalidation-20260924-current/control-plane-preappend.log": "e5f022c48a9e436906523abbe64ba70d25b2b1462fed1aa654d59129fc9df449",
+    "artifacts/operational-proof/mel23-m0-doc-revalidation-20260924-current/control-plane-postappend.log": "e5f022c48a9e436906523abbe64ba70d25b2b1462fed1aa654d59129fc9df449",
+    "artifacts/operational-proof/mel23-m0-doc-revalidation-20260924-current/control-plane-capture.log": "f726730a43c1b43a0ed50b4a7d1149a09784b7e79a2d2d6944c51ea20d1b52a1",
+    "artifacts/operational-proof/mel23-m0-doc-revalidation-20260924-current/mel23-evidence.log": "6b0b9e7fe8296a8781aaedc3e57c5d8f8aae37f75089aa1ed0b8f1a43df1878d",
+    "artifacts/operational-proof/mel23-evidence-matrix-current.json": "887e3f3bda713229f5293013b29ee60b9cafb75a644c8c4766528a19c38f9119",
+    "artifacts/operational-proof/mel23-control-plane-current.json": "b5199ce9fe313ffea6c4cb13fe1668690de45aaca00f6764d3d76c6b6ada2f4c",
+    "artifacts/operational-proof/mel23-evidence-matrix.json": "f46355276df64e6ebcf1c1afe17785b92df62622bfc0ea950faa298c0b737ec0"
+  }
+}

@@ -18,6 +18,8 @@ export interface HealthRouteDependencies {
   deepseekContextSignatureStatus: HealthDependencyStatus;
   secretProviderRequired: boolean;
   config: { demoMode: boolean; storageMode: "memory" | "postgres" };
+  /** Revalidates the full schema (not just connectivity) on every readiness probe. */
+  verifySchema?: () => Promise<void>;
   /** Dynamic probes prevent a startup snapshot from masquerading as readiness. */
   probes?: {
     secretProviderStatus?: () => SecretProviderStatus | Promise<SecretProviderStatus>;
@@ -50,7 +52,12 @@ export async function registerHealthRoutes(app: FastifyInstance, dependencies: H
   app.get("/api/v1/ready", async (_request, reply) => {
     let database: "READY" | "NOT_CONFIGURED" | "UNAVAILABLE" = dependencies.persistence ? "READY" : "NOT_CONFIGURED";
     if (dependencies.persistence) {
-      try { await dependencies.persistence.check(); } catch { database = "UNAVAILABLE"; }
+      try {
+        await dependencies.persistence.check();
+        // Connectivity alone is not readiness: the durable schema (including
+        // the agent runtime tables from 038/039) must be present (CVG-AUD19-009).
+        await (dependencies.verifySchema ?? (() => dependencies.persistence!.assertSchema()))();
+      } catch { database = "UNAVAILABLE"; }
     }
     const [secretProvider, authMfa, deepseekBearerToken, deepseekContextSignature, policyStore] = await Promise.all([
       dependencies.probes?.secretProviderStatus?.() ?? dependencies.secretProviderStatus,

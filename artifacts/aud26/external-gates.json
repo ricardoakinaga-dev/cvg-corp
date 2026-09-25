@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "program": "CVG-AUD26",
+  "sourceSha": "c990914148a8f375082cd12bbdb2ad20cfe1900f",
+  "candidateFingerprint": "sha256:084a6b1079bf317dd975f10bdbebbc9d87b4b61a6b203b7e7bc14bda4e8d925e",
+  "observedAt": "2026-09-22T00:13:13-03:00",
+  "scope": "staging-provider-collector-human",
+  "status": "BLOCKED_EXTERNAL",
+  "receipt": "VER-CVG-AUD27-001-021",
+  "limitations": [
+    "staging/production-like database and worker qualification is unavailable",
+    "real provider-chain proof and external secret authority are unavailable",
+    "durable telemetry collector, alert routing, managed backup and RTO/RPO evidence are unavailable",
+    "OCI signing, SBOM/provenance attestation and release CI authority are unavailable",
+    "WebKit host dependency is missing",
+    "manual accessibility review and final human release acceptance are separate BLOCKED_HUMAN gates"
+  ],
+  "required_authority": [
+    "named staging/SRE owner",
+    "provider and secret authority",
+    "observability/DR authority",
+    "human release authority"
+  ],
+  "promotion": "BLOCKED; no external or human PASS inferred locally"
+}

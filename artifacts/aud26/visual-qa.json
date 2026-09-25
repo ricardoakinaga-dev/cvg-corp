@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "program": "CVG-AUD26",
+  "sourceSha": "c990914148a8f375082cd12bbdb2ad20cfe1900f",
+  "candidateFingerprint": "sha256:084a6b1079bf317dd975f10bdbebbc9d87b4b61a6b203b7e7bc14bda4e8d925e",
+  "observedAt": "2026-09-22T00:13:13-03:00",
+  "scope": "rendered-visual-qa",
+  "status": "BLOCKED_EXTERNAL",
+  "receipt": "VER-CVG-AUD27-001-021",
+  "checks": {
+    "current_round": "INCONCLUSIVE: Chromium/Firefox attempt stopped after 10 minutes without aggregate result",
+    "previous_supported_round": "HISTORICAL_ONLY",
+    "webkit": "BLOCKED_EXTERNAL: libgstcodecparsers-1.0.so.0 is absent from the host",
+    "assistive_technology": "BLOCKED_HUMAN",
+    "rendered_contrast_and_reflow": "NOT_ADMITTED_WITHOUT_FINAL_MATRIX_RESULT"
+  },
+  "limitations": [
+    "the current Chromium/Firefox matrix was attempted but produced no final aggregate result within the explicit ten-minute bound",
+    "WebKit launch was rechecked for the current host and is BLOCKED_EXTERNAL because libgstcodecparsers-1.0.so.0 is absent",
+    "manual assistive-technology and human visual sign-off remain BLOCKED_HUMAN"
+  ]
+}

@@ -1,0 +1,153 @@
+{
+  "schemaVersion": 1,
+  "captureId": "MEL23-039-COMPOSE-STATIC-2026-09-23",
+  "capturedAtUtc": "2026-09-23T14:53:22Z",
+  "sourceFiles": [
+    "docker-compose.yml",
+    "docker-compose.production.yml"
+  ],
+  "composeProjectName": "cvg-mel23-039-static-20260923",
+  "envFile": "synthetic-only; values omitted",
+  "validation": {
+    "command": "docker compose config --format json",
+    "result": "PASS",
+    "servicesStarted": false,
+    "sharedComposeProjectMutated": false,
+    "rawResolvedConfigRetained": false,
+    "note": "Only a sanitized policy summary is retained. The raw resolved config contains local paths and synthetic values."
+  },
+  "networks": {
+    "backend": {
+      "internal": true
+    },
+    "observability": {
+      "internal": true
+    },
+    "edge": {
+      "internal": false,
+      "egressPolicy": "unrestricted in Compose; external policy pending"
+    }
+  },
+  "services": {
+    "postgres": {
+      "image": "postgres:18.0-bookworm@sha256:3f55f8895c4ed50603e2fbdfc72fffeeaba3173321fee5cb825bbbeb30d9d854",
+      "user": "999:999",
+      "readOnlyRootFilesystem": true,
+      "capDrop": [
+        "ALL"
+      ],
+      "noNewPrivileges": true,
+      "network": "backend"
+    },
+    "migrate": {
+      "readOnlyRootFilesystem": true,
+      "capDrop": [
+        "ALL"
+      ],
+      "noNewPrivileges": true,
+      "network": "backend",
+      "dependsOnPostgresHealthy": true
+    },
+    "api": {
+      "readOnlyRootFilesystem": true,
+      "capDrop": [
+        "ALL"
+      ],
+      "noNewPrivileges": true,
+      "networks": [
+        "backend",
+        "observability"
+      ]
+    },
+    "backup-init": {
+      "command": "backup-volume-init",
+      "user": "0:0",
+      "networkMode": "none",
+      "readOnlyRootFilesystem": true,
+      "capDrop": [
+        "ALL"
+      ],
+      "capAdd": [
+        "CHOWN"
+      ],
+      "mount": "/var/lib/cvg/backups",
+      "workerWaitsForSuccessfulExit": true
+    },
+    "web": {
+      "readOnlyRootFilesystem": true,
+      "capDrop": [
+        "ALL"
+      ],
+      "noNewPrivileges": true,
+      "network": "backend"
+    },
+    "worker": {
+      "readOnlyRootFilesystem": true,
+      "capDrop": [
+        "ALL"
+      ],
+      "noNewPrivileges": true,
+      "networks": [
+        "backend",
+        "observability"
+      ],
+      "waitsForBackupInit": true
+    },
+    "proxy": {
+      "readOnlyRootFilesystem": true,
+      "capDrop": [
+        "ALL"
+      ],
+      "noNewPrivileges": true,
+      "networks": [
+        "backend",
+        "edge"
+      ],
+      "resolvedSyntheticBind": "127.0.0.1",
+      "egressRestrictionConfigured": false
+    }
+  },
+  "postgresRuntimeProbe": {
+    "image": "postgres:18.0-bookworm@sha256:3f55f8895c4ed50603e2fbdfc72fffeeaba3173321fee5cb825bbbeb30d9d854",
+    "result": "PASS",
+    "user": "999:999",
+    "readOnlyRootFilesystem": true,
+    "capDrop": [
+      "ALL"
+    ],
+    "noNewPrivileges": true,
+    "disposableHealth": "healthy",
+    "databaseContents": "synthetic; disposable named volume removed after the probe"
+  },
+  "backupVolumeProbe": {
+    "result": "PASS",
+    "disposableVolume": "cvg-mel23-039-backup-permission-probe-r2-20260923",
+    "initializerImage": "cvg-mel23-api:mel23-015-20260923-r4",
+    "initializerImageConfigDigest": "sha256:f5c276225d7c8c5773178cc6714917f5aeafae7ba7b80ea5c7b8ac69c9decd74",
+    "directoryOwnerAfter": "65532:65532",
+    "existingMarkerBefore": {
+      "owner": "0:0",
+      "mode": "0600"
+    },
+    "existingMarkerAfter": {
+      "owner": "0:0",
+      "mode": "0600",
+      "bytesUnchanged": true
+    },
+    "workerIdentityCreateAndRead": true,
+    "volumeRemovedAfterProbe": true
+  },
+  "externalBoundaries": {
+    "proxyEgress": "not restricted by Compose; owner/operations policy pending",
+    "tls": "external bind-mounted files referenced but not validated",
+    "dockerSecrets": "external references resolved structurally only; no real secret value read",
+    "productionEndpoint": "not contacted"
+  },
+  "promotion": "PROMOTION_BLOCKED / AAA_NOT_PROVEN",
+  "postProbeCleanup": {
+    "disposableContainersRemoved": true,
+    "disposableVolumesRemoved": true,
+    "disposableNetworksRemoved": true,
+    "preexistingContainersOrVolumesChanged": false
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "label": "provider loopback sandbox",
+  "command": [
+    "npm",
+    "run",
+    "verify:provider-sandbox"
+  ],
+  "capturedAt": "2026-09-22T00:29:31.423Z",
+  "exitStatus": 0,
+  "signal": null,
+  "stdout": "\n> cvg-corp@0.1.0 verify:provider-sandbox\n> tsx scripts/verify-provider-sandbox.ts\n\n{\n  \"verification\": \"PASS\",\n  \"boundary\": \"LOOPBACK_HTTP\",\n  \"externalProvider\": \"NOT_RUN\",\n  \"delivered\": true,\n  \"replayIdempotent\": true,\n  \"unknownReconciled\": true,\n  \"validCallbackAccepted\": true,\n  \"invalidCallbackDenied\": true,\n  \"stats\": {\n    \"sendRequests\": 4,\n    \"queryRequests\": 2,\n    \"callbackRequests\": 2,\n    \"simulatedLostResponses\": 1\n  }\n}\n",
+  "stderr": ""
+}

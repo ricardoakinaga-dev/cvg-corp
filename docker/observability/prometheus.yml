@@ -5,6 +5,13 @@ global:
 rule_files:
   - /etc/prometheus/alerts.yml
 
+# CVG-AUD19-021: alerts must reach the Alertmanager receiver.  The connection
+# is part of the structural production verification.
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ["alertmanager:9093"]
+
 scrape_configs:
   - job_name: cvg-api
     metrics_path: /internal/metrics

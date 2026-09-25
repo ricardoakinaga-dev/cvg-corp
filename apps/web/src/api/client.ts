@@ -1,6 +1,7 @@
 import { isWriteAllowed, type RuntimeState } from "../state/runtime-state";
 import type { ContextOption } from "../state/types";
 import { validatePayload } from "./validation";
+import { rememberCorrelationId } from "./correlation";
 
 type ApiErrorPayload = { code: string; message: string; details?: Record<string, unknown> };
 type ApiEnvelope<T> = { schemaVersion: number; data?: T; error?: ApiErrorPayload; correlationId: string };
@@ -37,7 +38,7 @@ export class ClientWriteBlockedError extends Error {
 
 export type ApiClient = {
   request<T>(path: string, init?: RequestInit, context?: ContextOption | null): Promise<T>;
-  get<T>(path: string, context?: ContextOption | null): Promise<T>;
+  get<T>(path: string, context?: ContextOption | null, init?: RequestInit): Promise<T>;
 };
 
 export function isAuthenticationError(error: unknown): boolean {
@@ -112,6 +113,7 @@ export function createApiClient(getRuntimeState: () => RuntimeState, onFailure?:
     try {
       const response = await fetch(`${API}/api/v1${path}`, { ...init, headers, credentials: "include" });
       const payload = parseEnvelope<T>(await response.text());
+      if (payload) rememberCorrelationId(payload.correlationId);
       if (!payload) {
         const error = new ApiError("A API retornou um envelope inválido ou incompatível.", { status: response.status, code: "INTERNAL_ERROR", correlationId: null, details: null });
         if (!PUBLIC_AUTH_WRITES.has(path) && !(path === "/me" && isAuthenticationError(error))) onFailure?.(error);
@@ -147,6 +149,6 @@ export function createApiClient(getRuntimeState: () => RuntimeState, onFailure?:
 
   return {
     request,
-    get: <T>(path: string, context: ContextOption | null = null) => request<T>(path, {}, context)
+    get: <T>(path: string, context: ContextOption | null = null, init: RequestInit = {}) => request<T>(path, init, context)
   };
 }

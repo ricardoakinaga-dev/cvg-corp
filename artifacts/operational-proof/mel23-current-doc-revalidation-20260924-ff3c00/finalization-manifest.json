@@ -1,0 +1,682 @@
+{
+  "schema_version": 1,
+  "captured_at": "2026-09-24T10:02:12.870Z",
+  "source_sha": "c990914148a8f375082cd12bbdb2ad20cfe1900f",
+  "observed_subject_fingerprint": "sha256:ff3c001b92c0b834e06e407f91943037e91940442abe37c57a988e90e8520eab",
+  "candidate_fingerprint": null,
+  "fingerprint_status": "UNFROZEN_UNTIL_AUD27-004",
+  "frozen_candidate_claimed": false,
+  "ledger_tails": {
+    "verification": "VER-CVG-AUD27-001-139",
+    "event": "EVT-CVG-AUD27-001-139",
+    "state_revision": 614
+  },
+  "matrix": {
+    "requirements": 50,
+    "mapped": 50,
+    "qualified": 17,
+    "unqualified": 33,
+    "global_issues": 0,
+    "qualified_criteria": [
+      {
+        "id": "MEL23-001",
+        "receipt": "VER-CVG-AUD27-001-139"
+      },
+      {
+        "id": "MEL23-002",
+        "receipt": "VER-CVG-AUD27-002-017"
+      },
+      {
+        "id": "MEL23-003",
+        "receipt": "VER-CVG-AUD27-004-020"
+      },
+      {
+        "id": "MEL23-022",
+        "receipt": "VER-CVG-AUD27-008-011"
+      },
+      {
+        "id": "MEL23-024",
+        "receipt": "VER-CVG-AUD27-011-027"
+      },
+      {
+        "id": "MEL23-026",
+        "receipt": "VER-CVG-AUD27-018-019"
+      },
+      {
+        "id": "MEL23-035",
+        "receipt": "VER-CVG-AUD27-022-006"
+      },
+      {
+        "id": "MEL23-040",
+        "receipt": "VER-CVG-AUD27-002-017"
+      },
+      {
+        "id": "MEL23-041",
+        "receipt": "VER-CVG-AUD27-003-012"
+      },
+      {
+        "id": "MEL23-042",
+        "receipt": "VER-CVG-AUD27-003-012"
+      },
+      {
+        "id": "MEL23-043",
+        "receipt": "VER-CVG-AUD27-003-012"
+      },
+      {
+        "id": "MEL23-044",
+        "receipt": "VER-CVG-AUD27-024-008"
+      },
+      {
+        "id": "MEL23-045",
+        "receipt": "VER-CVG-AUD27-003-012"
+      },
+      {
+        "id": "MEL23-046",
+        "receipt": "VER-CVG-AUD27-002-017"
+      },
+      {
+        "id": "MEL23-047",
+        "receipt": "VER-CVG-AUD27-007-012"
+      },
+      {
+        "id": "MEL23-048",
+        "receipt": "VER-CVG-AUD27-024-008"
+      },
+      {
+        "id": "MEL23-050",
+        "receipt": "VER-CVG-AUD27-002-017"
+      }
+    ],
+    "unqualified_criteria": [
+      {
+        "id": "MEL23-004",
+        "result": "BLOCKED",
+        "issues": [
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-005",
+        "result": "PARTIAL",
+        "issues": [
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-006",
+        "result": "BLOCKED",
+        "issues": [
+          "receipt fingerprint does not match the current observed subject",
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-007",
+        "result": "PARTIAL",
+        "issues": [
+          "receipt fingerprint does not match the current observed subject",
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-008",
+        "result": "PARTIAL",
+        "issues": [
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-009",
+        "result": "PARTIAL",
+        "issues": [
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-010",
+        "result": "PARTIAL",
+        "issues": [
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-011",
+        "result": "PARTIAL",
+        "issues": [
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-012",
+        "result": "BLOCKED",
+        "issues": [
+          "receipt fingerprint does not match the current observed subject",
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-013",
+        "result": "PARTIAL",
+        "issues": [
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-014",
+        "result": "BLOCKED",
+        "issues": [
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-015",
+        "result": "PARTIAL",
+        "issues": [
+          "receipt fingerprint does not match the current observed subject",
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-016",
+        "result": "PARTIAL",
+        "issues": [
+          "receipt fingerprint does not match the current observed subject",
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-017",
+        "result": "PARTIAL",
+        "issues": [
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-018",
+        "result": "PARTIAL",
+        "issues": [
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-019",
+        "result": "PARTIAL",
+        "issues": [
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-020",
+        "result": "BLOCKED",
+        "issues": [
+          "receipt fingerprint does not match the current observed subject",
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-021",
+        "result": "PARTIAL",
+        "issues": [
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-023",
+        "result": "PARTIAL",
+        "issues": [
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-025",
+        "result": "PARTIAL",
+        "issues": [
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-027",
+        "result": "PARTIAL",
+        "issues": [
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-028",
+        "result": "PARTIAL",
+        "issues": [
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-029",
+        "result": "PARTIAL",
+        "issues": [
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-030",
+        "result": "BLOCKED",
+        "issues": [
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-031",
+        "result": "PARTIAL",
+        "issues": [
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-032",
+        "result": "PARTIAL",
+        "issues": [
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-033",
+        "result": "PARTIAL",
+        "issues": [
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-034",
+        "result": "PARTIAL",
+        "issues": [
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-036",
+        "result": "PARTIAL",
+        "issues": [
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-037",
+        "result": "PARTIAL",
+        "issues": [
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-038",
+        "result": "PARTIAL",
+        "issues": [
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-039",
+        "result": "PARTIAL",
+        "issues": [
+          "receipt fingerprint does not match the current observed subject",
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-049",
+        "result": "PARTIAL",
+        "issues": [
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      }
+    ]
+  },
+  "control_plane_capture": {
+    "last_gate_record": "VER-CVG-AUD27-001-139",
+    "last_event_id": "EVT-CVG-AUD27-001-139",
+    "result": "PASS",
+    "observed_subject_fingerprint": "sha256:ff3c001b92c0b834e06e407f91943037e91940442abe37c57a988e90e8520eab"
+  },
+  "protected_registered_matrix": {
+    "path": "artifacts/operational-proof/mel23-evidence-matrix.json",
+    "bytes": 99409,
+    "actual_sha256": "f46355276df64e6ebcf1c1afe17785b92df62622bfc0ea950faa298c0b737ec0",
+    "registered_expected_sha256": "4f88513a5a0efbfe16da5d1da5e69e1bd3aee4ef0a1b9e44dfec53c5f1db3028",
+    "unchanged": true
+  },
+  "command_results": [
+    {
+      "command": "npm test",
+      "exit_status": 0,
+      "expected_exit_status": 0,
+      "observed": "724 tests; 723 pass; 0 fail; 1 skipped.",
+      "evidence_artifact": "npm-test.log",
+      "evidence_sha256": "80830b425eee8fcba9a930a04b021dbf9cfc8219353c5b13a06c4eb0f58daad7"
+    },
+    {
+      "command": "npm run typecheck",
+      "exit_status": 0,
+      "expected_exit_status": 0,
+      "observed": "TypeScript no-emit check passed.",
+      "evidence_artifact": "typecheck.log",
+      "evidence_sha256": "19c71cde12d596f5abd6f07b9713c068230e6bd3a8086d6bdf9ba3a34d1a9409"
+    },
+    {
+      "command": "npm run verify:static",
+      "exit_status": 0,
+      "expected_exit_status": 0,
+      "observed": "250 required artifacts; 294 source files.",
+      "evidence_artifact": "verify-static.log",
+      "evidence_sha256": "ce85a4c7d2d9cdeef63d8f6396e3d86082e3e27c7e7be42f3db2f6375f317e6c"
+    },
+    {
+      "command": "npm run verify:docs-integrity",
+      "exit_status": 0,
+      "expected_exit_status": 0,
+      "observed": "256 files; 0 findings.",
+      "evidence_artifact": "docs-integrity.log",
+      "evidence_sha256": "f360836136be58ef1c6d062f6ddc113fdf47560c596ce4ecb98f848712771185"
+    },
+    {
+      "command": "node --import tsx --test tests/integration/api-response-routes.test.ts",
+      "exit_status": 0,
+      "expected_exit_status": 0,
+      "observed": "2/2 tests; 105 route-envelope probes; authenticated GET schemas 41/45; explicit success fixtures 43/105; synthetic-ID GET routes 4/4 success fixtures.",
+      "evidence_artifact": "api-response-routes.log",
+      "evidence_sha256": "f7cff88c8136421cd8ecc252c0aca000b3002503711d453abe3f02d8a70773aa"
+    },
+    {
+      "command": "node --import tsx --test tests/unit/api-response-contract.test.ts",
+      "exit_status": 0,
+      "expected_exit_status": 0,
+      "observed": "6/6 tests; current API request/response examples bind to routes, status codes and schemas.",
+      "evidence_artifact": "api-examples-contract.log",
+      "evidence_sha256": "49959aecb6e3b0180a8a27b787c678fdbd310851c37e041ed606e6dee4f06b1c"
+    },
+    {
+      "command": "node --import tsx --test tests/unit/api-response-contract-auth-ops.test.ts tests/unit/api-response-contract-clinical.test.ts tests/unit/api-response-contract-remaining.test.ts",
+      "exit_status": 0,
+      "expected_exit_status": 0,
+      "observed": "15/15 targeted tests across auth/operations, clinical and remaining response families.",
+      "evidence_artifact": "api-response-family-contracts.log",
+      "evidence_sha256": "44340070664da1bd5e9ae16d4450e63d59c1c7e86a6a759371d7b8a45c07b350"
+    },
+    {
+      "command": "node --import tsx --test tests/unit/control-plane-aud23.test.ts",
+      "exit_status": 0,
+      "expected_exit_status": 0,
+      "observed": "3/3 tests; semantic known-bads rejected, including missing_transition.",
+      "evidence_artifact": "semantic-known-bads.log",
+      "evidence_sha256": "d3df70448f61ff0e75d6a79f847a02a1d47ca6ff6e9d0c1bf30ae24360f66b30"
+    },
+    {
+      "command": "node --import tsx --test tests/unit/control-plane.test.ts tests/unit/control-plane-aud23.test.ts tests/unit/docs-integrity.test.ts tests/unit/mel23-evidence.test.ts tests/unit/mutation-verifier.test.ts",
+      "exit_status": 0,
+      "expected_exit_status": 0,
+      "observed": "33/33 focused tests pass.",
+      "evidence_artifact": "documentation-focused-tests.log",
+      "evidence_sha256": "46148cd9f097459733817276bb9ddf6e938cb1e7d6bc70db982a7493389bb8b7"
+    },
+    {
+      "command": "npm run verify:aud27-semantics",
+      "exit_status": 0,
+      "expected_exit_status": 0,
+      "observed": "39 findings; canonical known-bads rejected 5/5.",
+      "evidence_artifact": "verify-aud27-semantics.log",
+      "evidence_sha256": "79be9e002a09d40436d3dd788902b324d3f9bbf42e3193a195e9cd72fe85d628"
+    },
+    {
+      "command": "npm run audit:licenses",
+      "exit_status": 0,
+      "expected_exit_status": 0,
+      "observed": "183 third-party SPDX package records pass the allowlist; historical/legal gaps remain.",
+      "evidence_artifact": "license-audit.log",
+      "evidence_sha256": "ddeffc1193c3129acad00ec58f0768e5c03426ddf3d62063ab5c61aa1992758e"
+    },
+    {
+      "command": "git diff --check",
+      "exit_status": 0,
+      "expected_exit_status": 0,
+      "observed": "No whitespace findings.",
+      "evidence_artifact": "diff-check.log",
+      "evidence_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "command": "npm run verify:mel23-evidence (before current-subject receipt append)",
+      "exit_status": 1,
+      "expected_exit_status": 1,
+      "observed": "Expected exit 1; 50 mapped; 0 qualified; 50 blocked by stale fingerprints; 0 global issues.",
+      "evidence_artifact": "matrix-before-receipts.log",
+      "evidence_sha256": "84475f87fa3523101d604257166ecbb1f0d90f42c6e1fa62ac9ae2f3f2a855bb"
+    },
+    {
+      "command": "npm run verify:coverage",
+      "exit_status": 0,
+      "expected_exit_status": 0,
+      "observed": "line=89.17%, branch=76.36%, functions=87.97%; ratchet passes; baseline OBSERVED_ONLY_UNFROZEN_UNTIL_AUD27-004.",
+      "evidence_artifact": "coverage-current.log",
+      "evidence_sha256": "690888c30593ab967a19395ee7df0cdb937eafdcb69cc0f166b86cea37ffa9f4"
+    },
+    {
+      "command": "npm run verify:mutation",
+      "exit_status": 0,
+      "expected_exit_status": 0,
+      "observed": "total=25; killed=25; survived=0; invalid=0; selective score 100%.",
+      "evidence_artifact": "mutation-current.log",
+      "evidence_sha256": "a1fc2edfae33543c70d2bc958498264656949041efdfdddea377132d87681f3b"
+    },
+    {
+      "command": "npm run verify:ephemeral-postgres -- --rounds=1 --run-aud27-migration --run-aud27-24-slices",
+      "exit_status": 0,
+      "expected_exit_status": 0,
+      "observed": "49 migrations; crash-recovery verifier PASS; 24/24 parity; replay/rollback pass; cutover not claimed; container/database removed.",
+      "evidence_artifact": "postgres-migration-current.log",
+      "evidence_sha256": "47b1c5b3f9645fd6c0be828c7ef591a004e8b7cd0df046fb9eef9454eb577030"
+    },
+    {
+      "command": "npm run verify:ephemeral-postgres -- --rounds=1 --run-postgres",
+      "exit_status": 0,
+      "expected_exit_status": 0,
+      "observed": "PostgreSQL behavior/tenant verifier PASS; 49 migrations; container/database removed; inventory unchanged.",
+      "evidence_artifact": "postgres-rls-current.log",
+      "evidence_sha256": "92194fed4f61c25b6e705b9be466bfb4598112625aaead5994480f92adaf890d"
+    },
+    {
+      "command": "git diff --check (after mutation verifier)",
+      "exit_status": 0,
+      "expected_exit_status": 0,
+      "observed": "No whitespace findings after mutation source restoration.",
+      "evidence_artifact": "diff-after-mutation.log",
+      "evidence_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "command": "npm run verify:control-plane",
+      "exit_status": 0,
+      "expected_exit_status": 0,
+      "evidence_artifact": "control-plane-final.log",
+      "evidence_sha256": "e5f022c48a9e436906523abbe64ba70d25b2b1462fed1aa654d59129fc9df449",
+      "observed": "CONTROL_PLANE_VERIFIED items=334; active action AUD27-001:SEMANTIC-RECONCILIATION."
+    },
+    {
+      "command": "npm run verify:mel23-control-plane",
+      "exit_status": 0,
+      "expected_exit_status": 0,
+      "evidence_artifact": "mel23-control-plane-final.log",
+      "evidence_sha256": "5d63b0d2f0f1e0d23199bcd91d8471734d06b7b7a1de63b7901bfc86aecfb7cc",
+      "observed": "Capture PASS; verification/event tails VER-CVG-AUD27-001-139 / EVT-CVG-AUD27-001-139."
+    },
+    {
+      "command": "npm run verify:mel23-evidence",
+      "exit_status": 1,
+      "expected_exit_status": 1,
+      "evidence_artifact": "matrix-final.log",
+      "evidence_sha256": "36dad4f3c216d8e18cfbeba494e7e20d021efde4a7903d8dfbb286413efdebe8",
+      "observed": "Expected fail-closed result: 50 mapped; 17 qualified; 33 unqualified; zero global issues."
+    },
+    {
+      "command": "git diff --check",
+      "exit_status": 0,
+      "expected_exit_status": 0,
+      "evidence_artifact": "diff-final.log",
+      "evidence_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "observed": "No whitespace findings."
+    },
+    {
+      "command": "npm run test:e2e:smoke",
+      "exit_status": 0,
+      "expected_exit_status": 0,
+      "observed": "354 tests; 332 passed; 22 skipped; 0 failed across seven Chromium/Firefox viewport and stress projects."
+    },
+    {
+      "command": "npm run audit:contrast",
+      "exit_status": 0,
+      "expected_exit_status": 0,
+      "observed": "12 static WCAG 2.x token-pair checks; 0 failures; rendered gradients/images/user content remain outside scope."
+    },
+    {
+      "command": "npx tsx -e \"import { buildSubjectManifest } from './scripts/subject-manifest.ts'; console.log(buildSubjectManifest().fingerprint)\"",
+      "exit_status": 0,
+      "expected_exit_status": 0,
+      "observed": "sha256:ff3c001b92c0b834e06e407f91943037e91940442abe37c57a988e90e8520eab"
+    },
+    {
+      "command": "git status --short --untracked-files=all",
+      "exit_status": 0,
+      "expected_exit_status": 0,
+      "observed": "431 status entries; candidate remains dirty."
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/verification-manifest.json",
+      "sha256": "db4f5b28656b6a0f14111ccd858f54f894caf21df7f99ecfa21786118d9ea566"
+    },
+    {
+      "path": "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/m2-quality-verification-manifest.json",
+      "sha256": "2c58e86448fabf75a7591929a1e234cbd91de948b1d787a793fdc9cfaa7ae8b0"
+    },
+    {
+      "path": "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/matrix-final.log",
+      "sha256": "badd8eb3f2a6a1321085ee57653090da638636f515d002464fa3c9f2b19aba7b"
+    },
+    {
+      "path": "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/control-plane-final.log",
+      "sha256": "e5f022c48a9e436906523abbe64ba70d25b2b1462fed1aa654d59129fc9df449"
+    },
+    {
+      "path": "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/mel23-control-plane-final.log",
+      "sha256": "677daeb150db5fbea8cfd7b4396b64414bac4b18d1c2c2e98450fd303ef48f96"
+    },
+    {
+      "path": "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/coverage-summary-current.json",
+      "sha256": "392afeec5bc347dddff5e139b38f5e0479f3f38e94d9c248c8ea5660b29800fa"
+    },
+    {
+      "path": "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/coverage-output-current.txt",
+      "sha256": "8f24a33bc20396147c0c246bdcb6a479bb2ff7620bd74fc013af4c1111a4e287"
+    },
+    {
+      "path": "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/mutation-summary-current.json",
+      "sha256": "6cd16cafac9dddec98f628dcc78f2c4dd2d1dd936aed6dbab1dccc655c541817"
+    },
+    {
+      "path": "artifacts/operational-proof/mel23-evidence-matrix-current.json",
+      "sha256": "99278e5e025a7171882ce31cd5a03ea7c3da81c0be4064909aec5087bfbd98e2"
+    },
+    {
+      "path": "artifacts/operational-proof/mel23-control-plane-current.json",
+      "sha256": "8b348a3a39c174d329d20eeef1c930094fc0cde3b2cda998e1c254b6e5b749c2"
+    },
+    {
+      "path": ".agent/verification.jsonl",
+      "sha256": "16a3b17a84cc5ce8cd5075859861b6a1b7142487548fe88633189f2d7e944d57"
+    },
+    {
+      "path": ".agent/execution-log.jsonl",
+      "sha256": "8acaefac6b50824a81b7dd5569fa3ddd04f34348962682bcb0e9121698769cb9"
+    },
+    {
+      "path": ".agent/state.json",
+      "sha256": "565305825249c132cbeeeb15c8e137eaa74c3e3c53469cc9848e2afa96ecd817"
+    },
+    {
+      "path": ".agent/backlog.json",
+      "sha256": "b9547724b986ec0cbc810d344b432e0b7c6526b84f1661a973be6eda823cf9dc"
+    },
+    {
+      "path": ".agent/plans/2026-09-21-cvg-aud27.md",
+      "sha256": "b889429aed19a942a51425521c618b156c72f9da193ee589169df5660575b236"
+    },
+    {
+      "path": "docs/README.md",
+      "sha256": "628137a48badb3e1611087b95d6eb44a014a0604409547c34b3dd723ebdb566a"
+    },
+    {
+      "path": "docs/12-estado-da-implementacao.md",
+      "sha256": "b83364b1f9c14efbcc16e6910c9fc70e8b4d07d6363471f535ede0a594d80e44"
+    },
+    {
+      "path": "docs/production-readiness-vNext.md",
+      "sha256": "20e28645fe890a401ac4392094d85dab0f7d34b4db634db0d78c830bd34e5dbc"
+    },
+    {
+      "path": "artifacts/operational-proof/mel23-evidence-matrix.json",
+      "sha256": "f46355276df64e6ebcf1c1afe17785b92df62622bfc0ea950faa298c0b737ec0"
+    },
+    {
+      "path": "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/e2e-smoke-current.log",
+      "sha256": "01e58ac95db3a098bbdd88c9e2ea8c494434c29899ebc758f770d44d3b6895ba"
+    },
+    {
+      "path": "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/e2e-smoke-manifest.json",
+      "sha256": "b6ef7ebdececea8f8bb8718fb035ecf60ed4628f6c904e7a6a4deee2e943a5e3"
+    },
+    {
+      "path": "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/contrast-current.log",
+      "sha256": "0d1f7e7ad46d85d3c96e4a5965cfece4b5b51be644c5734c7a108cddd60395ef"
+    },
+    {
+      "path": "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/worktree-status-current.log",
+      "sha256": "728d85f50d45109c5fe2672fa33ec57808fd1811a9874569c4da2e1065f14e55"
+    },
+    {
+      "path": "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/subject-fingerprint-current.log",
+      "sha256": "3f47f790f794a31b294a83416628c5fca483ff59241fd6df7376e6798b2b3f86"
+    },
+    {
+      "path": "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/matrix-pre-active.log",
+      "sha256": "244ce60602382641c0b6fe1bc4576f4f6c1e560c5a91766df32e6109d24d02e0"
+    },
+    {
+      "path": "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/diff-final.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/observability-local.log",
+      "sha256": "7ab900db80963da596b5b98d046ff63268f6fc69c19c507c8a2c23b272c6a772"
+    },
+    {
+      "path": "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/observability-focused-tests.log",
+      "sha256": "64fddd904be4e02fded549328f045ef16635f176a749a9a8e0918d7c31e20794"
+    },
+    {
+      "path": "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/observability-architecture-manifest.json",
+      "sha256": "8732c32b50e5fa5a2351d7115cbf078201df6d88b500946b023d42173e1a350c"
+    },
+    {
+      "path": "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/architecture-current.log",
+      "sha256": "178cbbb7c328e9d717937629c8a98ed2f618fa757235dbddf92d1557141a9ea1"
+    },
+    {
+      "path": "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/npm-test.log",
+      "sha256": "80830b425eee8fcba9a930a04b021dbf9cfc8219353c5b13a06c4eb0f58daad7"
+    },
+    {
+      "path": "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/typecheck.log",
+      "sha256": "19c71cde12d596f5abd6f07b9713c068230e6bd3a8086d6bdf9ba3a34d1a9409"
+    }
+  ],
+  "limitations": [
+    "Observed source remains dirty and unfrozen; candidate fingerprint is null and no clean-candidate reproduction or promotion is claimed.",
+    "MEL23-027 remains PARTIAL pending frozen-candidate CI; current-subject WebKit, comprehensive rendered review and human assistive-technology acceptance remain open.",
+    "Local observability does not prove staging/provider gates; RTO/RPO remain UNKNOWN. Architecture verification remains partial with apps/api/src/app.ts at 2,515 lines against a 2,500-line budget.",
+    "The original registered matrix bytes were not supplied. Its 99,409-byte on-disk copy remains separate with a digest different from the registered expected hash; the current matrix is a sidecar."
+  ]
+}

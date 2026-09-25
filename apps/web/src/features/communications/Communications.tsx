@@ -46,7 +46,7 @@ function Dialog({ titleId, title, description, onClose, closeDisabled = false, c
   return <div className="dialog-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !closeDisabled) onClose(); }}><section ref={cardRef} className="dialog-card" style={{ maxHeight: "min(88vh, 760px)", overflowY: "auto" }} role="dialog" aria-modal="true" aria-labelledby={titleId} aria-describedby={`${titleId}-description`}><div className="dialog-head"><div><span className="eyebrow">COMUNICAÇÃO</span><h2 id={titleId}>{title}</h2></div><button className="icon-button" type="button" aria-label="Fechar" onClick={onClose} disabled={closeDisabled}><Icon name="close" size={17} /></button></div><p id={`${titleId}-description`} className="dialog-description">{description}</p>{children}</section></div>;
 }
 
-export function Communications({ client, context, notify }: { client: ApiClient; context: ContextOption | null; notify: (message: string) => void }) {
+export function Communications({ client, context, notify: _notify }: { client: ApiClient; context: ContextOption | null; notify: (message: string) => void }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);

@@ -44,9 +44,7 @@ export function validateSnapshotSemantics(snapshot: StoreSnapshot, violation: Sn
   const encounters = new Map(snapshot.encounters.map((row) => [row.id, row]));
   const diagnosticRequests = new Map(snapshot.diagnosticRequests.map((row) => [row.id, row]));
   const specimens = new Map(snapshot.specimens.map((row) => [row.id, row]));
-  const diagnosticResults = new Map(snapshot.diagnosticResults.map((row) => [row.id, row]));
   const beds = new Map(snapshot.beds.map((row) => [row.id, row]));
-  const episodes = new Map(snapshot.hospitalEpisodes.map((row) => [row.id, row]));
   const products = new Map(snapshot.products.map((row) => [row.id, row]));
   const locations = new Map(snapshot.stockLocations.map((row) => [row.id, row]));
   const lots = new Map(snapshot.lots.map((row) => [row.id, row]));

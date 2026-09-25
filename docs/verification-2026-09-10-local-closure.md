@@ -553,7 +553,7 @@ Os artifacts foram sincronizados para `VER-CVG-264` e o snapshot `903db416c44e1d
 
 ## VER-CVG-265 — recovery rejeita cadeia adulterada — 2026-09-11
 
-A validação de recovery passou a invocar o verificador compartilhado de `@cvg/domain`, cobrindo a cadeia `previousHash`/`recordHash` antes de validação final e cifragem. O novo teste reempacota um snapshot adulterado com digest recalculado e confirma rejeição por `validateRecoveryBundle` e `encryptRecoveryBundle`. A suíte passou 328 testes (327 pass, 1 skip, 0 fail); snapshot `88b7fec93375728b68821917b64ed82d37b62731d45cd70a9dfc33406455680a`, SHA `c28800072dd4ace183810b94ce1e242e49c0319322174c6e2426a6a70a3de49f`; crítica [.gauntlet/critique-final-gauntlet-20260911-VER265.md](.gauntlet/critique-final-gauntlet-20260911-VER265.md) review-only. `AAA_NOT_PROVEN` permanece porque nenhuma prova externa ou aprovação humana foi criada.
+A validação de recovery passou a invocar o verificador compartilhado de `@cvg/domain`, cobrindo a cadeia `previousHash`/`recordHash` antes de validação final e cifragem. O novo teste reempacota um snapshot adulterado com digest recalculado e confirma rejeição por `validateRecoveryBundle` e `encryptRecoveryBundle`. A suíte passou 328 testes (327 pass, 1 skip, 0 fail); snapshot `88b7fec93375728b68821917b64ed82d37b62731d45cd70a9dfc33406455680a`, SHA `c28800072dd4ace183810b94ce1e242e49c0319322174c6e2426a6a70a3de49f`; crítica [`.gauntlet/critique-final-gauntlet-20260911-VER265.md`](../.gauntlet/critique-final-gauntlet-20260911-VER265.md) review-only. `AAA_NOT_PROVEN` permanece porque nenhuma prova externa ou aprovação humana foi criada.
 
 
 ## VER-CVG-266 — timestamps de autenticação no recovery — 2026-09-11

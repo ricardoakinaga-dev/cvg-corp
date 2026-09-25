@@ -1,5 +1,7 @@
 # Production readiness vNext
 
+> **Registro histórico:** este gate descreve uma fotografia anterior do vNext. Suas contagens de testes, schemas, licenças e artefatos não foram revalidadas por este documento. Consulte [o checkpoint mais recente](12-estado-da-implementacao.md) e o estado corrente em `.agent` antes de usar qualquer número como atual. O veredito geral permanece bloqueado até que os gates obrigatórios sejam provados no mesmo candidato.
+
 **Status:** `FAIL_WITH_LIMITATIONS` — desenvolvimento local controlado; produção não autorizada.
 
 Este documento é o gate operacional da implementação vNext. Um check estrutural ou um teste sintético não promove o sistema para dados reais, provider externo ou release.

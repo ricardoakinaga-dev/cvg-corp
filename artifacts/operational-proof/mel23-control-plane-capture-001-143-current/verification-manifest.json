@@ -1,0 +1,87 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-09-24T10:55:08.204Z",
+  "source_sha": "c990914148a8f375082cd12bbdb2ad20cfe1900f",
+  "observed_subject_fingerprint": "sha256:b7adc2e6402e14b2930be6b4b4016c9ccada69892625f4ae1492511e6b93b9b2",
+  "candidate_fingerprint": null,
+  "fingerprint_status": "UNFROZEN_UNTIL_AUD27-004",
+  "ledger": {
+    "verification_tail": "VER-CVG-AUD27-001-143",
+    "event_tail": "EVT-CVG-AUD27-001-143",
+    "state_revision": 619,
+    "capture_result": "PASS"
+  },
+  "commands": [
+    {
+      "command": "npm run verify:control-plane",
+      "exit_status": 0,
+      "expected_exit_status": 0
+    },
+    {
+      "command": "npm run verify:mel23-control-plane",
+      "exit_status": 0,
+      "expected_exit_status": 0
+    },
+    {
+      "command": "npm run verify:mel23-evidence",
+      "exit_status": 1,
+      "expected_exit_status": 1,
+      "meaning": "MEL23 evidence remains incomplete; report regenerated without global issues."
+    }
+  ],
+  "matrix": {
+    "requirements": 50,
+    "mapped": 50,
+    "qualified": 3,
+    "blocked": 47,
+    "global_issues": 0,
+    "mel23_021": "PARTIAL at 103/105 successful schema-checked route fixtures"
+  },
+  "worktree": {
+    "entries": 439,
+    "tracked_modifications": 114,
+    "untracked": 325
+  },
+  "protected_registered_matrix": {
+    "path": "artifacts/operational-proof/mel23-evidence-matrix.json",
+    "expected_bytes": 99409,
+    "expected_sha256": "4f88513a5a0efbfe16da5d1da5e69e1bd3aee4ef0a1b9e44dfec53c5f1db3028",
+    "observed_bytes": 99409,
+    "observed_sha256": "f46355276df64e6ebcf1c1afe17785b92df62622bfc0ea950faa298c0b737ec0",
+    "restored": false,
+    "original_location": "unknown to user"
+  },
+  "artifacts": [
+    {
+      "path": "mel23-control-plane-current.json",
+      "bytes": 806,
+      "sha256": "6311821075fb5d7c19c4cc0d51782847193367317ebae55ccd16a2caca17106a"
+    },
+    {
+      "path": "mel23-evidence-matrix-current.json",
+      "bytes": 96890,
+      "sha256": "d052d32bcbba0a71f63cbf7157fd25f5a1b01105e66f38a711c21da774687cb0"
+    },
+    {
+      "path": "verify-control-plane.log",
+      "bytes": 152,
+      "sha256": "e5f022c48a9e436906523abbe64ba70d25b2b1462fed1aa654d59129fc9df449"
+    },
+    {
+      "path": "verify-mel23-control-plane.log",
+      "bytes": 403,
+      "sha256": "3e9d300c7c61c69f0c37694565e4025cf9ad615427c7782afecbf25b69170480"
+    },
+    {
+      "path": "verify-mel23-evidence.log",
+      "bytes": 6308,
+      "sha256": "118fda7f94bd75657a4660ff07b6be3bb6f113cc861277438302bf07b8303402"
+    }
+  ],
+  "limitations": [
+    "The registered matrix original is unavailable; the protected path remains untouched and its on-disk digest differs from the registered digest.",
+    "The current matrix qualifies only 3/50 criteria; 47 remain unqualified on the observed dirty subject.",
+    "MEL23-021 remains PARTIAL: PostgreSQL/signature-gated integration ingress and governed export are the two uncovered success routes.",
+    "Candidate remains dirty and unfrozen; no global AAA, external authority, or promotion is claimed."
+  ]
+}

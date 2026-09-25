@@ -1,0 +1,165 @@
+{
+  "schema_version": 1,
+  "validation": "PASS",
+  "command": "docker compose -f docker-compose.yml -f docker-compose.production.yml config --format json",
+  "environment": "26 synthetic placeholders in an isolated temporary env file; no real credentials, endpoints or services used",
+  "services_started": false,
+  "compose_services": {
+    "api": {
+      "read_only": true,
+      "cap_drop": [
+        "ALL"
+      ],
+      "security_opt": [
+        "no-new-privileges:true"
+      ],
+      "networks": [
+        "backend",
+        "observability"
+      ],
+      "published_ports": [],
+      "secret_names": [
+        "cvg-deepseek-bearer",
+        "cvg-deepseek-context",
+        "cvg-recovery-key"
+      ]
+    },
+    "backup-init": {
+      "user": "0:0",
+      "read_only": true,
+      "cap_drop": [
+        "ALL"
+      ],
+      "cap_add": [
+        "CHOWN"
+      ],
+      "security_opt": [
+        "no-new-privileges:true"
+      ],
+      "network_mode": "none",
+      "networks": [],
+      "published_ports": [],
+      "secret_names": []
+    },
+    "migrate": {
+      "read_only": true,
+      "cap_drop": [
+        "ALL"
+      ],
+      "security_opt": [
+        "no-new-privileges:true"
+      ],
+      "networks": [
+        "backend"
+      ],
+      "published_ports": [],
+      "secret_names": []
+    },
+    "postgres": {
+      "user": "999:999",
+      "read_only": true,
+      "cap_drop": [
+        "ALL"
+      ],
+      "security_opt": [
+        "no-new-privileges:true"
+      ],
+      "networks": [
+        "backend"
+      ],
+      "published_ports": [
+        {
+          "host_ip": "127.0.0.1",
+          "target": 5432,
+          "published": "5440",
+          "protocol": "tcp"
+        }
+      ],
+      "secret_names": []
+    },
+    "proxy": {
+      "user": "101",
+      "read_only": true,
+      "cap_drop": [
+        "ALL"
+      ],
+      "security_opt": [
+        "no-new-privileges:true"
+      ],
+      "networks": [
+        "backend",
+        "edge"
+      ],
+      "published_ports": [
+        {
+          "host_ip": "0.0.0.0",
+          "target": 8080,
+          "published": "80",
+          "protocol": "tcp"
+        },
+        {
+          "host_ip": "0.0.0.0",
+          "target": 8443,
+          "published": "443",
+          "protocol": "tcp"
+        }
+      ],
+      "secret_names": []
+    },
+    "web": {
+      "read_only": true,
+      "cap_drop": [
+        "ALL"
+      ],
+      "security_opt": [
+        "no-new-privileges:true"
+      ],
+      "networks": [
+        "backend"
+      ],
+      "published_ports": [],
+      "secret_names": []
+    },
+    "worker": {
+      "read_only": true,
+      "cap_drop": [
+        "ALL"
+      ],
+      "security_opt": [
+        "no-new-privileges:true"
+      ],
+      "networks": [
+        "backend",
+        "observability"
+      ],
+      "published_ports": [],
+      "secret_names": [
+        "cvg-messaging-credential",
+        "cvg-recovery-key"
+      ]
+    }
+  },
+  "networks": {
+    "backend": {
+      "internal": true,
+      "driver": null
+    },
+    "edge": {
+      "internal": false,
+      "driver": null
+    },
+    "observability": {
+      "internal": true,
+      "driver": null
+    }
+  },
+  "secrets_declared": [
+    "cvg-deepseek-bearer",
+    "cvg-deepseek-context",
+    "cvg-messaging-credential",
+    "cvg-recovery-key"
+  ],
+  "limitations": [
+    "Config parsing does not start images or exercise runtime secrets, TLS, provider access, registry signatures, or deployed edge egress policy."
+  ]
+}

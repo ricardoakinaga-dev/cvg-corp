@@ -290,7 +290,7 @@ export class ModelRouter {
 
   constructor(
     private readonly candidates: readonly ModelRoutingCandidate[],
-    private readonly breakerFactory: (providerId: string) => CircuitBreaker = (providerId) =>
+    private readonly breakerFactory: (providerId: string) => CircuitBreaker = (_providerId) =>
       new CircuitBreaker({ failureThreshold: 3, resetTimeoutMs: 30_000, halfOpenMaxAttempts: 1 })
   ) {}
 

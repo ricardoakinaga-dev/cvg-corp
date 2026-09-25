@@ -8,7 +8,7 @@ import { DomainError } from "@cvg/domain";
 import { WORKER_TEST_POLICY_REGISTRY } from "@cvg/agent-policy";
 import type { ExternalEffectLedger } from "@cvg/integrations";
 import { blockedWorkerSink, createConfiguredWorkerSink, createWorkerDependencies, CvgWorkerApplication, WORKER_LANES, type WorkerJobHandlerDefinition, type WorkerLane } from "../../apps/worker/src/worker.ts";
-import { WorkerResourceController, databasePoolSaturated } from "../../apps/worker/src/runtime-controls.ts";
+import { assertNotAborted, WorkerResourceController, databasePoolSaturated } from "../../apps/worker/src/runtime-controls.ts";
 import type { DurableExternalEffectRecord, DurableOutboxRecord, DurableWorkerHeartbeatInput, DurableWorkerHeartbeatRecord, DurableWorkerJobRecord, DurableWorkerLane } from "@cvg/persistence";
 
 const organizationId = id("00000000-0000-4000-0000-000000000010");
@@ -21,6 +21,7 @@ test("enabled worker sink rejects a degraded file SecretProvider even when the n
       workerSinkMode: "enabled",
       messagingProviderEndpoint: "https://provider.example.test",
       messagingProviderAllowedHosts: ["provider.example.test"],
+      messagingBlockedIpv6Prefixes: [],
       messagingCredentialRef: "provider.credential",
       messagingSendPath: "/messages",
       messagingQueryPath: null,
@@ -202,7 +203,7 @@ test("worker entrypoint composition wires a complete durable effect ledger befor
   assert.deepEqual(transitions, ["ADMISSION_PENDING", "DISPATCHED", "PROVIDER", "SUCCEEDED", "COMPLETE"]);
 });
 
-test("outbox attempts emit durable audit and metrics before final acknowledgement", async () => {
+test("outbox success is only audited after the durable acknowledgement (CVG-AUD19-015)", async () => {
   const transitions: string[] = [];
   const metrics: string[] = [];
   const worker = new CvgWorkerApplication({
@@ -218,8 +219,29 @@ test("outbox attempts emit durable audit and metrics before final acknowledgemen
   });
   const result = await worker.runOnce(organizationId, "worker-outbox-observed");
   assert.deepEqual(result, { claimed: 1, delivered: 1, retried: 0, quarantined: 0, outcomeUnknown: 0 });
-  assert.deepEqual(transitions, ["AUDIT:STARTED", "PROVIDER", "AUDIT:SUCCEEDED", "COMPLETE"]);
+  assert.deepEqual(transitions, ["AUDIT:STARTED", "PROVIDER", "COMPLETE", "AUDIT:SUCCEEDED"]);
   assert.deepEqual(metrics, ["worker.handler.attempt", "worker.handler.succeeded"]);
+});
+
+test("an acknowledgement failure after delivery never reports SUCCEEDED (CVG-AUD19-015)", async () => {
+  const transitions: string[] = [];
+  const metrics: string[] = [];
+  const worker = new CvgWorkerApplication({
+    persistence: persistence({
+      completeOutbox: async () => { transitions.push("COMPLETE_FAILED"); throw new Error("lease lost before ack"); },
+      failOutbox: async () => { transitions.push("FAIL"); return "PENDING"; }
+    }),
+    sink: { deliver: async () => { transitions.push("PROVIDER"); return "DELIVERED"; } },
+    sinkMode: "enabled",
+    auditRequired: true,
+    audit: { record: async (event) => { transitions.push(`AUDIT:${event.outcome}`); } },
+    metrics: { record: (event) => { metrics.push(event.name); } }
+  });
+  await assert.rejects(() => worker.runOnce(organizationId, "worker-outbox-ack-failure"));
+  assert.ok(transitions.includes("COMPLETE_FAILED"));
+  assert.equal(transitions.some((entry) => entry === "AUDIT:SUCCEEDED"), false, transitions.join(","));
+  assert.equal(metrics.includes("worker.handler.succeeded"), false, metrics.join(","));
+  assert.ok(transitions.includes("AUDIT:RETRY_SCHEDULED"), transitions.join(","));
 });
 
 test("worker factory keeps an enabled ledger-required sink blocked when persistence is partial", async () => {
@@ -332,6 +354,38 @@ test("worker cycle executes every configured lane and exposes per-lane counts", 
   assert.deepEqual(Object.fromEntries(WORKER_LANES.slice(1).map((lane) => [lane, result.lanes[lane].processed])), { jobs: 2, schedule: 3, reconciliation: 4, notifications: 5, maintenance: 6 });
 });
 
+test("worker cycle propagates stop to outbox delivery and rejects a late receipt", async () => {
+  let providerEntered!: () => void;
+  const entered = new Promise<void>((resolve) => { providerEntered = resolve; });
+  let observedSignal: AbortSignal | undefined;
+  let completed = 0;
+  let failed = 0;
+  const worker = new CvgWorkerApplication({
+    persistence: persistence({ completeOutbox: async () => { completed += 1; }, failOutbox: async () => { failed += 1; return "QUARANTINED"; } }),
+    sink: {
+      deliver: async (_record, context) => {
+        observedSignal = context?.signal;
+        providerEntered();
+        await new Promise<void>((resolve) => context?.signal?.addEventListener("abort", () => resolve(), { once: true }));
+        return { status: "DELIVERED", providerRequestId: "late-cycle-provider", receipt: { accepted: true } };
+      }
+    },
+    sinkMode: "enabled"
+  });
+
+  const cycle = worker.runCycle(organizationId, "worker-cycle-abort");
+  await entered;
+  worker.stop();
+  const result = await cycle;
+
+  assert.equal(observedSignal?.aborted, true);
+  assert.equal(completed, 0);
+  assert.equal(failed, 1);
+  assert.equal(result.delivered, 0);
+  assert.equal(result.outcomeUnknown, 1);
+  assert.equal(result.quarantined, 1);
+});
+
 test("worker cycle blocks unconfigured lanes without claiming outbox work", async () => {
   let claims = 0;
   const worker = new CvgWorkerApplication({
@@ -413,16 +467,27 @@ test("worker executes durable jobs with handler fencing and records a cycle hear
   const job = workerJob();
   const completed: string[] = [];
   const heartbeatStatuses: string[] = [];
+  const durablePersistence = persistence({
+    claimWorkerJobs: async function (this: unknown, _organizationId, lane) {
+      assert.equal(this, durablePersistence);
+      return lane === "jobs" ? [job] : [];
+    },
+    completeWorkerJob: async function (this: unknown, _organizationId, jobId) {
+      assert.equal(this, durablePersistence);
+      completed.push(jobId);
+    },
+    failWorkerJob: async function (this: unknown) {
+      assert.equal(this, durablePersistence);
+      return "PENDING";
+    },
+    recordWorkerHeartbeat: async function (this: unknown, input) {
+      assert.equal(this, durablePersistence);
+      heartbeatStatuses.push(input.status);
+      return { organizationId: input.organizationId, workerId: input.workerId, status: input.status, lane: input.lane, cycleId: input.cycleId, startedAt: input.startedAt, lastSeenAt: input.lastSeenAt ?? input.startedAt, expiresAt: input.expiresAt, detail: input.detail, updatedAt: input.lastSeenAt ?? input.startedAt };
+    }
+  });
   const worker = new CvgWorkerApplication({
-    persistence: persistence({
-      claimWorkerJobs: async (_organizationId, lane) => lane === "jobs" ? [job] : [],
-      completeWorkerJob: async (_organizationId, jobId) => { completed.push(jobId); },
-      failWorkerJob: async () => "PENDING",
-      recordWorkerHeartbeat: async (input) => {
-        heartbeatStatuses.push(input.status);
-        return { organizationId: input.organizationId, workerId: input.workerId, status: input.status, lane: input.lane, cycleId: input.cycleId, startedAt: input.startedAt, lastSeenAt: input.lastSeenAt ?? input.startedAt, expiresAt: input.expiresAt, detail: input.detail, updatedAt: input.lastSeenAt ?? input.startedAt };
-      }
-    }),
+    persistence: durablePersistence,
     sink: { deliver: async () => "DELIVERED" },
     sinkMode: "enabled",
     jobHandlerDefinitions: [typedDefinition("synthetic.rebuild", async (claimed, context) => { assert.equal(claimed.fenceToken, 1n); assert.equal(context.workerId, "worker-durable"); })],
@@ -439,12 +504,22 @@ test("worker executes durable jobs with handler fencing and records a cycle hear
 test("worker quarantines an unknown durable job handler and keeps the poison visible", async () => {
   const job = workerJob({ jobType: "synthetic.unknown", attempts: 2 });
   const failures: Array<{ jobId: string; quarantine: boolean }> = [];
+  const poisonPersistence = persistence({
+    claimWorkerJobs: async function (this: unknown, _organizationId, lane) {
+      assert.equal(this, poisonPersistence);
+      return lane === "jobs" ? [job] : [];
+    },
+    completeWorkerJob: async function (this: unknown) {
+      assert.equal(this, poisonPersistence);
+    },
+    failWorkerJob: async function (this: unknown, _organizationId, jobId, _workerId, _fence, _reason, quarantine) {
+      assert.equal(this, poisonPersistence);
+      failures.push({ jobId, quarantine: Boolean(quarantine) });
+      return "QUARANTINED";
+    }
+  });
   const worker = new CvgWorkerApplication({
-    persistence: persistence({
-      claimWorkerJobs: async (_organizationId, lane) => lane === "jobs" ? [job] : [],
-      completeWorkerJob: async () => undefined,
-      failWorkerJob: async (_organizationId, jobId, _workerId, _fence, _reason, quarantine) => { failures.push({ jobId, quarantine: Boolean(quarantine) }); return "QUARANTINED"; }
-    }),
+    persistence: poisonPersistence,
     sink: { deliver: async () => "DELIVERED" },
     sinkMode: "enabled",
     jobHandlerDefinitions: [typedDefinition("synthetic.other", async () => undefined)],
@@ -551,6 +626,46 @@ test("durable item budget bounds the database claim instead of detecting excess 
   const result = await worker.runCycle(organizationId, "worker-item-budget", { limit: 20, laneBudgets: { jobs: { maxProcessed: 2 } } });
   assert.equal(result.lanes.jobs.status, "EXECUTED");
   assert.deepEqual(claimedLimits, [2]);
+});
+
+test("CVG-AUD19-016: a cancelled cycle stops before the next cooperative effect", async () => {
+  const job = workerJob({ attempts: 1, maxAttempts: 4 });
+  const effects: string[] = [];
+  const definition: WorkerJobHandlerDefinition = {
+    lane: "jobs",
+    jobType: "synthetic.rebuild",
+    resource: "provider",
+    requiresIdempotencyKey: true,
+    requiresDurableAudit: true,
+    emitsMetrics: true,
+    quarantineOnExhaustion: true,
+    timeoutMs: 40,
+    timeoutDisposition: "RETRY",
+    retryBaseSeconds: 2,
+    retryMaxSeconds: 30,
+    policyRegistry: WORKER_TEST_POLICY_REGISTRY,
+    validate() { return undefined; },
+    handle: async (_job, context) => {
+      effects.push("FIRST");
+      await new Promise((resolve) => setTimeout(resolve, 80));
+      assertNotAborted(context.signal);
+      effects.push("SECOND");
+    }
+  };
+  const worker = new CvgWorkerApplication({
+    persistence: persistence({
+      claimWorkerJobs: async (_organizationId, lane) => lane === "jobs" ? [job] : [],
+      completeWorkerJob: async () => { effects.push("COMPLETED"); },
+      failWorkerJob: async () => "PENDING"
+    }),
+    sink: { deliver: async () => "DELIVERED" },
+    sinkMode: "enabled",
+    jobHandlerDefinitions: [definition],
+    lanes: { schedule: async () => 0, reconciliation: async () => 0, notifications: async () => 0, maintenance: async () => 0 }
+  });
+  await worker.runCycle(organizationId, "worker-cooperative");
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  assert.deepEqual(effects, ["FIRST"], effects.join(","));
 });
 
 test("typed handler timeout quarantines an ambiguous provider attempt and never acknowledges it late", async () => {
@@ -726,9 +841,19 @@ test("reconciliation runCycle uses the durable handler with policy, audit, metri
       failWorkerJob: async (_organizationId, jobId, _workerId, _fenceToken, reason) => { events.push(`fail:${jobId}:${reason}`); return "PENDING" as const; },
       workerJobStats: async () => ({ depth: 0, oldestAgeMs: 0, poisonMessages: 0 })
     }),
-    listExternalEffects: async () => [unknownEffect],
-    claimExternalEffectForReconciliation: async () => effect({ ...unknownEffect, status: "RECONCILING", claimedBy: "worker-reconciliation", leaseUntil: "2099-01-01T00:00:00.000Z", fenceToken: 2n }),
-    reconcileExternalEffect: async () => { events.push("reconciled"); return effect({ ...unknownEffect, status: "SUCCEEDED" }); }
+    listExternalEffects: async function (this: unknown) {
+      assert.equal(this, persistenceWithReconciliation);
+      return [unknownEffect];
+    },
+    claimExternalEffectForReconciliation: async function (this: unknown) {
+      assert.equal(this, persistenceWithReconciliation);
+      return effect({ ...unknownEffect, status: "RECONCILING", claimedBy: "worker-reconciliation", leaseUntil: "2099-01-01T00:00:00.000Z", fenceToken: 2n });
+    },
+    reconcileExternalEffect: async function (this: unknown) {
+      assert.equal(this, persistenceWithReconciliation);
+      events.push("reconciled");
+      return effect({ ...unknownEffect, status: "SUCCEEDED" });
+    }
   };
   const dependencies = createWorkerDependencies(persistenceWithReconciliation, { workerMaxOutstandingOutbox: 10 }, {
     sink: blockedWorkerSink,

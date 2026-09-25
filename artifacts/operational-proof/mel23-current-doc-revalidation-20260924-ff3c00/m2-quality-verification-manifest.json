@@ -1,0 +1,77 @@
+{
+  "schema_version": 1,
+  "captured_at": "2026-09-24T09:28:05.179Z",
+  "source_sha": "c990914148a8f375082cd12bbdb2ad20cfe1900f",
+  "observed_subject_fingerprint": "sha256:ff3c001b92c0b834e06e407f91943037e91940442abe37c57a988e90e8520eab",
+  "candidate_fingerprint": null,
+  "fingerprint_status": "UNFROZEN_UNTIL_AUD27-004",
+  "frozen_candidate_claimed": false,
+  "command_results": [
+    {
+      "command": "npm run verify:coverage",
+      "exit_status": 0,
+      "expected_exit_status": 0,
+      "observed": "line=89.17%, branch=76.36%, functions=87.97%; ratchet passes; baseline OBSERVED_ONLY_UNFROZEN_UNTIL_AUD27-004.",
+      "evidence_artifact": "coverage-current.log",
+      "evidence_sha256": "690888c30593ab967a19395ee7df0cdb937eafdcb69cc0f166b86cea37ffa9f4"
+    },
+    {
+      "command": "npm run verify:mutation",
+      "exit_status": 0,
+      "expected_exit_status": 0,
+      "observed": "total=25; killed=25; survived=0; invalid=0; selective score 100%.",
+      "evidence_artifact": "mutation-current.log",
+      "evidence_sha256": "a1fc2edfae33543c70d2bc958498264656949041efdfdddea377132d87681f3b"
+    },
+    {
+      "command": "npm run verify:ephemeral-postgres -- --rounds=1 --run-aud27-migration --run-aud27-24-slices",
+      "exit_status": 0,
+      "expected_exit_status": 0,
+      "observed": "49 migrations; crash-recovery verifier PASS; 24/24 parity; replay/rollback pass; cutover not claimed; container/database removed.",
+      "evidence_artifact": "postgres-migration-current.log",
+      "evidence_sha256": "47b1c5b3f9645fd6c0be828c7ef591a004e8b7cd0df046fb9eef9454eb577030"
+    },
+    {
+      "command": "npm run verify:ephemeral-postgres -- --rounds=1 --run-postgres",
+      "exit_status": 0,
+      "expected_exit_status": 0,
+      "observed": "PostgreSQL behavior/tenant verifier PASS; 49 migrations; container/database removed; inventory unchanged.",
+      "evidence_artifact": "postgres-rls-current.log",
+      "evidence_sha256": "92194fed4f61c25b6e705b9be466bfb4598112625aaead5994480f92adaf890d"
+    },
+    {
+      "command": "git diff --check (after mutation verifier)",
+      "exit_status": 0,
+      "expected_exit_status": 0,
+      "observed": "No whitespace findings after mutation source restoration.",
+      "evidence_artifact": "diff-after-mutation.log",
+      "evidence_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/coverage-summary-current.json",
+      "sha256": "392afeec5bc347dddff5e139b38f5e0479f3f38e94d9c248c8ea5660b29800fa"
+    },
+    {
+      "path": "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/coverage-output-current.txt",
+      "sha256": "8f24a33bc20396147c0c246bdcb6a479bb2ff7620bd74fc013af4c1111a4e287"
+    },
+    {
+      "path": "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/mutation-summary-current.json",
+      "sha256": "6cd16cafac9dddec98f628dcc78f2c4dd2d1dd936aed6dbab1dccc655c541817"
+    },
+    {
+      "path": "scripts/coverage-ratchet.json",
+      "sha256": "9583a1f9e6c4b7101e4e91f324fca14b23b354f34be0295fa8cbbca8b8f714c1"
+    }
+  ],
+  "qualifications": {
+    "MEL23_008_011": "PARTIAL_NO_FULL_BACKFILL_OR_CUTOVER",
+    "MEL23_023": "PARTIAL_SCOPED_TENANT_ISOLATION",
+    "MEL23_024": "PASS_CRASH_RECOVERY_REPLAY_ROLLBACK",
+    "MEL23_025": "PARTIAL_BASELINE_OBSERVED_NOT_FROZEN",
+    "MEL23_026": "PASS_25_OF_25_MUTANTS_KILLED",
+    "MEL23_049": "PARTIAL_CUTOVER_NOT_CLAIMED"
+  }
+}

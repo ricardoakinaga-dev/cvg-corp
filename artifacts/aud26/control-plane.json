@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "program": "CVG-AUD26",
+  "sourceSha": "c990914148a8f375082cd12bbdb2ad20cfe1900f",
+  "candidateFingerprint": "sha256:084a6b1079bf317dd975f10bdbebbc9d87b4b61a6b203b7e7bc14bda4e8d925e",
+  "observedAt": "2026-09-22T00:13:13-03:00",
+  "scope": "control-plane-and-exact-subject",
+  "status": "BLOCKED_EXTERNAL",
+  "receipt": "VER-CVG-AUD27-001-021",
+  "command": "npm run verify:control-plane",
+  "observation": "CONTROL_PLANE_INVALID code=EVIDENCE_ROOT_MISSING; local append-only tail and state pointers are aligned",
+  "limitations": [
+    "external evidence root / issuer is unavailable",
+    "promotion remains blocked while external, legal and human gates are absent",
+    "this artifact does not claim a control-plane PASS"
+  ]
+}

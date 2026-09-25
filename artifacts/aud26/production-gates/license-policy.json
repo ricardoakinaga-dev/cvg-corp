@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "label": "license policy",
+  "command": [
+    "npm",
+    "run",
+    "audit:licenses"
+  ],
+  "capturedAt": "2026-09-22T00:29:29.378Z",
+  "exitStatus": 1,
+  "signal": null,
+  "stdout": "\n> cvg-corp@0.1.0 audit:licenses\n> tsx scripts/verify-licenses.ts\n\n",
+  "stderr": "FAIL node_modules/@typescript-eslint/typescript-estree/node_modules/minimatch: license BlueOak-1.0.0 is outside the approved policy\nFAIL node_modules/argparse: license Python-2.0 is outside the approved policy\nFAIL node_modules/damerau-levenshtein: license BSD-2-Clause is outside the approved policy\nFAIL node_modules/eslint-scope: license BSD-2-Clause is outside the approved policy\nFAIL node_modules/espree: license BSD-2-Clause is outside the approved policy\nFAIL node_modules/esrecurse: license BSD-2-Clause is outside the approved policy\nFAIL node_modules/estraverse: license BSD-2-Clause is outside the approved policy\nFAIL node_modules/esutils: license BSD-2-Clause is outside the approved policy\nFAIL node_modules/language-subtag-registry: license CC0-1.0 is outside the approved policy\nFAIL node_modules/uri-js: license BSD-2-Clause is outside the approved policy\n"
+}

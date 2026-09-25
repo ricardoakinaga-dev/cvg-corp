@@ -32,6 +32,15 @@ export class AgentToolScopeError extends Error {
   }
 }
 
+export class AgentToolIdentityDivergenceError extends AgentToolScopeError {
+  readonly code = "DIVERGENT" as const;
+
+  constructor(tool: string) {
+    super(tool);
+    this.name = "AgentToolIdentityDivergenceError";
+  }
+}
+
 export interface AgentToolExecutorOptions {
   store: CvgStore;
   /** Maximum agenda rows returned to the model. */
@@ -66,9 +75,10 @@ export function createAgentToolExecutor(options: AgentToolExecutorOptions): Embe
   const agendaLimit = Math.min(Math.max(options.agendaLimit ?? 20, 1), 50);
 
   const readPatient = (context: CvgContext, input: ToolRequestInput): EmbeddedToolExecution => {
-    const resourceId = input.resourceId ?? input.patientId ?? null;
-    if (!resourceId) throw new AgentToolScopeError("cvg.patient.read");
-    const patient = store.patients.get(id(resourceId));
+    const resolution = store.resolveAgentResource({ resourceId: input.resourceId ? id(input.resourceId) : null, encounterId: input.encounterId ? id(input.encounterId) : null, patientId: input.patientId ? id(input.patientId) : null });
+    if (resolution.status === "DIVERGENT") throw new AgentToolIdentityDivergenceError("cvg.patient.read");
+    if (resolution.status !== "RESOLVED" || resolution.resource.kind !== "PATIENT") throw new AgentToolScopeError("cvg.patient.read");
+    const patient = store.patients.get(resolution.resource.resourceId);
     if (!patient || !isInContext(patient, context)) throw new AgentToolScopeError("cvg.patient.read");
     // Minimal projection: identifiers, clinical detail and guardian links stay behind.
     return complete({ resource: "patient", id: patient.id, name: patient.name, species: patient.species, status: patient.status });
@@ -86,8 +96,14 @@ export function createAgentToolExecutor(options: AgentToolExecutorOptions): Embe
   const readEncounter = (context: CvgContext, input: ToolRequestInput): EmbeddedToolExecution => {
     const resourceId = input.encounterId ?? input.resourceId ?? null;
     if (!resourceId) throw new AgentToolScopeError("cvg.clinical.draft");
+    // The resource is resolved against the live repository: organization,
+    // unit, workspace and patient ownership all come from the record, never
+    // from the caller's context (CVG-AUD19-006/AUD-2026-001).
+    const resolution = store.resolveAgentResource({ resourceId: id(input.resourceId ?? resourceId), encounterId: id(input.encounterId ?? resourceId), patientId: input.patientId ? id(input.patientId) : null });
+    if (resolution.status === "DIVERGENT") throw new AgentToolIdentityDivergenceError("cvg.clinical.draft");
+    if (resolution.status !== "RESOLVED" || resolution.resource.kind !== "ENCOUNTER") throw new AgentToolScopeError("cvg.clinical.draft");
     const encounter = store.encounters.get(id(resourceId));
-    if (!encounter || encounter.organizationId !== context.organizationId) throw new AgentToolScopeError("cvg.clinical.draft");
+    if (!encounter || encounter.id !== resolution.resource.resourceId || !isInContext(encounter, context)) throw new AgentToolScopeError("cvg.clinical.draft");
     return complete({ resource: "encounter", id: encounter.id, patientId: encounter.patientId, status: encounter.status });
   };
 

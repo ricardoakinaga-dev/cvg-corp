@@ -1,6 +1,8 @@
-# syntax=docker/dockerfile:1
+# syntax=docker/dockerfile:1.10@sha256:865e5dd094beca432e8c0a1d5e1c465db5f998dca4e439981029b3b81fb39ed5
 
-FROM node:24.20.0-bookworm-slim AS dependencies
+# The manifest-list digest was observed from the registry on 2026-09-23. It
+# pins the Node 24.21.0 build toolchain input without claiming a signature.
+FROM node:24.21.0-trixie-slim@sha256:8ec5d7557396cfe32d21c3f9c13072355ceab22b584578ca4bb28af31120cffe AS build
 
 WORKDIR /app
 
@@ -12,37 +14,37 @@ COPY db ./db
 COPY scripts ./scripts
 COPY docker ./docker
 
-RUN npm ci --include=dev --ignore-scripts
-
-FROM dependencies AS verified
-
+RUN npm ci --include=dev --ignore-scripts --no-audit --fund=false
 RUN npm run typecheck
+RUN npm run build:runtime
+RUN node --check docker/runtime-entrypoint.mjs
 
-# The repository currently ships TypeScript source without an emit step. Keep
-# the checked source and tsx loader together until a dedicated production
-# compiler/bundle is introduced by the application owners.
-FROM verified AS runtime
+# The final image contains only the Node runtime, compiled bundles, and
+# migration SQL required by the migrate command. npm, tsx, TypeScript source,
+# tests, and build dependencies never cross this stage boundary.
+FROM gcr.io/distroless/nodejs24-debian13:nonroot@sha256:bb6b03d81066993293a10feda7250e8e1cc034035fe9b61cfceededa7c8bf04d AS runtime
 
 ARG CVG_SOURCE_REVISION=unbound
-LABEL org.opencontainers.image.revision=$CVG_SOURCE_REVISION
+LABEL org.opencontainers.image.revision=$CVG_SOURCE_REVISION \
+      org.opencontainers.image.base.name="gcr.io/distroless/nodejs24-debian13:nonroot" \
+      org.opencontainers.image.base.digest="sha256:bb6b03d81066993293a10feda7250e8e1cc034035fe9b61cfceededa7c8bf04d"
 
-# The API runs the checked TypeScript source through the production dependency
-# `tsx`; prune every build/test-only package before the runtime image is used.
-RUN apt-get update \
-  && apt-get install --only-upgrade --no-install-recommends -y libpcre2-8-0 \
-  && rm -rf /var/lib/apt/lists/* \
-  && npm prune --omit=dev --ignore-scripts \
-  && rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
+WORKDIR /app/runtime
+
+COPY --from=build --chown=65532:65532 /app/dist/runtime/ /app/runtime/
+COPY --from=build --chown=65532:65532 /app/docker/runtime-entrypoint.mjs /app/runtime/entrypoint.mjs
+COPY --from=build --chown=65532:65532 /app/docker/init-backup-volume.mjs /app/runtime/init-backup-volume.mjs
 
 ENV NODE_ENV=production \
     NPM_CONFIG_FUND=false \
     NPM_CONFIG_UPDATE_NOTIFIER=false
 
-USER node
+USER 65532:65532
 
 EXPOSE 4310
 
 HEALTHCHECK --interval=10s --timeout=4s --start-period=30s --retries=6 \
-  CMD node --input-type=module -e "fetch('http://127.0.0.1:4310/api/v1/ready').then(async (response) => { const body = await response.json(); if (!response.ok || body?.data?.ready !== true) process.exit(1); }).catch(() => process.exit(1))"
+  CMD ["/nodejs/bin/node", "--input-type=module", "-e", "fetch('http://127.0.0.1:4310/api/v1/ready').then(async (response) => { const body = await response.json(); if (!response.ok || body?.data?.ready !== true) process.exit(1); }).catch(() => process.exit(1))"]
 
-ENTRYPOINT ["node", "--import", "tsx", "apps/api/src/server.ts"]
+ENTRYPOINT ["/nodejs/bin/node", "/app/runtime/entrypoint.mjs"]
+CMD ["api"]

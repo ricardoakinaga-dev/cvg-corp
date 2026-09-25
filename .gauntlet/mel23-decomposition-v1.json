@@ -1,0 +1,87 @@
+{
+  "schema_version": 1,
+  "run_id": "CVG-MEL23-20260923-CONTINUATION",
+  "bar": {
+    "version": "mel23-v1",
+    "path": ".gauntlet/bar-mel23-20260923-v1.json",
+    "sha256": "12bb9d4c0dee2c1042d580675abf5d6625be38819e315fb809cc367957eee723"
+  },
+  "baseline": {
+    "head": "c990914148a8f375082cd12bbdb2ad20cfe1900f",
+    "observed_subject_fingerprint": "sha256:a78a4ecd6f6c4c68e02c136ae7765db08a69d14f2d27a0a532de19ae11b5d3ae",
+    "worktree": "dirty; preserve all pre-existing changes",
+    "m0": {
+      "npm_test": "684 tests; 683 pass; 0 fail; 1 skip; exit 0",
+      "verify_control_plane": "PASS; 334 items; active AUD27-001:SEMANTIC-RECONCILIATION",
+      "verify_aud27_semantics": "PASS; 39 findings; 36 AUD26 tasks; 5/5 known-bads rejected",
+      "verify_mel23_evidence": "BLOCKED; 50 mapped; 16 qualified; 34 blocked/partial; 0 global issues"
+    }
+  },
+  "mode": "scout-assisted; lead owns integration and all writes",
+  "authorization": "local-write for lead; scouts read-only; synthetic disposable resources only; no production/shared data, real credentials, push, merge, tag, release, or deploy",
+  "workstreams": [
+    {
+      "id": "SCOUT-MIGRATION-R1",
+      "agent": "/root/mel23_migration_map_r1",
+      "role": "read-only scout",
+      "criteria": ["MEL23-008", "MEL23-009", "MEL23-010", "MEL23-011", "MEL23-012", "MEL23-023", "MEL23-024", "MEL23-031", "MEL23-049"],
+      "aud27": ["AUD27-011", "AUD27-012", "AUD27-013", "AUD27-014", "AUD27-020"],
+      "ownership": "read-only inspection of persistence, migrations, migration harness/verifiers/tests, relevant ADRs; no mutable resources",
+      "depends_on": ["M0 baseline PASS", "frozen MEL23 bar v1"],
+      "status": "FINISHED_READ_ONLY"
+    },
+    {
+      "id": "SCOUT-API-R1",
+      "agent": "/root/mel23_api_success_audit_r1",
+      "role": "read-only scout",
+      "criteria": ["MEL23-021", "MEL23-022", "MEL23-047"],
+      "aud27": ["AUD27-007", "AUD27-008", "AUD27-009", "AUD27-010"],
+      "ownership": "read-only inspection of API route catalog, response middleware/schemas, tests and contract examples; no mutable resources",
+      "depends_on": ["M0 baseline PASS", "frozen MEL23 bar v1"],
+      "status": "PRELIMINARY_REPORT_RECEIVED_READ_ONLY"
+    },
+    {
+      "id": "SCOUT-UI-R1",
+      "agent": "/root/mel23_visual_a11y_audit_r1",
+      "role": "read-only scout",
+      "criteria": ["MEL23-027", "MEL23-028", "MEL23-029", "MEL23-030"],
+      "aud27": ["AUD27-004", "AUD27-019"],
+      "ownership": "read-only inspection of Playwright/CI config, UI routes/features/tokens, accessibility tests and existing render artifacts; no service/browser run or mutation",
+      "depends_on": ["M0 baseline PASS", "frozen MEL23 bar v1"],
+      "status": "FINISHED_READ_ONLY"
+    }
+  ],
+  "integration_contract": "Scouts provide evidence and gaps only. Lead chooses one bounded local slice, owns all writes, runs the real boundary and regression, obtains a new read-only critic with fork_turns=none, and records current evidence. No subagent may change .agent or .gauntlet state.",
+  "scout_findings": {
+    "migration": {
+      "result": "READ_ONLY_GAP_CONFIRMED",
+      "coverage": "32 collections = 8 command-authoritative + 24 SNAPSHOT_PRIMARY; all 24 remain FRAMEWORK_READY",
+      "scope": "The changed-row projector is wired to API commits, but full snapshots remain canonical and the generic projector still runs. Current synthetic PostgreSQL evidence covers one changed row per collection, sequential replay, and transaction rollback; it does not cover full backfill parity, command-level concurrent replay, cutover rollback, or post-cutover restore.",
+      "external_or_human_boundary": "Named data authority and representative golden dataset are UNKNOWN. No cutover is authorized or claimed; keep 0/32 cutovers proven.",
+      "proposed_local_first_slice": "products, organization scope, only after the active M0/candidate prerequisites; retain snapshot compatibility."
+    },
+    "api": {
+      "result": "PRELIMINARY_READ_ONLY_GAP_CONFIRMED",
+      "coverage": "105 unique catalog routes; existing positive-response evidence was found for 100/105 test-source routes (including 2 only in a standalone verifier, not run in npm test).",
+      "missing_positive_routes": [
+        "POST /auth/sessions/:id/revoke",
+        "POST /appointments/:id/confirm",
+        "POST /appointments/:id/reschedule",
+        "POST /queue/:id/triage",
+        "POST /queue/:id/handoff"
+      ],
+      "scope": "The catalog test sends invalid or unauthenticated requests through all 105 routes and checks versioned envelopes; that does not prove each route's successful payload. The successful-response helper checks the nominal descriptor but does not directly assert each returned payload against its executable schema."
+    },
+    "visual_accessibility": {
+      "result": "READ_ONLY_GAP_CONFIRMED",
+      "scope": "Current candidate has no completed full browser/accessibility matrix or current rendered-review packet. Configured 12-project matrix is not evidence of a completed run; missing host WebKit dependencies, explicit skips, rendered contrast/reflow, assistive-technology and human approval remain open.",
+      "human_boundary": "Screen-reader/assistive-technology review and acceptance require a human observer."
+    },
+    "mutation_sentinel": {
+      "result": "PASS",
+      "captured_sha256": "f075470f76411151dda3d65b03a09d4c632b44c6c8837216ed95d089949e63ee",
+      "observed_sha256": "f075470f76411151dda3d65b03a09d4c632b44c6c8837216ed95d089949e63ee"
+    }
+  },
+  "next_action": "Implement one isolated synthetic API response-fixture slice for the five uncovered successful routes and explicit payload-schema assertions, then run its focused integration test and full local regression; keep M0 candidate freeze, 24 data cutovers, browser/AT evidence, and external/human gates visibly open."
+}

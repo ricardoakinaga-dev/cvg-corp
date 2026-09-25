@@ -642,7 +642,7 @@ export class AgentKernel {
 
         if (outcome.reply.kind === "MESSAGE") {
           state = "VERIFYING";
-          const verification = await this.verify(input.objective, outcome.reply.content, turns, completedObjectives, pendingObjectives);
+          const verification = await this.verify(input.objective, outcome.reply.content, turns, pendingObjectives);
           answer = outcome.reply.content;
           turns.push({ turn, state: "COMPLETED", status: "COMPLETED", modelRequestDigest, modelResponseDigest: outcome.responseDigest, providerId: outcome.providerId, model: outcome.model, usage: outcome.usage, toolName: null, toolStatus: null, toolResultDigest: null, approvalId: null, retryable: false, reconciliationRequired: false, startedAt: turnStartedAt, completedAt: this.nowIso() });
           this.emit("agent.turn.completed/v1", input, turn, { status: "COMPLETED", verified: verification.satisfied });
@@ -818,7 +818,6 @@ export class AgentKernel {
     objective: string,
     answer: string,
     turns: readonly KernelTurnRecord[],
-    completed: ReadonlySet<string>,
     pending: ReadonlySet<string>
   ): Promise<KernelVerification> {
     if (pending.size > 0) return { satisfied: false, reason: "PENDING_OBJECTIVES", missing: [...pending] };
@@ -851,7 +850,7 @@ export class AgentKernel {
     return { tool, input: toolInput, requestDigest: outcome.approval.requestDigest, approvalId: outcome.approval.approvalId, expiresAt: outcome.approval.expiresAt };
   }
 
-  private recordFailure(turn: number, startedAt: string, code: string, message: string): KernelTurnRecord {
+  private recordFailure(turn: number, startedAt: string, code: string, _message: string): KernelTurnRecord {
     return { turn, state: "FAILED", status: "FAILED", modelRequestDigest: kernelDigest({ code }), modelResponseDigest: null, providerId: null, model: null, usage: null, toolName: null, toolStatus: null, toolResultDigest: null, approvalId: null, retryable: false, reconciliationRequired: false, startedAt, completedAt: this.nowIso() };
   }
 

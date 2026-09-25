@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-09-22T03:15:44.229Z",
+  "sourceSha": "c990914148a8f375082cd12bbdb2ad20cfe1900f",
+  "candidateFingerprint": "sha256:084a6b1079bf317dd975f10bdbebbc9d87b4b61a6b203b7e7bc14bda4e8d925e",
+  "worktree": "MODIFIED",
+  "program": "CVG-AUD26",
+  "artifacts": [
+    {
+      "path": "artifacts/aud26/control-plane.json",
+      "digest": "sha256:4bbf9f00924ac4f3fffc97c0857f351e7c74605526a77927ff705134d5506362",
+      "modifiedAt": "2026-09-22T03:15:37.508Z",
+      "observedAt": "2026-09-22T00:13:13-03:00",
+      "status": "BLOCKED_EXTERNAL"
+    },
+    {
+      "path": "artifacts/aud26/local-gates.json",
+      "digest": "sha256:98a85091cfb8ec5b50a70ad07a9c536d7de8a4af367f707faddc0c805fc13928",
+      "modifiedAt": "2026-09-22T03:15:37.509Z",
+      "observedAt": "2026-09-22T00:13:13-03:00",
+      "status": "PASS_WITH_LIMITATIONS"
+    },
+    {
+      "path": "artifacts/aud26/visual-qa.json",
+      "digest": "sha256:77468a7a50d541f4d70a207143aa77a8b24ffb8b72f2753045437c333074b83f",
+      "modifiedAt": "2026-09-22T03:15:37.509Z",
+      "observedAt": "2026-09-22T00:13:13-03:00",
+      "status": "BLOCKED_EXTERNAL"
+    },
+    {
+      "path": "artifacts/aud26/external-gates.json",
+      "digest": "sha256:d55a62c6052745aecd2d0156ffc2f594f1a30051626d5225738c20b11807c9fe",
+      "modifiedAt": "2026-09-22T03:15:37.509Z",
+      "observedAt": "2026-09-22T00:13:13-03:00",
+      "status": "BLOCKED_EXTERNAL"
+    }
+  ]
+}

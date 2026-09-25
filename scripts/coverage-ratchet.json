@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "kind": "CVG-AUD27-COVERAGE-RATCHET",
+  "baselineSourceSha": "c990914148a8f375082cd12bbdb2ad20cfe1900f",
+  "baselineCapturedAt": "2026-09-22T12:22:00-03:00",
+  "fingerprintStatus": "OBSERVED_ONLY_UNFROZEN_UNTIL_AUD27-004",
+  "global": {
+    "line": 88.40,
+    "branch": 75.60,
+    "functions": 86.20,
+    "statements": 88.40
+  },
+  "criticalAreas": {
+    "security": { "line": 93.98, "branch": 71.43, "functions": 90.32, "statements": 93.98 },
+    "contracts": { "line": 92.70, "branch": 63.54, "functions": 79.03, "statements": 92.70 },
+    "persistence": { "line": 84.20, "branch": 66.20, "functions": 84.70, "statements": 84.20 },
+    "domain": { "line": 95.10, "branch": 78.00, "functions": 93.10, "statements": 95.10 }
+  }
+}

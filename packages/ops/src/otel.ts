@@ -81,7 +81,9 @@ export class OpenTelemetryTelemetryExporter implements TelemetryExporter {
     }
     this.openSpans.delete(span.spanId);
     created.setAttribute("http.response.status_code", span.statusCode);
-    created.setStatus({ code: span.statusCode >= 500 ? SpanStatusCode.ERROR : SpanStatusCode.UNSET });
+    created.setAttribute("cvg.span.end_reason", span.endReason);
+    created.setAttribute("cvg.span.status", span.status);
+    created.setStatus({ code: span.status === "OK" ? SpanStatusCode.UNSET : SpanStatusCode.ERROR });
     created.end(new Date(span.finishedAt));
   }
 
@@ -91,7 +93,9 @@ export class OpenTelemetryTelemetryExporter implements TelemetryExporter {
       attributes: safeAttributes(span.attributes)
     });
     created.setAttribute("http.response.status_code", span.statusCode);
-    created.setStatus({ code: span.statusCode >= 500 ? SpanStatusCode.ERROR : SpanStatusCode.UNSET });
+    created.setAttribute("cvg.span.end_reason", span.endReason);
+    created.setAttribute("cvg.span.status", span.status);
+    created.setStatus({ code: span.status === "OK" ? SpanStatusCode.UNSET : SpanStatusCode.ERROR });
     created.end(new Date(span.finishedAt));
   }
 }

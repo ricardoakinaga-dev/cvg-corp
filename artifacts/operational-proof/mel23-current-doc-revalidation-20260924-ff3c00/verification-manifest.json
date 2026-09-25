@@ -1,0 +1,129 @@
+{
+  "schema_version": 1,
+  "captured_at": "2026-09-24T09:28:05.179Z",
+  "source_sha": "c990914148a8f375082cd12bbdb2ad20cfe1900f",
+  "observed_subject_fingerprint": "sha256:ff3c001b92c0b834e06e407f91943037e91940442abe37c57a988e90e8520eab",
+  "candidate_fingerprint": null,
+  "fingerprint_status": "UNFROZEN_UNTIL_AUD27-004",
+  "frozen_candidate_claimed": false,
+  "document_snapshots": [
+    {
+      "path": "docs/README.md",
+      "sha256": "628137a48badb3e1611087b95d6eb44a014a0604409547c34b3dd723ebdb566a"
+    },
+    {
+      "path": "docs/12-estado-da-implementacao.md",
+      "sha256": "b83364b1f9c14efbcc16e6910c9fc70e8b4d07d6363471f535ede0a594d80e44"
+    },
+    {
+      "path": "docs/production-readiness-vNext.md",
+      "sha256": "20e28645fe890a401ac4392094d85dab0f7d34b4db634db0d78c830bd34e5dbc"
+    }
+  ],
+  "command_results": [
+    {
+      "command": "npm test",
+      "exit_status": 0,
+      "expected_exit_status": 0,
+      "observed": "724 tests; 723 pass; 0 fail; 1 skipped.",
+      "evidence_artifact": "npm-test.log",
+      "evidence_sha256": "80830b425eee8fcba9a930a04b021dbf9cfc8219353c5b13a06c4eb0f58daad7"
+    },
+    {
+      "command": "npm run typecheck",
+      "exit_status": 0,
+      "expected_exit_status": 0,
+      "observed": "TypeScript no-emit check passed.",
+      "evidence_artifact": "typecheck.log",
+      "evidence_sha256": "19c71cde12d596f5abd6f07b9713c068230e6bd3a8086d6bdf9ba3a34d1a9409"
+    },
+    {
+      "command": "npm run verify:static",
+      "exit_status": 0,
+      "expected_exit_status": 0,
+      "observed": "250 required artifacts; 294 source files.",
+      "evidence_artifact": "verify-static.log",
+      "evidence_sha256": "ce85a4c7d2d9cdeef63d8f6396e3d86082e3e27c7e7be42f3db2f6375f317e6c"
+    },
+    {
+      "command": "npm run verify:docs-integrity",
+      "exit_status": 0,
+      "expected_exit_status": 0,
+      "observed": "256 files; 0 findings.",
+      "evidence_artifact": "docs-integrity.log",
+      "evidence_sha256": "f360836136be58ef1c6d062f6ddc113fdf47560c596ce4ecb98f848712771185"
+    },
+    {
+      "command": "node --import tsx --test tests/integration/api-response-routes.test.ts",
+      "exit_status": 0,
+      "expected_exit_status": 0,
+      "observed": "2/2 tests; 105 route-envelope probes; authenticated GET schemas 41/45; explicit success fixtures 43/105; synthetic-ID GET routes 4/4 success fixtures.",
+      "evidence_artifact": "api-response-routes.log",
+      "evidence_sha256": "f7cff88c8136421cd8ecc252c0aca000b3002503711d453abe3f02d8a70773aa"
+    },
+    {
+      "command": "node --import tsx --test tests/unit/api-response-contract.test.ts",
+      "exit_status": 0,
+      "expected_exit_status": 0,
+      "observed": "6/6 tests; current API request/response examples bind to routes, status codes and schemas.",
+      "evidence_artifact": "api-examples-contract.log",
+      "evidence_sha256": "49959aecb6e3b0180a8a27b787c678fdbd310851c37e041ed606e6dee4f06b1c"
+    },
+    {
+      "command": "node --import tsx --test tests/unit/api-response-contract-auth-ops.test.ts tests/unit/api-response-contract-clinical.test.ts tests/unit/api-response-contract-remaining.test.ts",
+      "exit_status": 0,
+      "expected_exit_status": 0,
+      "observed": "15/15 targeted tests across auth/operations, clinical and remaining response families.",
+      "evidence_artifact": "api-response-family-contracts.log",
+      "evidence_sha256": "44340070664da1bd5e9ae16d4450e63d59c1c7e86a6a759371d7b8a45c07b350"
+    },
+    {
+      "command": "node --import tsx --test tests/unit/control-plane-aud23.test.ts",
+      "exit_status": 0,
+      "expected_exit_status": 0,
+      "observed": "3/3 tests; semantic known-bads rejected, including missing_transition.",
+      "evidence_artifact": "semantic-known-bads.log",
+      "evidence_sha256": "d3df70448f61ff0e75d6a79f847a02a1d47ca6ff6e9d0c1bf30ae24360f66b30"
+    },
+    {
+      "command": "node --import tsx --test tests/unit/control-plane.test.ts tests/unit/control-plane-aud23.test.ts tests/unit/docs-integrity.test.ts tests/unit/mel23-evidence.test.ts tests/unit/mutation-verifier.test.ts",
+      "exit_status": 0,
+      "expected_exit_status": 0,
+      "observed": "33/33 focused tests pass.",
+      "evidence_artifact": "documentation-focused-tests.log",
+      "evidence_sha256": "46148cd9f097459733817276bb9ddf6e938cb1e7d6bc70db982a7493389bb8b7"
+    },
+    {
+      "command": "npm run verify:aud27-semantics",
+      "exit_status": 0,
+      "expected_exit_status": 0,
+      "observed": "39 findings; canonical known-bads rejected 5/5.",
+      "evidence_artifact": "verify-aud27-semantics.log",
+      "evidence_sha256": "79be9e002a09d40436d3dd788902b324d3f9bbf42e3193a195e9cd72fe85d628"
+    },
+    {
+      "command": "npm run audit:licenses",
+      "exit_status": 0,
+      "expected_exit_status": 0,
+      "observed": "183 third-party SPDX package records pass the allowlist; historical/legal gaps remain.",
+      "evidence_artifact": "license-audit.log",
+      "evidence_sha256": "ddeffc1193c3129acad00ec58f0768e5c03426ddf3d62063ab5c61aa1992758e"
+    },
+    {
+      "command": "git diff --check",
+      "exit_status": 0,
+      "expected_exit_status": 0,
+      "observed": "No whitespace findings.",
+      "evidence_artifact": "diff-check.log",
+      "evidence_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "command": "npm run verify:mel23-evidence (before current-subject receipt append)",
+      "exit_status": 1,
+      "expected_exit_status": 1,
+      "observed": "Expected exit 1; 50 mapped; 0 qualified; 50 blocked by stale fingerprints; 0 global issues.",
+      "evidence_artifact": "matrix-before-receipts.log",
+      "evidence_sha256": "84475f87fa3523101d604257166ecbb1f0d90f42c6e1fa62ac9ae2f3f2a855bb"
+    }
+  ]
+}

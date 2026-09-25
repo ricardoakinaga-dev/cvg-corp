@@ -22,7 +22,7 @@ jobs:
     timeout-minutes: 60
     services:
       postgres:
-        image: postgres:18.0-bookworm
+        image: postgres:18.0-bookworm@sha256:3f55f8895c4ed50603e2fbdfc72fffeeaba3173321fee5cb825bbbeb30d9d854
         env:
           POSTGRES_DB: cvg_ci
           POSTGRES_USER: cvg_migration
@@ -37,6 +37,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
 
       - name: Setup Node
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
@@ -44,8 +46,17 @@ jobs:
           node-version: 24.20.0
           cache: npm
 
+      - name: Verify pinned Node and npm toolchain
+        run: |
+          test "$(node --version)" = "v24.20.0"
+          test "$(npm --version)" = "11.19.0"
+          test "$(node -p 'JSON.parse(require("node:fs").readFileSync("package.json", "utf8")).packageManager')" = "npm@11.19.0"
+
       - name: Install dependencies
-        run: npm ci --ignore-scripts
+        run: npm ci --ignore-scripts --no-audit --fund=false
+
+      - name: Dedicated secret scan
+        run: npm run verify:secrets
 
       - name: Install Chromium for E2E
         run: npx playwright install --with-deps chromium firefox webkit
@@ -71,6 +82,12 @@ jobs:
       - name: Unit and integration tests
         run: npm test
 
+      - name: Coverage thresholds
+        run: npm run verify:coverage
+
+      - name: Capture AUD26 current evidence envelope
+        run: npm run verify:aud26-evidence -- --capture
+
       - name: Provider contract loopback boundary
         run: npm run verify:provider-sandbox
 
@@ -82,6 +99,9 @@ jobs:
 
       - name: Build web artifact
         run: npm run build
+
+      - name: Build compiled server runtime
+        run: npm run build:runtime
 
       - name: Capture evidence snapshot
         run: npm run verify:evidence-snapshot
@@ -100,6 +120,9 @@ jobs:
 
       - name: Application PDP coverage
         run: npm run verify:pdp
+
+      - name: Documentation links and ADR identities
+        run: npm run verify:docs-integrity
 
       - name: Universal PDP admission
         run: npm run verify:pdp-universal
@@ -223,7 +246,7 @@ jobs:
           if-no-files-found: error
 
       - name: Check diff whitespace
-        run: git diff --check
+        run: npm run verify:diff
 
   container-build:
     name: Build API and web images
@@ -241,7 +264,7 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci --ignore-scripts
+        run: npm ci --ignore-scripts --no-audit --fund=false
 
       - name: Setup Buildx with OCI-capable builder
         uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
@@ -250,10 +273,10 @@ jobs:
         run: |
           docker buildx version
           mkdir -p artifacts
-          docker buildx build --provenance=false --sbom=false --build-arg CVG_SOURCE_REVISION=${{ github.sha }} --file Dockerfile.api --output=type=oci,dest=artifacts/cvg-api-${{ github.sha }}.oci.tar .
+          docker buildx build --attest=type=provenance,mode=max --attest=type=sbom --metadata-file=artifacts/cvg-api-build-metadata.json --build-arg CVG_SOURCE_REVISION=${{ github.sha }} --file Dockerfile.api --output=type=oci,dest=artifacts/cvg-api-${{ github.sha }}.oci.tar .
 
       - name: Create OCI web artifact
-        run: docker buildx build --provenance=false --sbom=false --build-arg CVG_SOURCE_REVISION=${{ github.sha }} --file Dockerfile.web --output=type=oci,dest=artifacts/cvg-web-${{ github.sha }}.oci.tar .
+        run: docker buildx build --attest=type=provenance,mode=max --attest=type=sbom --metadata-file=artifacts/cvg-web-build-metadata.json --build-arg CVG_SOURCE_REVISION=${{ github.sha }} --file Dockerfile.web --output=type=oci,dest=artifacts/cvg-web-${{ github.sha }}.oci.tar .
 
       - name: Extract OCI layouts for vulnerability scanning
         run: |
@@ -292,7 +315,8 @@ jobs:
             export CVG_DEEPSEEK_EXPECTED_ENGINE_COMMIT="$PINNED_ENGINE_COMMIT"
             echo "::warning title=release provenance::CVG_DEEPSEEK_EXPECTED_ENGINE_COMMIT repo variable is unset; using pinned engine commit from packages/harness/src/index.ts"
           fi
-          node -e 'const fs=require("node:fs"); const value={schemaVersion:1,sourceSha:process.env.GITHUB_SHA,workflow:process.env.GITHUB_WORKFLOW,runId:process.env.GITHUB_RUN_ID,completedStages:["checks","container-build","trivy-api","trivy-web","sbom"],observedAt:new Date().toISOString()}; fs.writeFileSync("artifacts/ci-results.json", JSON.stringify(value,null,2)+"\n", {mode:0o600})'
+          node -e 'const fs=require("node:fs"); const value={schemaVersion:1,sourceSha:process.env.GITHUB_SHA,workflow:process.env.GITHUB_WORKFLOW,runId:process.env.GITHUB_RUN_ID,completedStages:["checks","container-build","trivy-api","trivy-web","sbom","oci-sbom","oci-provenance"],signingStatus:"BLOCKED_EXTERNAL",observedAt:new Date().toISOString()}; fs.writeFileSync("artifacts/ci-results.json", JSON.stringify(value,null,2)+"\n", {mode:0o600})'
+          echo "::notice title=release signing blocked::No signing key or external signing authority is configured; this CI run emits unsigned artifacts and does not claim a signature."
           CVG_API_IMAGE_DIGEST="$(tar -xOf artifacts/cvg-api-${{ github.sha }}.oci.tar index.json | node -e 'let value=""; process.stdin.on("data", (chunk) => value += chunk); process.stdin.on("end", () => { const index = JSON.parse(value); const digest = index.manifests?.[0]?.digest; if (typeof digest !== "string" || !/^sha256:[a-f0-9]{64}$/.test(digest)) process.exit(2); process.stdout.write(digest); });')"
           CVG_WEB_IMAGE_DIGEST="$(tar -xOf artifacts/cvg-web-${{ github.sha }}.oci.tar index.json | node -e 'let value=""; process.stdin.on("data", (chunk) => value += chunk); process.stdin.on("end", () => { const index = JSON.parse(value); const digest = index.manifests?.[0]?.digest; if (typeof digest !== "string" || !/^sha256:[a-f0-9]{64}$/.test(digest)) process.exit(2); process.stdout.write(digest); });')"
           export CVG_API_IMAGE_DIGEST CVG_WEB_IMAGE_DIGEST
@@ -322,6 +346,8 @@ jobs:
             artifacts/release-provenance.json
             artifacts/sbom.cdx.json
             artifacts/ci-results.json
+            artifacts/cvg-api-build-metadata.json
+            artifacts/cvg-web-build-metadata.json
             artifacts/cvg-api-${{ github.sha }}.oci.tar
             artifacts/cvg-web-${{ github.sha }}.oci.tar
           if-no-files-found: error

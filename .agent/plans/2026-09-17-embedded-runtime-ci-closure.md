@@ -59,7 +59,24 @@ Em voo (único item aberto do CI):
   linha para 15 s e diagnóstico de anexos E2E ampliado para 6 000 caracteres
   (recibo, contagem de janelas e primeiras linhas da página).
 
-## Next Actions (ordem exata)
+## Retomada executada em 2026-09-17 (09:09 UTC)
+
+- Publicados `b4cf96a` (contrato temporal e regressões), `bc25ef6` (fixture PostgreSQL persistida) e `1a15a56` (isolamento de retries).
+- Causa reproduzida: 21h de São Paulo pertence ao dia UTC seguinte; a API consultava o dia do servidor. Agora o navegador envia limites ISO explícitos, validados e aplicados em memória/PostgreSQL, mantendo clientes legados.
+- Crítica I1 identificou DST sem meia-noite; reproduzido e corrigido construindo cada limite independentemente. Testes incluem pertencimento real, DST, virada de dia e respostas tardias. Crítica posterior identificou colisão entre casos/retries, corrigida em `1a15a56`.
+- `bc25ef6`: `verify:state-of-art` 30/30; matriz completa UTC sem retries: 449 PASS, 37 skips condicionais. PostgreSQL 16.15 local: integração/RLS/fence/append-only, concorrência e restore PASS; servidor parado.
+- `1a15a56`: duas jornadas WebKit mobile com `--retries=1`, lint, typecheck e whitespace PASS. Nenhum retry ocorreu; execução real de retry 1 não foi provada. A suíte agregada anterior continua vinculada a `bc25ef6`, não ao novo SHA.
+- CI `35200743512` em `bc25ef6`: Browser E2E e três gates PostgreSQL PASS, passo 37 em execução na última observação. CI do novo SHA ainda precisa ser acompanhado.
+- Aprovação final independente não obtida. Última crítica teve contaminação de contexto declarada e não conta como aceitação selada. Provas externas e aprovação humana seguem ausentes: `AAA_NOT_PROVEN`.
+- Usuário autorizou explicitamente commit/push, não deploy nem providers reais.
+
+## Concrete Steps
+
+1. `CI-CLOSURE-01:BROWSER-E2E-AGENDA`: observar conclusão completa do CI em `1a15a5656e63646ec82c249954f0e02537ad9402`; não confundir sucesso dos passos 30–36 do SHA anterior com workflow concluído.
+2. Revalidar agregado no candidato final, obter crítica final válida e reconciliar evidências. Não ampliar artificialmente os critérios nem repetir suites sem mudança discriminante.
+3. Só então fechar CI local; manter AAA bloqueado por requisitos externos.
+
+## Next Actions originais (histórico, substituído pela retomada acima)
 
 1. Publicar o checkpoint (este commit) e observar a nova run.
 2. Ler o diagnóstico da run: anotações do job via API pública (sem `gh`/logs):

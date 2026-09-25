@@ -12,6 +12,13 @@ import { Shell } from "./Shell";
 
 const ROUTABLE_VIEWS = ["overview", "agenda", "patients", "clinical", "exams", "hospital", "communications", "knowledge", "reports", "stock", "finance", "copilot", "admin"] as const satisfies readonly View[];
 
+function throwControlledRootError(): void {
+  if (typeof window === "undefined") return;
+  const testWindow = window as Window & { __CVG_TEST_ROOT_ERROR__?: boolean };
+  if (!testWindow.__CVG_TEST_ROOT_ERROR__) return;
+  throw new Error("Controlled root boundary test");
+}
+
 function viewFromLocation(): View {
   if (typeof window === "undefined") return "overview";
   const candidate = window.location.pathname.replace(/^\/+|\/+$/g, "");
@@ -24,6 +31,7 @@ function queryFromLocation(): string {
 }
 
 export function App() {
+  throwControlledRootError();
   const runtime = useRuntimeState();
   const runtimeStateRef = useRef(runtime.state);
   runtimeStateRef.current = runtime.state;

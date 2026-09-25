@@ -209,7 +209,12 @@ export async function runProviderSandboxVerification(): Promise<ProviderSandboxR
     const providerOptions = {
       endpoint: sandbox.endpoint,
       allowedHosts: ["localhost"],
+      allowedPorts: [new URL(sandbox.endpoint).port ? Number(new URL(sandbox.endpoint).port) : 80],
       allowInsecureEndpoint: true,
+      // This verifier intentionally exercises the real loopback HTTP boundary.
+      // The injected transport is a test-only seam; egress address rejection
+      // remains covered independently by the provider/egress contract tests.
+      fetch: async (input: string, init?: RequestInit) => globalThis.fetch(input, init),
       credentialRef: "sandbox.token",
       secretResolver: async (reference: string) => reference === "sandbox.token" ? FIXTURE_SECRET : null,
       defaultTimeoutMs: 500

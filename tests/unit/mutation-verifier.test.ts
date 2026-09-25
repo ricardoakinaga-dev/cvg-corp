@@ -27,7 +27,7 @@ test("mutation score excludes invalid mutants but exposes them", () => {
 
 test("MEL23-026 mutation plan covers authorization, finance, clinical, and persistence seams", () => {
   const lanes = new Set(MUTATION_PLAN.map((entry) => entry.lane).filter((lane): lane is string => Boolean(lane)));
-  for (const lane of ["auth", "pdp", "finance", "clinical", "migration"]) assert.ok(lanes.has(lane), `missing mutation lane ${lane}`);
+  for (const lane of ["auth", "pdp", "finance", "clinical", "migration", "agenda", "audit", "idempotency", "persistence"]) assert.ok(lanes.has(lane), `missing mutation lane ${lane}`);
   assert.ok(MUTATION_PLAN.some((entry) => entry.id === "MEL23-026-FINANCE-001" && entry.tests?.includes("tests/unit/finance-balance.test.ts")));
   assert.ok(MUTATION_PLAN.some((entry) => entry.id === "MEL23-026-CLINICAL-001" && entry.tests?.includes("tests/unit/domain.test.ts")));
   assert.equal(MUTATION_POLICY.minimumPlanSize, MUTATION_PLAN.length);

@@ -364,20 +364,30 @@ export function runMutationVerification(): void {
         && score.survived <= MUTATION_POLICY.maximumSurvived
         && score.invalid <= MUTATION_POLICY.maximumInvalid
     };
+    const controlPlanePath = join(root, ".agent/state.json");
+    let fingerprintStatus = "UNBOUND";
+    if (existsSync(controlPlanePath)) {
+      try {
+        const controlPlane = JSON.parse(readFileSync(controlPlanePath, "utf8")) as { fingerprint_status?: unknown };
+        if (typeof controlPlane.fingerprint_status === "string" && controlPlane.fingerprint_status.trim()) fingerprintStatus = controlPlane.fingerprint_status;
+      } catch {
+        fingerprintStatus = "UNBOUND";
+      }
+    }
     const artifact = {
       schemaVersion: 1,
       kind: "AUD27-018-REAL-MUTATION-LOCAL",
       sourceSha: subject.manifest.sourceSha,
       observedSubjectFingerprint: subject.fingerprint,
-      fingerprintStatus: "UNFROZEN_UNTIL_AUD27-004",
+      fingerprintStatus,
       testFiles: [...new Set(MUTATION_PLAN.flatMap((mutation) => testFiles(root, mutation)))],
       plan: MUTATION_PLAN.map((mutation) => ({ id: mutation.id, file: mutation.file, lane: mutation.lane ?? "api-response-contract", tests: testFiles(root, mutation), rationale: mutation.rationale })),
       results,
       score: { ...score, percentage: Number((score.score * 100).toFixed(2)) },
       policy,
       limitations: [
-        "Selective local mutation lanes cover API response contracts, auth/PDP, finance, clinical signing, and persistence migration; this is not a whole-repository mutation score.",
-        "The subject is dirty and not yet bound to an AUD27-004 candidate fingerprint.",
+        "Selective local mutation lanes cover API response contracts, auth/PDP, finance, clinical signing, agenda, audit, idempotency, and persistence migration; this is not a whole-repository mutation score.",
+        `Control-plane fingerprint status: ${fingerprintStatus}; the local mutation score is bound to the observed subject.`,
         "External staging, browser, license and human gates remain outside this local run."
       ]
     };

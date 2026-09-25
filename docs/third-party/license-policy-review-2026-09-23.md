@@ -50,3 +50,12 @@ parecer jurídico.
 
 As tarefas e recibos AUD27 permanecem na fonte append-only `.agent`; este pacote
 não altera status nem cria uma segunda tarefa ativa.
+
+## Decisões do responsável — 25/09/2026
+
+1. **Licença raiz:** proprietária, todos os direitos reservados. O titular declarado no `LICENSE` é "Ricardo Akinaga (CVG-Corp / Centro Veterinário Guarapiranga)"; a linha de titular pode ser ajustada pelo responsável sem nova análise. `package.json` declara `"license": "UNLICENSED"`.
+2. **Política de terceiros:** a allowlist existente (MIT, ISC, Apache-2.0, BSD-3-Clause, CC-BY-4.0, MPL-2.0) é a política pretendida e não foi ampliada.
+3. **Dez entradas históricas:** a resolução se dá pelo lockfile atual, que não as contém; a prova é repetida no candidato congelado pelo `audit:licenses`.
+4. **Avisos e atribuição:** qualquer distribuição autorizada deve preservar copyrights e avisos de terceiros; a geração automática de um arquivo de notices permanece como tarefa de follow-up (MEL23-013/014), sem bloquear a decisão de licença raiz.
+
+O gate `audit:licenses` passou a exigir também o campo de licença raiz no `package.json` e um `LICENSE` não vazio na raiz.

@@ -2,6 +2,7 @@
   "name": "cvg-corp",
   "version": "0.1.0",
   "private": true,
+  "license": "UNLICENSED",
   "description": "CVG-Corp — sistema operacional veterinário local-first com governança de IA.",
   "type": "module",
   "packageManager": "npm@11.19.0",

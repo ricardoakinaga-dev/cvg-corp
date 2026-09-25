@@ -221,11 +221,56 @@ export const MUTATION_PLAN: readonly MutationSpec[] = [
     rationale: "Clinical signing must require an explicitly reviewed document while rejecting draft signatures.",
     lane: "clinical",
     tests: ["tests/unit/domain.test.ts"]
+  },
+  {
+    id: "MEL23-026-APPOINTMENT-001",
+    file: "packages/domain/src/index.ts",
+    find: "if (overlaps) throw new DomainError(\"CONFLICT\", \"A janela escolhida já está ocupada.\", 409);",
+    replace: "if (!overlaps) throw new DomainError(\"CONFLICT\", \"A janela escolhida já está ocupada.\", 409);",
+    rationale: "An appointment window that overlaps a live provider or resource reservation must be rejected.",
+    lane: "agenda",
+    tests: ["tests/unit/domain.test.ts"]
+  },
+  {
+    id: "AUD27-018-AUDIT-001",
+    file: "packages/domain/src/index.ts",
+    find: "if (record.previousHash !== null && !byHash.has(record.previousHash))",
+    replace: "if (record.previousHash !== null && byHash.has(record.previousHash))",
+    rationale: "A chain record must resolve every non-null previous hash instead of rejecting valid links.",
+    lane: "audit",
+    tests: ["tests/unit/audit-chain.test.ts"]
+  },
+  {
+    id: "AUD27-018-IDEMP-001",
+    file: "apps/api/src/application/idempotency-service.ts",
+    find: "if (existing.bodyDigest !== bodyDigest)",
+    replace: "if (existing.bodyDigest === bodyDigest)",
+    rationale: "Reusing an idempotency key with a different body must conflict instead of replaying the first result.",
+    lane: "idempotency",
+    tests: ["tests/unit/idempotency-service.test.ts"]
+  },
+  {
+    id: "AUD27-018-WRITE-001",
+    file: "packages/persistence/src/aud27-domain-writes.ts",
+    find: "digest(snapshotRow) !== digest(write.record)",
+    replace: "digest(snapshotRow) === digest(write.record)",
+    rationale: "AUD27 normalized writes must be identical to the canonical snapshot row.",
+    lane: "persistence",
+    tests: ["tests/unit/aud27-domain-writes.test.ts"]
+  },
+  {
+    id: "AUD27-018-AUTH-005",
+    file: "packages/auth/src/index.ts",
+    find: "if (!Number.isFinite(expiresAt) || expiresAt <= atMs)",
+    replace: "if (!Number.isFinite(expiresAt) || expiresAt > atMs)",
+    rationale: "A WebAuthn challenge past its expiry must fail closed instead of being accepted.",
+    lane: "auth",
+    tests: ["tests/unit/auth.test.ts"]
   }
 ];
 
 export const MUTATION_POLICY = {
-  minimumPlanSize: 25,
+  minimumPlanSize: 30,
   minimumScore: 1,
   maximumSurvived: 0,
   maximumInvalid: 0

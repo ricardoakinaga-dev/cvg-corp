@@ -54,6 +54,7 @@ test("WebAuthn and break-glass boundaries fail closed before provider cryptograp
   const assertion: WebAuthnAssertionEnvelope = { challengeId: "challenge-1", credentialId: "credential-123", clientDataJson: "client-data", authenticatorData: "authenticator-data", signature: "signature-value", userHandle: null, userVerified: true };
   assert.doesNotThrow(() => validateWebAuthnAssertion(challenge, assertion, Date.parse("2026-01-01T00:00:00.000Z")));
   assert.throws(() => validateWebAuthnAssertion({ ...challenge, status: "CONSUMED" }, assertion, Date.parse("2026-01-01T00:00:00.000Z")));
+  assert.throws(() => validateWebAuthnAssertion({ ...challenge, expiresAt: "2000-01-01T00:00:00.000Z" }, assertion, Date.parse("2026-01-01T00:00:00.000Z")), /expired/);
   assert.equal(evaluateBreakGlass({ actorId: "actor-1", approverId: "actor-2", reason: "incidente", target: "patient-1", mfaMethod: "WEBAUTHN", issuedAt: "2026-01-01T00:00:00.000Z", expiresAt: "2026-01-01T00:10:00.000Z" }, Date.parse("2026-01-01T00:01:00.000Z")).status, "ALLOW");
   assert.equal(evaluateBreakGlass({ actorId: "actor-1", approverId: "actor-1", reason: "incidente", target: "patient-1", mfaMethod: "TOTP", issuedAt: "2026-01-01T00:00:00.000Z", expiresAt: "2026-01-01T00:10:00.000Z" }, Date.parse("2026-01-01T00:01:00.000Z")).status, "DENY");
 });

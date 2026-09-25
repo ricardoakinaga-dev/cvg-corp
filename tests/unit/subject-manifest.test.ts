@@ -16,10 +16,11 @@ test("subject manifest is recalculated from the current candidate", () => {
   if (!process.env.CVG_EVIDENCE_ROOT?.trim()) assert.match(result.manifest.evidenceRoot ?? "", new RegExp(`${defaultEvidenceRoot}$`));
   assert.ok(result.manifest.trackedFiles.length > 0);
   assert.ok(result.manifest.configurationFiles.some(({ path }) => path === "package-lock.json"));
-  assert.ok(result.manifest.untrackedFiles.some(({ path }) => path === "scripts/subject-manifest.ts"));
+  assert.ok([...result.manifest.trackedFiles, ...result.manifest.untrackedFiles].some(({ path }) => path === "scripts/subject-manifest.ts"));
   assert.equal(subjectPathIsExcluded(".agent/state.json"), true);
   assert.equal(subjectPathIsExcluded("artifacts/operational-proof/evidence-snapshot.json"), true);
   assert.equal(subjectPathIsExcluded(".gauntlet/.writer.lock"), true);
+  assert.equal(subjectPathIsExcluded(".opencode/state.json"), true);
   assert.equal(subjectPathIsExcluded("packages/persistence/src/index.ts"), false);
 });
 

@@ -17,6 +17,7 @@ export const SUBJECT_EXCLUDED_PREFIXES = [
   ".agent/",
   "artifacts/",
   ".gauntlet/",
+  ".opencode/",
   ".git/",
   "node_modules/",
   "dist/",

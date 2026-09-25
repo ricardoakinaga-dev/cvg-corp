@@ -106,6 +106,7 @@
     "db:migrate": "tsx scripts/db.ts migrate",
     "db:check": "tsx scripts/db.ts check",
     "bootstrap": "tsx scripts/bootstrap.ts",
+    "doctor": "tsx scripts/doctor.ts",
     "audit:licenses": "tsx scripts/verify-licenses.ts",
     "audit:tokens": "tsx scripts/audit-design-tokens.ts apps/web/src --strict",
     "audit:contrast": "tsx scripts/check-contrast.ts",

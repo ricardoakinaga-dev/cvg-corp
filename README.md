@@ -6,6 +6,17 @@ Sistema operacional veterinário local-first, reconstruído a partir da especifi
 
 A reauditoria técnica CVG-AUD27 de 2026-09-21 está em [`docs/auditoria-resultado-cvg-aud27-2026-09-21.md`](docs/auditoria-resultado-cvg-aud27-2026-09-21.md), com [roadmap](docs/roadmap-melhorias-cvg-aud27-2026-09-21.md) e [backlog](docs/backlog-melhorias-cvg-aud27-2026-09-21.md). Ela atribuiu 69/100 à entrega AUD26 e 40/100 à prontidão de produção; esses números são históricos. A revalidação local de 24/09 passou `npm test` com 735 testes (734 pass, 0 fail, 1 skip), `npm run typecheck`, `npm run lint`, `npm run build`, os verificadores estático, semântico, de schemas, do migration harness, de integridade documental e do control plane. A API preserva probes de envelope versionado nas 105 rotas e valida os 80 schemas específicos executáveis; há fixtures de sucesso com validação de payload para 103/105 rotas no runtime em memória e provas PostgreSQL descartáveis para as duas rotas restantes: callback HMAC `202/PROCESSED` e exportação AES-256-GCM `201`. O teste em memória validou 45/45 fixtures de sucesso GET e 41/45 respostas GET autenticadas com dados; as quatro rotas GET por ID sintético também têm fixture de sucesso validada e probe de erro versionado. O backfill sombra de `products` passou provas PostgreSQL sintéticas de dry-run sem DML, paridade de digest integral, replay, quarentena de divergência, rollback/retomada, recuperação de crash após SIGKILL, escopo de tenant e conflito de SKU concorrente. Um segundo fluxo descartável validou paridade/replay/rollback das 24 coleções normalizadas. Esses fluxos não fazem cutover: permanecem 24/32 coleções `SNAPSHOT_PRIMARY`. O relatório MEL23 corrente em [`artifacts/operational-proof/mel23-evidence-matrix-current.json`](artifacts/operational-proof/mel23-evidence-matrix-current.json) identifica o fingerprint observado e qualifica somente recibos atuais; o sujeito segue dirty e não congelado. A raiz externa de evidências ainda não foi reconciliada, e faltam autoridade externa e aprovação humana. O veredito continua `AAA_NOT_PROVEN` / `PROMOTION_BLOCKED`. O fingerprint AUD26 `585ac671…` identifica a fotografia anterior. A migration corrente é `049_scoped_control_plane_dml_rls`.
 
+## Pré-requisitos e dependências
+
+O projeto exige Node 24.20.x, npm 11.19.x, Git, Docker com Compose/Buildx e os navegadores Playwright (Chromium, Firefox e WebKit) com as bibliotecas de sistema. PostgreSQL é usado via Docker nos gates; k6, psql e openssl são opcionais.
+
+```bash
+npm ci
+npm run doctor
+```
+
+O `doctor` valida cada dependência, imprime a correção exata quando algo falta e falha (exit 1) em dependência obrigatória ausente. O detalhamento de versões, comandos de instalação e correções — incluindo o PATH do nvm para instalar as dependências do WebKit — está em [`docs/instalacao-e-dependencias.md`](docs/instalacao-e-dependencias.md).
+
 ## Executar a demonstração
 
 ```bash

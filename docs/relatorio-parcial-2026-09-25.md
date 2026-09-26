@@ -1,6 +1,6 @@
 # Relatório parcial — 25/09/2026
 
-**Objeto:** candidato 5, commit `b43adc80dd630d1bfa686d4059450e11e67d7812`, fingerprint de sujeito `sha256:ff4b97a865ea1556068804510aa62a7e7a8cd195a0acd9902199c8eb5ac60e1a`, 727 arquivos de sujeito, worktree limpo.  
+**Objeto:** candidatos 1–6, com o staging local e a correção do edge registrados no candidato 7. Candidato 5: commit `b43adc80dd630d1bfa686d4059450e11e67d7812`, fingerprint de sujeito `sha256:ff4b97a865ea1556068804510aa62a7e7a8cd195a0acd9902199c8eb5ac60e1a`, 727 arquivos de sujeito, worktree limpo (candidato 6: `30e66ee6`, `sha256:1ec07792…`, 728 arquivos).  
 **Veredito:** `PROMOTION_BLOCKED / AAA_NOT_PROVEN` (inalterado).  
 **Fonte canônica de status:** `.agent` (append-only); este relatório é a fotografia datada da execução.
 
@@ -58,6 +58,28 @@ Tarefas AUD27 concluídas no candidato congelado: **001, 002, 003, 004, 007, 008
 4. **Qualificação independente (você/terceiro):** executar o protocolo de crítica selada sobre o candidato congelado e registrar o parecer com digest.
 5. **Decisão de promoção (você):** com todos os gates fechados, registrar a decisão humana no fluxo append-only.
 
-## 5. Limites
+## 5. Staging local e correção do edge — 25/09/2026
 
-Nenhum resultado local substitui staging, dados reais, autoridade de segredo, provider real, tecnologia assistiva, revisão independente ou decisão humana. O candidato 5 é reproduzível, mas os candidatos 1–4 permanecem históricos e o veredito só muda com os gates acima.
+O staging local foi provisionado em containers dedicados, fora do repositório: projeto Compose `cvg-staging` com PostgreSQL 18, API, worker, web e proxy TLS self-signed (portas de loopback `18090` HTTP, `18443` HTTPS e `15440` PostgreSQL), secrets sintéticos via provider `file` e certificado local. O sujeito congelado não foi alterado pelo provisionamento.
+
+| Verificação | Resultado |
+|---|---|
+| `verify:staging` (`CVG_STAGING_URL=https://127.0.0.1:18443`) | PASS em health/readiness/TLS; exit 2 = `PROMOTION BLOCKED` (health/readiness não promovem nada) |
+| `verify:container-smoke` | `CONTAINER_EDGE_SMOKE_VERIFIED`: health 200, ready 200, headers verificados, redirect HTTP→HTTPS 308 |
+| Cenário autenticado completo | `CONTAINER_SMOKE_INCOMPLETE`: login/write/provider/DeepSeek/shutdown exigem cenário aprovado (externo) |
+
+**Achado corrigido (candidato 7):** a API já emitia os headers de segurança (`x-content-type-options`, `x-frame-options`, `referrer-policy`, `permissions-policy`, CSP) e o proxy TLS os adicionava de novo; o `fetch` combinava as duplicatas (`nosniff, nosniff`) e o próprio gate falhava. O edge agora oculta os headers do upstream com `proxy_hide_header` em `docker/nginx/proxy.tls.conf`, mantendo o proxy como fonte única.
+
+Subir/derrubar o staging local:
+
+```bash
+cd <repo>
+docker compose --env-file /home/ricardo/cvg-staging/staging.env \
+  -f docker-compose.yml -f /home/ricardo/cvg-staging/staging.override.yml \
+  -p cvg-staging up -d --no-build
+docker compose -p cvg-staging down
+```
+
+## 6. Limites
+
+Nenhum resultado local substitui staging, dados reais, autoridade de segredo, provider real, tecnologia assistiva, revisão independente ou decisão humana. Os candidatos 1–6 permanecem históricos e o veredito só muda com os gates acima.

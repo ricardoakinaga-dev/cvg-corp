@@ -24,6 +24,13 @@ LABEL org.opencontainers.image.revision=$CVG_SOURCE_REVISION \
       org.opencontainers.image.base.name="nginxinc/nginx-unprivileged:1.31.5-alpine3.24" \
       org.opencontainers.image.base.digest="sha256:2ddec616f1cb58bcac057aa388f28cb81e35137641ef4226d321714499329bd1"
 
+# CVE-2026-93990: base alpine 3.24.1 ships libexpat 2.8.4-r0; the fix is in
+# 2.8.5-r0 on the same branch. Upgrade only that package until the pinned base
+# image digest is refreshed past it.
+USER root
+RUN apk upgrade --no-cache libexpat
+USER 101
+
 COPY docker/nginx/web.conf /etc/nginx/conf.d/default.conf
 COPY --from=build --chown=101:101 /app/dist/web /usr/share/nginx/html
 

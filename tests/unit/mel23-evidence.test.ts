@@ -95,3 +95,28 @@ test("requires a real post-append control-plane pass bound to both ledger tails"
   const stale = { ...capture, last_event_id: "EVT-OLD", exit_status: 1 as const, result: "BLOCKED" as const };
   assert.ok(validateControlPlaneCapture(stale, pointerState, "VER-001", "EVT-001", subject).length > 0);
 });
+
+test("control-plane capture validation names every divergent pointer, subject and metadata field", () => {
+  const pointerState = { last_gate_record: "VER-001", last_event_id: "EVT-001" };
+  const subject = { sourceSha: "c990914148a8f375082cd12bbdb2ad20cfe1900f", fingerprint: `sha256:${"a".repeat(64)}` };
+  const capture: ControlPlaneCapture = {
+    schema_version: 1, requirement_id: "MEL23-001", command: "npm run verify:control-plane",
+    exit_status: 0, result: "PASS", executed_at: "2026-09-23T19:00:00.000Z", environment: "local synthetic workspace",
+    source_sha: subject.sourceSha, observed_subject_fingerprint: subject.fingerprint,
+    last_gate_record: "VER-001", verification_tail: "VER-001", last_event_id: "EVT-001", event_tail: "EVT-001", output: "CONTROL_PLANE_VERIFIED"
+  };
+  const scopeIssues = validateControlPlaneCapture({ ...capture, requirement_id: "MEL23-002" as ControlPlaneCapture["requirement_id"] }, pointerState, "VER-001", "EVT-001", subject);
+  assert.ok(scopeIssues.some((issue) => issue.includes("not scoped")));
+  const commandIssues = validateControlPlaneCapture({ ...capture, command: "npm test" as ControlPlaneCapture["command"] }, pointerState, "VER-001", "EVT-001", subject);
+  assert.ok(commandIssues.some((issue) => issue.includes("required control-plane gate")));
+  const gatePointerIssues = validateControlPlaneCapture({ ...capture, last_gate_record: "VER-OLD" }, pointerState, "VER-001", "EVT-001", subject);
+  assert.ok(gatePointerIssues.some((issue) => issue.includes("verification pointer")));
+  const shaIssues = validateControlPlaneCapture({ ...capture, source_sha: "0".repeat(40) }, pointerState, "VER-001", "EVT-001", subject);
+  assert.ok(shaIssues.some((issue) => issue.includes("source SHA")));
+  const fingerprintIssues = validateControlPlaneCapture({ ...capture, observed_subject_fingerprint: `sha256:${"b".repeat(64)}` }, pointerState, "VER-001", "EVT-001", subject);
+  assert.ok(fingerprintIssues.some((issue) => issue.includes("fingerprint")));
+  const timestampIssues = validateControlPlaneCapture({ ...capture, executed_at: "not-a-date" }, pointerState, "VER-001", "EVT-001", subject);
+  assert.ok(timestampIssues.some((issue) => issue.includes("timestamp")));
+  const environmentIssues = validateControlPlaneCapture({ ...capture, environment: "  " }, pointerState, "VER-001", "EVT-001", subject);
+  assert.ok(environmentIssues.some((issue) => issue.includes("environment")));
+});

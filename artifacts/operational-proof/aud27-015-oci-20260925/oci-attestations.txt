@@ -1,0 +1,22 @@
+{
+ "api": {
+  "predicateTypes": [
+   "https://spdx.dev/Document",
+   "https://slsa.dev/provenance/v1"
+  ],
+  "packageCounts": {
+   "https://spdx.dev/Document": 16
+  },
+  "sourceShas": []
+ },
+ "web": {
+  "predicateTypes": [
+   "https://spdx.dev/Document",
+   "https://slsa.dev/provenance/v1"
+  ],
+  "packageCounts": {
+   "https://spdx.dev/Document": 71
+  },
+  "sourceShas": []
+ }
+}

@@ -1,0 +1,93 @@
+{
+  "schema_version": 1,
+  "captured_at": "2026-09-26T04:51:44.652Z",
+  "source_sha": "26756a892f91b40b358836744649e794d2d396af",
+  "subject_fingerprint": "sha256:1f51a3ed4ede35702060741924cdb22228f29f764b76424df50c1f79691ecf60",
+  "tracked_subject_files": 735,
+  "untracked_subject_files": 0,
+  "status": "FROZEN_SUBJECT_CONTROL_PLANE_QUALIFICATION_UNFROZEN_UNTIL_AUD27-004",
+  "exclusions": [
+    ".agent/",
+    "artifacts/",
+    ".gauntlet/",
+    ".opencode/",
+    ".git/",
+    "node_modules/",
+    "dist/",
+    "coverage/",
+    ".vite/"
+  ],
+  "evidence_rebind": {
+    "control_plane_receipt": "PASS (verify:mel23-control-plane captured against the frozen subject)",
+    "external_evidence_root": "BLOCKED (fingerprint and source SHA rebound; LOCAL_SYNTHETIC_ONLY anchor NOT_PROVEN, authority UNAVAILABLE, recovery NOT_EXECUTED)",
+    "focal_receipts": "50/50 MEL23 requirements still carry previous-subject receipts; rebinding is the AUD27-001/004 focal revalidation program",
+    "promotion": "PROMOTION_BLOCKED / AAA_NOT_PROVEN"
+  },
+  "control_plane": {
+    "fingerprint_status": "FROZEN",
+    "candidate_fingerprint": "sha256:1f51a3ed4ede35702060741924cdb22228f29f764b76424df50c1f79691ecf60",
+    "last_gate_record": "VER-CVG-AUD27-015-012",
+    "last_event_id": "EVT-CVG-AUD27-015-012",
+    "active_action_id": "AUD27-015:REAL-IMAGE-SMOKE",
+    "done_count": 38,
+    "vps_package": {
+      "script": "scripts/vps-bootstrap.ts (check + --apply)",
+      "runbook": "docs/runbooks/vps-provisioning.md",
+      "synthetic_check": "VPS_CHECK_PASS warnings=4 (external docker secrets)"
+    },
+    "awaiting_external_or_human": [
+      "VPS host provisioning and deployment evidence",
+      "external issuer/signature for image trust (AUD27-017)",
+      "human reviewer verdict for the candidate 8 sealed packet (AUD27-025 path)",
+      "cutover qualification for AUD27-011/012/013/014"
+    ]
+  },
+  "candidate": 9,
+  "subjects": {
+    "candidate_1": {
+      "source_sha": "f1b7bdd6f44162feca84a2651dd4878dcc47e032",
+      "fingerprint": "sha256:8d1999f9ba134cbbce39578e59e03f2d5f4490e3c4982811c5f16522bd8959ee",
+      "status": "HISTORICAL"
+    },
+    "candidate_2": {
+      "source_sha": "e50ef9613bde3da7daefc965b6d7f219297a1845",
+      "fingerprint": "sha256:a2273621ca9c87e54cea8952653a74841822deca1a11eaea15675aba752a7362",
+      "status": "HISTORICAL"
+    },
+    "candidate_3": {
+      "source_sha": "4b22e9e0dd65c5a666a7f10ee445e45e6b29fb17",
+      "fingerprint": "sha256:896579d92be73e6cb6a121f38fa53e40dda6e440d75ae83c724cb0dcba1679a6",
+      "status": "FROZEN"
+    },
+    "candidate_4": {
+      "source_sha": "ce308b6a366b9206d6abe8df29602de9f0f34cc2",
+      "fingerprint": "sha256:1a336459e9e5bea2e30855975c130f1e52aa686375866c5e4cbfd206ce42fd29",
+      "status": "FROZEN"
+    },
+    "candidate_5": {
+      "source_sha": "b43adc80dd630d1bfa686d4059450e11e67d7812",
+      "fingerprint": "sha256:ff4b97a865ea1556068804510aa62a7e7a8cd195a0acd9902199c8eb5ac60e1a",
+      "status": "FROZEN"
+    },
+    "candidate_6": {
+      "source_sha": "30e66ee69af0a6fc8d0287b46a5ec0e9ce5eb895",
+      "fingerprint": "sha256:1ec07792422223d90a77fbbd9a6823ccb0f1a7c9ffd1f0e9836acce82dff7dec",
+      "status": "FROZEN"
+    },
+    "candidate_7": {
+      "source_sha": "6b44a27c6516d03c9a1fc02dfaffb0d9ee7f03c5",
+      "fingerprint": "sha256:cb9025d9e804546bd50c299cb1a2025b21bf71d46ef8dfe1ce3e447b96eda364",
+      "status": "FROZEN"
+    },
+    "candidate_8": {
+      "source_sha": "2239de7d45b54529d663f55e50471b33cc4071dd",
+      "fingerprint": "sha256:a53ec196c328cecb5b91c229216820d781249d6f5feb2c14905eb222ad13d5a3",
+      "status": "FROZEN"
+    },
+    "candidate_9": {
+      "source_sha": "26756a892f91b40b358836744649e794d2d396af",
+      "fingerprint": "sha256:1f51a3ed4ede35702060741924cdb22228f29f764b76424df50c1f79691ecf60",
+      "status": "FROZEN"
+    }
+  }
+}

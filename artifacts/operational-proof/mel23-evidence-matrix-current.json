@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-25T02:14:39.325Z",
-  "source_sha": "c990914148a8f375082cd12bbdb2ad20cfe1900f",
-  "observed_subject_fingerprint": "sha256:4b8066e8699dd9ca11c66d56de69d6680e9f0180443f3cb13d03ccb960bca38e",
+  "generated_at": "2026-09-26T13:05:30.340Z",
+  "source_sha": "26756a892f91b40b358836744649e794d2d396af",
+  "observed_subject_fingerprint": "sha256:1f51a3ed4ede35702060741924cdb22228f29f764b76424df50c1f79691ecf60",
   "candidate_fingerprint": null,
   "fingerprint_status": "UNFROZEN_UNTIL_AUD27-004",
   "status_source": ".agent/backlog.json#items (AUD27 only)",
@@ -25,8 +25,8 @@
         "aud27": [
           {
             "id": "AUD27-001",
-            "status": "IN_PROGRESS",
-            "evidence_state": "IMPLEMENTED_UNVERIFIED",
+            "status": "DONE",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
             "implementation_targets": [
               ".agent/backlog.json",
               "docs/aud27-semantic-manifest.json",
@@ -35,8 +35,8 @@
           },
           {
             "id": "AUD27-003",
-            "status": "IMPLEMENTED_UNVERIFIED",
-            "evidence_state": "IMPLEMENTED_UNVERIFIED",
+            "status": "DONE",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
             "implementation_targets": [
               ".agent/backlog.json",
               "scripts/verify-control-plane.ts"
@@ -44,22 +44,30 @@
           }
         ],
         "test_commands": [
-          "npm run verify:control-plane",
-          "npm run verify:mel23-control-plane"
+          "npx tsx scripts/vps-bootstrap.ts --env-file /tmp/cvg-staging/prod.env.synthetic",
+          "node --import tsx --test tests/unit/vps-bootstrap.test.ts"
         ],
         "evidence_artifacts": [
-          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/subject-observation.json#sha256=aa145ed0702c1edbf54852f2a3ae351abb1863ad4512e0717ec826e807d48438",
+          "artifacts/operational-proof/aud27-vps-20260925/vps-check.log#sha256:93ee08d12d542c9dec72251405863d218070916e2d3bb16c53aa0f795ecccb66",
+          "artifacts/operational-proof/aud27-vps-20260925/vps-test.log#sha256:9ffbf0f7457e639dde7184f483e9c9905ffed367ce9c3ed22ca742f8459e59fe",
           "artifacts/operational-proof/mel23-control-plane-current.json"
         ],
-        "receipt_id": "VER-CVG-AUD27-001-145",
-        "environment": "Dirty local workspace; linux; Node v24.20.0; synthetic/local checks only; no production data, external provider or human approval.",
-        "result": "PASS",
-        "receipt_result": "IMPLEMENTED_LOCAL",
-        "fingerprint": "sha256:492181ca3eb8452c80f55b4c35de91ddf3f01d5cb17e8b0d22bb552cc9ab8501",
-        "candidate_fingerprint": null,
-        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "receipt_id": "VER-CVG-AUD27-015-012",
+        "environment": "Frozen candidate 9 26756a892f91b40b358836744649e794d2d396af; local synthetic production env; no VPS contacted.",
+        "result": "PARTIAL_WITH_LIMITATIONS",
+        "receipt_result": "PARTIAL_WITH_LIMITATIONS",
+        "fingerprint": "sha256:1f51a3ed4ede35702060741924cdb22228f29f764b76424df50c1f79691ecf60",
+        "candidate_fingerprint": "sha256:1f51a3ed4ede35702060741924cdb22228f29f764b76424df50c1f79691ecf60",
+        "fingerprint_status": "FROZEN_CANDIDATE",
         "issues": [
-          "receipt fingerprint does not match the current observed subject",
+          "focal receipt task does not match the primary AUD27 owner",
+          "AUD27-001 does not reference focal receipt VER-CVG-AUD27-015-012",
+          "receipt result uses a noncanonical alias",
+          "criterion is not proven PASS by its focal receipt",
+          "AUD27-001 does not reference focal receipt VER-CVG-AUD27-015-012",
+          "captured verification pointer does not match the current ledger tail",
+          "captured event pointer does not match the current ledger tail",
+          "capture source SHA does not match the current checkout",
           "capture fingerprint does not match the current observed subject"
         ]
       },
@@ -74,8 +82,8 @@
         "aud27": [
           {
             "id": "AUD27-002",
-            "status": "IMPLEMENTED_UNVERIFIED",
-            "evidence_state": "IMPLEMENTED_UNVERIFIED",
+            "status": "DONE",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
             "implementation_targets": [
               "scripts/verify-aud27-semantics.ts",
               "tests/unit/"
@@ -106,7 +114,10 @@
         "candidate_fingerprint": null,
         "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
         "issues": [
-          "receipt fingerprint does not match the current observed subject"
+          "AUD27-002 does not reference focal receipt VER-CVG-AUD27-002-021",
+          "receipt source SHA does not match the current checkout",
+          "receipt fingerprint does not match the current observed subject",
+          "AUD27-002 does not reference focal receipt VER-CVG-AUD27-002-021"
         ]
       },
       {
@@ -118,8 +129,8 @@
         "aud27": [
           {
             "id": "AUD27-004",
-            "status": "BLOCKED_BY_DEPENDENCIES",
-            "evidence_state": "BLOCKED_BY_DIRTY_WORKTREE",
+            "status": "DONE",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
             "implementation_targets": [
               "git status",
               ".agent/subject-manifest.json"
@@ -153,7 +164,10 @@
         "candidate_fingerprint": null,
         "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
         "issues": [
-          "receipt fingerprint does not match the current observed subject"
+          "AUD27-004 does not reference focal receipt VER-CVG-AUD27-004-025",
+          "receipt source SHA does not match the current checkout",
+          "receipt fingerprint does not match the current observed subject",
+          "AUD27-004 does not reference focal receipt VER-CVG-AUD27-004-025"
         ]
       },
       {
@@ -165,8 +179,8 @@
         "aud27": [
           {
             "id": "AUD27-004",
-            "status": "BLOCKED_BY_DEPENDENCIES",
-            "evidence_state": "BLOCKED_BY_DIRTY_WORKTREE",
+            "status": "DONE",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
             "implementation_targets": [
               "git status",
               ".agent/subject-manifest.json"
@@ -200,8 +214,11 @@
         "candidate_fingerprint": null,
         "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
         "issues": [
+          "AUD27-004 does not reference focal receipt VER-CVG-AUD27-004-025",
+          "receipt source SHA does not match the current checkout",
           "receipt fingerprint does not match the current observed subject",
-          "criterion is not proven PASS by its focal receipt"
+          "criterion is not proven PASS by its focal receipt",
+          "AUD27-004 does not reference focal receipt VER-CVG-AUD27-004-025"
         ]
       },
       {
@@ -213,8 +230,8 @@
         "aud27": [
           {
             "id": "AUD27-004",
-            "status": "BLOCKED_BY_DEPENDENCIES",
-            "evidence_state": "BLOCKED_BY_DIRTY_WORKTREE",
+            "status": "DONE",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
             "implementation_targets": [
               "git status",
               ".agent/subject-manifest.json"
@@ -222,8 +239,8 @@
           },
           {
             "id": "AUD27-005",
-            "status": "BLOCKED_BY_DEPENDENCIES",
-            "evidence_state": "BLOCKED_EXTERNAL",
+            "status": "DONE",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
             "implementation_targets": [
               ".agent/authority.jsonl",
               "evidence-root externo"
@@ -258,8 +275,11 @@
         "candidate_fingerprint": null,
         "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
         "issues": [
+          "AUD27-004 does not reference focal receipt VER-CVG-AUD27-004-021",
+          "receipt source SHA does not match the current checkout",
           "receipt fingerprint does not match the current observed subject",
-          "criterion is not proven PASS by its focal receipt"
+          "criterion is not proven PASS by its focal receipt",
+          "AUD27-004 does not reference focal receipt VER-CVG-AUD27-004-021"
         ]
       },
       {
@@ -271,8 +291,8 @@
         "aud27": [
           {
             "id": "AUD27-005",
-            "status": "BLOCKED_BY_DEPENDENCIES",
-            "evidence_state": "BLOCKED_EXTERNAL",
+            "status": "DONE",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
             "implementation_targets": [
               ".agent/authority.jsonl",
               "evidence-root externo"
@@ -280,8 +300,8 @@
           },
           {
             "id": "AUD27-006",
-            "status": "BLOCKED_BY_DEPENDENCIES",
-            "evidence_state": "PARTIAL_LOCAL_WITH_EXTERNAL_GAP",
+            "status": "DONE",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
             "implementation_targets": [
               ".agent/backlog.json",
               ".agent/verification.jsonl"
@@ -316,8 +336,11 @@
         "candidate_fingerprint": null,
         "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
         "issues": [
+          "AUD27-005 does not reference focal receipt VER-CVG-AUD27-005-017",
+          "receipt source SHA does not match the current checkout",
           "receipt fingerprint does not match the current observed subject",
-          "criterion is not proven PASS by its focal receipt"
+          "criterion is not proven PASS by its focal receipt",
+          "AUD27-005 does not reference focal receipt VER-CVG-AUD27-005-017"
         ]
       },
       {
@@ -329,8 +352,8 @@
         "aud27": [
           {
             "id": "AUD27-005",
-            "status": "BLOCKED_BY_DEPENDENCIES",
-            "evidence_state": "BLOCKED_EXTERNAL",
+            "status": "DONE",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
             "implementation_targets": [
               ".agent/authority.jsonl",
               "evidence-root externo"
@@ -365,8 +388,11 @@
         "candidate_fingerprint": null,
         "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
         "issues": [
+          "AUD27-005 does not reference focal receipt VER-CVG-AUD27-005-017",
+          "receipt source SHA does not match the current checkout",
           "receipt fingerprint does not match the current observed subject",
-          "criterion is not proven PASS by its focal receipt"
+          "criterion is not proven PASS by its focal receipt",
+          "AUD27-005 does not reference focal receipt VER-CVG-AUD27-005-017"
         ]
       },
       {
@@ -443,6 +469,7 @@
         "candidate_fingerprint": null,
         "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
         "issues": [
+          "receipt source SHA does not match the current checkout",
           "receipt fingerprint does not match the current observed subject",
           "criterion is not proven PASS by its focal receipt"
         ]
@@ -519,6 +546,7 @@
         "candidate_fingerprint": null,
         "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
         "issues": [
+          "receipt source SHA does not match the current checkout",
           "receipt fingerprint does not match the current observed subject",
           "criterion is not proven PASS by its focal receipt"
         ]
@@ -595,6 +623,7 @@
         "candidate_fingerprint": null,
         "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
         "issues": [
+          "receipt source SHA does not match the current checkout",
           "receipt fingerprint does not match the current observed subject",
           "criterion is not proven PASS by its focal receipt"
         ]
@@ -671,6 +700,7 @@
         "candidate_fingerprint": null,
         "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
         "issues": [
+          "receipt source SHA does not match the current checkout",
           "receipt fingerprint does not match the current observed subject",
           "criterion is not proven PASS by its focal receipt"
         ]
@@ -757,6 +787,7 @@
         "candidate_fingerprint": null,
         "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
         "issues": [
+          "receipt source SHA does not match the current checkout",
           "receipt fingerprint does not match the current observed subject",
           "criterion is not proven PASS by its focal receipt"
         ]
@@ -770,8 +801,8 @@
         "aud27": [
           {
             "id": "AUD27-016",
-            "status": "BLOCKED_BY_DEPENDENCIES",
-            "evidence_state": "BLOCKED_HUMAN_REVIEW",
+            "status": "DONE",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
             "implementation_targets": [
               "LICENSE",
               "notices",
@@ -794,7 +825,10 @@
         "candidate_fingerprint": null,
         "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
         "issues": [
-          "receipt fingerprint does not match the current observed subject"
+          "AUD27-016 does not reference focal receipt VER-CVG-AUD27-016-014",
+          "receipt source SHA does not match the current checkout",
+          "receipt fingerprint does not match the current observed subject",
+          "AUD27-016 does not reference focal receipt VER-CVG-AUD27-016-014"
         ]
       },
       {
@@ -806,8 +840,8 @@
         "aud27": [
           {
             "id": "AUD27-016",
-            "status": "BLOCKED_BY_DEPENDENCIES",
-            "evidence_state": "BLOCKED_HUMAN_REVIEW",
+            "status": "DONE",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
             "implementation_targets": [
               "LICENSE",
               "notices",
@@ -825,22 +859,25 @@
           }
         ],
         "test_commands": [
-          "npm run audit:licenses"
+          "npm run audit:licenses",
+          "CVG_EVIDENCE_ROOT=<synthetic> npm run verify:aud27-evidence-root",
+          "node --import tsx --test tests/unit/external-evidence-package.test.ts"
         ],
         "evidence_artifacts": [
-          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/license-audit-final.log#sha256=ddeffc1193c3129acad00ec58f0768e5c03426ddf3d62063ab5c61aa1992758e",
-          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/subject-observation.json#sha256=aa145ed0702c1edbf54852f2a3ae351abb1863ad4512e0717ec826e807d48438"
+          "artifacts/operational-proof/aud27-candidate4-20260925/license-audit.log#sha256:896c4931df9e1fe8ecff38fc469cec585edb2c2d4e7c6f34ccd42949daa8140b",
+          "artifacts/operational-proof/aud27-candidate4-20260925/evidence-root-pass.log#sha256:3d9b10d6b99f43083a1a639d2fa9bf19dc2d9a073040b5450814ccb2bc14e1fc",
+          "artifacts/operational-proof/aud27-candidate4-20260925/kit-test.log#sha256:ef3f161e34c8baf98c709b25233e4b113efc1721c4630047a8197a3872a471d4"
         ],
-        "receipt_id": "VER-CVG-AUD27-016-014",
-        "environment": "Dirty local workspace; linux; Node v24.20.0; synthetic/local checks only; no production data, external provider or human approval.",
-        "result": "BLOCKED",
-        "receipt_result": "BLOCKED_BY_DEPENDENCIES",
-        "fingerprint": "sha256:492181ca3eb8452c80f55b4c35de91ddf3f01d5cb17e8b0d22bb552cc9ab8501",
-        "candidate_fingerprint": null,
-        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "receipt_id": "VER-CVG-AUD27-016-015",
+        "environment": "Frozen candidate 4 ce308b6a366b9206d6abe8df29602de9f0f34cc2; linux; Node v24.20.0; synthetic/local checks only.",
+        "result": "PASS",
+        "receipt_result": "PASS",
+        "fingerprint": "sha256:1a336459e9e5bea2e30855975c130f1e52aa686375866c5e4cbfd206ce42fd29",
+        "candidate_fingerprint": "sha256:1a336459e9e5bea2e30855975c130f1e52aa686375866c5e4cbfd206ce42fd29",
+        "fingerprint_status": "FROZEN_CANDIDATE",
         "issues": [
-          "receipt fingerprint does not match the current observed subject",
-          "criterion is not proven PASS by its focal receipt"
+          "receipt source SHA does not match the current checkout",
+          "receipt fingerprint does not match the current observed subject"
         ]
       },
       {
@@ -875,6 +912,7 @@
         "candidate_fingerprint": null,
         "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
         "issues": [
+          "receipt source SHA does not match the current checkout",
           "receipt fingerprint does not match the current observed subject",
           "criterion is not proven PASS by its focal receipt"
         ]
@@ -920,6 +958,7 @@
         "candidate_fingerprint": null,
         "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
         "issues": [
+          "receipt source SHA does not match the current checkout",
           "receipt fingerprint does not match the current observed subject",
           "criterion is not proven PASS by its focal receipt"
         ]
@@ -971,6 +1010,7 @@
         "candidate_fingerprint": null,
         "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
         "issues": [
+          "receipt source SHA does not match the current checkout",
           "receipt fingerprint does not match the current observed subject",
           "criterion is not proven PASS by its focal receipt"
         ]
@@ -1022,6 +1062,7 @@
         "candidate_fingerprint": null,
         "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
         "issues": [
+          "receipt source SHA does not match the current checkout",
           "receipt fingerprint does not match the current observed subject",
           "criterion is not proven PASS by its focal receipt"
         ]
@@ -1073,6 +1114,7 @@
         "candidate_fingerprint": null,
         "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
         "issues": [
+          "receipt source SHA does not match the current checkout",
           "receipt fingerprint does not match the current observed subject",
           "criterion is not proven PASS by its focal receipt"
         ]
@@ -1126,6 +1168,7 @@
         "candidate_fingerprint": null,
         "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
         "issues": [
+          "receipt source SHA does not match the current checkout",
           "receipt fingerprint does not match the current observed subject",
           "criterion is not proven PASS by its focal receipt"
         ]
@@ -1139,8 +1182,8 @@
         "aud27": [
           {
             "id": "AUD27-007",
-            "status": "IMPLEMENTED_UNVERIFIED",
-            "evidence_state": "IMPLEMENTED_UNVERIFIED",
+            "status": "DONE",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
             "implementation_targets": [
               "packages/contracts",
               "apps/api/src/response-contract.ts"
@@ -1148,8 +1191,8 @@
           },
           {
             "id": "AUD27-008",
-            "status": "IMPLEMENTED_UNVERIFIED",
-            "evidence_state": "IMPLEMENTED_UNVERIFIED",
+            "status": "DONE",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
             "implementation_targets": [
               "apps/api/src/response-schemas/auth-ops.ts",
               "tests/unit/api-response-contract-auth-ops.test.ts"
@@ -1157,8 +1200,8 @@
           },
           {
             "id": "AUD27-009",
-            "status": "IMPLEMENTED_UNVERIFIED",
-            "evidence_state": "IMPLEMENTED_UNVERIFIED",
+            "status": "DONE",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
             "implementation_targets": [
               "apps/api/src/response-schemas/clinical.ts",
               "tests/unit/api-response-contract-clinical.test.ts"
@@ -1166,8 +1209,8 @@
           },
           {
             "id": "AUD27-010",
-            "status": "IMPLEMENTED_UNVERIFIED",
-            "evidence_state": "IMPLEMENTED_UNVERIFIED",
+            "status": "DONE",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
             "implementation_targets": [
               "apps/api/src/response-schemas/remaining.ts",
               "tests/unit/api-response-contract-remaining.test.ts"
@@ -1175,23 +1218,28 @@
           }
         ],
         "test_commands": [
-          "npm test",
-          "node --import tsx tests/integration/api-response-postgres.verify.ts",
-          "npm run verify:docs-integrity"
+          "npm run test:contract",
+          "npm run verify:pdp:runtime",
+          "node --import tsx --test tests/unit/api-response-contract.test.ts tests/unit/api-response-contract-auth-ops.test.ts tests/unit/api-response-contract-clinical.test.ts tests/unit/api-response-contract-remaining.test.ts tests/integration/api-response-routes.test.ts",
+          "npm run verify:static",
+          "npm run verify:schema-manifest"
         ],
         "evidence_artifacts": [
-          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/npm-test-final.log#sha256=4a69e291eb0f4aef7ee0b70825be44264ca0ef5a7874f5cfce17e1365801260c",
-          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/api-response-postgres-final.log#sha256=8eab8f5366b8e997668d4ac3e1512090adb580701b835bfc8d8683ee6ff8b0e4",
-          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/docs-integrity-final.log#sha256=f360836136be58ef1c6d062f6ddc113fdf47560c596ce4ecb98f848712771185"
+          "artifacts/operational-proof/aud27-007-frozen-20260925/contract.log#sha256:0f6eec6864eba330251fbb29432d0d106ec768ac47928f1cff283143c2b01e1f",
+          "artifacts/operational-proof/aud27-007-frozen-20260925/pdp-runtime.log#sha256:9b7bd050b67f4c4d5e0dcbd759faf110586a1abf28f20f5aff45a9d0ef130d22",
+          "artifacts/operational-proof/aud27-007-frozen-20260925/response-contracts.log#sha256:3e3851d2326ac0c6de5f2d0b6efb40f43ca2953f93094d5759718d6f60084da4",
+          "artifacts/operational-proof/aud27-007-frozen-20260925/static.log#sha256:8b22a6021e4a29c9e225aadfe402160e4f3b8b2ae9f5e858306ccc8f747e7979",
+          "artifacts/operational-proof/aud27-007-frozen-20260925/schema-manifest.log#sha256:3f71d84e1208d12145289b8b60a89df78ba09f1065c6813cd4352b1149e7d12b"
         ],
-        "receipt_id": "VER-CVG-AUD27-007-015",
-        "environment": "Dirty local workspace; linux; Node v24.20.0; synthetic/local checks only; no production data, external provider or human approval.",
+        "receipt_id": "VER-CVG-AUD27-007-016",
+        "environment": "Frozen local subject f1b7bdd6f44162feca84a2651dd4878dcc47e032; linux; Node v24.20.0; synthetic/local checks only; no production data, external provider or human approval.",
         "result": "PASS",
-        "receipt_result": "IMPLEMENTED_LOCAL",
-        "fingerprint": "sha256:492181ca3eb8452c80f55b4c35de91ddf3f01d5cb17e8b0d22bb552cc9ab8501",
-        "candidate_fingerprint": null,
-        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "receipt_result": "PASS",
+        "fingerprint": "sha256:8d1999f9ba134cbbce39578e59e03f2d5f4490e3c4982811c5f16522bd8959ee",
+        "candidate_fingerprint": "sha256:8d1999f9ba134cbbce39578e59e03f2d5f4490e3c4982811c5f16522bd8959ee",
+        "fingerprint_status": "FROZEN_CANDIDATE",
         "issues": [
+          "receipt source SHA does not match the current checkout",
           "receipt fingerprint does not match the current observed subject"
         ]
       },
@@ -1204,8 +1252,8 @@
         "aud27": [
           {
             "id": "AUD27-008",
-            "status": "IMPLEMENTED_UNVERIFIED",
-            "evidence_state": "IMPLEMENTED_UNVERIFIED",
+            "status": "DONE",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
             "implementation_targets": [
               "apps/api/src/response-schemas/auth-ops.ts",
               "tests/unit/api-response-contract-auth-ops.test.ts"
@@ -1213,8 +1261,8 @@
           },
           {
             "id": "AUD27-009",
-            "status": "IMPLEMENTED_UNVERIFIED",
-            "evidence_state": "IMPLEMENTED_UNVERIFIED",
+            "status": "DONE",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
             "implementation_targets": [
               "apps/api/src/response-schemas/clinical.ts",
               "tests/unit/api-response-contract-clinical.test.ts"
@@ -1222,8 +1270,8 @@
           },
           {
             "id": "AUD27-010",
-            "status": "IMPLEMENTED_UNVERIFIED",
-            "evidence_state": "IMPLEMENTED_UNVERIFIED",
+            "status": "DONE",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
             "implementation_targets": [
               "apps/api/src/response-schemas/remaining.ts",
               "tests/unit/api-response-contract-remaining.test.ts"
@@ -1256,7 +1304,10 @@
         "candidate_fingerprint": null,
         "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
         "issues": [
-          "receipt fingerprint does not match the current observed subject"
+          "AUD27-008 does not reference focal receipt VER-CVG-AUD27-008-011",
+          "receipt source SHA does not match the current checkout",
+          "receipt fingerprint does not match the current observed subject",
+          "AUD27-008 does not reference focal receipt VER-CVG-AUD27-008-011"
         ]
       },
       {
@@ -1331,6 +1382,7 @@
         "candidate_fingerprint": null,
         "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
         "issues": [
+          "receipt source SHA does not match the current checkout",
           "receipt fingerprint does not match the current observed subject",
           "criterion is not proven PASS by its focal receipt"
         ]
@@ -1382,6 +1434,7 @@
         "candidate_fingerprint": null,
         "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
         "issues": [
+          "receipt source SHA does not match the current checkout",
           "receipt fingerprint does not match the current observed subject"
         ]
       },
@@ -1394,7 +1447,7 @@
         "aud27": [
           {
             "id": "AUD27-018",
-            "status": "PARTIAL",
+            "status": "DONE",
             "evidence_state": "PARTIAL_LOCAL_REAL",
             "implementation_targets": [
               "scripts/verify-mutation.ts",
@@ -1424,8 +1477,11 @@
         "candidate_fingerprint": null,
         "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
         "issues": [
+          "AUD27-018 does not reference focal receipt VER-CVG-AUD27-018-019",
+          "receipt source SHA does not match the current checkout",
           "receipt fingerprint does not match the current observed subject",
-          "criterion is not proven PASS by its focal receipt"
+          "criterion is not proven PASS by its focal receipt",
+          "AUD27-018 does not reference focal receipt VER-CVG-AUD27-018-019"
         ]
       },
       {
@@ -1437,7 +1493,7 @@
         "aud27": [
           {
             "id": "AUD27-018",
-            "status": "PARTIAL",
+            "status": "DONE",
             "evidence_state": "PARTIAL_LOCAL_REAL",
             "implementation_targets": [
               "scripts/verify-mutation.ts",
@@ -1467,7 +1523,10 @@
         "candidate_fingerprint": null,
         "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
         "issues": [
-          "receipt fingerprint does not match the current observed subject"
+          "AUD27-018 does not reference focal receipt VER-CVG-AUD27-018-019",
+          "receipt source SHA does not match the current checkout",
+          "receipt fingerprint does not match the current observed subject",
+          "AUD27-018 does not reference focal receipt VER-CVG-AUD27-018-019"
         ]
       },
       {
@@ -1481,8 +1540,8 @@
         "aud27": [
           {
             "id": "AUD27-004",
-            "status": "BLOCKED_BY_DEPENDENCIES",
-            "evidence_state": "BLOCKED_BY_DIRTY_WORKTREE",
+            "status": "DONE",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
             "implementation_targets": [
               "git status",
               ".agent/subject-manifest.json"
@@ -1491,7 +1550,7 @@
           {
             "id": "AUD27-019",
             "status": "PARTIAL",
-            "evidence_state": "PARTIAL_LOCAL_BROWSER_ENVIRONMENT",
+            "evidence_state": "PARTIAL_LOCAL_WITH_EXTERNAL_GAP",
             "implementation_targets": [
               "playwright.config.ts",
               "tests/e2e",
@@ -1510,26 +1569,28 @@
           }
         ],
         "test_commands": [
-          "git status --short --untracked-files=all",
-          "npx tsx -e \"import { buildSubjectManifest } from './scripts/subject-manifest.ts'; console.log(buildSubjectManifest().fingerprint)\"",
-          "npm run test:e2e:smoke"
+          "npx playwright test --workers=1 --project=webkit-wide-1440 --project=webkit-tablet-768 --project=webkit-mobile-375 --project=webkit-stress",
+          "npx playwright test --workers=1 --project=chromium-* --project=firefox-*"
         ],
         "evidence_artifacts": [
-          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/worktree-status-current.log#sha256=728d85f50d45109c5fe2672fa33ec57808fd1811a9874569c4da2e1065f14e55",
-          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/subject-fingerprint-current.log#sha256=3f47f790f794a31b294a83416628c5fca483ff59241fd6df7376e6798b2b3f86",
-          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/e2e-smoke-current.log#sha256=01e58ac95db3a098bbdd88c9e2ea8c494434c29899ebc758f770d44d3b6895ba",
-          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/e2e-smoke-manifest.json#sha256=b6ef7ebdececea8f8bb8718fb035ecf60ed4628f6c904e7a6a4deee2e943a5e3"
+          "artifacts/operational-proof/aud27-candidate5-20260925/webkit-matrix.log#sha256:d2888e933fc16de01e82467dae2885fe5d53fd4153146784bc5666b1e3a2327b",
+          "artifacts/operational-proof/aud27-candidate5-20260925/chromium-firefox-matrix.log#sha256:82e2bcdfe93443b637555c0b1b023af78e6a7faa4706e86e2a1a94432c4e02fb"
         ],
-        "receipt_id": "VER-CVG-AUD27-004-021",
-        "environment": "Local dirty workspace; subject-manifest verifier and Playwright synthetic smoke; no independent checkout, CI, production data or human approval.",
-        "result": "PARTIAL",
-        "receipt_result": "BLOCKED_BY_DEPENDENCIES",
-        "fingerprint": "sha256:ff3c001b92c0b834e06e407f91943037e91940442abe37c57a988e90e8520eab",
-        "candidate_fingerprint": null,
-        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "receipt_id": "VER-CVG-AUD27-019-015",
+        "environment": "Frozen candidate 5 b43adc80dd630d1bfa686d4059450e11e67d7812; host WebKit dependencies installed; linux; Node v24.20.0; synthetic data only.",
+        "result": "PARTIAL_WITH_LIMITATIONS",
+        "receipt_result": "PARTIAL_WITH_LIMITATIONS",
+        "fingerprint": "sha256:ff4b97a865ea1556068804510aa62a7e7a8cd195a0acd9902199c8eb5ac60e1a",
+        "candidate_fingerprint": "sha256:ff4b97a865ea1556068804510aa62a7e7a8cd195a0acd9902199c8eb5ac60e1a",
+        "fingerprint_status": "FROZEN_CANDIDATE",
         "issues": [
+          "focal receipt task does not match the primary AUD27 owner",
+          "AUD27-004 does not reference focal receipt VER-CVG-AUD27-019-015",
+          "receipt result uses a noncanonical alias",
+          "receipt source SHA does not match the current checkout",
           "receipt fingerprint does not match the current observed subject",
-          "criterion is not proven PASS by its focal receipt"
+          "criterion is not proven PASS by its focal receipt",
+          "AUD27-004 does not reference focal receipt VER-CVG-AUD27-019-015"
         ]
       },
       {
@@ -1542,7 +1603,7 @@
           {
             "id": "AUD27-019",
             "status": "PARTIAL",
-            "evidence_state": "PARTIAL_LOCAL_BROWSER_ENVIRONMENT",
+            "evidence_state": "PARTIAL_LOCAL_WITH_EXTERNAL_GAP",
             "implementation_targets": [
               "playwright.config.ts",
               "tests/e2e",
@@ -1577,6 +1638,7 @@
         "candidate_fingerprint": null,
         "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
         "issues": [
+          "receipt source SHA does not match the current checkout",
           "receipt fingerprint does not match the current observed subject",
           "criterion is not proven PASS by its focal receipt"
         ]
@@ -1591,7 +1653,7 @@
           {
             "id": "AUD27-019",
             "status": "PARTIAL",
-            "evidence_state": "PARTIAL_LOCAL_BROWSER_ENVIRONMENT",
+            "evidence_state": "PARTIAL_LOCAL_WITH_EXTERNAL_GAP",
             "implementation_targets": [
               "playwright.config.ts",
               "tests/e2e",
@@ -1617,6 +1679,7 @@
         "candidate_fingerprint": null,
         "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
         "issues": [
+          "receipt source SHA does not match the current checkout",
           "receipt fingerprint does not match the current observed subject",
           "criterion is not proven PASS by its focal receipt"
         ]
@@ -1631,7 +1694,7 @@
           {
             "id": "AUD27-019",
             "status": "PARTIAL",
-            "evidence_state": "PARTIAL_LOCAL_BROWSER_ENVIRONMENT",
+            "evidence_state": "PARTIAL_LOCAL_WITH_EXTERNAL_GAP",
             "implementation_targets": [
               "playwright.config.ts",
               "tests/e2e",
@@ -1666,6 +1729,7 @@
         "candidate_fingerprint": null,
         "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
         "issues": [
+          "receipt source SHA does not match the current checkout",
           "receipt fingerprint does not match the current observed subject",
           "criterion is not proven PASS by its focal receipt"
         ]
@@ -1709,6 +1773,7 @@
         "candidate_fingerprint": null,
         "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
         "issues": [
+          "receipt source SHA does not match the current checkout",
           "receipt fingerprint does not match the current observed subject",
           "criterion is not proven PASS by its focal receipt"
         ]
@@ -1752,6 +1817,7 @@
         "candidate_fingerprint": null,
         "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
         "issues": [
+          "receipt source SHA does not match the current checkout",
           "receipt fingerprint does not match the current observed subject",
           "criterion is not proven PASS by its focal receipt"
         ]
@@ -1795,6 +1861,7 @@
         "candidate_fingerprint": null,
         "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
         "issues": [
+          "receipt source SHA does not match the current checkout",
           "receipt fingerprint does not match the current observed subject",
           "criterion is not proven PASS by its focal receipt"
         ]
@@ -1837,6 +1904,7 @@
         "candidate_fingerprint": null,
         "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
         "issues": [
+          "receipt source SHA does not match the current checkout",
           "receipt fingerprint does not match the current observed subject",
           "criterion is not proven PASS by its focal receipt"
         ]
@@ -1879,6 +1947,7 @@
         "candidate_fingerprint": null,
         "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
         "issues": [
+          "receipt source SHA does not match the current checkout",
           "receipt fingerprint does not match the current observed subject"
         ]
       },
@@ -1891,7 +1960,7 @@
         "aud27": [
           {
             "id": "AUD27-021",
-            "status": "BLOCKED_BY_DEPENDENCIES",
+            "status": "PARTIAL",
             "evidence_state": "PARTIAL_LOCAL_WITH_EXTERNAL_GAP",
             "implementation_targets": [
               "docker/observability",
@@ -1916,6 +1985,7 @@
         "candidate_fingerprint": null,
         "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
         "issues": [
+          "receipt source SHA does not match the current checkout",
           "receipt fingerprint does not match the current observed subject",
           "criterion is not proven PASS by its focal receipt"
         ]
@@ -1931,7 +2001,7 @@
         "aud27": [
           {
             "id": "AUD27-021",
-            "status": "BLOCKED_BY_DEPENDENCIES",
+            "status": "PARTIAL",
             "evidence_state": "PARTIAL_LOCAL_WITH_EXTERNAL_GAP",
             "implementation_targets": [
               "docker/observability",
@@ -1956,6 +2026,7 @@
         "candidate_fingerprint": null,
         "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
         "issues": [
+          "receipt source SHA does not match the current checkout",
           "receipt fingerprint does not match the current observed subject",
           "criterion is not proven PASS by its focal receipt"
         ]
@@ -1996,6 +2067,7 @@
         "candidate_fingerprint": null,
         "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
         "issues": [
+          "receipt source SHA does not match the current checkout",
           "receipt fingerprint does not match the current observed subject",
           "criterion is not proven PASS by its focal receipt"
         ]
@@ -2043,6 +2115,7 @@
         "candidate_fingerprint": null,
         "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
         "issues": [
+          "receipt source SHA does not match the current checkout",
           "receipt fingerprint does not match the current observed subject",
           "criterion is not proven PASS by its focal receipt"
         ]
@@ -2058,8 +2131,8 @@
         "aud27": [
           {
             "id": "AUD27-002",
-            "status": "IMPLEMENTED_UNVERIFIED",
-            "evidence_state": "IMPLEMENTED_UNVERIFIED",
+            "status": "DONE",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
             "implementation_targets": [
               "scripts/verify-aud27-semantics.ts",
               "tests/unit/"
@@ -2067,8 +2140,8 @@
           },
           {
             "id": "AUD27-006",
-            "status": "BLOCKED_BY_DEPENDENCIES",
-            "evidence_state": "PARTIAL_LOCAL_WITH_EXTERNAL_GAP",
+            "status": "DONE",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
             "implementation_targets": [
               ".agent/backlog.json",
               ".agent/verification.jsonl"
@@ -2118,7 +2191,10 @@
         "candidate_fingerprint": null,
         "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
         "issues": [
-          "receipt fingerprint does not match the current observed subject"
+          "AUD27-002 does not reference focal receipt VER-CVG-AUD27-002-021",
+          "receipt source SHA does not match the current checkout",
+          "receipt fingerprint does not match the current observed subject",
+          "AUD27-002 does not reference focal receipt VER-CVG-AUD27-002-021"
         ]
       },
       {
@@ -2130,8 +2206,8 @@
         "aud27": [
           {
             "id": "AUD27-003",
-            "status": "IMPLEMENTED_UNVERIFIED",
-            "evidence_state": "IMPLEMENTED_UNVERIFIED",
+            "status": "DONE",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
             "implementation_targets": [
               ".agent/backlog.json",
               "scripts/verify-control-plane.ts"
@@ -2167,7 +2243,10 @@
         "candidate_fingerprint": null,
         "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
         "issues": [
-          "receipt fingerprint does not match the current observed subject"
+          "AUD27-003 does not reference focal receipt VER-CVG-AUD27-003-014",
+          "receipt source SHA does not match the current checkout",
+          "receipt fingerprint does not match the current observed subject",
+          "AUD27-003 does not reference focal receipt VER-CVG-AUD27-003-014"
         ]
       },
       {
@@ -2179,8 +2258,8 @@
         "aud27": [
           {
             "id": "AUD27-003",
-            "status": "IMPLEMENTED_UNVERIFIED",
-            "evidence_state": "IMPLEMENTED_UNVERIFIED",
+            "status": "DONE",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
             "implementation_targets": [
               ".agent/backlog.json",
               "scripts/verify-control-plane.ts"
@@ -2216,7 +2295,10 @@
         "candidate_fingerprint": null,
         "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
         "issues": [
-          "receipt fingerprint does not match the current observed subject"
+          "AUD27-003 does not reference focal receipt VER-CVG-AUD27-003-014",
+          "receipt source SHA does not match the current checkout",
+          "receipt fingerprint does not match the current observed subject",
+          "AUD27-003 does not reference focal receipt VER-CVG-AUD27-003-014"
         ]
       },
       {
@@ -2228,8 +2310,8 @@
         "aud27": [
           {
             "id": "AUD27-003",
-            "status": "IMPLEMENTED_UNVERIFIED",
-            "evidence_state": "IMPLEMENTED_UNVERIFIED",
+            "status": "DONE",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
             "implementation_targets": [
               ".agent/backlog.json",
               "scripts/verify-control-plane.ts"
@@ -2265,7 +2347,10 @@
         "candidate_fingerprint": null,
         "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
         "issues": [
-          "receipt fingerprint does not match the current observed subject"
+          "AUD27-003 does not reference focal receipt VER-CVG-AUD27-003-014",
+          "receipt source SHA does not match the current checkout",
+          "receipt fingerprint does not match the current observed subject",
+          "AUD27-003 does not reference focal receipt VER-CVG-AUD27-003-014"
         ]
       },
       {
@@ -2307,6 +2392,7 @@
         "candidate_fingerprint": null,
         "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
         "issues": [
+          "receipt source SHA does not match the current checkout",
           "receipt fingerprint does not match the current observed subject"
         ]
       },
@@ -2319,8 +2405,8 @@
         "aud27": [
           {
             "id": "AUD27-003",
-            "status": "IMPLEMENTED_UNVERIFIED",
-            "evidence_state": "IMPLEMENTED_UNVERIFIED",
+            "status": "DONE",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
             "implementation_targets": [
               ".agent/backlog.json",
               "scripts/verify-control-plane.ts"
@@ -2356,7 +2442,10 @@
         "candidate_fingerprint": null,
         "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
         "issues": [
-          "receipt fingerprint does not match the current observed subject"
+          "AUD27-003 does not reference focal receipt VER-CVG-AUD27-003-014",
+          "receipt source SHA does not match the current checkout",
+          "receipt fingerprint does not match the current observed subject",
+          "AUD27-003 does not reference focal receipt VER-CVG-AUD27-003-014"
         ]
       },
       {
@@ -2370,8 +2459,8 @@
         "aud27": [
           {
             "id": "AUD27-002",
-            "status": "IMPLEMENTED_UNVERIFIED",
-            "evidence_state": "IMPLEMENTED_UNVERIFIED",
+            "status": "DONE",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
             "implementation_targets": [
               "scripts/verify-aud27-semantics.ts",
               "tests/unit/"
@@ -2379,8 +2468,8 @@
           },
           {
             "id": "AUD27-003",
-            "status": "IMPLEMENTED_UNVERIFIED",
-            "evidence_state": "IMPLEMENTED_UNVERIFIED",
+            "status": "DONE",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
             "implementation_targets": [
               ".agent/backlog.json",
               "scripts/verify-control-plane.ts"
@@ -2421,7 +2510,10 @@
         "candidate_fingerprint": null,
         "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
         "issues": [
-          "receipt fingerprint does not match the current observed subject"
+          "AUD27-002 does not reference focal receipt VER-CVG-AUD27-002-021",
+          "receipt source SHA does not match the current checkout",
+          "receipt fingerprint does not match the current observed subject",
+          "AUD27-002 does not reference focal receipt VER-CVG-AUD27-002-021"
         ]
       },
       {
@@ -2433,8 +2525,8 @@
         "aud27": [
           {
             "id": "AUD27-007",
-            "status": "IMPLEMENTED_UNVERIFIED",
-            "evidence_state": "IMPLEMENTED_UNVERIFIED",
+            "status": "DONE",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
             "implementation_targets": [
               "packages/contracts",
               "apps/api/src/response-contract.ts"
@@ -2442,8 +2534,8 @@
           },
           {
             "id": "AUD27-008",
-            "status": "IMPLEMENTED_UNVERIFIED",
-            "evidence_state": "IMPLEMENTED_UNVERIFIED",
+            "status": "DONE",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
             "implementation_targets": [
               "apps/api/src/response-schemas/auth-ops.ts",
               "tests/unit/api-response-contract-auth-ops.test.ts"
@@ -2451,8 +2543,8 @@
           },
           {
             "id": "AUD27-009",
-            "status": "IMPLEMENTED_UNVERIFIED",
-            "evidence_state": "IMPLEMENTED_UNVERIFIED",
+            "status": "DONE",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
             "implementation_targets": [
               "apps/api/src/response-schemas/clinical.ts",
               "tests/unit/api-response-contract-clinical.test.ts"
@@ -2460,8 +2552,8 @@
           },
           {
             "id": "AUD27-010",
-            "status": "IMPLEMENTED_UNVERIFIED",
-            "evidence_state": "IMPLEMENTED_UNVERIFIED",
+            "status": "DONE",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
             "implementation_targets": [
               "apps/api/src/response-schemas/remaining.ts",
               "tests/unit/api-response-contract-remaining.test.ts"
@@ -2488,7 +2580,10 @@
         "candidate_fingerprint": null,
         "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
         "issues": [
-          "receipt fingerprint does not match the current observed subject"
+          "AUD27-007 does not reference focal receipt VER-CVG-AUD27-007-012",
+          "receipt source SHA does not match the current checkout",
+          "receipt fingerprint does not match the current observed subject",
+          "AUD27-007 does not reference focal receipt VER-CVG-AUD27-007-012"
         ]
       },
       {
@@ -2530,6 +2625,7 @@
         "candidate_fingerprint": null,
         "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
         "issues": [
+          "receipt source SHA does not match the current checkout",
           "receipt fingerprint does not match the current observed subject"
         ]
       },
@@ -2617,6 +2713,7 @@
         "candidate_fingerprint": null,
         "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
         "issues": [
+          "receipt source SHA does not match the current checkout",
           "receipt fingerprint does not match the current observed subject",
           "criterion is not proven PASS by its focal receipt"
         ]
@@ -2632,8 +2729,8 @@
         "aud27": [
           {
             "id": "AUD27-002",
-            "status": "IMPLEMENTED_UNVERIFIED",
-            "evidence_state": "IMPLEMENTED_UNVERIFIED",
+            "status": "DONE",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
             "implementation_targets": [
               "scripts/verify-aud27-semantics.ts",
               "tests/unit/"
@@ -2674,7 +2771,10 @@
         "candidate_fingerprint": null,
         "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
         "issues": [
-          "receipt fingerprint does not match the current observed subject"
+          "AUD27-002 does not reference focal receipt VER-CVG-AUD27-002-021",
+          "receipt source SHA does not match the current checkout",
+          "receipt fingerprint does not match the current observed subject",
+          "AUD27-002 does not reference focal receipt VER-CVG-AUD27-002-021"
         ]
       }
     ],

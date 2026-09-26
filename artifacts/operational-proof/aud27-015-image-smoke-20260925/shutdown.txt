@@ -1,0 +1,5 @@
+exit=0 status=exited
+
+Node.js v24.21.0
+CVG API local em http://0.0.0.0:4310
+after-start status=running health=healthy

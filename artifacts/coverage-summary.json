@@ -87,12 +87,12 @@
     }
   },
   "summary": {
-    "line": 88.48,
-    "branch": 76.71,
-    "functions": 88.08,
-    "statements": 88.48,
+    "line": 88.42,
+    "branch": 76.57,
+    "functions": 88.2,
+    "statements": 88.42,
     "statementMetric": {
-      "value": 88.48,
+      "value": 88.42,
       "source": "node-native-line-coverage",
       "justification": "Node's native test-coverage report exposes line, branch, and function metrics but no statement count; statements is therefore an explicit line-coverage equivalent derived from the emitted coverage data, not an unreported native statement count."
     }
@@ -101,12 +101,12 @@
     "security": {
       "files": 2,
       "summary": {
-        "line": 93.98,
-        "branch": 71.43,
-        "functions": 90.32,
-        "statements": 93.98,
+        "line": 95.05,
+        "branch": 72.08,
+        "functions": 92,
+        "statements": 95.05,
         "statementMetric": {
-          "value": 93.98,
+          "value": 95.05,
           "source": "node-native-line-coverage",
           "justification": "Node's native test-coverage report exposes line, branch, and function metrics but no statement count; statements is therefore an explicit line-coverage equivalent derived from the emitted coverage data, not an unreported native statement count."
         }
@@ -171,12 +171,12 @@
     "domain": {
       "files": 6,
       "summary": {
-        "line": 96.84,
-        "branch": 79.07,
+        "line": 97.08,
+        "branch": 79.66,
         "functions": 96.95,
-        "statements": 96.84,
+        "statements": 97.08,
         "statementMetric": {
-          "value": 96.84,
+          "value": 97.08,
           "source": "node-native-line-coverage",
           "justification": "Node's native test-coverage report exposes line, branch, and function metrics but no statement count; statements is therefore an explicit line-coverage equivalent derived from the emitted coverage data, not an unreported native statement count."
         }
@@ -203,6 +203,6 @@
     "failures": [],
     "knownBad": "REJECTED"
   },
-  "exitStatus": 0,
+  "exitStatus": 1,
   "signal": null
 }

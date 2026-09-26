@@ -4,13 +4,13 @@
   "command": "npm run verify:control-plane",
   "exit_status": 0,
   "result": "PASS",
-  "executed_at": "2026-09-25T11:16:21.640Z",
+  "executed_at": "2026-09-26T21:42:31.033Z",
   "environment": "local workspace; linux; Node v24.20.0; npm subprocess; no production resources",
-  "source_sha": "f1b7bdd6f44162feca84a2651dd4878dcc47e032",
-  "observed_subject_fingerprint": "sha256:8d1999f9ba134cbbce39578e59e03f2d5f4490e3c4982811c5f16522bd8959ee",
-  "last_gate_record": "VER-CVG-AUD27-001-146",
-  "verification_tail": "VER-CVG-AUD27-001-146",
-  "last_event_id": "EVT-CVG-AUD27-001-146",
-  "event_tail": "EVT-CVG-AUD27-001-146",
-  "output": "> cvg-corp@0.1.0 verify:control-plane\n> tsx scripts/verify-control-plane.ts\n\nCONTROL_PLANE_VERIFIED items=334 active=AUD27-001:SEMANTIC-RECONCILIATION"
+  "source_sha": "566c8f6e7edd9194d091a59ab2fa3c5c6015ac77",
+  "observed_subject_fingerprint": "sha256:9547dc3319cf187c3ea9e6e2b47c2533cc8215e571ed5df54df8336265985aaa",
+  "last_gate_record": "VER-CVG-AUD27-015-013",
+  "verification_tail": "VER-CVG-AUD27-015-013",
+  "last_event_id": "EVT-CVG-AUD27-015-013",
+  "event_tail": "EVT-CVG-AUD27-015-013",
+  "output": "> cvg-corp@0.1.0 verify:control-plane\n> tsx scripts/verify-control-plane.ts\n\nCONTROL_PLANE_VERIFIED items=334 active=AUD27-015:REAL-IMAGE-SMOKE"
 }

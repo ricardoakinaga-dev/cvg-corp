@@ -11511,9 +11511,10 @@
         "VER-CVG-AUD27-015-009",
         "VER-CVG-AUD27-015-010",
         "VER-CVG-AUD27-015-011",
-        "VER-CVG-AUD27-015-012"
+        "VER-CVG-AUD27-015-012",
+        "VER-CVG-AUD27-015-013"
       ],
-      "candidate_fingerprint": "sha256:1f51a3ed4ede35702060741924cdb22228f29f764b76424df50c1f79691ecf60",
+      "candidate_fingerprint": "sha256:9547dc3319cf187c3ea9e6e2b47c2533cc8215e571ed5df54df8336265985aaa",
       "observed": "LOCAL PASS_WITH_LIMITATIONS: the VPS deployment package is validated end to end on a synthetic production env (required keys, TLS material, release SHA/digest, docker/compose/buildx all PASS; external Docker secrets warn by design) and the unit test covers the env parser and required-key validation. The actual VPS deployment, signature/issuer and the authenticated scenario remain external.",
       "remaining": [
         "registry-bound digest, SBOM, scan, provenance and signature",
@@ -12766,7 +12767,7 @@
     "owner_next_action_policy": "Owner and singular next_action remain on each canonical backlog item; AAA2 source roles/actions are planning input until mapped.",
     "reconciled_at": "2026-09-13T20:38:00-03:00"
   },
-  "updated_at": "2026-09-24T12:46:44.053Z",
+  "updated_at": "2026-09-26T13:51:53.772Z",
   "catalog_contract_digest": "1b6fc4e05b9a9f2c612021f2f6376da17372931d8a78df94e85f6aded67fa0ba",
   "reconciled_at": "2026-09-24T12:46:44.053Z",
   "aud19_remediation_reconciliation": {

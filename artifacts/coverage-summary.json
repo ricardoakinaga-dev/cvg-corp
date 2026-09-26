@@ -87,12 +87,12 @@
     }
   },
   "summary": {
-    "line": 88.42,
-    "branch": 76.57,
+    "line": 88.49,
+    "branch": 76.78,
     "functions": 88.2,
-    "statements": 88.42,
+    "statements": 88.49,
     "statementMetric": {
-      "value": 88.42,
+      "value": 88.49,
       "source": "node-native-line-coverage",
       "justification": "Node's native test-coverage report exposes line, branch, and function metrics but no statement count; statements is therefore an explicit line-coverage equivalent derived from the emitted coverage data, not an unreported native statement count."
     }
@@ -203,6 +203,6 @@
     "failures": [],
     "knownBad": "REJECTED"
   },
-  "exitStatus": 1,
+  "exitStatus": 0,
   "signal": null
 }

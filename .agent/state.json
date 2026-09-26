@@ -19,9 +19,9 @@
   "active_execplan": ".agent/plans/2026-09-21-cvg-aud27.md",
   "active_task": "AUD27-015",
   "verification_state": "MEL23_CURRENT_LOCAL_REVALIDATION_PROMOTION_BLOCKED",
-  "candidate_fingerprint": "sha256:1f51a3ed4ede35702060741924cdb22228f29f764b76424df50c1f79691ecf60",
+  "candidate_fingerprint": "sha256:9547dc3319cf187c3ea9e6e2b47c2533cc8215e571ed5df54df8336265985aaa",
   "fingerprint_status": "FROZEN",
-  "repository_state": "2026-09-25: candidate 9 frozen at 26756a892f91b40b358836744649e794d2d396af (sha256:1f51a3ed4ede35702060741924cdb22228f29f764b76424df50c1f79691ecf60); 735 tracked subject files, 0 untracked; VPS package ready; local staging and registry running.",
+  "repository_state": "2026-09-26: candidate 10 frozen at 566c8f6e7edd9194d091a59ab2fa3c5c6015ac77 (sha256:9547dc3319cf187c3ea9e6e2b47c2533cc8215e571ed5df54df8336265985aaa); 740 tracked subject files, 0 untracked; MEL26 coverage recovery and 25/09 proofs consolidated; local staging templates ready.",
   "instruction_scope_refs": [
     "docs/prompt-state-of-the-art-triplo-aaa.md",
     "docs/prompt-state-of-the-art-triplo-aaa-2026-09-09-v2.txt",
@@ -53,9 +53,9 @@
     "docs/roadmap-melhorias-cvg-aud22-2026-09-20.md",
     "docs/backlog-melhorias-cvg-aud22-2026-09-20.md"
   ],
-  "last_gate_record": "VER-CVG-AUD27-015-012",
-  "last_event_id": "EVT-CVG-AUD27-015-012",
-  "state_revision": 621,
+  "last_gate_record": "VER-CVG-AUD27-015-013",
+  "last_event_id": "EVT-CVG-AUD27-015-013",
+  "state_revision": 622,
   "latest_evidence_note": "Current observed subject sha256:492181ca3eb8452c80f55b4c35de91ddf3f01d5cb17e8b0d22bb552cc9ab8501: MEL23 qualifies 15/50 (001–003, 013, 021, 024, 040–046, 048, 050); 35 remain unqualified, not all explicitly blocked. MEL23-014 remains blocked on a legal-owner root-license decision; MEL23-009–011, 023 and 049 remain partial; MEL23-012 remains blocked; MEL23-021 is PASS at 105/105 success fixtures and 80/80 executable schemas. Full suite 735/734/0/1; coverage 88.41% line, mutation 25/25 killed; 24 SNAPSHOT_PRIMARY collections remain. Candidate is dirty/unfrozen; external, cutover/restore and human gates remain open; protected original matrix remains unavailable and unchanged.",
   "historical_checkpoint": {
     "commit": "e43b3b0032aafb9d17563b1fce00fbae88ee0d51",
@@ -76,11 +76,11 @@
   "current_checkpoint": {
     "task": "AUD27-015",
     "action": "AUD27-015:REAL-IMAGE-SMOKE",
-    "sourceSha": "26756a892f91b40b358836744649e794d2d396af",
+    "sourceSha": "566c8f6e7edd9194d091a59ab2fa3c5c6015ac77",
     "worktree": "frozen",
     "plan": ".agent/plans/2026-09-21-cvg-aud27.md",
     "result": "IN_PROGRESS",
-    "fingerprint": "sha256:1f51a3ed4ede35702060741924cdb22228f29f764b76424df50c1f79691ecf60",
+    "fingerprint": "sha256:9547dc3319cf187c3ea9e6e2b47c2533cc8215e571ed5df54df8336265985aaa",
     "fingerprint_status": "FROZEN",
     "evidence": "VER-CVG-AUD27-001-145",
     "globalVerdict": "AAA_NOT_PROVEN",
@@ -122,7 +122,7 @@
   "human_approval_required": [
     "production release, real data, real provider, credential handling, break-glass, retention/residency, RTO/RPO/SLO and residual high/critical risk"
   ],
-  "updated_at": "2026-09-26T04:51:05.754Z",
+  "updated_at": "2026-09-26T13:51:53.772Z",
   "latest_remote_observation": {
     "run": "34503647191",
     "sha": "539d34e48e4b94d83d161797219bbc95fb43fec4",
@@ -143,9 +143,9 @@
     "task": "AUD27-015",
     "action": "AUD27-015:REAL-IMAGE-SMOKE",
     "plan": ".agent/plans/2026-09-21-cvg-aud27.md",
-    "fingerprint": "sha256:1f51a3ed4ede35702060741924cdb22228f29f764b76424df50c1f79691ecf60",
+    "fingerprint": "sha256:9547dc3319cf187c3ea9e6e2b47c2533cc8215e571ed5df54df8336265985aaa",
     "fingerprint_status": "FROZEN",
-    "sourceSha": "26756a892f91b40b358836744649e794d2d396af",
+    "sourceSha": "566c8f6e7edd9194d091a59ab2fa3c5c6015ac77",
     "worktree": "frozen",
     "evidence": "VER-CVG-AUD27-001-145",
     "globalVerdict": "AAA_NOT_PROVEN",
@@ -213,15 +213,15 @@
     "globalVerdict": "AAA_NOT_PROVEN"
   },
   "current_audit_addendum": {
-    "record": "VER-CVG-AUD27-015-012",
-    "observedAt": "2026-09-26T04:51:05.754Z",
-    "priorRecord": "VER-CVG-AUD27-015-011",
+    "record": "VER-CVG-AUD27-015-013",
+    "observedAt": "2026-09-26T13:51:53.772Z",
+    "priorRecord": "VER-CVG-AUD27-015-012",
     "critic": null,
     "criticStatus": "NOT_RUN_FOR_CURRENT_M0_REVALIDATION",
     "status": "M0_M2_MIGRATION_CURRENT_SUBJECT_REVALIDATED_PROMOTION_BLOCKED",
     "evidenceAdmission": "CURRENT_LOCAL_REVALIDATION_AND_FOCAL_RECEIPTS; REGISTERED_MATRIX_ORIGINAL_UNAVAILABLE",
-    "scope": "Current dirty subject sha256:492181ca3eb8452c80f55b4c35de91ddf3f01d5cb17e8b0d22bb552cc9ab8501 qualifies 15/50 MEL23 criteria including all successful route fixtures; MEL23-014 is blocked on legal-owner decision; migration cutover/restore and 24 SNAPSHOT_PRIMARY collections remain open. No clean candidate, external anchor, global AAA or promotion is claimed.",
-    "sourceSha": "26756a892f91b40b358836744649e794d2d396af",
+    "scope": "Candidate 10 566c8f6e7edd9194d091a59ab2fa3c5c6015ac77 (sha256:9547dc3319cf187c3ea9e6e2b47c2533cc8215e571ed5df54df8336265985aaa) consolidates the MEL26 coverage recovery, the 25/09 proofs and the 26/09 audit package; the coverage ratchet passes at 88.40-88.42% lines with real tests only. MEL23 focal rebinding, migration cutover/restore, 24 SNAPSHOT_PRIMARY collections, external anchor, independent review and the human decision remain open. No global AAA or promotion is claimed.",
+    "sourceSha": "566c8f6e7edd9194d091a59ab2fa3c5c6015ac77",
     "verificationRefs": [
       "VER-CVG-AUD27-001-001",
       "VER-CVG-AUD27-001-002",
@@ -577,7 +577,8 @@
       "VER-CVG-AUD27-011-029",
       "VER-CVG-AUD27-024-010",
       "VER-CVG-AUD27-004-025",
-      "VER-CVG-AUD27-001-145"
+      "VER-CVG-AUD27-001-145",
+      "VER-CVG-AUD27-015-013"
     ],
     "current_receipt_refs": [
       "VER-CVG-AUD27-002-021",

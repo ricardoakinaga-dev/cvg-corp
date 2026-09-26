@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-26T13:05:30.340Z",
-  "source_sha": "26756a892f91b40b358836744649e794d2d396af",
-  "observed_subject_fingerprint": "sha256:1f51a3ed4ede35702060741924cdb22228f29f764b76424df50c1f79691ecf60",
+  "generated_at": "2026-09-26T21:42:31.362Z",
+  "source_sha": "566c8f6e7edd9194d091a59ab2fa3c5c6015ac77",
+  "observed_subject_fingerprint": "sha256:9547dc3319cf187c3ea9e6e2b47c2533cc8215e571ed5df54df8336265985aaa",
   "candidate_fingerprint": null,
   "fingerprint_status": "UNFROZEN_UNTIL_AUD27-004",
   "status_source": ".agent/backlog.json#items (AUD27 only)",
@@ -44,31 +44,30 @@
           }
         ],
         "test_commands": [
-          "npx tsx scripts/vps-bootstrap.ts --env-file /tmp/cvg-staging/prod.env.synthetic",
-          "node --import tsx --test tests/unit/vps-bootstrap.test.ts"
+          "npm run verify:coverage",
+          "node --import tsx --test tests/unit/vps-bootstrap.test.ts tests/unit/sealed-critic-packet.test.ts tests/unit/runtime-state.test.ts",
+          "node --import tsx --test tests/unit/observability-config.test.ts tests/unit/integration-service.test.ts tests/unit/mel23-evidence.test.ts",
+          "npm run verify:docs-integrity",
+          "npm run verify:control-plane"
         ],
         "evidence_artifacts": [
-          "artifacts/operational-proof/aud27-vps-20260925/vps-check.log#sha256:93ee08d12d542c9dec72251405863d218070916e2d3bb16c53aa0f795ecccb66",
-          "artifacts/operational-proof/aud27-vps-20260925/vps-test.log#sha256:9ffbf0f7457e639dde7184f483e9c9905ffed367ce9c3ed22ca742f8459e59fe",
+          "artifacts/operational-proof/mel26-local-revalidation-20260926/coverage-recovery.log#sha256:b0ef4365d61a82a8263b5ef7d2aa37c94b89398d9cb6c01805ef9e0bc9db566d",
+          "artifacts/operational-proof/mel26-local-revalidation-20260926/coverage-summary-run2.json#sha256:b68f7e21b83836894b6e8afda647001ae5cc244d660e4214d8fd3300e6af996d",
           "artifacts/operational-proof/mel23-control-plane-current.json"
         ],
-        "receipt_id": "VER-CVG-AUD27-015-012",
-        "environment": "Frozen candidate 9 26756a892f91b40b358836744649e794d2d396af; local synthetic production env; no VPS contacted.",
+        "receipt_id": "VER-CVG-AUD27-015-013",
+        "environment": "Frozen candidate 10 566c8f6e7edd9194d091a59ab2fa3c5c6015ac77; local workspace; Node v24.20.0; synthetic data only; no external resources contacted.",
         "result": "PARTIAL_WITH_LIMITATIONS",
         "receipt_result": "PARTIAL_WITH_LIMITATIONS",
-        "fingerprint": "sha256:1f51a3ed4ede35702060741924cdb22228f29f764b76424df50c1f79691ecf60",
-        "candidate_fingerprint": "sha256:1f51a3ed4ede35702060741924cdb22228f29f764b76424df50c1f79691ecf60",
+        "fingerprint": "sha256:9547dc3319cf187c3ea9e6e2b47c2533cc8215e571ed5df54df8336265985aaa",
+        "candidate_fingerprint": "sha256:9547dc3319cf187c3ea9e6e2b47c2533cc8215e571ed5df54df8336265985aaa",
         "fingerprint_status": "FROZEN_CANDIDATE",
         "issues": [
           "focal receipt task does not match the primary AUD27 owner",
-          "AUD27-001 does not reference focal receipt VER-CVG-AUD27-015-012",
+          "AUD27-001 does not reference focal receipt VER-CVG-AUD27-015-013",
           "receipt result uses a noncanonical alias",
           "criterion is not proven PASS by its focal receipt",
-          "AUD27-001 does not reference focal receipt VER-CVG-AUD27-015-012",
-          "captured verification pointer does not match the current ledger tail",
-          "captured event pointer does not match the current ledger tail",
-          "capture source SHA does not match the current checkout",
-          "capture fingerprint does not match the current observed subject"
+          "AUD27-001 does not reference focal receipt VER-CVG-AUD27-015-013"
         ]
       },
       {

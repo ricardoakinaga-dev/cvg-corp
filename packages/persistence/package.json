@@ -9,6 +9,6 @@
   "dependencies": {
     "@cvg/contracts": "*",
     "@cvg/domain": "*",
-    "pg": "^8.16.3"
+    "pg": "^8.23.1"
   }
 }

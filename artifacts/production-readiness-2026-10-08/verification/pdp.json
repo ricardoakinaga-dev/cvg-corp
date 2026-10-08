@@ -1,0 +1,13 @@
+{
+  "name": "pdp",
+  "command": [
+    "npm",
+    "run",
+    "verify:pdp"
+  ],
+  "exit_status": 0,
+  "started_at": "2026-10-08T05:52:01.717742+00:00",
+  "duration_s": 2.1,
+  "log": "artifacts/production-readiness-2026-10-08/verification/pdp.log",
+  "log_sha256": "28e076d87edf8900c556a59bb23768abcd1eddda2694f7c266702e442b581d85"
+}

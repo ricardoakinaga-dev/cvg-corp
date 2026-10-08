@@ -1,0 +1,13 @@
+{
+  "name": "ci-plugins",
+  "command": [
+    "npm",
+    "run",
+    "verify:plugins"
+  ],
+  "exit_status": 0,
+  "started_at": "2026-10-08T10:45:16.423653+00:00",
+  "duration_s": 0.4,
+  "log": "artifacts/production-readiness-2026-10-08/verification/after-commit/ci-plugins.log",
+  "log_sha256": "ca34a9c91e15c932695e165226a13ea959c3bdc21229ff51a4e31a6d4dbf32e0"
+}

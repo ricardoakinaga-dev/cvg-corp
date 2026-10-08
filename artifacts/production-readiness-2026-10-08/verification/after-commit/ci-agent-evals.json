@@ -1,0 +1,13 @@
+{
+  "name": "ci-agent-evals",
+  "command": [
+    "npm",
+    "run",
+    "verify:agent-evals"
+  ],
+  "exit_status": 0,
+  "started_at": "2026-10-08T10:45:17.171615+00:00",
+  "duration_s": 1.9,
+  "log": "artifacts/production-readiness-2026-10-08/verification/after-commit/ci-agent-evals.log",
+  "log_sha256": "a8daac35998bad9c58e3d06a38b748a96be6bd7d2bf6bec297c47e51d929350a"
+}

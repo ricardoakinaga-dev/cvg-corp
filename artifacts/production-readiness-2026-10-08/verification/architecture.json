@@ -1,0 +1,13 @@
+{
+  "name": "architecture",
+  "command": [
+    "npm",
+    "run",
+    "verify:architecture"
+  ],
+  "exit_status": 0,
+  "started_at": "2026-10-08T10:32:46.489698+00:00",
+  "duration_s": 0.2,
+  "log": "artifacts/production-readiness-2026-10-08/verification/architecture.log",
+  "log_sha256": "fb1b1996bc31cfb350a1d4d982956ea8ef984b22ba3f4a0fe045023fd2efc7e2"
+}

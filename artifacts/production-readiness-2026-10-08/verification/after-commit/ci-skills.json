@@ -1,0 +1,13 @@
+{
+  "name": "ci-skills",
+  "command": [
+    "npm",
+    "run",
+    "verify:skills"
+  ],
+  "exit_status": 0,
+  "started_at": "2026-10-08T10:45:16.803556+00:00",
+  "duration_s": 0.4,
+  "log": "artifacts/production-readiness-2026-10-08/verification/after-commit/ci-skills.log",
+  "log_sha256": "c4099d5bc261ee6519ee1e387c8a300a6294d9593da24aee759da1e18e1bd8e8"
+}

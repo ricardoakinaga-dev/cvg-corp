@@ -1,0 +1,60 @@
+{
+  "stats": {
+    "startTime": "2026-10-08T06:12:27.981Z",
+    "duration": 1548562.079,
+    "expected": 521,
+    "skipped": 37,
+    "unexpected": 0,
+    "flaky": 0
+  },
+  "per_project": {
+    "chromium-wide-1440": {
+      "expected": 58,
+      "skipped": 2
+    },
+    "chromium-tablet-768": {
+      "expected": 55,
+      "skipped": 5
+    },
+    "chromium-mobile-375": {
+      "expected": 57,
+      "skipped": 3
+    },
+    "firefox-wide-1440": {
+      "expected": 57,
+      "skipped": 3
+    },
+    "firefox-tablet-768": {
+      "expected": 55,
+      "skipped": 5
+    },
+    "firefox-mobile-375": {
+      "expected": 57,
+      "skipped": 3
+    },
+    "webkit-wide-1440": {
+      "expected": 57,
+      "skipped": 3
+    },
+    "webkit-tablet-768": {
+      "expected": 55,
+      "skipped": 5
+    },
+    "webkit-mobile-375": {
+      "expected": 57,
+      "skipped": 3
+    },
+    "chromium-stress": {
+      "expected": 5,
+      "skipped": 1
+    },
+    "firefox-stress": {
+      "expected": 4,
+      "skipped": 2
+    },
+    "webkit-stress": {
+      "expected": 4,
+      "skipped": 2
+    }
+  }
+}

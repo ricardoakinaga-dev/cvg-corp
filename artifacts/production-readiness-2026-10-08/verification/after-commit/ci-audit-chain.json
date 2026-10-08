@@ -1,0 +1,13 @@
+{
+  "name": "ci-audit-chain",
+  "command": [
+    "npm",
+    "run",
+    "verify:audit-chain"
+  ],
+  "exit_status": 0,
+  "started_at": "2026-10-08T10:45:09.864190+00:00",
+  "duration_s": 0.4,
+  "log": "artifacts/production-readiness-2026-10-08/verification/after-commit/ci-audit-chain.log",
+  "log_sha256": "2c5c24be20c0b58ff97d6d548893231e6349d6ed004163f09c81f3a7dd748c78"
+}

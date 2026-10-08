@@ -1,0 +1,13 @@
+{
+  "name": "ai-disabled",
+  "command": [
+    "npm",
+    "run",
+    "verify:ai-disabled"
+  ],
+  "exit_status": 0,
+  "started_at": "2026-10-08T05:52:09.960961+00:00",
+  "duration_s": 1.0,
+  "log": "artifacts/production-readiness-2026-10-08/verification/ai-disabled.log",
+  "log_sha256": "829e1db468d34dfc19cb75aa911cf568a2102803ed5180b6c7289c4640f0ed0b"
+}

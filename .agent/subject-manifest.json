@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
-  "captured_at": "2026-09-26T13:51:53.772Z",
-  "source_sha": "566c8f6e7edd9194d091a59ab2fa3c5c6015ac77",
-  "subject_fingerprint": "sha256:9547dc3319cf187c3ea9e6e2b47c2533cc8215e571ed5df54df8336265985aaa",
-  "tracked_subject_files": 740,
+  "captured_at": "2026-09-26T22:46:03.144Z",
+  "source_sha": "9aab406b164497978b05dd3aa431db49ad11677a",
+  "subject_fingerprint": "sha256:0b3ff853d29944aaa6fbcf33ff02eae28736ceb35b48360f308dd1d391d39007",
+  "tracked_subject_files": 741,
   "untracked_subject_files": 0,
   "status": "FROZEN_SUBJECT_CONTROL_PLANE_QUALIFICATION_UNFROZEN_UNTIL_AUD27-004",
   "exclusions": [
@@ -25,9 +25,9 @@
   },
   "control_plane": {
     "fingerprint_status": "FROZEN",
-    "candidate_fingerprint": "sha256:9547dc3319cf187c3ea9e6e2b47c2533cc8215e571ed5df54df8336265985aaa",
-    "last_gate_record": "VER-CVG-AUD27-015-013",
-    "last_event_id": "EVT-CVG-AUD27-015-013",
+    "candidate_fingerprint": "sha256:0b3ff853d29944aaa6fbcf33ff02eae28736ceb35b48360f308dd1d391d39007",
+    "last_gate_record": "VER-CVG-AUD27-015-014",
+    "last_event_id": "EVT-CVG-AUD27-015-014",
     "active_action_id": "AUD27-015:REAL-IMAGE-SMOKE",
     "done_count": 38,
     "vps_package": {
@@ -42,7 +42,7 @@
       "cutover qualification for AUD27-011/012/013/014"
     ]
   },
-  "candidate": 10,
+  "candidate": 11,
   "subjects": {
     "candidate_1": {
       "source_sha": "f1b7bdd6f44162feca84a2651dd4878dcc47e032",
@@ -92,6 +92,11 @@
     "candidate_10": {
       "source_sha": "566c8f6e7edd9194d091a59ab2fa3c5c6015ac77",
       "fingerprint": "sha256:9547dc3319cf187c3ea9e6e2b47c2533cc8215e571ed5df54df8336265985aaa",
+      "status": "FROZEN"
+    },
+    "candidate_11": {
+      "source_sha": "9aab406b164497978b05dd3aa431db49ad11677a",
+      "fingerprint": "sha256:0b3ff853d29944aaa6fbcf33ff02eae28736ceb35b48360f308dd1d391d39007",
       "status": "FROZEN"
     }
   }

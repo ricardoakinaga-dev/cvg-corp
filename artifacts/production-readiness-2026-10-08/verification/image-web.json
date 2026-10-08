@@ -1,0 +1,21 @@
+{
+  "name": "image-web",
+  "command": [
+    "docker",
+    "build",
+    "--file",
+    "Dockerfile.web",
+    "--build-arg",
+    "CVG_SOURCE_REVISION=9aab406b164497978b05dd3aa431db49ad11677a",
+    "--label",
+    "io.cvg.qualification.fingerprint=sha256:47858deb7efadf92cf8bff380e9ce5c73bb0d1f651d6851a99d6708e1b79ff89",
+    "--tag",
+    "cvg-corp-readiness-web:20261008-47858deb7efa",
+    "."
+  ],
+  "exit_status": 0,
+  "duration_s": 16.0,
+  "log": "artifacts/production-readiness-2026-10-08/verification/image-web.log",
+  "log_sha256": "8c77d97beed0904d422d3268b3dac5bf82a343958542a7f91c89fbb9f2562e1d",
+  "observed_at": "2026-10-08T06:11:48.773594+00:00"
+}

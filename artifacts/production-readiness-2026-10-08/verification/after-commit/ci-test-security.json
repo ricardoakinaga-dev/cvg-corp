@@ -1,0 +1,13 @@
+{
+  "name": "ci-test-security",
+  "command": [
+    "npm",
+    "run",
+    "test:security"
+  ],
+  "exit_status": 0,
+  "started_at": "2026-10-08T10:44:48.066812+00:00",
+  "duration_s": 3.1,
+  "log": "artifacts/production-readiness-2026-10-08/verification/after-commit/ci-test-security.log",
+  "log_sha256": "ced25c959af89d8c729fe7fb008630484135324ba53bbf6dc2ca5e3cf3893c56"
+}

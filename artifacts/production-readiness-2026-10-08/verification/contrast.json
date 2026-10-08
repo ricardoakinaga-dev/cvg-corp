@@ -1,0 +1,13 @@
+{
+  "name": "contrast",
+  "command": [
+    "npm",
+    "run",
+    "audit:contrast"
+  ],
+  "exit_status": 0,
+  "started_at": "2026-10-08T05:52:09.664165+00:00",
+  "duration_s": 0.3,
+  "log": "artifacts/production-readiness-2026-10-08/verification/contrast.log",
+  "log_sha256": "0d1f7e7ad46d85d3c96e4a5965cfece4b5b51be644c5734c7a108cddd60395ef"
+}

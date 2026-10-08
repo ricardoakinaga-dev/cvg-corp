@@ -1,0 +1,13 @@
+{
+  "name": "ci-build-runtime",
+  "command": [
+    "npm",
+    "run",
+    "build:runtime"
+  ],
+  "exit_status": 0,
+  "started_at": "2026-10-08T10:45:09.342918+00:00",
+  "duration_s": 0.5,
+  "log": "artifacts/production-readiness-2026-10-08/verification/after-commit/ci-build-runtime.log",
+  "log_sha256": "b3d9ffb1ce7b4d74c03f62a1c7e965f94b16b88e876a3ccd1ef59fa9245f3d96"
+}

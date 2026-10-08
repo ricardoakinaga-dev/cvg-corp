@@ -1,0 +1,13 @@
+{
+  "name": "image-smoke",
+  "command": [
+    "python3",
+    "artifacts/production-readiness-2026-10-08/runtime/smoke-images.py",
+    "artifacts/production-readiness-2026-10-08/runtime/verified-builds.json"
+  ],
+  "exit_status": 0,
+  "duration_s": 2.1,
+  "log": "artifacts/production-readiness-2026-10-08/verification/image-smoke.log",
+  "log_sha256": "528bcd5a7441a50b2b0ff029fa1b8324006e80cd555df4adcd849bc2d58653f6",
+  "observed_at": "2026-10-08T06:12:02.950290+00:00"
+}

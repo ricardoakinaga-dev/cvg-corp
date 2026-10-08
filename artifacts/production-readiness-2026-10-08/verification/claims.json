@@ -1,0 +1,13 @@
+{
+  "name": "claims",
+  "command": [
+    "npm",
+    "run",
+    "verify:claims"
+  ],
+  "exit_status": 0,
+  "started_at": "2026-10-08T10:32:47.053108+00:00",
+  "duration_s": 0.2,
+  "log": "artifacts/production-readiness-2026-10-08/verification/claims.log",
+  "log_sha256": "ab5f022a61ae10b62e2e019cc545c4657f27db0eff24c4255752690228a368f2"
+}

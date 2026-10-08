@@ -1,0 +1,13 @@
+{
+  "name": "schema-manifest",
+  "command": [
+    "npm",
+    "run",
+    "verify:schema-manifest"
+  ],
+  "exit_status": 0,
+  "started_at": "2026-10-08T05:52:08.171142+00:00",
+  "duration_s": 0.4,
+  "log": "artifacts/production-readiness-2026-10-08/verification/schema-manifest.log",
+  "log_sha256": "3f71d84e1208d12145289b8b60a89df78ba09f1065c6813cd4352b1149e7d12b"
+}

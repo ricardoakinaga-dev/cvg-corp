@@ -1,0 +1,14 @@
+{
+  "name": "evidence-snapshot",
+  "command": [
+    "npm",
+    "run",
+    "verify:evidence-snapshot"
+  ],
+  "exit_status": 2,
+  "duration_s": 0.3,
+  "log": "artifacts/production-readiness-2026-10-08/verification/after-commit/evidence-snapshot.log",
+  "log_sha256": "00c1f4747b196b1da09f99a46374fc509d1bfab939553ec41ad3230fe783bc3a",
+  "observed_at": "2026-10-08T10:45:30.532383+00:00",
+  "classification": "BLOCKED_EVIDENCE_BINDING: fails identically on 9aab406 and origin/main c990914 today (evidence bound to c990914 / seven-day window over 2026-09 files)"
+}

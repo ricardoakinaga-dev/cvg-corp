@@ -1,0 +1,49 @@
+{
+  "source_fingerprint": "sha256:47858deb7efadf92cf8bff380e9ce5c73bb0d1f651d6851a99d6708e1b79ff89",
+  "image_id": "sha256:4c28fe574882f03581b0a8822c49dee97114a09cf2b5a502fbcda6be6a518d81",
+  "scope": "local compiled entrypoints; synthetic PostgreSQL; NODE_ENV=test; no TLS or provider qualification",
+  "checks": [
+    "compiled_migrate_exit_0",
+    "migrations_49",
+    "runtime_role_unprivileged",
+    "postgres_api_ready",
+    "anonymous_401",
+    "authenticated_login",
+    "durable_session_sql",
+    "session_survives_api_restart",
+    "compiled_worker_cycle",
+    "durable_worker_heartbeat",
+    "no_external_delivery",
+    "worker_sigterm_exit_0",
+    "api_sigterm_exit_0"
+  ],
+  "containers": [
+    {
+      "kind": "postgres",
+      "id": "4eafe2311ecfe62f14651e6c0586e8ecb17012862719b866b06b76a73d7f4fca",
+      "removed": true
+    },
+    {
+      "kind": "migrate",
+      "id": "4a70997f005540b4059f85186a72b3111d10307500447e24cbaa5b5e98090550",
+      "removed": true
+    },
+    {
+      "kind": "api",
+      "id": "eb2785b394dfb999443a3d053cce7be8a1b0f85b536d3a5b64aedcdecfd1a730",
+      "removed": true
+    },
+    {
+      "kind": "worker",
+      "id": "7a479a43088f6df93b2490068f423fcea6edf430cda645e2b7803f6e9b8a52f8",
+      "removed": true
+    }
+  ],
+  "network_removed": true,
+  "started_at": "2026-10-08T06:12:02.982971+00:00",
+  "restart_changed_fields": [
+    "data.context.correlationId"
+  ],
+  "status": "PASS",
+  "finished_at": "2026-10-08T06:12:11.208061+00:00"
+}

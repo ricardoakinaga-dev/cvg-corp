@@ -1,0 +1,13 @@
+{
+  "name": "ci-agent-runtime",
+  "command": [
+    "npm",
+    "run",
+    "verify:agent-runtime"
+  ],
+  "exit_status": 0,
+  "started_at": "2026-10-08T10:45:10.229563+00:00",
+  "duration_s": 5.0,
+  "log": "artifacts/production-readiness-2026-10-08/verification/after-commit/ci-agent-runtime.log",
+  "log_sha256": "8d814c836f0af4bb6fe96ef1eba4fb073cf02ceb0b5344460657eb9b944f081d"
+}

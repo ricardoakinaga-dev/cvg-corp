@@ -1,0 +1,13 @@
+{
+  "name": "design-tokens",
+  "command": [
+    "npm",
+    "run",
+    "audit:tokens"
+  ],
+  "exit_status": 0,
+  "started_at": "2026-10-08T05:52:09.383111+00:00",
+  "duration_s": 0.3,
+  "log": "artifacts/production-readiness-2026-10-08/verification/design-tokens.log",
+  "log_sha256": "7c56a4b063565c9f7d25df749ded7b8b7218686fcb993fafd8ff6c175aa490e9"
+}

@@ -1,0 +1,12 @@
+{
+  "name": "npm-audit",
+  "command": [
+    "npm",
+    "audit"
+  ],
+  "exit_status": 0,
+  "started_at": "2026-10-08T05:55:04.321779+00:00",
+  "duration_s": 0.5,
+  "log": "artifacts/production-readiness-2026-10-08/verification/npm-audit.log",
+  "log_sha256": "6d8c5c8f3d7684adb070417bd608d01ae90aa3dc26a65af03ffda4955f38d9a3"
+}

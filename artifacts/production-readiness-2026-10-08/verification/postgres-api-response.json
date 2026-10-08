@@ -1,0 +1,14 @@
+{
+  "name": "postgres-api-response",
+  "command": [
+    "node",
+    "--import",
+    "tsx",
+    "tests/integration/api-response-postgres.verify.ts"
+  ],
+  "exit_status": 0,
+  "started_at": "2026-10-08T06:10:46.689902+00:00",
+  "duration_s": 4.7,
+  "log": "artifacts/production-readiness-2026-10-08/verification/postgres-api-response.log",
+  "log_sha256": "f4a2ae6d4ba98352ee844a2b8604a7517698dcd979c25fe5294bd5bc2ce9a24b"
+}

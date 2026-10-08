@@ -1,0 +1,13 @@
+{
+  "name": "static",
+  "command": [
+    "npm",
+    "run",
+    "verify:static"
+  ],
+  "exit_status": 0,
+  "started_at": "2026-10-08T10:44:44.162167+00:00",
+  "duration_s": 1.3,
+  "log": "artifacts/production-readiness-2026-10-08/verification/after-commit/static.log",
+  "log_sha256": "bc829c77b91acc7dfa75301bdfed74de8eaeded04ed286b6e26a411df4b99c76"
+}

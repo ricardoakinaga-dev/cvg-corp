@@ -1,0 +1,13 @@
+{
+  "name": "pdp-universal",
+  "command": [
+    "npm",
+    "run",
+    "verify:pdp-universal"
+  ],
+  "exit_status": 0,
+  "started_at": "2026-10-08T05:52:03.796740+00:00",
+  "duration_s": 4.4,
+  "log": "artifacts/production-readiness-2026-10-08/verification/pdp-universal.log",
+  "log_sha256": "e3801d63646c78d425a3e2178bbe28edb0395aa22fcf5a43a6022622f22885a4"
+}

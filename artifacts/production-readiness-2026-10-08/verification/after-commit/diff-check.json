@@ -1,0 +1,13 @@
+{
+  "name": "diff-check",
+  "command": [
+    "git",
+    "diff",
+    "--check"
+  ],
+  "exit_status": 0,
+  "started_at": "2026-10-08T10:44:47.079082+00:00",
+  "duration_s": 0.0,
+  "log": "artifacts/production-readiness-2026-10-08/verification/after-commit/diff-check.log",
+  "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

@@ -1,0 +1,16 @@
+{
+  "name": "alertmanager-synthetic-loopback",
+  "command": [
+    "npm",
+    "run",
+    "verify:alertmanager"
+  ],
+  "exit_status": 0,
+  "duration_s": 0.2,
+  "log": "artifacts/production-readiness-2026-10-08/verification/alertmanager-synthetic-loopback.log",
+  "log_sha256": "31879fcc5c8580892581ff2e61d0bb718a1f21d91ebd4f6ec7599a965f88671a",
+  "observed_at": "2026-10-08T06:16:02.945726+00:00",
+  "environment": {
+    "CVG_ALERTMANAGER_WEBHOOK_URL": "http://127.0.0.1:9/cvg-synthetic-alerts (synthetic loopback fixture; not an operational sink)"
+  }
+}

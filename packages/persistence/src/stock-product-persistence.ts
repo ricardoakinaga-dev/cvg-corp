@@ -1,5 +1,5 @@
 import type { PoolClient } from "pg";
-import type { Product } from "@cvg/contracts";
+import type { CvgContext, OpaqueId, Product } from "@cvg/contracts";
 import { PersistenceProductSkuConflictError } from "./persistence-errors.js";
 
 export interface StockProductWriteDependencies {
@@ -67,4 +67,36 @@ export async function assertAuthoritativeProductReplay(
     || row.status !== product.status) {
     throw dependencies.corruption(`product replay ${product.id} does not match its normalized row`);
   }
+}
+
+export interface StockProductReadDependencies {
+  scopedRead<T>(context: CvgContext, operation: string, callback: (client: PoolClient) => Promise<T>): Promise<T>;
+  id(value: unknown, field: string): OpaqueId;
+  text(value: unknown, field: string): string;
+  integer(value: unknown, field: string): number;
+  enum<T extends string>(value: unknown, allowed: readonly T[], field: string): T;
+  corruption(message: string): Error;
+}
+
+/** Reads the organization-wide product catalog, including products that have no lot yet. */
+export function listAuthoritativeProducts(dependencies: StockProductReadDependencies, context: CvgContext): Promise<Product[]> {
+  return dependencies.scopedRead(context, "stock", async (client) => {
+    const result = await client.query<{ id: string; organization_id: string; sku: string; name: string; category: string; unit: string; reorder_point: number; status: string }>(
+      "select id::text as id, organization_id::text as organization_id, sku, name, category, unit, reorder_point, status from products where organization_id = cvg_request_organization() order by sku, id"
+    );
+    return result.rows.map((row) => {
+      const organizationId = dependencies.id(row.organization_id, "product.organization_id");
+      if (organizationId !== context.organizationId) throw dependencies.corruption(`normalized product ${row.id} is outside the requested organization`);
+      return {
+        id: dependencies.id(row.id, "product.id"),
+        organizationId,
+        sku: dependencies.text(row.sku, "product.sku"),
+        name: dependencies.text(row.name, "product.name"),
+        category: dependencies.text(row.category, "product.category"),
+        unit: dependencies.text(row.unit, "product.unit"),
+        reorderPoint: dependencies.integer(row.reorder_point, "product.reorder_point"),
+        status: dependencies.enum(row.status, ["ACTIVE", "INACTIVE"] as const, "product.status")
+      };
+    });
+  });
 }

@@ -311,7 +311,48 @@ function shortOutput(stdout: string, stderr: string): string {
   return output.length <= 2_000 ? output : `${output.slice(-1_997)}...`;
 }
 
-function runMutation(sandbox: string, mutation: MutationSpec, tests: readonly string[]): MutationResult {
+export interface MutationRunObservation {
+  status: number | null;
+  signal: NodeJS.Signals | null;
+  timedOut: boolean;
+  spawnFailed: boolean;
+  output: string;
+}
+
+/**
+ * FQ-04: only an ordinary failing test kills a mutant. A timeout, signal,
+ * spawn error or an exit without a reported test failure says nothing about
+ * the assertions, so it is INVALID and blocks the policy instead of inflating it.
+ */
+export function classifyMutationRun(run: MutationRunObservation): MutationResult["status"] {
+  if (run.timedOut || run.spawnFailed || run.signal !== null) return "INVALID";
+  if (run.status === 0) return "SURVIVED";
+  return run.status === 1 && /^(?:ℹ|#) fail [1-9]\d*$/m.test(run.output) ? "KILLED" : "INVALID";
+}
+
+function runTests(sandbox: string, tests: readonly string[]): MutationRunObservation {
+  const result = spawnSync(process.execPath, ["--import", "tsx", "--test", ...tests], {
+    cwd: sandbox,
+    encoding: "utf8",
+    env: { ...process.env, CI: "1", NODE_ENV: "test" },
+    timeout: 120_000,
+    maxBuffer: 8 * 1024 * 1024
+  });
+  const spawnError = result.error as (NodeJS.ErrnoException | undefined);
+  return {
+    status: result.status,
+    signal: result.signal,
+    timedOut: spawnError?.code === "ETIMEDOUT",
+    spawnFailed: Boolean(spawnError),
+    // Classified on the complete output: the runner prints its fail summary
+    // before the failure details, so a truncated tail can omit it.
+    output: `${result.stdout ?? ""}\n${result.stderr ?? (result.error ? String(result.error) : "")}`.trim()
+  };
+}
+
+function runMutation(sandbox: string, mutation: MutationSpec, tests: readonly string[], baseline: MutationRunObservation): MutationResult {
+  // A failing unmutated run would make every mutant look killed.
+  if (classifyMutationRun(baseline) !== "SURVIVED") return { ...mutation, status: "INVALID", exitStatus: baseline.status, signal: baseline.signal, output: `unmutated baseline did not pass: ${shortOutput(baseline.output, "")}` };
   const target = join(sandbox, mutation.file);
   const original = readFileSync(target, "utf8");
   let mutated: string;
@@ -323,22 +364,8 @@ function runMutation(sandbox: string, mutation: MutationSpec, tests: readonly st
 
   writeFileSync(target, mutated, "utf8");
   try {
-    const result = spawnSync(process.execPath, ["--import", "tsx", "--test", ...tests], {
-      cwd: sandbox,
-      encoding: "utf8",
-      env: { ...process.env, CI: "1", NODE_ENV: "test" },
-      timeout: 120_000,
-      maxBuffer: 8 * 1024 * 1024
-    });
-    const spawnError = result.error as (NodeJS.ErrnoException | undefined);
-    const timedOut = spawnError?.code === "ETIMEDOUT";
-    return {
-      ...mutation,
-      status: result.status === 0 && !timedOut ? "SURVIVED" : "KILLED",
-      exitStatus: result.status,
-      signal: result.signal,
-      output: shortOutput(result.stdout ?? "", result.stderr ?? (result.error ? String(result.error) : ""))
-    };
+    const run = runTests(sandbox, tests);
+    return { ...mutation, status: classifyMutationRun(run), exitStatus: run.status, signal: run.signal, output: shortOutput(run.output, "") };
   } finally {
     writeFileSync(target, original, "utf8");
   }
@@ -354,7 +381,13 @@ export function runMutationVerification(): void {
     cpSync(root, sandbox, { recursive: true, filter: (source) => shouldCopy(root, source) });
     const nodeModules = join(root, "node_modules");
     if (existsSync(nodeModules)) symlinkSync(nodeModules, join(sandbox, "node_modules"), "dir");
-    const results = MUTATION_PLAN.map((mutation) => runMutation(sandbox, mutation, testFiles(root, mutation)));
+    const baselines = new Map<string, MutationRunObservation>();
+    const results = MUTATION_PLAN.map((mutation) => {
+      const tests = testFiles(root, mutation);
+      const key = tests.join("\0");
+      if (!baselines.has(key)) baselines.set(key, runTests(sandbox, tests));
+      return runMutation(sandbox, mutation, tests, baselines.get(key)!);
+    });
     const score = mutationScore(results);
     const policy = {
       ...MUTATION_POLICY,

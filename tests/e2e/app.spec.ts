@@ -402,6 +402,46 @@ test("falha do servidor no logout mostra pendência em vez de sucesso falso", as
   await expect(page.getByText("revogação desta sessão no servidor ainda não foi confirmada")).toHaveCount(0);
 });
 
+test("logout durante revalidação revoga no servidor e a resposta atrasada não reabre a sessão", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: /Abrir demonstração sintética/i }).click();
+  await expect(page.getByRole("heading", { name: "Bom dia, Ricardo." })).toBeVisible();
+  let release!: () => void;
+  let entered!: () => void;
+  const responseReady = new Promise<void>((resolve) => { entered = resolve; });
+  const releaseResponse = new Promise<void>((resolve) => { release = resolve; });
+  let logoutRequests = 0;
+  page.on("request", (request) => {
+    if (request.url().endsWith("/api/v1/auth/logout")) logoutRequests += 1;
+  });
+  await page.route("**/api/v1/contexts", async (route) => {
+    const actualResponse = await route.fetch();
+    entered();
+    await releaseResponse;
+    await route.fulfill({ response: actualResponse });
+  });
+  const menu = page.getByRole("button", { name: "Abrir menu" });
+  try {
+    if (await menu.isVisible()) await menu.click();
+    await page.getByLabel("Selecionar unidade e workspace").selectOption({ label: "Unidade Sul · Operação clínica" });
+    await responseReady;
+    await expect(page.getByRole("region", { name: "Estado do ambiente" }).getByText("REVALIDATING", { exact: true })).toBeVisible();
+    if (await menu.isVisible() && (await menu.getAttribute("aria-expanded")) !== "true") await menu.click();
+    await page.getByRole("button", { name: "Sair", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "O cuidado em foco." })).toBeVisible();
+    await expect(page.getByText("revogação desta sessão no servidor ainda não foi confirmada")).toHaveCount(0);
+    release();
+    await page.waitForLoadState("networkidle");
+    await expect(page.getByRole("heading", { name: "O cuidado em foco." })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Bom dia, Ricardo." })).toHaveCount(0);
+    expect(logoutRequests).toBe(1);
+    expect((await page.request.get("/api/v1/me")).status()).toBe(401);
+  } finally {
+    release();
+    await page.unroute("**/api/v1/contexts");
+  }
+});
+
 const mfaSessionPayload = {
   user: { id: "00000000-0000-4000-8000-000000000001", displayName: "Ricardo", email: "admin@cvg.local", status: "ACTIVE" },
   contexts: [{ organization: { id: "00000000-0000-4000-8000-000000000010", name: "CVG", slug: "cvg" }, unit: { id: "00000000-0000-4000-8000-000000000020", name: "Unidade Centro", code: "CENTRO" }, workspace: { id: "00000000-0000-4000-8000-000000000030", name: "Operação clínica", purpose: "clinical" }, roles: ["admin"] }],
@@ -1499,6 +1539,58 @@ test("jornada de estoque: entrada, dispensação, negativa de saldo, devolução
   await expect(page.locator(".audit-row", { hasText: "Ajuste de baixa" }).first()).toBeVisible();
 });
 
+test("produto criado antes de um lote recusado continua recuperável após recarregar", async ({ page }) => {
+  const suffix = Date.now().toString(36);
+  const productName = `Produto órfão E2E ${suffix}`;
+  const yesterday = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
+  const expiry = new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10);
+  const openStock = async () => {
+    const menu = page.getByRole("button", { name: "Abrir menu" });
+    if (await menu.isVisible()) await menu.click();
+    await page.locator('nav[aria-label="Navegação principal"]').getByRole("button", { name: "Farmácia" }).click();
+    await expect(page.getByRole("heading", { name: "Estoque", exact: true })).toBeVisible();
+  };
+  await page.goto("/");
+  await page.getByRole("button", { name: /Abrir demonstração sintética/i }).click();
+  await expect(page.getByRole("heading", { name: "Bom dia, Ricardo." })).toBeVisible();
+  await openStock();
+
+  await page.getByRole("button", { name: "Registrar entrada" }).click();
+  await page.getByRole("button", { name: "Novo produto" }).click();
+  await page.locator("#stock-sku").fill(`SKU-ORFAO-${suffix}`);
+  await page.locator("#stock-name").fill(productName);
+  await page.locator("#stock-category").fill("Sintético");
+  await page.locator("#stock-lot").fill(`LOTE-VENCIDO-${suffix}`);
+  await page.locator("#stock-expiry").fill(yesterday);
+  await page.locator("#stock-quantity").fill("5");
+  await page.locator("#stock-location").selectOption({ index: 1 });
+  await page.getByRole("button", { name: "Confirmar entrada" }).click();
+  await expect(page.getByRole("dialog").getByRole("alert").filter({ hasText: "data futura" })).toBeVisible();
+  // FQ-01: the refused lot leaves the created product selected instead of re-creating the SKU.
+  await expect(page.getByRole("button", { name: "Produto existente" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#stock-product option:checked")).toHaveText(`${productName} · unidade`);
+  await page.getByRole("dialog").getByRole("button", { name: "Cancelar" }).click();
+
+  await page.reload();
+  await expect(page.getByLabel("Selecionar unidade e workspace")).toBeAttached();
+  await openStock();
+  await page.getByRole("button", { name: "Registrar entrada" }).click();
+  await page.getByRole("button", { name: "Produto existente" }).click();
+  // The product has no lot, so only the server catalog can offer it after a reload.
+  await page.locator("#stock-product").selectOption({ label: `${productName} · unidade` });
+  await page.locator("#stock-lot").fill(`LOTE-OK-${suffix}`);
+  await page.locator("#stock-expiry").fill(yesterday);
+  await page.locator("#stock-quantity").fill("5");
+  await page.locator("#stock-location").selectOption({ index: 1 });
+  await page.getByRole("button", { name: "Confirmar entrada" }).click();
+  await expect(page.getByRole("dialog").getByRole("alert").filter({ hasText: "data futura" })).toBeVisible();
+  // Correcting the refused lot in the same dialog is a new intent, not a replay.
+  await page.locator("#stock-expiry").fill(expiry);
+  await page.getByRole("button", { name: "Confirmar entrada" }).click();
+  await expect(page.getByRole("status").filter({ hasText: `Lote LOTE-OK-${suffix} com saldo 5` })).toBeVisible();
+  await expect(page.locator(".stock-card", { hasText: productName })).toBeVisible();
+});
+
 test("jornada financeira: cobrança, pagamento, negativa de excesso, estorno e ledger", async ({ page }) => {
   const suffix = Date.now().toString(36);
   const description = `Consulta E2E ${suffix}`;
@@ -1519,12 +1611,15 @@ test("jornada financeira: cobrança, pagamento, negativa de excesso, estorno e l
   const chargeRow = () => page.locator(".ledger-row", { hasText: description });
   await expect(chargeRow().getByText("Em aberto", { exact: true })).toBeVisible();
   await chargeRow().getByRole("button", { name: "Pagamento" }).click();
+  await expect(page.locator("#finance-payment-amount")).toHaveValue("100,00");
   await page.locator("#finance-payment-amount").fill("40,00");
   await page.getByRole("button", { name: "Registrar pagamento" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Pagamento de R$ 40,00 liquidado" })).toBeVisible();
   await expect(chargeRow().getByText("Parcial", { exact: true })).toBeVisible();
 
   await chargeRow().getByRole("button", { name: "Pagamento" }).click();
+  // The partial payment form suggests the open balance, not the charge total.
+  await expect(page.locator("#finance-payment-amount")).toHaveValue("60,00");
   await page.locator("#finance-payment-amount").fill("70,00");
   await page.getByRole("button", { name: "Registrar pagamento" }).click();
   await expect(page.getByRole("alert").filter({ hasText: "excede o saldo" })).toBeVisible();

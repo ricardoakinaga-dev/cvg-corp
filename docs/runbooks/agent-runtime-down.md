@@ -45,6 +45,7 @@ O script `scripts/verify-ai-disabled.ts` exercita exatamente esse cenário: com 
 `CVG_AGENT_RUNTIME=disabled` (`packages/config/src/index.ts:76`) seleciona `DisabledAgentRuntime` (`apps/api/src/app.ts:587`), que falha fechado com `AgentRuntimeUnavailableError` em toda operação de IA e reporta `DISABLED`.
 
 - A variável é lida no boot: exige reinício controlado da API.
+- Em produção, `disabled` dispensa os pré-requisitos DeepSeek: `CVG_DEEPSEEK_RUNTIME_ENABLED=false` e as variáveis `CVG_DEEPSEEK_*` podem ser removidas; `verify:production --production` também deixa de exigi-las nesse modo. Os modos `auto`, `external` e `embedded` continuam recusando o runtime mock em produção. O overlay `docker-compose.production.yml` descreve a implantação com IA; para a contingência sem IA, aplique o modo `disabled` no ambiente de destino sem montar os segredos DeepSeek.
 - `CVG_AI_SAFE_MODE`, `CVG_AI_DISABLED_PROVIDERS` e `CVG_AI_DISABLED_TOOLS` são controles independentes do runtime embarcado (`apps/api/src/app.ts:142`) e não substituem `disabled`.
 - Registrar a mudança como decisão operacional com correlation ID, horário e responsável.
 

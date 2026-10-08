@@ -118,9 +118,9 @@ test("all cataloged API routes preserve versioned envelopes for synthetic invali
   });
   t.after(async () => runtime.app.close());
 
-  assert.equal(API_ROUTE_CATALOG.length, 105);
-  assert.equal(new Set(API_ROUTE_CATALOG.map((route) => route.responseSchema)).size, 80);
-  assert.equal(API_RESPONSE_SCHEMA_CATALOG.length, 80);
+  assert.equal(API_ROUTE_CATALOG.length, 106);
+  assert.equal(new Set(API_ROUTE_CATALOG.map((route) => route.responseSchema)).size, 81);
+  assert.equal(API_RESPONSE_SCHEMA_CATALOG.length, 81);
 
   const seen = new Set<string>();
   let errorResponses = 0;
@@ -159,8 +159,8 @@ test("all cataloged API routes preserve versioned envelopes for synthetic invali
     }
   }
 
-  assert.equal(seen.size, 105);
-  assert.equal(errorResponses + successResponses + emptyResponses, 105);
+  assert.equal(seen.size, 106);
+  assert.equal(errorResponses + successResponses + emptyResponses, 106);
   assert.ok(errorResponses > 0, "synthetic requests should exercise actual route error responses");
   assert.ok(successResponses > 0, "synthetic requests should exercise actual route success responses");
 
@@ -193,8 +193,8 @@ test("all cataloged API routes preserve versioned envelopes for synthetic invali
     assert.equal(parsedPayload.success, true, `${key} payload failed ${route.responseSchema}: ${JSON.stringify(parsedPayload.success ? null : parsedPayload.error.issues)}`);
     authenticatedGetPayloads++;
   }
-  assert.equal(getRoutes.length, 45);
-  assert.equal(authenticatedGetPayloads, 41);
+  assert.equal(getRoutes.length, 46);
+  assert.equal(authenticatedGetPayloads, 42);
   assert.deepEqual(authenticatedGetErrors.sort(), [
     "GET /ai/sessions/:id/replay 404",
     "GET /clinical/documents/:id 404",
@@ -382,6 +382,8 @@ test("valid synthetic success fixtures reach the remaining safely executable cat
   const stock = makeClient(runtime);
   await stock.login("leo.estoque@cvg.local", "estoque-synthetic-0004");
   await success(stock, "GET", "/stock/locations", "/stock/locations");
+  const products = await success(stock, "GET", "/stock/products", "/stock/products");
+  assert.ok((products.body.data as { items: Array<{ sku: string }> }).items.some((product) => product.sku === "AMOX-50"));
 
   const communicationList = await success(admin, "GET", "/communications", "/communications");
   assert.ok(Array.isArray((communicationList.body.data as { items: unknown[] }).items));
@@ -705,7 +707,7 @@ test("valid synthetic success fixtures reach the remaining safely executable cat
     await success(admin, "GET", route.path, concretePath(route.path));
     addedGetFixtures.push(key);
   }
-  assert.equal(getRoutes.length, 45);
+  assert.equal(getRoutes.length, 46);
   assert.deepEqual(getRoutes.map((route) => `GET ${route.path}`).filter((key) => !covered.has(key)), []);
   t.diagnostic(`explicit schema-checked GET success fixtures: ${getRoutes.length}/${getRoutes.length}; added=${addedGetFixtures.length}`);
 
@@ -718,8 +720,8 @@ test("valid synthetic success fixtures reach the remaining safely executable cat
   const snapshot = JSON.parse(serializeSnapshot(runtime.store.snapshot())) as unknown;
   await success(admin, "POST", "/ops/restore", "/ops/restore", { snapshot }, { "idempotency-key": "response-routes-ops-restore" });
 
-  assert.equal(covered.size, 103);
-  t.diagnostic(`explicit valid success payload-schema fixtures: ${covered.size}/105 catalog routes`);
+  assert.equal(covered.size, 104);
+  t.diagnostic(`explicit valid success payload-schema fixtures: ${covered.size}/106 catalog routes`);
   const successFixtureExceptions = ["POST /integrations/:provider/events", "POST /ops/export"];
   assert.deepEqual(API_ROUTE_CATALOG.map((route) => `${route.method} ${route.path}`).filter((key) => !covered.has(key)).sort(), successFixtureExceptions.sort());
   t.diagnostic("success fixture exceptions: integration ingress needs PostgreSQL/signature verification; governed export is disabled in the isolated memory runtime");
@@ -765,6 +767,7 @@ test("valid synthetic success fixtures reach the remaining safely executable cat
     "GET /ready",
     "GET /scheduling/options",
     "GET /stock/locations",
+    "GET /stock/products",
     "GET /stock",
     "GET /stock/movements",
     "GET /users",

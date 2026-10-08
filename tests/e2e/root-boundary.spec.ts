@@ -26,7 +26,9 @@ test("CVG-AUD21-009: root error emits redacted telemetry and retries by keyboard
   await expect(panel).toBeVisible();
   await expect(panel).toBeFocused();
   await expect(page.getByRole("heading", { name: "Algo saiu do previsto." })).toBeVisible();
-  await expect(page.getByText("Nenhum dado foi alterado.", { exact: false })).toBeVisible();
+  // FQ-03: the boundary cannot know whether earlier writes committed, so it must not deny them.
+  await expect(page.getByText("confira o registro antes de repetir", { exact: false })).toBeVisible();
+  await expect(page.getByText("Nenhum dado foi alterado", { exact: false })).toHaveCount(0);
   await expectNoHorizontalOverflow(page);
 
   await expect.poll(() => page.evaluate(() => (window as Window & { __cvgRootErrorEvents?: unknown[] }).__cvgRootErrorEvents?.length ?? 0)).toBe(1);

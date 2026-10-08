@@ -12,8 +12,8 @@ test("every cataloged API response has an executable egress contract", () => {
   const descriptors = assertCatalogResponseContracts();
   assert.equal(descriptors.length, API_ROUTE_CATALOG.length);
   assert.equal(descriptors.every((descriptor) => API_RESPONSE_CONTRACT_REGISTRY.has(descriptor.responseSchema)), true);
-  assert.equal(API_ROUTE_CATALOG.length, 105);
-  assert.equal(API_RESPONSE_SCHEMA_CATALOG.length, 80);
+  assert.equal(API_ROUTE_CATALOG.length, 106);
+  assert.equal(API_RESPONSE_SCHEMA_CATALOG.length, 81);
   assert.equal(new Set(API_ROUTE_CATALOG.map((route) => route.responseSchema)).size, API_RESPONSE_SCHEMA_CATALOG.length);
   assert.equal(API_RESPONSE_CONTRACT_METADATA.get("LoginResponse")?.strength, "PAYLOAD_SCHEMA");
   assert.equal(API_RESPONSE_CONTRACT_METADATA.get("LoginResponse")?.coverage, "PAYLOAD_AND_ENVELOPE");
@@ -21,7 +21,7 @@ test("every cataloged API response has an executable egress contract", () => {
   assert.equal(API_RESPONSE_CONTRACT_METADATA.get("HealthResponse")?.coverage, "PAYLOAD_AND_ENVELOPE");
   assert.equal(API_RESPONSE_CONTRACT_METADATA.get("HealthResponse")?.legacyStatus, "CURRENT");
   assert.equal(API_RESPONSE_CONTRACT_METADATA.get("HealthResponse")?.consumers.length, 1);
-  assert.equal([...API_RESPONSE_CONTRACT_REGISTRY.values()].filter((strength) => strength === "PAYLOAD_SCHEMA").length, 80);
+  assert.equal([...API_RESPONSE_CONTRACT_REGISTRY.values()].filter((strength) => strength === "PAYLOAD_SCHEMA").length, 81);
 });
 
 test("MEL23-047 request, success, and error examples in the API guide match current schemas", () => {

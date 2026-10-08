@@ -644,7 +644,10 @@ function inspectComposeConfig(config: ComposeConfig): void {
 function inspectProductionEnvironment(): void {
   if (!productionMode) return;
   const environment = process.env;
-  const requiredNames = ["DATABASE_URL", "CVG_BOOTSTRAP_PASSWORD", "CVG_WEB_ORIGIN", "CVG_RELEASE_SHA", "CVG_RELEASE_ARTIFACT_DIGEST", "CVG_HOST", "CVG_TRUST_PROXY", "CVG_TRUSTED_PROXY_IPS", "CVG_TLS_DIR", "CVG_DEEPSEEK_BASE_URL", "CVG_DEEPSEEK_EXPECTED_ENGINE_COMMIT", "CVG_DEEPSEEK_EXPECTED_MANIFEST_VERSION", "CVG_DEEPSEEK_BEARER_TOKEN_REF", "CVG_DEEPSEEK_CONTEXT_SIGNING_SECRET_REF", "CVG_RECOVERY_ENCRYPTION_KEY_REF", "CVG_WORKER_ORGANIZATION_ID", "CVG_BACKUP_ENABLED", "CVG_BACKUP_ORGANIZATION_ID", "CVG_BACKUP_DIRECTORY", "CVG_BACKUP_INTERVAL_MS", "CVG_BACKUP_KEEP_LAST", "CVG_SECRET_PROVIDER", "CVG_MESSAGING_PROVIDER_ENDPOINT", "CVG_MESSAGING_PROVIDER_ALLOWED_HOSTS", "CVG_MESSAGING_CREDENTIAL_REF", "CVG_RUNTIME_DB_USER", "CVG_RUNTIME_DB_PASSWORD"];
+  // CVG_AGENT_RUNTIME=disabled is the no-AI contingency; it must not require model credentials.
+  const aiDisabled = environment.CVG_AGENT_RUNTIME === "disabled";
+  const deepseekNames = aiDisabled ? [] : ["CVG_DEEPSEEK_BASE_URL", "CVG_DEEPSEEK_EXPECTED_ENGINE_COMMIT", "CVG_DEEPSEEK_EXPECTED_MANIFEST_VERSION", "CVG_DEEPSEEK_BEARER_TOKEN_REF", "CVG_DEEPSEEK_CONTEXT_SIGNING_SECRET_REF"];
+  const requiredNames = ["DATABASE_URL", "CVG_BOOTSTRAP_PASSWORD", "CVG_WEB_ORIGIN", "CVG_RELEASE_SHA", "CVG_RELEASE_ARTIFACT_DIGEST", "CVG_HOST", "CVG_TRUST_PROXY", "CVG_TRUSTED_PROXY_IPS", "CVG_TLS_DIR", ...deepseekNames, "CVG_RECOVERY_ENCRYPTION_KEY_REF", "CVG_WORKER_ORGANIZATION_ID", "CVG_BACKUP_ENABLED", "CVG_BACKUP_ORGANIZATION_ID", "CVG_BACKUP_DIRECTORY", "CVG_BACKUP_INTERVAL_MS", "CVG_BACKUP_KEEP_LAST", "CVG_SECRET_PROVIDER", "CVG_MESSAGING_PROVIDER_ENDPOINT", "CVG_MESSAGING_PROVIDER_ALLOWED_HOSTS", "CVG_MESSAGING_CREDENTIAL_REF", "CVG_RUNTIME_DB_USER", "CVG_RUNTIME_DB_PASSWORD"];
   for (const name of requiredNames) if (!environment[name]?.trim()) failures.push(`production configuration: ${name} is required`);
   if (!environment.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT?.trim() && !environment.OTEL_EXPORTER_OTLP_ENDPOINT?.trim()) failures.push("production configuration: OTEL_EXPORTER_OTLP_ENDPOINT or OTEL_EXPORTER_OTLP_TRACES_ENDPOINT is required");
   if (environment.NODE_ENV !== "production") failures.push("production configuration: NODE_ENV must be production");
@@ -658,7 +661,7 @@ function inspectProductionEnvironment(): void {
   if (environment.CVG_RATE_LIMIT_BACKEND !== "distributed") failures.push("production configuration: CVG_RATE_LIMIT_BACKEND must be distributed");
   if (environment.CVG_SECRET_PROVIDER === undefined || environment.CVG_SECRET_PROVIDER === "none") failures.push("production configuration: an explicit secret provider is required");
   else if (!(CVG_SECRET_PROVIDER_KINDS as readonly string[]).includes(environment.CVG_SECRET_PROVIDER)) failures.push(`production configuration: CVG_SECRET_PROVIDER must be one of ${CVG_SECRET_PROVIDER_KINDS.filter((kind) => kind !== "none").join(", ")}`);
-  if (environment.CVG_DEEPSEEK_RUNTIME_ENABLED !== "true") failures.push("production configuration: the mock runtime must be disabled");
+  if (!aiDisabled && environment.CVG_DEEPSEEK_RUNTIME_ENABLED !== "true") failures.push("production configuration: the mock runtime must be disabled");
   if (environment.CVG_WORKER_SINK_MODE !== "enabled") failures.push("production configuration: the worker sink must be enabled; quarantine is not a production provider");
   if (environment.CVG_WEB_ORIGIN && !environment.CVG_WEB_ORIGIN.startsWith("https://")) failures.push("production configuration: CVG_WEB_ORIGIN must use HTTPS");
   if (environment.CVG_DEEPSEEK_BASE_URL && !environment.CVG_DEEPSEEK_BASE_URL.startsWith("https://")) failures.push("production configuration: DeepSeek bridge must use HTTPS");

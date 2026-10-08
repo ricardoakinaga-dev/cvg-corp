@@ -483,6 +483,7 @@ const registryEntries: Array<[string, PayloadSchema<unknown>]> = [
   ["GET /medications/administrations", listOf(administrationEntity) as unknown as PayloadSchema<unknown>],
   ["GET /stock", listOf(stockItemEntity) as unknown as PayloadSchema<unknown>],
   ["GET /stock/locations", listOf(stockLocationEntity) as unknown as PayloadSchema<unknown>],
+  ["GET /stock/products", listOf(productEntity) as unknown as PayloadSchema<unknown>],
   ["GET /stock/movements", listOf(stockMovementEntity) as unknown as PayloadSchema<unknown>],
   ["GET /finance/charges", strict({ items: z.array(chargeEntity), balance: financialBalanceSchema }) as unknown as PayloadSchema<unknown>],
   ["GET /finance/payments", listOf(paymentEntity) as unknown as PayloadSchema<unknown>],

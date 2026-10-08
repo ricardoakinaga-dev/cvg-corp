@@ -180,7 +180,8 @@ async function main(): Promise<void> {
         webOrigin: "http://127.0.0.1:5173",
         databaseUrl: database.runtimeUrl,
         bootstrapPassword,
-        recoveryEncryptionKeyRef: recoveryKeyRef
+        recoveryEncryptionKeyRef: recoveryKeyRef,
+        integrationCallbackKeyRefs: [`synthetic-provider=${inboxKeyRef}`]
       }
     });
 
@@ -212,6 +213,22 @@ async function main(): Promise<void> {
     assert.equal(inboxData.duplicate, false);
     assert.equal(inboxData.status, "PROCESSED");
 
+    // SEC-AI-03 through HTTP and PostgreSQL: the same key, correctly signing
+    // another provider's body, is refused before any inbox write.
+    const foreignBody = inboxBody.replace('"provider":"synthetic-provider"', '"provider":"foreign-provider"');
+    assert.notEqual(foreignBody, inboxBody, "foreign-provider fixture must change the signed provider");
+    const foreignResponse = await runtime.app.inject({
+      method: "POST",
+      url: "/api/v1/integrations/foreign-provider/events",
+      headers: {
+        "content-type": "application/json",
+        "x-cvg-signature-key-ref": inboxKeyRef,
+        "x-cvg-signature": createHmac("sha256", inboxKey).update(foreignBody, "utf8").digest("hex")
+      },
+      payload: foreignBody
+    });
+    assert.equal(foreignResponse.statusCode, 403, `unbound provider/key pair must be refused: ${foreignResponse.body}`);
+
     const exportRoute = API_ROUTE_CATALOG.find((route) => route.method === "POST" && route.path === "/ops/export");
     assert.ok(exportRoute, "catalog must include governed export route");
     assert.equal(exportRoute.responseSchema, "EncryptedRecoveryBundle");
@@ -234,7 +251,41 @@ async function main(): Promise<void> {
     assert.equal((exportData.envelope as { algorithm?: string }).algorithm, "AES-256-GCM");
     assert.equal((exportData.envelope as { keyRef?: string }).keyRef, recoveryKeyRef);
 
-    process.stdout.write(`API_RESPONSE_POSTGRES_VERIFIED routes=2 schemas=2 inbox=202/PROCESSED signature=HMAC-SHA256 export=201/AES-256-GCM organization=${runtime.store.bootstrapCredentials.organizationId} container=${containerName}\n`);
+    // FQ-01: a product with no lot is listed from the normalized table under RLS.
+    const productRoute = API_ROUTE_CATALOG.find((route) => route.method === "GET" && route.path === "/stock/products");
+    assert.ok(productRoute, "catalog must include the stock product list route");
+    const scopedHeaders = { cookie: auth.cookie, "x-cvg-unit-id": auth.unitId, "x-cvg-workspace-id": auth.workspaceId };
+    const orphanSku = `NOLOT-${suffix}`.slice(0, 40);
+    const created = await runtime.app.inject({
+      method: "POST",
+      url: "/api/v1/stock/products",
+      headers: { ...scopedHeaders, "x-csrf-token": auth.csrf, "content-type": "application/json", "idempotency-key": `api-response-product-${suffix}` },
+      payload: JSON.stringify({ sku: orphanSku, name: "Produto sem lote", category: "Sintético", unit: "unidade", reorderPoint: 0 })
+    });
+    assert.equal(created.statusCode, 201, `product creation failed: ${created.body}`);
+    const productList = responseData(await runtime.app.inject({ method: "GET", url: "/api/v1/stock/products", headers: scopedHeaders }), productRoute.method, productRoute.path, 200, productRoute.responseSchema);
+    // The domain normalizes SKUs to upper case; match the created identity.
+    const createdId = created.json<{ data: { product: { id: string } } }>().data.product.id;
+    const orphan = (productList.items as Array<{ id: string; sku: string }>).find((product) => product.id === createdId);
+    assert.ok(orphan, `a product without lots must be listed; listed=${JSON.stringify((productList.items as Array<{ sku: string }>).map((product) => product.sku))}`);
+    assert.equal(orphan.sku, orphanSku.toUpperCase());
+    // A refused lot settles its idempotency key durably: the corrected entry
+    // needs a new intent, which is why the stock dialog rotates its key.
+    const locations = await runtime.app.inject({ method: "GET", url: "/api/v1/stock/locations", headers: scopedHeaders });
+    const locationId = (locations.json<{ data: { items: Array<{ id: string }> } }>().data.items[0] ?? { id: "" }).id;
+    assert.ok(locationId, "synthetic unit must have a stock location");
+    const lotHeaders = (key: string) => ({ ...scopedHeaders, "x-csrf-token": auth.csrf, "content-type": "application/json", "idempotency-key": key });
+    const lotBody = (expiresOn: string) => JSON.stringify({ productId: orphan.id, lotNumber: `LOT-${suffix}`.slice(0, 40), expiresOn, quantity: 3, locationId });
+    const refusedKey = `api-response-lot-${suffix}`;
+    const refused = await runtime.app.inject({ method: "POST", url: "/api/v1/stock/lots", headers: lotHeaders(refusedKey), payload: lotBody("2000-01-01") });
+    assert.equal(refused.statusCode, 400, `expired lot must be refused: ${refused.body}`);
+    const future = new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10);
+    const reusedKey = await runtime.app.inject({ method: "POST", url: "/api/v1/stock/lots", headers: lotHeaders(refusedKey), payload: lotBody(future) });
+    assert.equal(reusedKey.statusCode, 409, `a refused key must not admit a different body: ${reusedKey.body}`);
+    const corrected = await runtime.app.inject({ method: "POST", url: "/api/v1/stock/lots", headers: lotHeaders(`${refusedKey}-retry`), payload: lotBody(future) });
+    assert.equal(corrected.statusCode, 201, `a corrected entry with a new intent must succeed: ${corrected.body}`);
+
+    process.stdout.write(`API_RESPONSE_POSTGRES_VERIFIED routes=4 schemas=3 inbox=202/PROCESSED foreign-key=403 signature=HMAC-SHA256 export=201/AES-256-GCM products=200 lot-refused-key=409 lot-new-intent=201 organization=${runtime.store.bootstrapCredentials.organizationId} container=${containerName}\n`);
   } finally {
     await cleanup();
     const inventoryAfter = await containerInventory();

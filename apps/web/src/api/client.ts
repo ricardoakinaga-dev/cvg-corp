@@ -68,8 +68,10 @@ function csrfToken(): string | null {
   try { return decodeURIComponent(value); } catch { return null; }
 }
 
-function isWrite(path: string, method: string): boolean {
-  return WRITE_METHODS.has(method) && !PUBLIC_AUTH_WRITES.has(path);
+function isRuntimeGatedWrite(path: string, method: string): boolean {
+  // Revocation only reduces authority, so a revalidating or context-less
+  // runtime must not block it; CSRF and the session cookie still apply.
+  return WRITE_METHODS.has(method) && !PUBLIC_AUTH_WRITES.has(path) && path !== "/auth/logout";
 }
 
 function parseEnvelope<T>(body: string): ApiEnvelope<T> | null {
@@ -98,7 +100,7 @@ export function createApiClient(getRuntimeState: () => RuntimeState, onFailure?:
   const request = async <T>(path: string, init: RequestInit = {}, context: ContextOption | null = null): Promise<T> => {
     const method = (init.method ?? "GET").toUpperCase();
     const runtimeState = getRuntimeState();
-    if (isWrite(path, method) && !isWriteAllowed(runtimeState)) throw new ClientWriteBlockedError(runtimeState);
+    if (isRuntimeGatedWrite(path, method) && !isWriteAllowed(runtimeState)) throw new ClientWriteBlockedError(runtimeState);
 
     const headers = new Headers(init.headers);
     headers.set("Accept", "application/json");

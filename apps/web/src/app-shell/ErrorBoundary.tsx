@@ -50,7 +50,8 @@ export class RootErrorBoundary extends Component<RootErrorBoundaryProps, RootErr
       <div className="app-shell error-boundary" role="alert" aria-live="assertive" tabIndex={-1} ref={this.focusPanel} data-testid="root-error-boundary">
         <main className="content">
           <h1>Algo saiu do previsto.</h1>
-          <p>Não foi possível exibir esta tela. Nenhum dado foi alterado. Tente novamente ou volte ao início.</p>
+          {/* A render failure says nothing about writes already accepted or still in flight. */}
+          <p>Não foi possível exibir esta tela. Operações enviadas antes do erro podem ter sido concluídas: confira o registro antes de repetir. Tente novamente ou volte ao início.</p>
           <p>
             Referência para suporte: <code>{correlationId}</code>
           </p>

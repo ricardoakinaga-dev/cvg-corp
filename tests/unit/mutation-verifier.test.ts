@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { applyMutationToSource, MUTATION_PLAN, MUTATION_POLICY, mutationScore, type MutationResult } from "../../scripts/verify-mutation.ts";
+import { applyMutationToSource, classifyMutationRun, MUTATION_PLAN, MUTATION_POLICY, mutationScore, type MutationResult } from "../../scripts/verify-mutation.ts";
 
 const mutation = {
   id: "TEST-MUTANT",
@@ -31,4 +31,17 @@ test("MEL23-026 mutation plan covers authorization, finance, clinical, and persi
   assert.ok(MUTATION_PLAN.some((entry) => entry.id === "MEL23-026-FINANCE-001" && entry.tests?.includes("tests/unit/finance-balance.test.ts")));
   assert.ok(MUTATION_PLAN.some((entry) => entry.id === "MEL23-026-CLINICAL-001" && entry.tests?.includes("tests/unit/domain.test.ts")));
   assert.equal(MUTATION_POLICY.minimumPlanSize, MUTATION_PLAN.length);
+});
+
+test("FQ-04: only a reported failing test kills a mutant; timeouts, signals and load failures are invalid", () => {
+  const run = { status: 1, signal: null, timedOut: false, spawnFailed: false, output: "✖ assertion failed\nℹ tests 3\nℹ pass 2\nℹ fail 1" } as const;
+  assert.equal(classifyMutationRun(run), "KILLED");
+  assert.equal(classifyMutationRun({ ...run, output: "# tests 3\n# fail 2" }), "KILLED");
+  assert.equal(classifyMutationRun({ ...run, status: 0, output: "ℹ fail 0" }), "SURVIVED");
+  assert.equal(classifyMutationRun({ ...run, timedOut: true, status: null }), "INVALID");
+  assert.equal(classifyMutationRun({ ...run, signal: "SIGKILL", status: null }), "INVALID");
+  assert.equal(classifyMutationRun({ ...run, spawnFailed: true, status: null }), "INVALID");
+  assert.equal(classifyMutationRun({ ...run, output: "Error [ERR_MODULE_NOT_FOUND]: Cannot find package" }), "INVALID");
+  assert.equal(classifyMutationRun({ ...run, output: "ℹ fail 0" }), "INVALID");
+  assert.equal(classifyMutationRun({ ...run, status: 13 }), "INVALID");
 });

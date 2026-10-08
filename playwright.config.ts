@@ -47,6 +47,11 @@ const apiPort = requestedApiPort;
 process.env.PLAYWRIGHT_WEB_PORT = String(webPort);
 process.env.PLAYWRIGHT_API_PORT = String(apiPort);
 
+// FQ-05: concurrent local runs must not clean up each other's traces, report or
+// dev-server cache. Point PLAYWRIGHT_OUTPUT_DIR at a per-run directory (the web
+// server inherits it for its Vite cache); CI keeps the default paths it uploads.
+const runOutputDir = process.env.PLAYWRIGHT_OUTPUT_DIR?.trim() || null;
+
 const browserDevices = [
   ["chromium", devices["Desktop Chrome"]],
   ["firefox", devices["Desktop Firefox"]],
@@ -80,7 +85,8 @@ export default defineConfig({
   // A retry is bounded and explicit. Local runs default to zero so a flaky
   // test remains visible; CI may opt into exactly one diagnostic retry.
   retries: configuredRetries(),
-  reporter: [["list"], ["html", { outputFolder: "artifacts/playwright-report", open: "never" }]],
+  outputDir: runOutputDir ? `${runOutputDir}/test-results` : "test-results",
+  reporter: [["list"], ["html", { outputFolder: runOutputDir ? `${runOutputDir}/playwright-report` : "artifacts/playwright-report", open: "never" }]],
   use: {
     baseURL: `http://127.0.0.1:${webPort}`,
     storageState: { cookies: [], origins: [] },

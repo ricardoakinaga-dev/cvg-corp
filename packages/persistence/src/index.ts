@@ -20,7 +20,7 @@ import { removeAud27DomainRecord, writeAud27DomainWrite, type Aud27ProjectionWri
 import { projectAiRows, type AiProjectionDependencies } from "./ai-projection.js";
 import { aiUsageDigest, projectAiTurnUsage } from "./ai-usage-projection.js";
 import { assertAuthoritativeWriteReplayExclusive, writeAuthoritativeAppointment, writeAuthoritativeClinicalDocument, writeAuthoritativeDiagnosticRequest, writeAuthoritativeDiagnosticResult, writeAuthoritativeEncounter, writeAuthoritativeGuardian, writeAuthoritativePatient, writeAuthoritativeSpecimen, type AuthoritativeWriteDependencies } from "./authoritative-writes.js";
-import { assertAuthoritativeProductReplay, writeAuthoritativeProduct } from "./stock-product-persistence.js";
+import { assertAuthoritativeProductReplay, listAuthoritativeProducts, writeAuthoritativeProduct } from "./stock-product-persistence.js";
 import { projectIdentity } from "./identity-projection.js";
 import { OutboxLeaseLostError, PersistenceConflictError, PersistenceCorruptionError, PersistenceProductSkuConflictError, PersistenceSignatureError, PersistenceStateError, PersistenceUnavailableError } from "./persistence-errors.js";
 export * from "./persistence-errors.js";
@@ -4072,6 +4072,10 @@ export class PostgresPersistence {
         };
       });
     });
+  }
+
+  listProducts(context: CvgContext): Promise<Product[]> {
+    return listAuthoritativeProducts({ ...this.normalizedEarlyReadDependencies(), integer: sqlInteger }, context);
   }
 
   async listStock(context: CvgContext): Promise<NormalizedStockRead[]> {

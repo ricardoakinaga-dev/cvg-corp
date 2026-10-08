@@ -84,9 +84,10 @@ import { DeepSeekHarnessAdapter, MockHarnessAdapter } from "@cvg/harness-adapter
 import { AgentRuntimeUnavailableError } from "@cvg/agent-runtime";
 import { EmbeddedAgentRuntime } from "@cvg/embedded-agent-runtime";
 import { createAgentToolExecutor } from "./agent-tool-executor.ts";
+import { createInboxSignatureVerifier } from "./integration-callback.ts";
 import { PostgresAgentSessionStore, createScopedSqlExecutor } from "@cvg/agent-session";
 import { createDeepSeekModelProvider, createLocalModelProvider, MockModelProvider } from "@cvg/model-adapters";
-import { configuredSecretProvider, IntegrationGateway, inboxEventToOutbox, integrationContracts, isSecretReferenceUsable, OutboxWorker, reconcileUnknownExternalEffect, verifyMessagingCallback, type ExternalEffectQueryAdapter, type OutboxSink, type OutboxWorkerResult, type SecretProvider, type SecretProviderStatus } from "@cvg/integrations";
+import { configuredSecretProvider, IntegrationGateway, inboxEventToOutbox, integrationContracts, isSecretReferenceUsable, OutboxWorker, reconcileUnknownExternalEffect, type ExternalEffectQueryAdapter, type OutboxSink, type OutboxWorkerResult, type SecretProvider, type SecretProviderStatus } from "@cvg/integrations";
 import { createOpenTelemetryRuntime, OpsTelemetry, renderPrometheusMetrics, type OpenTelemetryRuntime } from "@cvg/ops";
 import { buildAud27NormalizedWritePlan, PersistenceConflictError, PersistenceCorruptionError, PersistenceProductSkuConflictError, PersistenceSignatureError, PersistenceStateError, PersistenceUnavailableError, PostgresPersistence, type DurableExternalEffectRecord, type InboxSignatureVerifier } from "@cvg/persistence";
 import { registerHealthRoutes } from "./routes/health.ts";
@@ -236,6 +237,7 @@ export interface ServerConfig {
   secretDir: string;
   workerOrganizationId: string | null;
   secretProvider: "none" | "env" | "file" | "docker" | "vault" | "aws" | "gcp" | "azure" | "kubernetes";
+  integrationCallbackKeyRefs: string[];
   rateLimitBackend: "local" | "distributed";
   rateLimitRequestsPerWindow: number;
   rateLimitWindowSeconds: number;
@@ -356,11 +358,12 @@ function getConfig(overrides: Partial<ServerConfig> = {}): ServerConfig {
     secretDir: overrides.secretDir ?? typed.secretDir,
     workerOrganizationId: overrides.workerOrganizationId ?? typed.workerOrganizationId,
     secretProvider: overrides.secretProvider ?? typed.secretProvider,
+    integrationCallbackKeyRefs: overrides.integrationCallbackKeyRefs ?? typed.integrationCallbackKeyRefs,
     rateLimitBackend: overrides.rateLimitBackend ?? typed.rateLimitBackend,
     rateLimitRequestsPerWindow: overrides.rateLimitRequestsPerWindow ?? typed.rateLimitRequestsPerWindow,
     rateLimitWindowSeconds: overrides.rateLimitWindowSeconds ?? typed.rateLimitWindowSeconds
   });
-  return { nodeEnv: validated.nodeEnv, host: validated.host, trustProxy: validated.trustProxy, trustedProxyIps: [...validated.trustedProxyIps], port: validated.apiPort, webOrigin: validated.webOrigin, releaseSha: validated.releaseSha, releaseArtifactDigest: validated.releaseArtifactDigest, storageMode: validated.storageMode, demoMode: validated.demoMode, sessionTtlMinutes: validated.sessionTtlMinutes, authMfaMode: validated.authMfaMode, passwordMinLength: validated.passwordMinLength, passwordMaxAgeDays: validated.passwordMaxAgeDays, authMaxFailedAttempts: validated.authMaxFailedAttempts, authIdentifierRateLimit: validated.authIdentifierRateLimit, authIpRateLimit: validated.authIpRateLimit, authLockoutMinutes: validated.authLockoutMinutes, authChallengeTtlSeconds: validated.authChallengeTtlSeconds, authMaxChallengeAttempts: validated.authMaxChallengeAttempts, databaseUrl: validated.databaseUrl, bootstrapPassword: validated.bootstrapPassword, deepseekBaseUrl: validated.deepseekBaseUrl, deepseekRuntimeEnabled: validated.deepseekRuntimeEnabled, deepseekExpectedEngineCommit: validated.deepseekExpectedEngineCommit, deepseekExpectedManifestVersion: validated.deepseekExpectedManifestVersion, deepseekBearerTokenRef: validated.deepseekBearerTokenRef, deepseekContextSigningSecretRef: validated.deepseekContextSigningSecretRef, recoveryEncryptionKeyRef: validated.recoveryEncryptionKeyRef, agentRuntimeMode: validated.agentRuntimeMode, aiSafeMode: validated.aiSafeMode, aiDisabledProviders: [...validated.aiDisabledProviders], aiDisabledTools: [...validated.aiDisabledTools], aiMaxConcurrentTurns: validated.aiMaxConcurrentTurns, embeddedModelProvider: validated.embeddedModelProvider, embeddedModelBaseUrl: validated.embeddedModelBaseUrl, embeddedModelName: validated.embeddedModelName, embeddedModelTimeoutMs: validated.embeddedModelTimeoutMs, embeddedModelAllowedDataClasses: [...validated.embeddedModelAllowedDataClasses], embeddedRuntimeCommit: validated.embeddedRuntimeCommit, embeddedModelPricingJson: validated.embeddedModelPricingJson, aiMaxCostMicros: validated.aiMaxCostMicros, secretDir: validated.secretDir, workerOrganizationId: validated.workerOrganizationId, secretProvider: validated.secretProvider, rateLimitBackend: validated.rateLimitBackend, rateLimitRequestsPerWindow: validated.rateLimitRequestsPerWindow, rateLimitWindowSeconds: validated.rateLimitWindowSeconds };
+  return { nodeEnv: validated.nodeEnv, host: validated.host, trustProxy: validated.trustProxy, trustedProxyIps: [...validated.trustedProxyIps], port: validated.apiPort, webOrigin: validated.webOrigin, releaseSha: validated.releaseSha, releaseArtifactDigest: validated.releaseArtifactDigest, storageMode: validated.storageMode, demoMode: validated.demoMode, sessionTtlMinutes: validated.sessionTtlMinutes, authMfaMode: validated.authMfaMode, passwordMinLength: validated.passwordMinLength, passwordMaxAgeDays: validated.passwordMaxAgeDays, authMaxFailedAttempts: validated.authMaxFailedAttempts, authIdentifierRateLimit: validated.authIdentifierRateLimit, authIpRateLimit: validated.authIpRateLimit, authLockoutMinutes: validated.authLockoutMinutes, authChallengeTtlSeconds: validated.authChallengeTtlSeconds, authMaxChallengeAttempts: validated.authMaxChallengeAttempts, databaseUrl: validated.databaseUrl, bootstrapPassword: validated.bootstrapPassword, deepseekBaseUrl: validated.deepseekBaseUrl, deepseekRuntimeEnabled: validated.deepseekRuntimeEnabled, deepseekExpectedEngineCommit: validated.deepseekExpectedEngineCommit, deepseekExpectedManifestVersion: validated.deepseekExpectedManifestVersion, deepseekBearerTokenRef: validated.deepseekBearerTokenRef, deepseekContextSigningSecretRef: validated.deepseekContextSigningSecretRef, recoveryEncryptionKeyRef: validated.recoveryEncryptionKeyRef, agentRuntimeMode: validated.agentRuntimeMode, aiSafeMode: validated.aiSafeMode, aiDisabledProviders: [...validated.aiDisabledProviders], aiDisabledTools: [...validated.aiDisabledTools], aiMaxConcurrentTurns: validated.aiMaxConcurrentTurns, embeddedModelProvider: validated.embeddedModelProvider, embeddedModelBaseUrl: validated.embeddedModelBaseUrl, embeddedModelName: validated.embeddedModelName, embeddedModelTimeoutMs: validated.embeddedModelTimeoutMs, embeddedModelAllowedDataClasses: [...validated.embeddedModelAllowedDataClasses], embeddedRuntimeCommit: validated.embeddedRuntimeCommit, embeddedModelPricingJson: validated.embeddedModelPricingJson, aiMaxCostMicros: validated.aiMaxCostMicros, secretDir: validated.secretDir, workerOrganizationId: validated.workerOrganizationId, secretProvider: validated.secretProvider, integrationCallbackKeyRefs: [...validated.integrationCallbackKeyRefs], rateLimitBackend: validated.rateLimitBackend, rateLimitRequestsPerWindow: validated.rateLimitRequestsPerWindow, rateLimitWindowSeconds: validated.rateLimitWindowSeconds };
 }
 
 export async function createRuntime(options: ServerOptions = {}): Promise<CvgServerRuntime> {
@@ -380,11 +383,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     if (ownsRateLimiter) await rateLimiter.close?.();
     throw new DomainError("CAPABILITY_DISABLED", "Produção exige uma autoridade de segredos pronta; o runtime foi mantido bloqueado.", 503);
   }
-  const inboxSignatureVerifier: InboxSignatureVerifier | undefined = options.inboxSignatureVerifier ?? (secretProvider?.resolve ? async (input) => {
-    if (!input.rawBody) return false;
-    const secret = await secretProvider.resolve!(input.signatureKeyRef);
-    return Boolean(secret && verifyMessagingCallback(input.rawBody, input.signature, secret));
-  } : undefined);
+  const inboxSignatureVerifier: InboxSignatureVerifier | undefined = options.inboxSignatureVerifier ?? (secretProvider?.resolve ? createInboxSignatureVerifier((reference) => secretProvider.resolve!(reference), config.integrationCallbackKeyRefs) : undefined);
   const persistence = config.storageMode === "postgres" ? options.persistence ?? new PostgresPersistence({ connectionString: config.databaseUrl, ...(inboxSignatureVerifier ? { inboxSignatureVerifier } : {}) }) : null;
   let store: CvgStore;
   try {
@@ -1713,6 +1712,13 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const { context } = requestContext(request, "stock.read");
     const items = await readApplication.listStockLocations(context);
     audit(context, "stock.read", "StockLocation", null, "ALLOWED", null, { count: items.length });
+    return response(reply, success({ items }, context.correlationId));
+  });
+
+  app.get("/api/v1/stock/products", async (request, reply) => {
+    const { context } = requestContext(request, "stock.read");
+    const items = await readApplication.listStockProducts(context);
+    audit(context, "stock.read", "Product", null, "ALLOWED", null, { count: items.length });
     return response(reply, success({ items }, context.correlationId));
   });
 

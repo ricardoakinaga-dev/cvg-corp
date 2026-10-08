@@ -132,8 +132,12 @@ export function useSession(client: ApiClient, runtime: SessionRuntime): SessionC
   }, [client]);
 
   const signOut = useCallback(async () => {
+    // An in-flight revalidation must not reinstall the user after an explicit
+    // sign-out. The server session still exists while revalidating or after a
+    // context loss, so revocation is attempted whenever the network is usable.
+    validationSequence.current += 1;
     const current = snapshotRef.current;
-    const canAttempt = Boolean(current.context) && state === RUNTIME_STATES.ONLINE;
+    const canAttempt = Boolean(current.user) && state !== RUNTIME_STATES.OFFLINE_READ_ONLY;
     applySignOutRecord(pendingRevocationRecord(canAttempt));
     updateSnapshot(emptySession());
     transition({ type: "SIGNED_OUT" });

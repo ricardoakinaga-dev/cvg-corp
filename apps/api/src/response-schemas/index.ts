@@ -23,5 +23,5 @@ if (duplicateNames.length || missingNames.length || unknownNames.length || paylo
   throw new Error(`API payload schema registry is incomplete: duplicates=${duplicateNames.join(",")} missing=${missingNames.join(",")} unknown=${unknownNames.join(",")} count=${payloadSchemas.size}/${expectedNames.size}`);
 }
 
-/** The executable 80/80 payload registry. The envelope validator owns egress. */
+/** The executable 81/81 payload registry. The envelope validator owns egress. */
 export const API_PAYLOAD_RESPONSE_SCHEMAS: ReadonlyMap<string, z.ZodTypeAny> = payloadSchemas;

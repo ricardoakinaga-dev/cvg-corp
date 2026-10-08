@@ -1,3 +1,4 @@
+import { resolve } from "node:path";
 import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 
@@ -37,6 +38,8 @@ function bundleBudget(): Plugin {
 export default defineConfig({
   plugins: [react(), bundleBudget()],
   root: "apps/web",
+  // Isolated per E2E run when PLAYWRIGHT_OUTPUT_DIR is set (see playwright.config.ts).
+  ...(process.env.PLAYWRIGHT_OUTPUT_DIR?.trim() ? { cacheDir: resolve(process.env.PLAYWRIGHT_OUTPUT_DIR.trim(), "vite-cache") } : {}),
   server: {
     host: "127.0.0.1",
     port: 5173,

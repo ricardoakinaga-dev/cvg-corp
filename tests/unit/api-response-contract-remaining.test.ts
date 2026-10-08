@@ -147,6 +147,7 @@ const validPayloads: Readonly<Record<string, unknown>> = {
   StockListResponse: { items: [{ ...lot, product, location }], nextCursor: null, revision: "1" },
   StockMovementListResponse: { items: [], nextCursor: null, revision: "1" },
   StockLocationListResponse: { items: [location] },
+  ProductListResponse: { items: [product] },
   ProductResponse: { product, receiptId: ids.receipt },
   LotResponse: { lot, movement: null, receiptId: ids.receipt },
   InventoryCountResponse: { lot, movement, delta: 5, receiptId: ids.receipt },
@@ -188,7 +189,7 @@ const validPayloads: Readonly<Record<string, unknown>> = {
 };
 
 const expectedNames = [
-  "StockListResponse", "StockMovementListResponse", "StockLocationListResponse", "ProductResponse", "LotResponse", "InventoryCountResponse", "StockMovementResponse", "BedListResponse", "HospitalEpisodeListResponse", "HospitalEpisodeResponse", "MedicationOrderListResponse", "DispensationListResponse", "AdministrationListResponse", "MedicationOrderResponse", "DispensationResponse", "AdministrationResponse", "ChargeListResponse", "ChargeResponse", "PaymentResponse", "PaymentListResponse", "LedgerListResponse", "CommunicationListResponse", "CommunicationResponse", "KnowledgeListResponse", "KnowledgeDocumentResponse", "KnowledgeSearchResponse", "KnowledgeIndexResponse", "CapabilityListResponse", "OperationsSummary", "OperationsReport", "MetricsResponse", "SnapshotResponse", "EncryptedRecoveryBundle", "RestoreResponse", "AgentRuntimeHealth", "AiReadinessResponse", "AiSessionListResponse", "AgentTurnResult", "AiApprovalResponse", "AgentDraftPromotion", "AgentReplayResult"
+  "StockListResponse", "StockMovementListResponse", "StockLocationListResponse", "ProductListResponse", "ProductResponse", "LotResponse", "InventoryCountResponse", "StockMovementResponse", "BedListResponse", "HospitalEpisodeListResponse", "HospitalEpisodeResponse", "MedicationOrderListResponse", "DispensationListResponse", "AdministrationListResponse", "MedicationOrderResponse", "DispensationResponse", "AdministrationResponse", "ChargeListResponse", "ChargeResponse", "PaymentResponse", "PaymentListResponse", "LedgerListResponse", "CommunicationListResponse", "CommunicationResponse", "KnowledgeListResponse", "KnowledgeDocumentResponse", "KnowledgeSearchResponse", "KnowledgeIndexResponse", "CapabilityListResponse", "OperationsSummary", "OperationsReport", "MetricsResponse", "SnapshotResponse", "EncryptedRecoveryBundle", "RestoreResponse", "AgentRuntimeHealth", "AiReadinessResponse", "AiSessionListResponse", "AgentTurnResult", "AiApprovalResponse", "AgentDraftPromotion", "AgentReplayResult"
 ] as const;
 
 test("exports exactly the assigned response-schema names", () => {

@@ -56,6 +56,7 @@ export interface StockReadRepository {
   list(context: CvgContext): Promise<StockRead[]>;
   listMovements(context: CvgContext): Promise<StockMovement[]>;
   listLocations(context: CvgContext): Promise<StockLocation[]>;
+  listProducts(context: CvgContext): Promise<Product[]>;
 }
 
 export interface FinanceReadRepository {
@@ -363,6 +364,11 @@ class StoreStockReadRepository implements StockReadRepository {
     this.store.requireRole(context, ["admin", "estoque", "veterinario"], "stock:read");
     return Promise.resolve([...this.store.stockLocations.values()].filter((location) => location.organizationId === context.organizationId && (!context.unitId || location.unitId === context.unitId)).map((location) => ({ ...location })));
   }
+
+  listProducts(context: CvgContext): Promise<Product[]> {
+    this.store.requireRole(context, ["admin", "estoque", "veterinario"], "stock:read");
+    return Promise.resolve([...this.store.products.values()].filter((product) => product.organizationId === context.organizationId).map((product) => ({ ...product })).sort((left, right) => left.sku.localeCompare(right.sku) || left.id.localeCompare(right.id)));
+  }
 }
 
 class PostgresStockReadRepository implements StockReadRepository {
@@ -378,6 +384,10 @@ class PostgresStockReadRepository implements StockReadRepository {
 
   listLocations(context: CvgContext): Promise<StockLocation[]> {
     return new StoreStockReadRepository(this.store).listLocations(context);
+  }
+
+  listProducts(context: CvgContext): Promise<Product[]> {
+    return this.persistence.listProducts(context);
   }
 }
 
@@ -670,6 +680,11 @@ export class ReadApplicationService {
   listStockLocations(context: CvgContext): Promise<StockLocation[]> {
     enforceApplicationPolicy(context, "stock.read");
     return this.stock.listLocations(context);
+  }
+
+  listStockProducts(context: CvgContext): Promise<Product[]> {
+    enforceApplicationPolicy(context, "stock.read");
+    return this.stock.listProducts(context);
   }
 
   listCharges(context: CvgContext): Promise<Charge[]> {

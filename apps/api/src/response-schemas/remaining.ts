@@ -678,6 +678,7 @@ const remainingSchemaEntries: ReadonlyArray<readonly [string, z.ZodTypeAny]> = [
   ["StockListResponse", listResponseSchema(stockReadSchema)],
   ["StockMovementListResponse", listResponseSchema(stockMovementSchema)],
   ["StockLocationListResponse", listResponseSchema(stockLocationSchema)],
+  ["ProductListResponse", listResponseSchema(productSchema)],
   ["ProductResponse", z.object({ product: productSchema, receiptId: idSchema }).strict()],
   ["LotResponse", z.object({ lot: lotSchema, movement: stockMovementSchema.nullable(), receiptId: idSchema }).strict()],
   ["InventoryCountResponse", z.object({ lot: lotSchema, movement: stockMovementSchema.nullable(), delta: signedInteger(-1_000_000, 1_000_000), receiptId: idSchema }).strict()],

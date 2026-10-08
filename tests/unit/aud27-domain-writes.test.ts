@@ -11,7 +11,7 @@ import { OperationalBackupJobCore, type OperationalBackupJobDependencies } from 
 import { projectAiRows, type AiProjectionDependencies } from "../../packages/persistence/src/ai-projection.ts";
 import { aiUsageDigest, projectAiTurnUsage } from "../../packages/persistence/src/ai-usage-projection.ts";
 import { assertAuthoritativeWriteReplayExclusive, writeAuthoritativeAppointment, writeAuthoritativeClinicalDocument, writeAuthoritativeDiagnosticRequest, writeAuthoritativeDiagnosticResult, writeAuthoritativeEncounter, writeAuthoritativeGuardian, writeAuthoritativePatient, writeAuthoritativeSpecimen } from "../../packages/persistence/src/authoritative-writes.ts";
-import { writeAuthoritativeProduct } from "../../packages/persistence/src/stock-product-persistence.ts";
+import { listAuthoritativeProducts, writeAuthoritativeProduct, type StockProductReadDependencies } from "../../packages/persistence/src/stock-product-persistence.ts";
 import { CVG_LATEST_MIGRATION, CVG_REQUIRED_MIGRATION_MARKERS, CVG_RESTORE_AUTHORITY_ROLE } from "../../packages/persistence/src/index.ts";
 
 function snapshots(): { before: ReturnType<CvgStore["snapshot"]>; after: ReturnType<CvgStore["snapshot"]> } {
@@ -62,6 +62,36 @@ test("authoritative writer seam preserves scoped writes and fail-closed conflict
   await assert.rejects(() => writeAuthoritativeDiagnosticResult(client, missingScope as never, missingScope as never, dependencies), /no complete/);
   assert.doesNotThrow(() => assertAuthoritativeWriteReplayExclusive(null, null, "guardian", dependencies));
   assert.throws(() => assertAuthoritativeWriteReplayExclusive(scoped, id, "guardian", dependencies), /write and replay/);
+});
+
+test("stock product catalog reads organization-scoped rows, including products without lots, and fails closed outside scope", async () => {
+  const organizationId = makeId();
+  const productId = makeId();
+  const row = { id: productId, organization_id: organizationId, sku: "SKU-NOLOT-1", name: "Produto sem lote", category: "INSUMO", unit: "unidade", reorder_point: 4, status: "ACTIVE" };
+  const reads: Array<{ operation: string; sql: string }> = [];
+  const dependencies = (rows: unknown[]): StockProductReadDependencies => ({
+    scopedRead: async (_context, operation, callback) => callback({
+      async query(sql: string) {
+        reads.push({ operation, sql });
+        return { rows };
+      }
+    } as unknown as PoolClient),
+    id: (value) => value as OpaqueId,
+    text: (value, field) => { if (typeof value !== "string" || !value) throw new Error(`invalid ${field}`); return value; },
+    integer: (value, field) => { if (!Number.isInteger(value)) throw new Error(`invalid ${field}`); return value as number; },
+    enum: (value, allowed, field) => { if (!allowed.includes(value as never)) throw new Error(`invalid ${field}`); return value as never; },
+    corruption: (message) => new Error(message)
+  });
+  const context = { organizationId } as Parameters<typeof listAuthoritativeProducts>[1];
+
+  const products = await listAuthoritativeProducts(dependencies([row]), context);
+  assert.deepEqual(products, [{ id: productId, organizationId, sku: "SKU-NOLOT-1", name: "Produto sem lote", category: "INSUMO", unit: "unidade", reorderPoint: 4, status: "ACTIVE" }]);
+  assert.equal(reads[0]!.operation, "stock");
+  assert.match(reads[0]!.sql, /from products where organization_id = cvg_request_organization\(\)/);
+  assert.doesNotMatch(reads[0]!.sql, /lots/);
+  await assert.rejects(() => listAuthoritativeProducts(dependencies([{ ...row, organization_id: makeId() }]), context), /outside the requested organization/);
+  await assert.rejects(() => listAuthoritativeProducts(dependencies([{ ...row, status: "DELETED" }]), context), /invalid product.status/);
+  await assert.rejects(() => listAuthoritativeProducts(dependencies([{ ...row, reorder_point: 1.5 }]), context), /invalid product.reorder_point/);
 });
 
 test("stock product writer uses organization scope and fails closed on conflicting row identity", async () => {

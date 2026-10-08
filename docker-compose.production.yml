@@ -44,6 +44,8 @@ services:
       CVG_DEEPSEEK_CONTEXT_SIGNING_SECRET_REF: ${CVG_DEEPSEEK_CONTEXT_SIGNING_SECRET_REF:?CVG_DEEPSEEK_CONTEXT_SIGNING_SECRET_REF must name an approved secret}
       CVG_RECOVERY_ENCRYPTION_KEY_REF: ${CVG_RECOVERY_ENCRYPTION_KEY_REF:?CVG_RECOVERY_ENCRYPTION_KEY_REF must name an approved key}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:?OTEL_EXPORTER_OTLP_ENDPOINT must be supplied over HTTPS}
+      # provider=keyRef bindings for signed callbacks; empty rejects every callback.
+      CVG_INTEGRATION_CALLBACK_KEYS: ${CVG_INTEGRATION_CALLBACK_KEYS:-}
     secrets:
       - source: cvg-deepseek-bearer
         target: cvg/${CVG_DEEPSEEK_BEARER_TOKEN_REF:?CVG_DEEPSEEK_BEARER_TOKEN_REF must name an approved secret}

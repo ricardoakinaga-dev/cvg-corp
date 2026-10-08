@@ -1,0 +1,16 @@
+{
+  "command": [
+    "node",
+    "--import",
+    "tsx",
+    "--test",
+    "--test-reporter=tap",
+    "--test-name-pattern=overlapping prose|bounded CPU use for first",
+    "tests/unit/secret-prose-policy.test.ts"
+  ],
+  "exit_status": 1,
+  "started_at": "2026-10-04T10:23:35.177840+00:00",
+  "finished_at": "2026-10-04T10:23:41.803709+00:00",
+  "log": "artifacts/remediation-2026-10-03/prose-policy/review-fixes-2026-10-04/regression-before.log",
+  "sha256": "5505f5331d5b11413def0744c37048a997dec3f087db944e38e0dc96acbbe0a8"
+}

@@ -1,0 +1,16 @@
+{
+  "name": "docs-final",
+  "command": [
+    "npm",
+    "run",
+    "verify:docs-integrity"
+  ],
+  "exit_status": 0,
+  "started_at": "2026-10-04T11:54:32.635924+00:00",
+  "finished_at": "2026-10-04T11:54:33.416316+00:00",
+  "source_fingerprint_before": "sha256:15ece6ef83fb9e9918dddcde7757e337fb81b42b07b6b04474c68580fcb794b2",
+  "source_fingerprint_after": "sha256:15ece6ef83fb9e9918dddcde7757e337fb81b42b07b6b04474c68580fcb794b2",
+  "source_unchanged": true,
+  "log": "artifacts/production-hardening-2026-10-04/verification/after-review/docs-final.log",
+  "log_sha256": "39b46d1e1d58aa74fee8faed3bf46d05938da379c08b846c80b174dd8fa9a96f"
+}

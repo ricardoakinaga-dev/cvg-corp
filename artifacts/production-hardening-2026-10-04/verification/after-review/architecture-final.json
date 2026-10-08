@@ -1,0 +1,16 @@
+{
+  "name": "architecture-final",
+  "command": [
+    "npm",
+    "run",
+    "verify:architecture"
+  ],
+  "exit_status": 0,
+  "started_at": "2026-10-04T11:54:28.994809+00:00",
+  "finished_at": "2026-10-04T11:54:29.675479+00:00",
+  "source_fingerprint_before": "sha256:15ece6ef83fb9e9918dddcde7757e337fb81b42b07b6b04474c68580fcb794b2",
+  "source_fingerprint_after": "sha256:15ece6ef83fb9e9918dddcde7757e337fb81b42b07b6b04474c68580fcb794b2",
+  "source_unchanged": true,
+  "log": "artifacts/production-hardening-2026-10-04/verification/after-review/architecture-final.log",
+  "log_sha256": "fb1b1996bc31cfb350a1d4d982956ea8ef984b22ba3f4a0fe045023fd2efc7e2"
+}

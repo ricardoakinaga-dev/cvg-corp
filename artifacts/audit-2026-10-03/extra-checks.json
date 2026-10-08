@@ -1,0 +1,37 @@
+[
+  {
+    "command": "npm audit --json",
+    "exit_status": 1,
+    "seconds": 0.91,
+    "log": "artifacts/audit-2026-10-03/dependency-audit.log",
+    "observed_at": "2026-10-03T05:11:42.745580+00:00"
+  },
+  {
+    "command": "npm run verify:secrets",
+    "exit_status": 0,
+    "seconds": 40.69,
+    "log": "artifacts/audit-2026-10-03/secrets.log",
+    "observed_at": "2026-10-03T05:12:22.522794+00:00"
+  },
+  {
+    "command": "npm run build:runtime",
+    "exit_status": 0,
+    "seconds": 1.38,
+    "log": "artifacts/audit-2026-10-03/runtime-build.log",
+    "observed_at": "2026-10-03T05:11:44.123436+00:00"
+  },
+  {
+    "command": "npm run verify:mutation",
+    "exit_status": 0,
+    "seconds": 78.26,
+    "log": "artifacts/audit-2026-10-03/mutation.log",
+    "observed_at": "2026-10-03T05:13:02.381229+00:00"
+  },
+  {
+    "command": "npm run benchmark:local",
+    "exit_status": 0,
+    "seconds": 1.04,
+    "log": "artifacts/audit-2026-10-03/benchmark.log",
+    "observed_at": "2026-10-03T05:12:23.562652+00:00"
+  }
+]

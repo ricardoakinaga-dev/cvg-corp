@@ -1,0 +1,19 @@
+{
+  "name": "production-structure-final",
+  "command": [
+    "node",
+    "--import",
+    "tsx",
+    "scripts/verify-production.ts",
+    "--structural",
+    "--skip-local-gates"
+  ],
+  "exit_status": 0,
+  "started_at": "2026-10-04T11:57:30.849040+00:00",
+  "finished_at": "2026-10-04T11:57:33.375991+00:00",
+  "source_fingerprint_before": "sha256:15ece6ef83fb9e9918dddcde7757e337fb81b42b07b6b04474c68580fcb794b2",
+  "source_fingerprint_after": "sha256:15ece6ef83fb9e9918dddcde7757e337fb81b42b07b6b04474c68580fcb794b2",
+  "source_unchanged": true,
+  "log": "artifacts/production-hardening-2026-10-04/verification/after-review/production-structure-final.log",
+  "log_sha256": "160cf4dd9fc1ca782c063115c89a4c4bb66b684f098b324529ede14ed5cc0cf4"
+}

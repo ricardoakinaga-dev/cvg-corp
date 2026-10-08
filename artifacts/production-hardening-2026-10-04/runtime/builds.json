@@ -1,0 +1,59 @@
+{
+  "run_id": "20261004-8f67644c",
+  "source_head": "9aab406b164497978b05dd3aa431db49ad11677a",
+  "worktree": "modified; not a release freeze",
+  "source_manifest_sha256": "43d69de0e8c18453f1f66b2836b2c0c81aea7e7292b9c5c91a2014c21989a552",
+  "builds": [
+    {
+      "kind": "api",
+      "tag": "cvg-corp-hardening-api:20261004-8f67644c",
+      "command": [
+        "docker",
+        "build",
+        "--pull=false",
+        "--build-arg",
+        "CVG_SOURCE_REVISION=9aab406b164497978b05dd3aa431db49ad11677a",
+        "-f",
+        "Dockerfile.api",
+        "-t",
+        "cvg-corp-hardening-api:20261004-8f67644c",
+        "."
+      ],
+      "exit_status": 0,
+      "started_at": "2026-10-04T11:03:37.781000+00:00",
+      "finished_at": "2026-10-04T11:04:02.163836+00:00",
+      "log": "artifacts/production-hardening-2026-10-04/runtime/api-build.log",
+      "image_id": "sha256:ae528950232ed7dca2177300804edf3e95d3def3815dd30f42d47837300c504f",
+      "user": "65532:65532",
+      "entrypoint": [
+        "/nodejs/bin/node",
+        "/app/runtime/entrypoint.mjs"
+      ]
+    },
+    {
+      "kind": "web",
+      "tag": "cvg-corp-hardening-web:20261004-8f67644c",
+      "command": [
+        "docker",
+        "build",
+        "--pull=false",
+        "--build-arg",
+        "CVG_SOURCE_REVISION=9aab406b164497978b05dd3aa431db49ad11677a",
+        "-f",
+        "Dockerfile.web",
+        "-t",
+        "cvg-corp-hardening-web:20261004-8f67644c",
+        "."
+      ],
+      "exit_status": 0,
+      "started_at": "2026-10-04T11:04:02.212341+00:00",
+      "finished_at": "2026-10-04T11:04:25.889349+00:00",
+      "log": "artifacts/production-hardening-2026-10-04/runtime/web-build.log",
+      "image_id": "sha256:c3692a0d5481da8593580f4ec42d2e3dbf07c16afe6ba9a833a7ee4229d6fd0b",
+      "user": "101",
+      "entrypoint": [
+        "/docker-entrypoint.sh"
+      ]
+    }
+  ]
+}

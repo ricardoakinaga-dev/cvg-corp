@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "label": "dependency audit",
+  "command": [
+    "npm",
+    "audit",
+    "--omit=dev"
+  ],
+  "capturedAt": "2026-10-03T05:37:12.747Z",
+  "exitStatus": 1,
+  "signal": null,
+  "stdout": "# npm audit report\n\nfast-uri  3.0.0 - 3.1.7 || 4.0.0 - 4.1.4\nSeverity: moderate\nfast-uri vulnerable to inconsistent host case normalization via percent-encoded octets - https://github.com/advisories/GHSA-hrr3-gc8f-f4qj\nfast-uri vulnerable to inconsistent host case normalization via percent-encoded octets - https://github.com/advisories/GHSA-hrr3-gc8f-f4qj\nfast-uri vulnerable to mailto header injection via percent-encoded field-name desynchronization - https://github.com/advisories/GHSA-jvvf-x445-j334\nfix available via `npm audit fix`\nnode_modules/ajv/node_modules/fast-uri\nnode_modules/fast-uri\n\nfastify  <5.12.5\nSeverity: moderate\nfastify vulnerable to Denial of Service via unhandled exception on HTTP/2 trailer responses - https://github.com/advisories/GHSA-4mh8-r7rc-xpvc\nfix available via `npm audit fix`\nnode_modules/fastify\n\n2 moderate severity vulnerabilities\n\nTo address all issues, run:\n  npm audit fix\n",
+  "stderr": ""
+}

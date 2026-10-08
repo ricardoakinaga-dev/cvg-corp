@@ -1,0 +1,72 @@
+{
+  "recorded_at": "2026-10-03T11:22:50.294432+00:00",
+  "base_head": "9aab406b164497978b05dd3aa431db49ad11677a",
+  "status": "IMPLEMENTED_WITH_LIMITATIONS",
+  "scope": [
+    "SEC-AI-01",
+    "SEC-AI-02"
+  ],
+  "new_tests": 14,
+  "focused_cases": 45,
+  "full_suite": {
+    "total": 779,
+    "pass": 777,
+    "fail": 1,
+    "skip": 1
+  },
+  "remaining_failure": "Control-plane audit baseline: historical composite-exit inconsistency and fingerprints stale after these source changes.",
+  "independent_review": "NOT_COMPLETED: agent stream send timeout; no report written",
+  "additional_old_mfa_method_test": "NOT_EXECUTED: automatic review could not determine the request safety",
+  "deployment": "NOT_PERFORMED",
+  "source_sha256": {
+    "packages/agent-context/src/index.ts": "dfb8290702c516213bfe92c1cdb1adae4aec779c232db72adcd117b722949626",
+    "packages/embedded-agent-runtime/src/index.ts": "529c8af7e5d98fd90efe4ea5af6eeaa2e3744eddfeed95e0d1fb0c6ca87d0aec",
+    "apps/api/src/application/agent-service.ts": "196f98042879c8da0a294db862cd9c8865df92f6e8457e9997e8c22c099cd3fd",
+    "packages/domain/src/index.ts": "35014618ecc069e339e496b5e0de734965f10199006ccd3e9de205e3f98eefbc",
+    "apps/api/package.json": "b588d589bb94871d7005c894d6988cd836547a979bbe4eacf835ad64d300f5ee",
+    "package-lock.json": "360244aae4728a008a7ba1888f3a5a981419dbc7f0ce7166c24be21f2ebf9bc2",
+    "tests/unit/agent-context.test.ts": "f90cbb7eef97a07345a3c47c916b787d4736191cb3c78eeb58331179076a808e",
+    "tests/unit/embedded-runtime.test.ts": "c53ac3856bb346b75e44c9a7ef751f691901dc1c80288b0ab64033699aa95893",
+    "tests/integration/ai-secret-boundary.test.ts": "bd6da1c25f75bd40ebd856b4de56145270c858c9e09f1f1e3c578b88ae1d7d1b",
+    "tests/integration/auth-challenge-race.test.ts": "edf083e74f0ae499e8416409f93b03d78c7d03ac488c6546fca483af55469513"
+  },
+  "checks": [
+    {
+      "name": "lint",
+      "command": "npm run lint",
+      "exit_status": 0,
+      "started_at": "2026-10-03T11:18:23.640117+00:00",
+      "finished_at": "2026-10-03T11:18:25.065046+00:00",
+      "log": "artifacts/remediation-2026-10-03/lint.log",
+      "sha256": "92bb6b395d809b041c21c1277507d16f872f9b30c687d530b05dc4bc1f415dc0"
+    },
+    {
+      "name": "architecture",
+      "command": "npm run verify:architecture",
+      "exit_status": 0,
+      "started_at": "2026-10-03T11:18:25.065258+00:00",
+      "finished_at": "2026-10-03T11:18:25.725189+00:00",
+      "log": "artifacts/remediation-2026-10-03/architecture.log",
+      "sha256": "fb1b1996bc31cfb350a1d4d982956ea8ef984b22ba3f4a0fe045023fd2efc7e2"
+    },
+    {
+      "name": "build",
+      "command": "npm run build",
+      "exit_status": 0,
+      "started_at": "2026-10-03T11:18:23.639891+00:00",
+      "finished_at": "2026-10-03T11:18:48.308644+00:00",
+      "log": "artifacts/remediation-2026-10-03/build.log",
+      "sha256": "fbf911e959659cc985942d5d65b63ddd4dc08b895a40049529a13953e3398b45"
+    },
+    {
+      "name": "full-tests",
+      "command": "npm test",
+      "exit_status": 1,
+      "started_at": "2026-10-03T11:18:23.639691+00:00",
+      "finished_at": "2026-10-03T11:18:48.632153+00:00",
+      "log": "artifacts/remediation-2026-10-03/full-tests.log",
+      "sha256": "ff4dd684ecfdf7de96c2aaf5a787433929cb168e1a9dc49f2a1e58827816f5ab"
+    }
+  ],
+  "report": "artifacts/remediation-2026-10-03/resultado.md"
+}

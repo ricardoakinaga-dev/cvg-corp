@@ -1,0 +1,16 @@
+{
+  "name": "pdp-final",
+  "command": [
+    "npm",
+    "run",
+    "verify:pdp"
+  ],
+  "exit_status": 0,
+  "started_at": "2026-10-04T11:54:35.082147+00:00",
+  "finished_at": "2026-10-04T11:54:39.474960+00:00",
+  "source_fingerprint_before": "sha256:15ece6ef83fb9e9918dddcde7757e337fb81b42b07b6b04474c68580fcb794b2",
+  "source_fingerprint_after": "sha256:15ece6ef83fb9e9918dddcde7757e337fb81b42b07b6b04474c68580fcb794b2",
+  "source_unchanged": true,
+  "log": "artifacts/production-hardening-2026-10-04/verification/after-review/pdp-final.log",
+  "log_sha256": "072b703036a53ff03b2f6aaf88057c7bce584f998ebe63a4fafed33957cef2db"
+}

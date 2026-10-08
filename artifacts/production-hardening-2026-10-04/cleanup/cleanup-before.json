@@ -1,0 +1,17 @@
+{
+  "timestamp": "2026-10-04T10:58:49.814152+00:00",
+  "test_command": [
+    "node",
+    "--import",
+    "tsx",
+    "--test",
+    "packages/ops/tests/observability.test.ts"
+  ],
+  "test_exit": 0,
+  "entrypoint_obsolete_sha256": "a80795ba505869cf79883b46662d8f1c662aaf5edbb45ea3564d600f6f6b12a9",
+  "entrypoint_current": "docker/runtime-entrypoint.mjs",
+  "references": "Dockerfile.api COPY/ENTRYPOINT and verify-production.ts use mjs. Only obsolete shell path reference is historical .gauntlet/state.json.",
+  "test_before": "packages/ops/tests/observability.test.ts",
+  "test_after": "tests/unit/ops-observability.test.ts",
+  "main_test_globs": "node --import tsx --test tests/unit/*.test.ts tests/integration/*.test.ts"
+}

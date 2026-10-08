@@ -1,0 +1,16 @@
+{
+  "name": "lint-final",
+  "command": [
+    "npm",
+    "run",
+    "lint"
+  ],
+  "exit_status": 1,
+  "started_at": "2026-10-04T11:49:29.063451+00:00",
+  "finished_at": "2026-10-04T11:49:30.714447+00:00",
+  "source_fingerprint_before": "sha256:f1947096099719b9501565f8148662583551e4453af1faeea079838828dbf936",
+  "source_fingerprint_after": "sha256:f1947096099719b9501565f8148662583551e4453af1faeea079838828dbf936",
+  "source_unchanged": true,
+  "log": "artifacts/production-hardening-2026-10-04/verification/after-review/lint-final.log",
+  "log_sha256": "5a776a1cdf553b5fda1bca1093f606c14c9c664f2fc3d066e12f7c23a3d22190"
+}

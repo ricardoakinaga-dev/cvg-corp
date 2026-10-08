@@ -1,0 +1,10 @@
+{
+  "observedAt": "2026-10-04T10:54:47.936613+00:00",
+  "gitHead": "9aab406b164497978b05dd3aa431db49ad11677a",
+  "status": " M .agent/backlog.json\n M .agent/execution-log.jsonl\n M .agent/plans/2026-09-21-cvg-aud27.md\n M .agent/state.json\n M .agent/subject-manifest.json\n M .agent/verification.jsonl\n M apps/api/package.json\n M apps/api/src/application/agent-service.ts\n M package-lock.json\n M packages/agent-context/src/index.ts\n M packages/domain/src/index.ts\n M packages/embedded-agent-runtime/src/index.ts\n M tests/unit/agent-context.test.ts\n M tests/unit/embedded-runtime.test.ts\n?? .agent/plans/2026-10-03-security-remediation.md\n?? .agent/plans/2026-10-04-production-hardening.md\n?? artifacts/audit-2026-10-03/\n?? artifacts/production-hardening-2026-10-04/\n?? artifacts/remediation-2026-10-03/\n?? tests/fixtures/\n?? tests/integration/ai-secret-boundary.test.ts\n?? tests/integration/auth-challenge-race.test.ts\n?? tests/unit/secret-detector-review.test.ts\n?? tests/unit/secret-prose-policy.test.ts\n",
+  "sha256": {
+    "apps/api/src/app.ts": "097824cd9063caba93b196bb34244f4dc50171d1b2d09ed7c1d8b12204303e31",
+    "packages/integrations/src/index.ts": "95b8fc4d9ae7b768cb91cdc5d59e7fafe0c175dad0853d249eb5ca24027fc548",
+    "apps/api/src/application/agent-service.ts": "196f98042879c8da0a294db862cd9c8865df92f6e8457e9997e8c22c099cd3fd"
+  }
+}

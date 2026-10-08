@@ -803,7 +803,21 @@ try {
      if (!sourceRelation || !targetRelation) throw new Error(`direct SQL oracle relation ${relationName} is missing`);
       const comparison = { sourceDigest: sourceRelation.digest, targetDigest: targetRelation.digest, equal: sourceRelation.digest === targetRelation.digest };
       exactRelations[relationName] = comparison;
-      if (!comparison.equal) throw new Error(`direct SQL oracle relation ${relationName} diverged: ${JSON.stringify(comparison)}`);
+      if (!comparison.equal) {
+        const sourceRows = comparableDirectSqlRows(relationName, sourceRelation.rows);
+        const targetRows = comparableDirectSqlRows(relationName, targetRelation.rows);
+        const differingFields = new Set<string>();
+        for (let index = 0; index < Math.max(sourceRows.length, targetRows.length); index += 1) {
+          const left = sourceRows[index] ?? {};
+          const right = targetRows[index] ?? {};
+          for (const field of new Set([...Object.keys(left), ...Object.keys(right)])) {
+            if (digest({ value: left[field] }) !== digest({ value: right[field] })) differingFields.add(field);
+          }
+        }
+        // Describe the shape of a mismatch without logging audit payloads,
+        // identifiers, tokens or business data from either database.
+        throw new Error(`direct SQL oracle relation ${relationName} diverged: ${JSON.stringify({ ...comparison, sourceRows: sourceRows.length, targetRows: targetRows.length, differingFields: [...differingFields].sort() })}`);
+      }
    }
    if (digest(immutableAgentSessionRows(sourceDirectSqlOracle)) !== digest(immutableAgentSessionRows(targetDirectSqlOracle))) {
      const differences = immutableAgentSessionDifferenceFields(sourceDirectSqlOracle, targetDirectSqlOracle);

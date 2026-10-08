@@ -1,0 +1,16 @@
+{
+  "name": "migration-cli-fixed",
+  "command": [
+    "npm",
+    "run",
+    "verify:db-migration-cli"
+  ],
+  "exit_status": 0,
+  "started_at": "2026-10-04T11:44:56.523281+00:00",
+  "finished_at": "2026-10-04T11:45:31.934243+00:00",
+  "source_fingerprint_before": "sha256:f1947096099719b9501565f8148662583551e4453af1faeea079838828dbf936",
+  "source_fingerprint_after": "sha256:f1947096099719b9501565f8148662583551e4453af1faeea079838828dbf936",
+  "source_unchanged": true,
+  "log": "artifacts/production-hardening-2026-10-04/verification/after-review/migration-cli-fixed.log",
+  "log_sha256": "e9be3b6d2204e2b1b9ca4140ccd48844187365bd34deb1c25544ba116ff4b3a1"
+}

@@ -1,0 +1,91 @@
+{
+  "checks": [
+    {
+      "name": "full-tests",
+      "command": [
+        "npm",
+        "test"
+      ],
+      "exit_status": 1,
+      "started_at": "2026-10-03T12:11:54.532521+00:00",
+      "finished_at": "2026-10-03T12:12:42.023789+00:00",
+      "log": "artifacts/remediation-2026-10-03/follow-up/full-tests.log",
+      "sha256": "a98a2ede1232da72a0d7f02d7a0163979111eef4f947f90583c53b4796e6049c"
+    },
+    {
+      "name": "build",
+      "command": [
+        "npm",
+        "run",
+        "build"
+      ],
+      "exit_status": 0,
+      "started_at": "2026-10-03T12:11:54.532843+00:00",
+      "finished_at": "2026-10-03T12:12:46.113703+00:00",
+      "log": "artifacts/remediation-2026-10-03/follow-up/build.log",
+      "sha256": "d48f47328e8e25a909959d6e54f130d6144c904d51b09bc0766f0d5b649f637e"
+    },
+    {
+      "name": "lint-final",
+      "command": [
+        "npm",
+        "run",
+        "lint"
+      ],
+      "exit_status": 0,
+      "started_at": "2026-10-03T12:11:54.533104+00:00",
+      "finished_at": "2026-10-03T12:11:56.156982+00:00",
+      "log": "artifacts/remediation-2026-10-03/follow-up/lint-final.log",
+      "sha256": "92bb6b395d809b041c21c1277507d16f872f9b30c687d530b05dc4bc1f415dc0"
+    },
+    {
+      "name": "architecture",
+      "command": [
+        "npm",
+        "run",
+        "verify:architecture"
+      ],
+      "exit_status": 0,
+      "started_at": "2026-10-03T12:11:56.157082+00:00",
+      "finished_at": "2026-10-03T12:11:57.275403+00:00",
+      "log": "artifacts/remediation-2026-10-03/follow-up/architecture.log",
+      "sha256": "fb1b1996bc31cfb350a1d4d982956ea8ef984b22ba3f4a0fe045023fd2efc7e2"
+    },
+    {
+      "name": "secrets",
+      "command": [
+        "npm",
+        "run",
+        "verify:secrets"
+      ],
+      "exit_status": 0,
+      "started_at": "2026-10-03T12:11:57.275528+00:00",
+      "finished_at": "2026-10-03T12:12:41.287366+00:00",
+      "log": "artifacts/remediation-2026-10-03/follow-up/secrets.log",
+      "sha256": "759bc372f74d68043e3167aa1cb36d768a416ec20fa3bf5af1340dfde15460ce"
+    },
+    {
+      "name": "diff",
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exit_status": 0,
+      "started_at": "2026-10-03T12:12:41.287456+00:00",
+      "finished_at": "2026-10-03T12:12:41.327078+00:00",
+      "log": "artifacts/remediation-2026-10-03/follow-up/diff.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "source_sha256": {
+    "packages/agent-context/src/index.ts": "4b1ef8bd7036a9ce98e2c5a8ab15d8727267ae34709202f0fa1aed23e2edd507",
+    "packages/domain/src/index.ts": "9c1a135d23dbc14b277ebb3d03fe2aa318d131d21615ec79a25a2e04bc3e3107",
+    "tests/fixtures/secret-material.ts": "9b473582d63756fffaf1ff68a07a316dbebd623bd19f5f467dfba76c2b55ff28",
+    "tests/unit/agent-context.test.ts": "9a7ef93c3e076adf152239e8a6733023e58c555218a78bc0e983a3e0bde456cb",
+    "tests/unit/embedded-runtime.test.ts": "ed5b134f5741ceff562b580b58e0ea0fdb49b13d85c26d6fc93c0ee0ba00bfd9",
+    "tests/integration/ai-secret-boundary.test.ts": "4d525f55f37c6cb10f57c44524289148a7db75b48d3f3c00358da8d21e04cdd6",
+    "tests/integration/auth-challenge-race.test.ts": "3dd0f526fc0285da7ac3295e79d95265522ce13b994059cc3d0614cb7e6e545d"
+  },
+  "source_unchanged_during_checks": true
+}

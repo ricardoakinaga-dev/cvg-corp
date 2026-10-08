@@ -1,0 +1,310 @@
+{
+  "lane": "security-ai",
+  "files": [
+    {
+      "path": "docs/04-motor-deepseek-e-plugins.md",
+      "bytes": 34937,
+      "sha256": "8bbc0306cf7be2520ef7a5b9e2075f913308d641470dace2dce1df36cf2a7f5d"
+    },
+    {
+      "path": "docs/05-seguranca-privacidade.md",
+      "bytes": 38494,
+      "sha256": "dbd6466227ff13ce673171466a29986d1d843700de02de757a550a88eb987c78"
+    },
+    {
+      "path": "docs/agent-evals.md",
+      "bytes": 6810,
+      "sha256": "b7ab446f71e75744884f7d4d6d14e7ccb640f5ec42cb4d48a1effd0f260430f8"
+    },
+    {
+      "path": "docs/agent-runtime-data-flow.md",
+      "bytes": 10947,
+      "sha256": "6fa306ea53a29a22298e912fa26903897c26cad627c57a7fa1d83047474cfdef"
+    },
+    {
+      "path": "docs/agent-runtime-red-team.md",
+      "bytes": 8941,
+      "sha256": "c0ec6a2bddeae98cb00cb58173670bb750dff5a87bc2e8a29c06a912b2f48ced"
+    },
+    {
+      "path": "docs/agent-runtime-security-review.md",
+      "bytes": 10025,
+      "sha256": "048bc24e6adbf56c9a33a38b07175cfe9bd9c5bde5f63c7a9089ec4c6ad43fe2"
+    },
+    {
+      "path": "docs/agent-runtime-threat-model.md",
+      "bytes": 13153,
+      "sha256": "f0bd74d59cebe2d5be783d97fc762f58724f645d76fc8977fff6e2d2b57db7eb"
+    },
+    {
+      "path": "docs/ai-runtime-vNext.md",
+      "bytes": 1590,
+      "sha256": "7d6661e660d9977eaad4f8f78f27f0d212e63339a8fc94cecb18caa2c018ec04"
+    },
+    {
+      "path": "docs/aud27-semantic-manifest.json",
+      "bytes": 18431,
+      "sha256": "2a0ace3269cd16cc7f67534723b4413a497b09724103e1dd6cdbd7eb5048098f"
+    },
+    {
+      "path": "docs/auditoria-entrega-cvg-aud24-003-2026-09-20.md",
+      "bytes": 10818,
+      "sha256": "df9173d6809be47cbcbe65d5d21c2af270adf64281bfcf31e479e4e791a2bee8"
+    },
+    {
+      "path": "docs/auditoria-repositorio-2026-09-23.md",
+      "bytes": 7742,
+      "sha256": "b73fcf096aba157272cb4190964e894e4fc82d116eea6e8c5f5d20585fbe8fa3"
+    },
+    {
+      "path": "docs/auditoria-repositorio-2026-09-24.md",
+      "bytes": 12397,
+      "sha256": "b9548f635028f36a3c8e756f34a0fee016d1de62bd9c3119f5b716c259dad6e7"
+    },
+    {
+      "path": "docs/auditoria-resultado-cvg-aud20-2026-09-20.md",
+      "bytes": 17475,
+      "sha256": "cab90daf71362b23bb524a2d5ab9254d9056a671898ff738ee15abbb5755ed21"
+    },
+    {
+      "path": "docs/auth-boundary-vNext.md",
+      "bytes": 5328,
+      "sha256": "5e2b0c9e9de69840682a8ad05bd95666dc043a447e2b5ab274cb14af2ff649f7"
+    },
+    {
+      "path": "docs/backlog-melhorias-auditoria-2026-09-21.md",
+      "bytes": 28144,
+      "sha256": "1def7860adfd3d97d2fc3970f7eecdfe6b5224a49cf314cd7ae33b25d9a8797d"
+    },
+    {
+      "path": "docs/backlog-melhorias-cvg-aud21-2026-09-20.md",
+      "bytes": 19296,
+      "sha256": "e79062c8f663052d405a8d1be32864f83368482c8f264a3a9a04441be8b1230c"
+    },
+    {
+      "path": "docs/backlog-melhorias-cvg-aud25-2026-09-20.md",
+      "bytes": 9920,
+      "sha256": "0a293d3e6648f3b570f89857678d8b71d3b1f1f9d301186500aefd433a99fc39"
+    },
+    {
+      "path": "docs/backlog-remediacao-auditoria-2026-09-19.md",
+      "bytes": 23605,
+      "sha256": "fabf30749848287710fe0f7872595a2729c1bf0b66ef66fd31364070dcebda17"
+    },
+    {
+      "path": "docs/deepseek-acp-bridge.md",
+      "bytes": 5569,
+      "sha256": "d110a12c28648916bb296768b54b624e34dc5e4a1ed41fb992225cf986278370"
+    },
+    {
+      "path": "docs/deepseek-integration-vNext.md",
+      "bytes": 2370,
+      "sha256": "b41eaeed018bebdfb0805019b4e79c736e8c1124dabcffd383deb401efdeed3b"
+    },
+    {
+      "path": "docs/deepseek-production-integration.md",
+      "bytes": 4251,
+      "sha256": "5cd1b41c42f5ea343c2620a42249d97a945c0fa8ca54747a1f5ffa7d497d98db"
+    },
+    {
+      "path": "docs/deepseek-real-proof.md",
+      "bytes": 9068,
+      "sha256": "c28859319e6799efec0e65321660ea4a062eb9ea15641726e340bb1feb00a249"
+    },
+    {
+      "path": "docs/embedded-harness-audit.md",
+      "bytes": 15273,
+      "sha256": "16f28deaae1a3584daf0ca308cb1a9163a59ee8a24faff4e4eac4e1b4e38f579"
+    },
+    {
+      "path": "docs/embedded-harness-verification.md",
+      "bytes": 10938,
+      "sha256": "d0cac561bd6474ef210f4d313b7c85f5c937d4a5b44b9293b2d8085d274aee79"
+    },
+    {
+      "path": "docs/embedded-runtime-rollout.md",
+      "bytes": 8587,
+      "sha256": "caf29d14ae9cab923bdd32024cea74942cca381ded056def0dbcabad2a74e3b0"
+    },
+    {
+      "path": "docs/embedded-vs-external-comparison.md",
+      "bytes": 8106,
+      "sha256": "e61e698e95b592aac2bfe0395fcc33557f279d7a9f31739d486e2ff1e3e95fb6"
+    },
+    {
+      "path": "docs/final-triplo-aaa-report.md",
+      "bytes": 15005,
+      "sha256": "6bdbb08aaa626ba2efbd7cfa3ecc9534aaaeebe5dc902ad713c659f7e9cb3d5e"
+    },
+    {
+      "path": "docs/plano-aaa-2026-09-12/areas/04-aig.md",
+      "bytes": 5709,
+      "sha256": "4f76ce8f499cb94dde881412bc3932dc5213b54bf440b662a7d58af99ed0fb36"
+    },
+    {
+      "path": "docs/plano-aaa-2026-09-12/areas/05-dat.md",
+      "bytes": 7303,
+      "sha256": "a26cb9de8d9be224d01f21bf8c4e4e149e2e9031787ff7f4b497759413d47984"
+    },
+    {
+      "path": "docs/plano-triplo-aaa-pos-entrega-2026-09-13/backlog.json",
+      "bytes": 91329,
+      "sha256": "abc39ce6af71729def6dfb251cb7b4097a58e8c8508a0255f80e69a6e9da083a"
+    },
+    {
+      "path": "docs/plano-triplo-aaa-pos-entrega-2026-09-13/backlog.md",
+      "bytes": 43296,
+      "sha256": "122c33b355f76ab720f50891050a6a3b56163327e12747e2939add7cafc53ec5"
+    },
+    {
+      "path": "docs/plano-triplo-aaa-pos-entrega-2026-09-13/roadmap.md",
+      "bytes": 2958,
+      "sha256": "032a38fb326575b6330e6a2a39dc444ae900e25e94be68aba1840bf2d9d86b09"
+    },
+    {
+      "path": "docs/prompt-codex-execucao-cvg-aud27-2026-09-21.md",
+      "bytes": 7537,
+      "sha256": "0e680d675ac660c374649bb1019b80d6ddd90aa99fce3b478455d8824c9c999c"
+    },
+    {
+      "path": "docs/prompt-embedded-agent-runtime-2026-09-16.md",
+      "bytes": 111925,
+      "sha256": "941f459553d49dbf2d2daf57a989bc2158218b390843202fac30e61e96c64e0d"
+    },
+    {
+      "path": "docs/provider-integration-vNext.md",
+      "bytes": 1948,
+      "sha256": "d663792b40e6c9165066da45f0c323b3402f8590b4d609504813bde3304aafc0"
+    },
+    {
+      "path": "docs/provider-production-integration.md",
+      "bytes": 3664,
+      "sha256": "8a12003c037702eb3dccbf8eda11a161851fe9089f8429b9b41e1405e6b564ec"
+    },
+    {
+      "path": "docs/provider-real-proof.md",
+      "bytes": 1664,
+      "sha256": "2cc62a95873377fef8edaa29eac545c342037e759236469a1344085640452000"
+    },
+    {
+      "path": "docs/roadmap-melhorias-auditoria-2026-09-21.md",
+      "bytes": 12932,
+      "sha256": "ccf0ce8642bd61e56342438c5ecd1db9f05177f355250cd5de6695f198944601"
+    },
+    {
+      "path": "docs/roadmap-melhorias-cvg-aud24-2026-09-20.md",
+      "bytes": 9162,
+      "sha256": "8269dae87692fea0f5925aa7d791a4cb719f37cc1441c08246c21096d9899954"
+    },
+    {
+      "path": "docs/roadmap-melhorias-cvg-aud25-2026-09-20.md",
+      "bytes": 6525,
+      "sha256": "ac5f8ebe1c82221d1d2395f2d294c280e934ab481f4de7de41ad2dc038ac34bf"
+    },
+    {
+      "path": "docs/rodada-aaa3-2026-09-13/decisao-d02.md",
+      "bytes": 2429,
+      "sha256": "69e5f0978c9f4c6a0cbe507310318cacacb5be90e87276743126303d5f03da4e"
+    },
+    {
+      "path": "docs/rodada-aaa3-2026-09-13/roadmap.md",
+      "bytes": 3455,
+      "sha256": "e6927e9ebbd0d01e593c7687f1c7ccdf6fec9c0f123da7a82d040fd1e4a4143e"
+    },
+    {
+      "path": "docs/runbooks/agent-loop-runaway.md",
+      "bytes": 5732,
+      "sha256": "5e9539456221990d5c8490c0ce44fa92728e1ee74836b2031b07fdba8d035c94"
+    },
+    {
+      "path": "docs/runbooks/agent-runtime-down.md",
+      "bytes": 5978,
+      "sha256": "fef10a940b5b5d72c261e54ee0d44e3dc88bfde46ed437f02ebcee6c0767a210"
+    },
+    {
+      "path": "docs/runbooks/agent-runtime-rollback.md",
+      "bytes": 5527,
+      "sha256": "19cb903c7fa860da23727b78be77423d3755bf9ad1951f5536e5112b2658b866"
+    },
+    {
+      "path": "docs/runbooks/deepseek-bridge-outage.md",
+      "bytes": 1431,
+      "sha256": "15b2b2ecbca69820cd0e8f6ffa6600b22748ef2aede8c9665007798d10cfbc3a"
+    },
+    {
+      "path": "docs/runbooks/deepseek-harness-outage.md",
+      "bytes": 688,
+      "sha256": "d248c4acda6c4d6d0c4e53f4f890c53f28056eee872521a0d3792421908ad29f"
+    },
+    {
+      "path": "docs/runbooks/embedded-harness-upgrade.md",
+      "bytes": 6023,
+      "sha256": "e198484d571ec09476774a6fdccf27c39e8c892b81bb386b488433b5c7955452"
+    },
+    {
+      "path": "docs/runbooks/provider-outage.md",
+      "bytes": 641,
+      "sha256": "7ad8ed723452e7117f4390705b6321f6b35dd13f613abc68b10c39eb2886679a"
+    },
+    {
+      "path": "docs/runbooks/security-incident.md",
+      "bytes": 722,
+      "sha256": "c0f41b70ba1b426d3cfb42f94815c29b2045e7007c6eeceab33205f30a2bb24b"
+    },
+    {
+      "path": "docs/security-red-team-final.md",
+      "bytes": 1952,
+      "sha256": "6882d86d3d05a667dd24dc179b377114b70eb43a01b5f9643ef74cac1fa13414"
+    },
+    {
+      "path": "docs/security-review-vNext.md",
+      "bytes": 2460,
+      "sha256": "e35acd598af405ebdb680b0500947c6541ad3e02f96b48fd6a8a1a556d9cb9a9"
+    },
+    {
+      "path": "docs/security-traceability-matrix.md",
+      "bytes": 13729,
+      "sha256": "9dde25759251cfe3f7ec80e555198891df0982e0d89cf80f87a6eaf47b4da501"
+    },
+    {
+      "path": "docs/third-party/deepseek-harness-provenance.md",
+      "bytes": 3700,
+      "sha256": "ddb9bb79a783fb402e3886d8854534420c5e972ff6fd6b59d0b0474dfe68629e"
+    },
+    {
+      "path": "docs/third-party/deepseek-harness-upstream.md",
+      "bytes": 3033,
+      "sha256": "0326859f08faaa1e861c7a3c4d689499946fa576430d1ecffc7ec7390c662163"
+    },
+    {
+      "path": "docs/third-party/license-policy-review-2026-09-23.md",
+      "bytes": 3881,
+      "sha256": "2e63973191f3c3b1cb7e07b5f6804ecfddcdf68784663c915b992f06a26c4e41"
+    },
+    {
+      "path": "docs/verification-2026-09-10-diagnostic-request-source-write.md",
+      "bytes": 4423,
+      "sha256": "370a9d6edb9da38d1e2bfbc498416ea058131897b8c4f84ab6475333377350cd"
+    },
+    {
+      "path": "docs/verification-2026-09-10-encounter-source-write.md",
+      "bytes": 4188,
+      "sha256": "4817e7a00b7e96684c9820dd67b2ad6e49bb398590d368975f1a996f0b4628ca"
+    },
+    {
+      "path": "docs/verification-2026-09-10-patient-source-write.md",
+      "bytes": 3190,
+      "sha256": "f916e0e273a49d6ae7455135b3f1990a5a30575ba96819f253d75486b96718b8"
+    },
+    {
+      "path": "docs/verification-2026-09-10-restore-audit-receipt.md",
+      "bytes": 1718,
+      "sha256": "dd86941ca0035c6113bfee272b3012f3ca064e7d8cc88f57da39623f5c610a8f"
+    },
+    {
+      "path": "docs/verification/mel23-container-smoke-supply-chain-2026-09-23.md",
+      "bytes": 6070,
+      "sha256": "14fc9e0341714687c71ba03437f626aa6d187c7be4b6d9de0310e0e50c77b0b9"
+    }
+  ]
+}

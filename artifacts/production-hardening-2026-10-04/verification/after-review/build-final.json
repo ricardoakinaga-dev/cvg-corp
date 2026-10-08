@@ -1,0 +1,16 @@
+{
+  "name": "build-final",
+  "command": [
+    "npm",
+    "run",
+    "build"
+  ],
+  "exit_status": 0,
+  "started_at": "2026-10-04T11:53:18.916352+00:00",
+  "finished_at": "2026-10-04T11:53:46.666450+00:00",
+  "source_fingerprint_before": "sha256:15ece6ef83fb9e9918dddcde7757e337fb81b42b07b6b04474c68580fcb794b2",
+  "source_fingerprint_after": "sha256:15ece6ef83fb9e9918dddcde7757e337fb81b42b07b6b04474c68580fcb794b2",
+  "source_unchanged": true,
+  "log": "artifacts/production-hardening-2026-10-04/verification/after-review/build-final.log",
+  "log_sha256": "b1b95673f3e6dcac0beb6df0224e8c141dbc00126d0032db6e07d8a3d73716a2"
+}

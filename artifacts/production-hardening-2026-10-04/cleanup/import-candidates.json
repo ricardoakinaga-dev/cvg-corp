@@ -1,0 +1,10 @@
+{
+  "method": "TypeScript preProcessFile + resolveModuleName across tsconfig source/test/scripts; zero incoming imports are candidates, not deletion proof.",
+  "files": 336,
+  "candidates": [
+    "apps/web/vite.config.ts",
+    "apps/worker/src/main.ts",
+    "apps/web/src/main.tsx",
+    "packages/ops/tests/observability.test.ts"
+  ]
+}

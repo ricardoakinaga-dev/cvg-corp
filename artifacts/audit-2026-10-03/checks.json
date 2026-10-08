@@ -1,0 +1,170 @@
+[
+  {
+    "command": "npm run lint",
+    "exit_status": 0,
+    "seconds": 0.72,
+    "log": "artifacts/audit-2026-10-03/lint.log",
+    "observed_at": "2026-10-03T05:10:13.674734+00:00"
+  },
+  {
+    "command": "npm run verify:static",
+    "exit_status": 0,
+    "seconds": 1.35,
+    "log": "artifacts/audit-2026-10-03/verify-static.log",
+    "observed_at": "2026-10-03T05:10:14.302009+00:00"
+  },
+  {
+    "command": "npm run verify:architecture",
+    "exit_status": 0,
+    "seconds": 0.34,
+    "log": "artifacts/audit-2026-10-03/verify-architecture.log",
+    "observed_at": "2026-10-03T05:10:13.294096+00:00"
+  },
+  {
+    "command": "npm run verify:control-plane",
+    "exit_status": 1,
+    "seconds": 0.48,
+    "log": "artifacts/audit-2026-10-03/verify-control-plane.log",
+    "observed_at": "2026-10-03T05:10:13.774845+00:00"
+  },
+  {
+    "command": "npm run verify:docs-integrity",
+    "exit_status": 0,
+    "seconds": 0.3,
+    "log": "artifacts/audit-2026-10-03/verify-docs-integrity.log",
+    "observed_at": "2026-10-03T05:10:13.976417+00:00"
+  },
+  {
+    "command": "npm run verify:schema-manifest",
+    "exit_status": 0,
+    "seconds": 0.49,
+    "log": "artifacts/audit-2026-10-03/verify-schema-manifest.log",
+    "observed_at": "2026-10-03T05:10:14.262410+00:00"
+  },
+  {
+    "command": "npm run verify:authoritative-writes",
+    "exit_status": 0,
+    "seconds": 0.69,
+    "log": "artifacts/audit-2026-10-03/verify-authoritative-writes.log",
+    "observed_at": "2026-10-03T05:10:14.670795+00:00"
+  },
+  {
+    "command": "npm run verify:pdp-universal",
+    "exit_status": 0,
+    "seconds": 5.86,
+    "log": "artifacts/audit-2026-10-03/verify-pdp-universal.log",
+    "observed_at": "2026-10-03T05:10:20.127188+00:00"
+  },
+  {
+    "command": "npm run verify:audit-chain",
+    "exit_status": 0,
+    "seconds": 0.36,
+    "log": "artifacts/audit-2026-10-03/verify-audit-chain.log",
+    "observed_at": "2026-10-03T05:10:14.664253+00:00"
+  },
+  {
+    "command": "npm run verify:snapshot-command-migration",
+    "exit_status": 0,
+    "seconds": 0.65,
+    "log": "artifacts/audit-2026-10-03/verify-snapshot-command-migration.log",
+    "observed_at": "2026-10-03T05:10:15.315733+00:00"
+  },
+  {
+    "command": "npm run verify:claims",
+    "exit_status": 0,
+    "seconds": 0.42,
+    "log": "artifacts/audit-2026-10-03/verify-claims.log",
+    "observed_at": "2026-10-03T05:10:15.094378+00:00"
+  },
+  {
+    "command": "npm run verify:aud27-semantics",
+    "exit_status": 0,
+    "seconds": 0.31,
+    "log": "artifacts/audit-2026-10-03/verify-aud27-semantics.log",
+    "observed_at": "2026-10-03T05:10:15.403310+00:00"
+  },
+  {
+    "command": "npm run verify:agent-security",
+    "exit_status": 0,
+    "seconds": 2.11,
+    "log": "artifacts/audit-2026-10-03/verify-agent-security.log",
+    "observed_at": "2026-10-03T05:10:17.422210+00:00"
+  },
+  {
+    "command": "npm run verify:embedded-harness",
+    "exit_status": 0,
+    "seconds": 0.75,
+    "log": "artifacts/audit-2026-10-03/verify-embedded-harness.log",
+    "observed_at": "2026-10-03T05:10:16.158070+00:00"
+  },
+  {
+    "command": "npm run verify:provider-sandbox",
+    "exit_status": 0,
+    "seconds": 0.87,
+    "log": "artifacts/audit-2026-10-03/verify-provider-sandbox.log",
+    "observed_at": "2026-10-03T05:10:17.023853+00:00"
+  },
+  {
+    "command": "npm run verify:worker-runtime",
+    "exit_status": 0,
+    "seconds": 1.06,
+    "log": "artifacts/audit-2026-10-03/verify-worker-runtime.log",
+    "observed_at": "2026-10-03T05:10:18.087650+00:00"
+  },
+  {
+    "command": "npm run audit:licenses",
+    "exit_status": 0,
+    "seconds": 0.43,
+    "log": "artifacts/audit-2026-10-03/audit-licenses.log",
+    "observed_at": "2026-10-03T05:10:17.851407+00:00"
+  },
+  {
+    "command": "npm run audit:contrast",
+    "exit_status": 0,
+    "seconds": 0.34,
+    "log": "artifacts/audit-2026-10-03/audit-contrast.log",
+    "observed_at": "2026-10-03T05:10:18.190120+00:00"
+  },
+  {
+    "command": "npm run audit:tokens",
+    "exit_status": 0,
+    "seconds": 0.39,
+    "log": "artifacts/audit-2026-10-03/audit-tokens.log",
+    "observed_at": "2026-10-03T05:10:18.479113+00:00"
+  },
+  {
+    "command": "npm run verify:production",
+    "exit_status": 1,
+    "seconds": 1616.4,
+    "log": "artifacts/audit-2026-10-03/verify-production.log",
+    "observed_at": "2026-10-03T05:37:14.590196+00:00"
+  },
+  {
+    "command": "npm run verify:aud27-evidence-root",
+    "exit_status": 1,
+    "seconds": 0.4,
+    "log": "artifacts/audit-2026-10-03/verify-aud27-evidence-root.log",
+    "observed_at": "2026-10-03T05:10:18.881141+00:00"
+  },
+  {
+    "command": "npm run verify:mel23-evidence",
+    "exit_status": 1,
+    "seconds": 0.5,
+    "log": "artifacts/audit-2026-10-03/verify-mel23-evidence.log",
+    "observed_at": "2026-10-03T05:10:19.380536+00:00"
+  },
+  {
+    "command": "npm run verify:ai-disabled",
+    "exit_status": 0,
+    "seconds": 1.31,
+    "log": "artifacts/audit-2026-10-03/verify-ai-disabled.log",
+    "observed_at": "2026-10-03T05:10:20.690061+00:00"
+  },
+  {
+    "command": "npm run verify:agent-runtime-smoke",
+    "exit_status": 0,
+    "seconds": 0.79,
+    "log": "artifacts/audit-2026-10-03/verify-agent-runtime-smoke.log",
+    "observed_at": "2026-10-03T05:10:20.914422+00:00"
+  }
+]

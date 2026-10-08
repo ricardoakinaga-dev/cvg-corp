@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "label": "web build",
+  "command": [
+    "npm",
+    "run",
+    "build"
+  ],
+  "capturedAt": "2026-10-03T05:12:09.012Z",
+  "exitStatus": 0,
+  "signal": null,
+  "stdout": "\n> cvg-corp@0.1.0 build\n> tsc -p tsconfig.json --noEmit && vite build --config apps/web/vite.config.ts\n\nvite v8.3.0 building client environment for production...\ntransforming...\n✓ 151 modules transformed.\nrendering chunks...\nbundle-budget assets/index-Dc9e_tir.js 395379B entry\nbundle-budget assets/Admin-0gTNmlSr.js 9100B\nbundle-budget assets/Agenda-B01WGjZt.js 21402B\nbundle-budget assets/Clinical-D85-tAfG.js 19831B\nbundle-budget assets/Communications-Dt4HVOSD.js 9376B\nbundle-budget assets/Copilot-Z9pH4C3n.js 20163B\nbundle-budget assets/Exams-Blo4oCcq.js 12395B\nbundle-budget assets/Finance-CXzhpHJ-.js 14691B\nbundle-budget assets/Internacao-Bz5xhqnK.js 19033B\nbundle-budget assets/Knowledge-BUHrX4EQ.js 12947B\nbundle-budget assets/Overview-BT8a2qPr.js 7777B\nbundle-budget assets/Patients-CzE4vpy7.js 15083B\nbundle-budget assets/Reports-B2sJIG7t.js 5385B\nbundle-budget assets/Stock-D-cA_Cwl.js 16755B\nbundle-budget assets/index-BASt-aIt.css 73188B\ncomputing gzip size...\ndist/web/index.html                           0.55 kB │ gzip:   0.34 kB\ndist/web/assets/index-BASt-aIt.css           73.17 kB │ gzip:  13.17 kB\ndist/web/assets/Reports-B2sJIG7t.js           5.38 kB │ gzip:   2.10 kB\ndist/web/assets/Overview-BT8a2qPr.js          7.77 kB │ gzip:   2.47 kB\ndist/web/assets/Admin-0gTNmlSr.js             9.10 kB │ gzip:   3.20 kB\ndist/web/assets/Communications-Dt4HVOSD.js    9.37 kB │ gzip:   3.25 kB\ndist/web/assets/Exams-Blo4oCcq.js            12.39 kB │ gzip:   3.68 kB\ndist/web/assets/Knowledge-BUHrX4EQ.js        12.94 kB │ gzip:   3.85 kB\ndist/web/assets/Finance-CXzhpHJ-.js          14.69 kB │ gzip:   4.54 kB\ndist/web/assets/Patients-CzE4vpy7.js         15.08 kB │ gzip:   4.15 kB\ndist/web/assets/Stock-D-cA_Cwl.js            16.75 kB │ gzip:   4.72 kB\ndist/web/assets/Internacao-Bz5xhqnK.js       19.03 kB │ gzip:   4.86 kB\ndist/web/assets/Clinical-D85-tAfG.js         19.83 kB │ gzip:   5.41 kB\ndist/web/assets/Copilot-Z9pH4C3n.js          20.16 kB │ gzip:   6.21 kB\ndist/web/assets/Agenda-B01WGjZt.js           21.40 kB │ gzip:   5.10 kB\ndist/web/assets/index-Dc9e_tir.js           395.50 kB │ gzip: 113.40 kB\n\n✓ built in 472ms\n",
+  "stderr": ""
+}

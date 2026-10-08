@@ -1,0 +1,94 @@
+{
+  "checks": [
+    {
+      "name": "full-tests",
+      "command": [
+        "npm",
+        "test"
+      ],
+      "exit_status": 1,
+      "started_at": "2026-10-04T01:49:27.968747+00:00",
+      "finished_at": "2026-10-04T01:50:12.929835+00:00",
+      "log": "artifacts/remediation-2026-10-03/follow-up/report-fixes/review-corrections/full-tests.log",
+      "sha256": "315c0c85bcf86de920fb89c1590fdfd6992e61614acc0a025f75345550ec7b11"
+    },
+    {
+      "name": "build",
+      "command": [
+        "npm",
+        "run",
+        "build"
+      ],
+      "exit_status": 0,
+      "started_at": "2026-10-04T01:49:27.969108+00:00",
+      "finished_at": "2026-10-04T01:50:17.895543+00:00",
+      "log": "artifacts/remediation-2026-10-03/follow-up/report-fixes/review-corrections/build.log",
+      "sha256": "89fc03cb1fd457ddbda2d8324697ccac50a3def08e1df3b20b486c435ab9753f"
+    },
+    {
+      "name": "lint-final",
+      "command": [
+        "npm",
+        "run",
+        "lint"
+      ],
+      "exit_status": 0,
+      "started_at": "2026-10-04T01:49:27.969374+00:00",
+      "finished_at": "2026-10-04T01:49:30.988720+00:00",
+      "log": "artifacts/remediation-2026-10-03/follow-up/report-fixes/review-corrections/lint-final.log",
+      "sha256": "92bb6b395d809b041c21c1277507d16f872f9b30c687d530b05dc4bc1f415dc0"
+    },
+    {
+      "name": "architecture",
+      "command": [
+        "npm",
+        "run",
+        "verify:architecture"
+      ],
+      "exit_status": 0,
+      "started_at": "2026-10-04T01:49:30.988845+00:00",
+      "finished_at": "2026-10-04T01:49:32.013855+00:00",
+      "log": "artifacts/remediation-2026-10-03/follow-up/report-fixes/review-corrections/architecture.log",
+      "sha256": "fb1b1996bc31cfb350a1d4d982956ea8ef984b22ba3f4a0fe045023fd2efc7e2"
+    },
+    {
+      "name": "secrets",
+      "command": [
+        "npm",
+        "run",
+        "verify:secrets"
+      ],
+      "exit_status": 0,
+      "started_at": "2026-10-04T01:49:32.014004+00:00",
+      "finished_at": "2026-10-04T01:50:13.841112+00:00",
+      "log": "artifacts/remediation-2026-10-03/follow-up/report-fixes/review-corrections/secrets.log",
+      "sha256": "759bc372f74d68043e3167aa1cb36d768a416ec20fa3bf5af1340dfde15460ce"
+    },
+    {
+      "name": "diff",
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exit_status": 0,
+      "started_at": "2026-10-04T01:50:12.930035+00:00",
+      "finished_at": "2026-10-04T01:50:12.988802+00:00",
+      "log": "artifacts/remediation-2026-10-03/follow-up/report-fixes/review-corrections/diff.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "source_sha256": {
+    "packages/agent-context/src/index.ts": "addd9b04c56dcd7e1434f895168e308748cb8c4d37e1f08206b4630ffb28e044",
+    "packages/embedded-agent-runtime/src/index.ts": "58ec1758a360dde6477f3e3b42bbc9fb1cae11df1a17e47ad1b9f43324ac22f4",
+    "packages/domain/src/index.ts": "9c1a135d23dbc14b277ebb3d03fe2aa318d131d21615ec79a25a2e04bc3e3107",
+    "tests/fixtures/secret-material.ts": "826b6cf7229827809d3fd69ea905c932eae1e11d0173de48fdf3995963ec5b6e",
+    "tests/fixtures/secret-detector-scaling.ts": "83087250c5f3687bb190317660f67b6df163772c97a7933086aed434ac0108f7",
+    "tests/unit/agent-context.test.ts": "fd657de69eaba05756ebd5802b37b37439b2421942daceae2e4ec028813fc0ac",
+    "tests/unit/embedded-runtime.test.ts": "6fe69cd1416da9f6cec7ca53076c5dfb5e55a642f20552c05378a3404e159290",
+    "tests/unit/secret-detector-review.test.ts": "bc9c26f4bf9aa5ca492646045760652d898c7ad36c6ab37d5fe11cd8c835f5d7",
+    "tests/integration/ai-secret-boundary.test.ts": "88d10460eec36bf35721f5950924154e0250d801d5ddaf1ce5cf40b073256ba6",
+    "tests/integration/auth-challenge-race.test.ts": "3dd0f526fc0285da7ac3295e79d95265522ce13b994059cc3d0614cb7e6e545d"
+  },
+  "source_unchanged_during_checks": true
+}

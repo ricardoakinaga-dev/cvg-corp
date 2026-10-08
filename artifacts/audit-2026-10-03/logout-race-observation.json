@@ -1,0 +1,11 @@
+{
+  "probe": "FQ06_LOGOUT_REVALIDATION_RACE",
+  "observedAt": "2026-10-03T10:51:41.688Z",
+  "loginScreenObservedAfterSignOut": true,
+  "pendingRevocationObserved": true,
+  "staleResponseReopenedAuthenticatedShell": true,
+  "runtimeOnline": true,
+  "logoutRequests": 0,
+  "serverMeStatus": 200,
+  "scope": "Real React UI and local API, synthetic demo memory store, controlled delay of a real contexts response; no external service or production data."
+}

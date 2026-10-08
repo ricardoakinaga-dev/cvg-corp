@@ -1,0 +1,16 @@
+{
+  "name": "control-recovery-verified",
+  "command": [
+    "npm",
+    "run",
+    "verify:control-plane"
+  ],
+  "exit_status": 0,
+  "started_at": "2026-10-04T12:27:54.221372+00:00",
+  "finished_at": "2026-10-04T12:27:54.939027+00:00",
+  "source_fingerprint_before": "sha256:15ece6ef83fb9e9918dddcde7757e337fb81b42b07b6b04474c68580fcb794b2",
+  "source_fingerprint_after": "sha256:15ece6ef83fb9e9918dddcde7757e337fb81b42b07b6b04474c68580fcb794b2",
+  "source_unchanged": true,
+  "log": "artifacts/production-hardening-2026-10-04/verification/after-review/control-recovery-verified.log",
+  "log_sha256": "e5f022c48a9e436906523abbe64ba70d25b2b1462fed1aa654d59129fc9df449"
+}

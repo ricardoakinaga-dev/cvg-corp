@@ -1,0 +1,17 @@
+{
+  "started_at": "2026-10-04T11:29:35.614157+00:00",
+  "scope": "local images, synthetic memory API, loopback HTTP; no deployment or real providers",
+  "containers": [
+    {
+      "kind": "api",
+      "name": "cvg-hardening-api-e00c8bd9b245",
+      "image": "sha256:fafce762e8ad0a41e3da6bd2cadf1bbacc9c26993b03f636c0bbf8ad6c3e0444",
+      "checks": [],
+      "removed": true,
+      "container_id": "2e9749d6b2fe664fb2ea6f71f26993d04ec04193c86a0968f7fb9c2005001e8c",
+      "user": "65532:65532",
+      "status": "FAIL",
+      "error": "URLError: <urlopen error [Errno 111] Connection refused>"
+    }
+  ]
+}

@@ -96,11 +96,16 @@ function digestPath(root: string, path: string): SubjectFile {
 }
 
 function currentFiles(root: string, tracked: boolean): SubjectFile[] {
+  // The index still lists an unstaged deletion. Its absence is bound by the
+  // index digest, Git status and full binary diff below, not by reading a file
+  // that no longer exists. Only Git-confirmed tracked deletions are omitted;
+  // unexpected read failures and non-regular paths continue to fail closed.
+  const deleted = tracked ? new Set(parseNullSeparated(git(root, ["ls-files", "--deleted", "-z", "--", ...pathspecs()]))) : new Set<string>();
   const args = tracked
     ? ["ls-files", "-z", "--", ...pathspecs()]
     : ["ls-files", "--others", "--exclude-standard", "-z", "--", ...pathspecs()];
   return parseNullSeparated(git(root, args))
-    .filter((path) => !pathExcluded(path))
+    .filter((path) => !pathExcluded(path) && !deleted.has(path))
     .map((path) => digestPath(root, path))
     .sort((left, right) => left.path.localeCompare(right.path));
 }

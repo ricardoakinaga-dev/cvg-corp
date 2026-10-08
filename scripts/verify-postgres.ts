@@ -1,4 +1,5 @@
 import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
+import assert from "node:assert/strict";
 import pg from "pg";
 import { createRuntime, type CvgServerRuntime } from "@cvg/api";
 import { id } from "@cvg/contracts";
@@ -149,8 +150,30 @@ async function expectRlsInsertDenied(input: {
   }
 }
 
+type ScopedProbeFixture = {
+  sql: string;
+  values: unknown[];
+  organizationId: string;
+  unitId: string;
+  workspaceId: string;
+};
+
+// Raw RLS probes have no domain snapshot/ledger counterpart. Keep their
+// positive fixtures inside the assertion's rollback transaction so a later
+// backup/restore verifies only durable application state, without filtering
+// any audit rows out of the independent restore oracle.
+async function seedScopedProbe(client: pg.Client, fixture: ScopedProbeFixture): Promise<void> {
+  await client.query(
+    "select set_config('cvg.organization_id', $1, true), set_config('cvg.unit_id', $2, true), set_config('cvg.workspace_id', $3, true)",
+    [fixture.organizationId, fixture.unitId, fixture.workspaceId]
+  );
+  const inserted = await client.query(fixture.sql, fixture.values);
+  if (inserted.rowCount !== 1) throw new Error("same-scope RLS probe fixture was not inserted");
+}
+
 async function expectRlsRowCount(input: {
   client: pg.Client;
+  fixture: ScopedProbeFixture;
   label: string;
   table: "audit_records" | "command_receipts" | "role_assignments";
   rowId: string;
@@ -161,6 +184,7 @@ async function expectRlsRowCount(input: {
 }): Promise<void> {
   await input.client.query("begin");
   try {
+    await seedScopedProbe(input.client, input.fixture);
     await input.client.query(
       "select set_config('cvg.organization_id', $1, true), set_config('cvg.unit_id', $2, true), set_config('cvg.workspace_id', $3, true)",
       [input.organizationId, input.unitId, input.workspaceId]
@@ -175,6 +199,7 @@ async function expectRlsRowCount(input: {
 
 async function expectRlsDmlRowCount(input: {
   client: pg.Client;
+  fixture: ScopedProbeFixture;
   label: string;
   sql: string;
   values: unknown[];
@@ -185,6 +210,7 @@ async function expectRlsDmlRowCount(input: {
 }): Promise<void> {
   await input.client.query("begin");
   try {
+    await seedScopedProbe(input.client, input.fixture);
     await input.client.query(
       "select set_config('cvg.organization_id', $1, true), set_config('cvg.unit_id', $2, true), set_config('cvg.workspace_id', $3, true)",
       [input.organizationId, input.unitId, input.workspaceId]
@@ -199,6 +225,7 @@ async function expectRlsDmlRowCount(input: {
 
 async function expectScopedDmlSqlState(input: {
   client: pg.Client;
+  fixture: ScopedProbeFixture;
   label: string;
   sql: string;
   values: unknown[];
@@ -209,6 +236,7 @@ async function expectScopedDmlSqlState(input: {
 }): Promise<void> {
   await input.client.query("begin");
   try {
+    await seedScopedProbe(input.client, input.fixture);
     await input.client.query(
       "select set_config('cvg.organization_id', $1, true), set_config('cvg.unit_id', $2, true), set_config('cvg.workspace_id', $3, true)",
       [input.organizationId, input.unitId, input.workspaceId]
@@ -762,32 +790,18 @@ try {
     const workspaceAuditValues = [randomUUID(), latestOrganization, actorId, auth.unitId, auth.workspaceId, `rls-workspace-${randomUUID()}`];
     const workspaceReceiptValues = [randomUUID(), latestOrganization, actorId, auth.unitId, auth.workspaceId, `rls-workspace-${randomUUID()}`, "a".repeat(64)];
     const workspaceRoleValues = [randomUUID(), latestOrganization, actorId, scopeProbeRole, auth.unitId, auth.workspaceId];
+    const fixtureScope = { organizationId: latestOrganization, unitId: auth.unitId, workspaceId: auth.workspaceId };
     const scopedReadFixtures = [
-      { table: "audit_records", values: workspaceAuditValues, sql: auditInsertSql },
-      { table: "command_receipts", values: workspaceReceiptValues, sql: receiptInsertSql },
-      { table: "role_assignments", values: workspaceRoleValues, sql: roleInsertSql }
+      { ...fixtureScope, table: "audit_records", values: workspaceAuditValues, sql: auditInsertSql },
+      { ...fixtureScope, table: "command_receipts", values: workspaceReceiptValues, sql: receiptInsertSql },
+      { ...fixtureScope, table: "role_assignments", values: workspaceRoleValues, sql: roleInsertSql }
     ] as const;
-    await client.query("begin");
-    try {
-      await client.query(
-        "select set_config('cvg.organization_id', $1, true), set_config('cvg.unit_id', $2, true), set_config('cvg.workspace_id', $3, true)",
-        [latestOrganization, auth.unitId, auth.workspaceId]
-      );
-      for (const fixture of scopedReadFixtures) {
-        const inserted = await client.query(fixture.sql, fixture.values);
-        if (inserted.rowCount !== 1) throw new Error(`${fixture.table} same-scope RLS fixture insert returned ${inserted.rowCount ?? 0} rows`);
-      }
-      await client.query("commit");
-    } catch (error) {
-      await client.query("rollback").catch(() => undefined);
-      throw error;
-    }
     for (const fixture of scopedReadFixtures) {
       const rowId = String(fixture.values[0]);
-      await expectRlsRowCount({ client, label: `${fixture.table} same-scope read`, table: fixture.table, rowId, expectedCount: 1, organizationId: latestOrganization, unitId: auth.unitId, workspaceId: auth.workspaceId });
-      await expectRlsRowCount({ client, label: `${fixture.table} cross-workspace read`, table: fixture.table, rowId, expectedCount: 0, organizationId: latestOrganization, unitId: auth.unitId, workspaceId: crossWorkspace });
-      await expectRlsRowCount({ client, label: `${fixture.table} cross-unit read`, table: fixture.table, rowId, expectedCount: 0, organizationId: latestOrganization, unitId: randomUUID(), workspaceId: auth.workspaceId });
-      await expectRlsRowCount({ client, label: `${fixture.table} cross-tenant read`, table: fixture.table, rowId, expectedCount: 0, organizationId: crossTenant, unitId: auth.unitId, workspaceId: auth.workspaceId });
+      await expectRlsRowCount({ client, fixture, label: `${fixture.table} same-scope read`, table: fixture.table, rowId, expectedCount: 1, organizationId: latestOrganization, unitId: auth.unitId, workspaceId: auth.workspaceId });
+      await expectRlsRowCount({ client, fixture, label: `${fixture.table} cross-workspace read`, table: fixture.table, rowId, expectedCount: 0, organizationId: latestOrganization, unitId: auth.unitId, workspaceId: crossWorkspace });
+      await expectRlsRowCount({ client, fixture, label: `${fixture.table} cross-unit read`, table: fixture.table, rowId, expectedCount: 0, organizationId: latestOrganization, unitId: randomUUID(), workspaceId: auth.workspaceId });
+      await expectRlsRowCount({ client, fixture, label: `${fixture.table} cross-tenant read`, table: fixture.table, rowId, expectedCount: 0, organizationId: crossTenant, unitId: auth.unitId, workspaceId: auth.workspaceId });
     }
     const dmlProbeClient = new pg.Client({ connectionString: migrationDatabaseUrl });
     await dmlProbeClient.connect();
@@ -809,21 +823,23 @@ try {
         { table: "role_assignments", rowId: String(workspaceRoleValues[0]), updateSql: "update role_assignments set role = role where id = $1 returning id", updateValues: (rowId: string) => [rowId], deleteSql: "delete from role_assignments where id = $1 returning id", scopeChangeSql: "update role_assignments set workspace_id = $2 where id = $1 returning id", scopeChangeValues: (rowId: string) => [rowId, crossWorkspace] }
       ] as const;
       for (const operation of dmlOperations) {
-        await expectRlsDmlRowCount({ client: dmlProbeClient, label: `${operation.table} same-scope update`, sql: operation.updateSql, values: operation.updateValues(operation.rowId), expectedCount: 1, organizationId: latestOrganization, unitId: auth.unitId, workspaceId: auth.workspaceId });
+        const fixture = scopedReadFixtures.find((candidate) => candidate.table === operation.table);
+        if (!fixture) throw new Error(`missing RLS probe fixture for ${operation.table}`);
+        await expectRlsDmlRowCount({ client: dmlProbeClient, fixture, label: `${operation.table} same-scope update`, sql: operation.updateSql, values: operation.updateValues(operation.rowId), expectedCount: 1, organizationId: latestOrganization, unitId: auth.unitId, workspaceId: auth.workspaceId });
         if ("scopeChangeSql" in operation) {
-          await expectScopedDmlSqlState({ client: dmlProbeClient, label: `${operation.table} same-scope update cannot move row to another workspace`, sql: operation.scopeChangeSql, values: operation.scopeChangeValues(operation.rowId), expectedSqlState: "42501", organizationId: latestOrganization, unitId: auth.unitId, workspaceId: auth.workspaceId });
-          await expectRlsDmlRowCount({ client: dmlProbeClient, label: `${operation.table} same-scope delete`, sql: operation.deleteSql, values: [operation.rowId], expectedCount: 1, organizationId: latestOrganization, unitId: auth.unitId, workspaceId: auth.workspaceId });
+          await expectScopedDmlSqlState({ client: dmlProbeClient, fixture, label: `${operation.table} same-scope update cannot move row to another workspace`, sql: operation.scopeChangeSql, values: operation.scopeChangeValues(operation.rowId), expectedSqlState: "42501", organizationId: latestOrganization, unitId: auth.unitId, workspaceId: auth.workspaceId });
+          await expectRlsDmlRowCount({ client: dmlProbeClient, fixture, label: `${operation.table} same-scope delete`, sql: operation.deleteSql, values: [operation.rowId], expectedCount: 1, organizationId: latestOrganization, unitId: auth.unitId, workspaceId: auth.workspaceId });
         } else {
-          await expectScopedDmlSqlState({ client: dmlProbeClient, label: `${operation.table} same-scope mutation remains append-only`, sql: operation.appendOnlySql, values: operation.appendOnlyValues(operation.rowId), expectedSqlState: "55000", organizationId: latestOrganization, unitId: auth.unitId, workspaceId: auth.workspaceId });
-          await expectScopedDmlSqlState({ client: dmlProbeClient, label: `${operation.table} same-scope delete remains append-only`, sql: operation.appendOnlyDeleteSql, values: [operation.rowId], expectedSqlState: "55000", organizationId: latestOrganization, unitId: auth.unitId, workspaceId: auth.workspaceId });
+          await expectScopedDmlSqlState({ client: dmlProbeClient, fixture, label: `${operation.table} same-scope mutation remains append-only`, sql: operation.appendOnlySql, values: operation.appendOnlyValues(operation.rowId), expectedSqlState: "55000", organizationId: latestOrganization, unitId: auth.unitId, workspaceId: auth.workspaceId });
+          await expectScopedDmlSqlState({ client: dmlProbeClient, fixture, label: `${operation.table} same-scope delete remains append-only`, sql: operation.appendOnlyDeleteSql, values: [operation.rowId], expectedSqlState: "55000", organizationId: latestOrganization, unitId: auth.unitId, workspaceId: auth.workspaceId });
         }
         for (const wrongScope of [
           { label: "cross-workspace", organizationId: latestOrganization, unitId: auth.unitId, workspaceId: crossWorkspace },
           { label: "cross-unit", organizationId: latestOrganization, unitId: randomUUID(), workspaceId: auth.workspaceId },
           { label: "cross-tenant", organizationId: crossTenant, unitId: auth.unitId, workspaceId: auth.workspaceId }
         ]) {
-          await expectRlsDmlRowCount({ client: dmlProbeClient, label: `${operation.table} ${wrongScope.label} update`, sql: operation.updateSql, values: operation.updateValues(operation.rowId), expectedCount: 0, organizationId: wrongScope.organizationId, unitId: wrongScope.unitId, workspaceId: wrongScope.workspaceId });
-          await expectRlsDmlRowCount({ client: dmlProbeClient, label: `${operation.table} ${wrongScope.label} delete`, sql: operation.deleteSql, values: [operation.rowId], expectedCount: 0, organizationId: wrongScope.organizationId, unitId: wrongScope.unitId, workspaceId: wrongScope.workspaceId });
+          await expectRlsDmlRowCount({ client: dmlProbeClient, fixture, label: `${operation.table} ${wrongScope.label} update`, sql: operation.updateSql, values: operation.updateValues(operation.rowId), expectedCount: 0, organizationId: wrongScope.organizationId, unitId: wrongScope.unitId, workspaceId: wrongScope.workspaceId });
+          await expectRlsDmlRowCount({ client: dmlProbeClient, fixture, label: `${operation.table} ${wrongScope.label} delete`, sql: operation.deleteSql, values: [operation.rowId], expectedCount: 0, organizationId: wrongScope.organizationId, unitId: wrongScope.unitId, workspaceId: wrongScope.workspaceId });
         }
       }
     } finally {
@@ -864,6 +880,27 @@ try {
     const unprotectedTables = (await client.query<{ table_name: string }>("select c.relname as table_name from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' and c.relkind = 'r' and c.relname <> 'schema_migrations' and (not c.relrowsecurity or not c.relforcerowsecurity) order by c.relname")).rows;
     if (visibleOrganizationCount !== 1 || (visibleSnapshotCount ?? 0) < 1 || (visibleJournalCount ?? 0) < 1 || (visibleOutboxCount ?? 0) < 1 || (visibleUsageCount ?? 0) < 1 || (visibleInboxCount ?? 0) < 1 || (visibleExternalEffectsCount ?? 0) < 1 || (visibleBreakGlassCount ?? 0) < 2 || (visibleScopedBreakGlassAuditCount ?? 0) !== 1 || (visiblePatientCount ?? 0) < 1 || (visibleGuardianCount ?? 0) < 1 || (visibleDiagnosticRequestCount ?? 0) < 1 || (visibleSpecimenCount ?? 0) < 1 || (visibleDiagnosticResultCount ?? 0) < 1 || (visibleAppointmentCount ?? 0) < 1 || (visibleClinicalDocumentCount ?? 0) < 1 || (visibleClinicalAddendumCount ?? 0) < 1 || (visibleKnowledgeCount ?? 0) < 1 || (visibleProviderCount ?? 0) < 1 || (visibleRoleCount ?? 0) < 1 || (visibleAiTurnCount ?? 0) !== sameScopeAiTurns || (visibleAiDraftCount ?? 0) !== 0 || (visibleLifecycleDecisionCount ?? 0) !== 0 || (visibleLifecycleEventCount ?? 0) !== 0 || (visibleLegacyInboxCount ?? 0) !== 0 || missingScopeClinicalDocumentCount !== 0 || missingScopeClinicalAddendumCount !== 0 || missingContextPatientCount !== 0 || missingContextGuardianCount !== 0 || missingContextDiagnosticRequestCount !== 0 || missingContextSpecimenCount !== 0 || missingContextDiagnosticResultCount !== 0 || hiddenWorkspacePatientCount !== 0 || hiddenWorkspaceGuardianCount !== 0 || hiddenWorkspaceDiagnosticRequestCount !== 0 || hiddenWorkspaceSpecimenCount !== 0 || hiddenWorkspaceDiagnosticResultCount !== 0 || hiddenWorkspaceAppointmentCount !== 0 || hiddenWorkspaceClinicalDocumentCount !== 0 || hiddenWorkspaceClinicalAddendumCount !== 0 || hiddenWorkspaceKnowledgeCount !== 0 || hiddenUnitPatientCount !== 0 || hiddenUnitGuardianCount !== 0 || hiddenUnitDiagnosticRequestCount !== 0 || hiddenUnitSpecimenCount !== 0 || hiddenUnitDiagnosticResultCount !== 0 || hiddenUnitAppointmentCount !== 0 || hiddenUnitClinicalDocumentCount !== 0 || hiddenUnitClinicalAddendumCount !== 0 || hiddenUnitKnowledgeCount !== 0 || hiddenUnitProviderCount !== 0 || hiddenOrganizationCount !== 0 || hiddenSnapshotCount !== 0 || hiddenJournalCount !== 0 || hiddenOutboxCount !== 0 || hiddenUsageCount !== 0 || hiddenInboxCount !== 0 || hiddenExternalEffectsCount !== 0 || hiddenBreakGlassCount !== 0 || forbiddenWorkspaceClinicalUpdate.rowCount !== 0 || forbiddenWorkspaceDiagnosticUpdate.rowCount !== 0 || forbiddenWorkspaceSpecimenUpdate.rowCount !== 0 || forbiddenWorkspaceDiagnosticResultUpdate.rowCount !== 0 || forbiddenUnitClinicalUpdate.rowCount !== 0 || forbiddenUnitDiagnosticUpdate.rowCount !== 0 || forbiddenUnitSpecimenUpdate.rowCount !== 0 || forbiddenUnitDiagnosticResultUpdate.rowCount !== 0 || unprotectedTables.length !== 0) throw new Error(`RLS did not isolate the complete domain catalog: ${JSON.stringify(unprotectedTables)}`);
     await client.query("reset role");
+    for (const fixture of scopedReadFixtures) {
+      // RESET ROLE does not reset tenant GUCs. Restore every visibility field
+      // before deciding that a fixture is absent under the runtime's RLS.
+      await client.query("select set_config('cvg.organization_id', $1, false), set_config('cvg.unit_id', $2, false), set_config('cvg.workspace_id', $3, false)", [fixture.organizationId, fixture.unitId, fixture.workspaceId]);
+      const assertAbsent = async (): Promise<void> => {
+        const residue = (await client.query<{ count: number }>(`select count(*)::int as count from ${fixture.table} where id = $1`, [fixture.values[0]])).rows[0]?.count;
+        if (residue !== 0) throw new Error(`${fixture.table} RLS probe escaped its rollback transaction`);
+      };
+      // The same oracle must reject a known-present row before accepting an
+      // empty result. This catches false absence caused by RLS invisibility.
+      await client.query("begin");
+      try {
+        await seedScopedProbe(client, fixture);
+        await assert.rejects(assertAbsent, /RLS probe escaped its rollback transaction/);
+      } finally {
+        await client.query("rollback");
+      }
+      await assertAbsent();
+    }
+    process.stdout.write("POSTGRES_RLS_ZERO_RESIDUE_ORACLE_VERIFIED present_controls_rejected=3 empty_controls_accepted=3\n");
+    process.stdout.write("POSTGRES_RLS_FIXTURE_ROLLBACK_VERIFIED tables=3 rows_remaining=0\n");
     const rejectedDiagnosticChildren = (await client.query<{ count: number }>("select count(*)::int as count from specimens where id = $1 union all select count(*)::int as count from diagnostic_results where id = $2", [invalidSpecimenId, invalidResultId])).rows;
     if (rejectedDiagnosticChildren.some((row) => row.count !== 0)) throw new Error("negative diagnostic child writes left rows behind");
     const protection = (await client.query<{ domain_tables: number; protected_tables: number; organization_foreign_keys: number }>("select count(*) filter (where c.relkind = 'r' and c.relname <> 'schema_migrations')::int as domain_tables, count(*) filter (where c.relkind = 'r' and c.relname <> 'schema_migrations' and c.relrowsecurity and c.relforcerowsecurity)::int as protected_tables, (select count(*)::int from pg_constraint where contype = 'f' and pg_get_constraintdef(oid) like 'FOREIGN KEY (organization_id,%') as organization_foreign_keys from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public'")).rows[0];

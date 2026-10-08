@@ -807,18 +807,19 @@ export class HttpMessagingProvider implements MessagingProvider {
   async send(request: MessagingSendRequest, options: MessagingProviderSendOptions = {}): Promise<MessagingSendResult> {
     if (options.signal?.aborted) throw new MessagingProviderError("CANCELLED", "provider send aborted before dispatch", { outcome: "NOT_SENT" });
     const normalized = normalizedSendRequest(request, this.defaultTimeoutMs);
+    const signal = options.signal && normalized.signal ? AbortSignal.any([options.signal, normalized.signal]) : options.signal ?? normalized.signal;
     const requestId = normalized.requestId ?? deterministicRequestId("msg", normalized.idempotencyKey);
     const endpoint = providerEndpoint(this.options);
-    const secret = await this.resolveSecret(normalized.timeoutMs, normalized.signal);
+    const secret = await this.resolveSecret(normalized.timeoutMs, signal);
+    if (signal?.aborted) throw new MessagingProviderError("CANCELLED", "message send was cancelled before dispatch", { outcome: "NOT_SENT" });
     admitMessagingRequest(this.controls, requestId);
-    if (normalized.signal?.aborted) throw new MessagingProviderError("CANCELLED", "message send was cancelled before dispatch");
     let body: string;
     try {
       body = JSON.stringify({ requestId, idempotencyKey: normalized.idempotencyKey, channel: normalized.channel, to: normalized.recipient, body: normalized.body, metadata: normalized.metadata });
     } catch {
       throw new DomainError("INVALID_INPUT", "O payload da mensagem não pode ser serializado.", 400);
     }
-    const attempt = await httpAttempt(this.fetcher(), joinProviderEndpoint(endpoint, this.options.sendPath ?? "/messages"), { method: "POST", headers: { accept: "application/json", "content-type": "application/json", "x-request-id": requestId, "idempotency-key": normalized.idempotencyKey, authorization: `Bearer ${secret}` }, body }, normalized.timeoutMs || this.defaultTimeoutMs, normalized.signal, this.maxResponseBodyBytes, this.egressPolicy());
+    const attempt = await httpAttempt(this.fetcher(), joinProviderEndpoint(endpoint, this.options.sendPath ?? "/messages"), { method: "POST", headers: { accept: "application/json", "content-type": "application/json", "x-request-id": requestId, "idempotency-key": normalized.idempotencyKey, authorization: `Bearer ${secret}` }, body }, normalized.timeoutMs || this.defaultTimeoutMs, signal, this.maxResponseBodyBytes, this.egressPolicy());
     if (attempt.failure) {
       if (attempt.failure === "CONFIGURATION") throw new MessagingProviderError("CONFIGURATION", "message provider egress policy rejected the endpoint");
       this.controls.circuitBreaker?.recordFailure();
@@ -891,6 +892,7 @@ export class HttpMessagingProvider implements MessagingProvider {
     if (status === "SUCCEEDED") {
       try {
         const receipt = this.normalizeReceipt(responseRecord?.receipt, responseProviderRequestId);
+        if (receipt.status !== "DELIVERED") throw new MessagingProviderError("INVALID_RESPONSE", "provider query has no final delivery receipt");
         this.controls.circuitBreaker?.recordSuccess();
         return { status, requestId, providerRequestId: responseProviderRequestId, receipt, error: null };
       } catch {
@@ -936,21 +938,29 @@ export class HttpMessagingProvider implements MessagingProvider {
   }
 
   private async resolveSecret(timeoutMs: number, callerSignal: AbortSignal | null): Promise<string> {
-    if (callerSignal?.aborted) throw new MessagingProviderError("CANCELLED", "message provider credential resolution was cancelled");
+    if (callerSignal?.aborted) throw new MessagingProviderError("CANCELLED", "message provider credential resolution was cancelled", { outcome: "NOT_SENT" });
     const reference = typeof this.options.credentialRef === "string" ? this.options.credentialRef.trim() : "";
     const resolver = this.options.secretResolver ?? this.options.resolveSecret;
     if (!reference || !/^[A-Za-z0-9._:-]{1,160}$/.test(reference) || !resolver) throw new MessagingProviderError("CREDENTIAL", "message provider credential is not configured");
     let secret: string | null;
     let timer: ReturnType<typeof setTimeout> | undefined;
+    let onAbort: (() => void) | undefined;
     try {
       secret = await Promise.race([
         resolver(reference),
-        new Promise<null>((_resolve, reject) => { timer = setTimeout(() => reject(new Error("credential resolution timeout")), timeoutMs); })
+        new Promise<null>((_resolve, reject) => { timer = setTimeout(() => reject(new Error("credential resolution timeout")), timeoutMs); }),
+        new Promise<never>((_resolve, reject) => {
+          onAbort = () => reject(new Error("credential resolution cancelled"));
+          callerSignal?.addEventListener("abort", onAbort, { once: true });
+          if (callerSignal?.aborted) onAbort();
+        })
       ]);
     } catch {
+      if (callerSignal?.aborted) throw new MessagingProviderError("CANCELLED", "message provider credential resolution was cancelled", { outcome: "NOT_SENT" });
       throw new MessagingProviderError("CREDENTIAL", "message provider credential resolver failed or timed out");
     } finally {
       if (timer) clearTimeout(timer);
+      if (onAbort) callerSignal?.removeEventListener("abort", onAbort);
     }
     if (!secret || !secret.trim()) throw new MessagingProviderError("CREDENTIAL", "message provider credential is unavailable");
     return secret;

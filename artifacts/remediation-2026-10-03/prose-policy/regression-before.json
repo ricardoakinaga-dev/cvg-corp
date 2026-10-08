@@ -1,0 +1,16 @@
+{
+  "command": [
+    "node",
+    "--import",
+    "tsx",
+    "--test",
+    "--test-reporter=tap",
+    "tests/unit/secret-prose-policy.test.ts",
+    "tests/integration/ai-secret-boundary.test.ts"
+  ],
+  "exit_status": 1,
+  "started_at": "2026-10-04T02:21:15.738137+00:00",
+  "finished_at": "2026-10-04T02:21:22.333287+00:00",
+  "log": "artifacts/remediation-2026-10-03/prose-policy/regression-before.log",
+  "sha256": "eeecd9a3c69d073389632e12444fdc1592e843254b9cfc7ac35b3ead0153f682"
+}

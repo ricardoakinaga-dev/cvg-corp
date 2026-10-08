@@ -13,7 +13,7 @@ import {
   evaluateSloAlerts,
   readDurableLogFile,
   runWithSpanLifecycle
-} from "../src/index.ts";
+} from "@cvg/ops";
 
 const context = {
   requestId: "req-local",

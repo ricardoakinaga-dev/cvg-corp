@@ -1,11 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { CvgStore, DomainError } from "@cvg/domain";
-import type { CvgContext } from "@cvg/contracts";
-import { EmbeddedAgentRuntime, type EmbeddedToolExecutor } from "@cvg/embedded-agent-runtime";
+import type { AiTurnInput, CvgContext } from "@cvg/contracts";
+import { EmbeddedAgentRuntime, type EmbeddedToolExecutor, type EmbeddedTelemetryPort } from "@cvg/embedded-agent-runtime";
 import { MemoryAgentSessionStore } from "@cvg/agent-session";
 import { MockModelProvider, type MockModelStep } from "@cvg/model-adapters";
 import type { ModelProviderCapabilities, ModelRequest, ModelResponse } from "@cvg/model-runtime";
+import { secretMaterialCases } from "../fixtures/secret-material.ts";
 
 const DIGEST = "a".repeat(64);
 
@@ -31,6 +32,7 @@ function makeRuntime(store: CvgStore, script: MockModelStep[], options: {
   sessionStore?: MemoryAgentSessionStore;
   instanceId?: string;
   toolExecutor?: EmbeddedToolExecutor;
+  telemetry?: EmbeddedTelemetryPort;
 } = {}) {
   const provider = new MockModelProvider({
     script,
@@ -44,6 +46,7 @@ function makeRuntime(store: CvgStore, script: MockModelStep[], options: {
     ...(options.controls ? { controls: options.controls } : {}),
     ...(options.instanceId ? { instanceId: options.instanceId } : {}),
     ...(options.toolExecutor ? { toolExecutor: options.toolExecutor } : {}),
+    ...(options.telemetry ? { telemetry: options.telemetry } : {}),
     runtimeCommit: "test-commit"
   });
   return { runtime, provider };
@@ -231,6 +234,74 @@ test("embedded runtime quarantines prompt injection without dispatch", async () 
   assert.equal(result.turn.status, "QUARANTINED");
   assert.equal(result.turn.usage?.status, "QUARANTINED");
   assert.equal(store.commandReceipts.size, 0);
+});
+
+test("direct embedded turns reject secret material before creating AI state or dispatching", async () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const ctx = veterinarian(store);
+  let providerCalls = 0;
+  const { runtime } = makeRuntime(store, [() => { providerCalls += 1; return message("unexpected"); }]);
+  const sessions = store.aiSessions.size;
+  const turns = store.aiTurns.size;
+  for (const [index, { name, prompt, secret }] of secretMaterialCases.entries()) {
+    await assert.rejects(
+      runtime.executeTurn(ctx, { sessionId: null, prompt, purpose: "SUMMARY", patientId: null, encounterId: null, requestedTool: null, approvalId: null, idempotencyKey: `embedded-secret-${index}` }),
+      (error: unknown) => error instanceof DomainError && error.code === "POLICY_DENIED" && error.details?.reason === "SECRET_MATERIAL" && !JSON.stringify(error).includes(secret),
+      name
+    );
+    assert.equal(providerCalls, 0);
+    assert.equal(store.aiSessions.size, sessions);
+    assert.equal(store.aiTurns.size, turns);
+    assert.equal(store.commandReceipts.size, 0);
+  }
+});
+
+test("tool-history quarantine is counted, warned and absent from model input", async () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const ctx = veterinarian(store);
+  const patient = inScopePatient(store, ctx);
+  assert.ok(patient);
+  const secret = "synthetic-history-warning-123";
+  const metrics: Record<string, number> = {};
+  const requests: ModelRequest[] = [];
+  const { runtime } = makeRuntime(store, [
+    (request) => { requests.push(request); return toolCall("cvg.patient.read", { id: patient.id }); },
+    (request) => { requests.push(request); return message("Resposta com dados restantes."); },
+    () => message("Resposta de um novo turno sem retenção.")
+  ], {
+    telemetry: { increment: (name, value = 1) => { metrics[name] = (metrics[name] ?? 0) + value; }, recordKernelEvent: () => {} },
+    toolExecutor: async () => ({ status: "COMPLETED", resultDigest: DIGEST, resultPreview: `password=${secret}` })
+  });
+  const input: AiTurnInput = { sessionId: null, prompt: "Leia os dados disponíveis do paciente.", purpose: "OPERATIONS",
+    patientId: patient.id, encounterId: null, requestedTool: null, approvalId: null, idempotencyKey: "history-quarantine" };
+  const result = await runtime.executeTurn(ctx, input);
+  assert.equal(result.turn.status, "COMPLETED");
+  assert.match(result.turn.response!, /Parte do contexto foi retida pelo filtro de segurança/);
+  assert.equal(requests.length, 2);
+  assert.equal(JSON.stringify(requests).includes(secret), false);
+  assert.equal(JSON.stringify(result).includes(secret), false);
+  assert.equal(metrics.agent_context_quarantined_items, 1);
+  assert.equal(metrics.agent_context_quarantined_secret_items, 1);
+  assert.equal(JSON.stringify(metrics).includes(secret), false);
+  const clean = await runtime.executeTurn(ctx, { ...input, idempotencyKey: "history-clean-turn" });
+  assert.equal(clean.turn.response, "Resposta de um novo turno sem retenção.");
+  assert.equal(metrics.agent_context_quarantined_items, 1);
+});
+
+test("context quarantine notice does not become clinical draft content", async () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const ctx = veterinarian(store);
+  const patient = inScopePatient(store, ctx);
+  assert.ok(patient);
+  const snapshot = store.snapshot();
+  snapshot.patients.find((entry) => entry.id === patient.id)!.name = "password=synthetic-draft-warning-123";
+  store.hydrate(snapshot);
+  const { runtime } = makeRuntime(store, [message("Rascunho clínico sintético para revisão.")]);
+  const result = await runtime.executeTurn(ctx, { sessionId: null, prompt: "Prepare o rascunho com os dados disponíveis.", purpose: "DRAFT_CLINICAL",
+    patientId: patient.id, encounterId: null, requestedTool: null, approvalId: null, idempotencyKey: "draft-quarantine-warning" });
+  assert.equal(result.turn.status, "COMPLETED");
+  assert.match(result.turn.response!, /Parte do contexto foi retida pelo filtro de segurança/);
+  assert.equal(result.draft?.content, "Rascunho clínico sintético para revisão.");
 });
 
 test("embedded runtime denies a tool outside the agent profile", async () => {

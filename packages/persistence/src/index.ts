@@ -14,6 +14,7 @@ export * from "./aud27-domain-writes.js";
 import { isEarlyAud27SnapshotKey, validateAud27NormalizedWrites, type Aud27NormalizedDomainWrite, type Aud27RemovedDomainRecord, type Aud27SnapshotPrimaryKey } from "./aud27-domain-writes.js";
 import { orderAud27Removals } from "./aud27-removals.js";
 import { OperationalBackupJobCore } from "./operational-backup-job.js";
+import { recoveryAuditSnapshot } from "./recovery-audit.js";
 import { listAppointments as listNormalizedAppointments, listGuardians as listNormalizedGuardians, listPatients as listNormalizedPatients, listQueue as listNormalizedQueue, type NormalizedEarlyReadDependencies } from "./normalized-early-reads.js";
 import { removeAud27DomainRecord, writeAud27DomainWrite, type Aud27ProjectionWriterDependencies } from "./aud27-domain-writer.js";
 import { projectAiRows, type AiProjectionDependencies } from "./ai-projection.js";
@@ -3601,7 +3602,9 @@ export class PostgresPersistence {
       if (row.schema_version !== 1) throw new PersistenceCorruptionError(`unsupported persistent snapshot schema version: ${row.schema_version}`);
       if (row.journal_snapshot_digest === null) throw new PersistenceCorruptionError("persistent snapshot has no matching journal entry");
       if (row.snapshot_digest !== row.journal_snapshot_digest) throw new PersistenceCorruptionError("persistent snapshot and journal digests diverge");
-      const snapshot = snapshotFromJson(row.snapshot, row.snapshot_digest);
+      const storedSnapshot = snapshotFromJson(row.snapshot, row.snapshot_digest);
+      const snapshot = await recoveryAuditSnapshot(client, storedSnapshot, organizationId);
+      const snapshotDigest = digest(canonicalSnapshot(snapshot));
       if (!snapshot.organizations.some((organization) => organization.id === organizationId)) throw new PersistenceCorruptionError(`recovery bundle snapshot has no organization ${organizationId}`);
       const outboxResult = await client.query<OutboxRow>("select id::text as id, organization_id::text as organization_id, event_type, aggregate_id::text as aggregate_id, payload, status, attempts, available_at, claimed_by, lease_until, fence_token::text as fence_token, last_error, created_at, processed_at, record_digest from outbox_records where organization_id = cvg_request_organization() order by created_at, id");
       const usageResult = await client.query<UsageRow>("select id::text as id, organization_id::text as organization_id, reservation_id::text as reservation_id, provider_request_id, idempotency_key, usage_kind, reserved_units, consumed_units, status, record, record_digest, created_at from ai_usage_ledger where organization_id = cvg_request_organization() order by created_at, id");
@@ -3626,10 +3629,10 @@ export class PostgresPersistence {
       const agentCheckpoints = agentCheckpointsResult.rows.map(mapAgentCheckpointRow);
       const agentLeases = agentLeasesResult.rows.map(mapAgentLeaseRow);
       const bundle: DurableRecoveryBundle = {
-        manifest: createRecoveryBundleManifest({ organizationId, revision, snapshotDigest: row.snapshot_digest, eventId: row.event_id, migrationFingerprint, outboxRecords, usageRecords, inboxRecords, externalEffects, workerJobs, agentSessions, agentTurns, agentCheckpoints, agentLeases }),
+        manifest: createRecoveryBundleManifest({ organizationId, revision, snapshotDigest, eventId: row.event_id, migrationFingerprint, outboxRecords, usageRecords, inboxRecords, externalEffects, workerJobs, agentSessions, agentTurns, agentCheckpoints, agentLeases }),
         revision,
         snapshot,
-        snapshotDigest: row.snapshot_digest,
+        snapshotDigest,
         eventId: row.event_id,
         outboxRecords,
         usageRecords,
@@ -3643,7 +3646,7 @@ export class PostgresPersistence {
       };
       validateRecoveryBundle(bundle);
       return bundle;
-    }, true);
+    }, true, null, "REPEATABLE READ");
   }
 
   async commit(input: DurableCommitInput): Promise<DurableSnapshot> {
@@ -3806,10 +3809,10 @@ export class PostgresPersistence {
     return this.organizationTransaction(context.organizationId, operation, callback, true, { unitId: context.unitId, workspaceId: context.workspaceId });
   }
 
-  private async organizationTransaction<T>(organizationId: OpaqueId, operation: string, callback: (client: PoolClient) => Promise<T>, readOnly = false, scope: { unitId: OpaqueId | null; workspaceId: OpaqueId | null } | null = null): Promise<T> {
+  private async organizationTransaction<T>(organizationId: OpaqueId, operation: string, callback: (client: PoolClient) => Promise<T>, readOnly = false, scope: { unitId: OpaqueId | null; workspaceId: OpaqueId | null } | null = null, isolation?: "REPEATABLE READ"): Promise<T> {
     const client = await this.pool.connect().catch((error: unknown) => { throw new PersistenceUnavailableError(`PostgreSQL ${operation} connection could not be acquired`, error); });
     try {
-      await client.query(readOnly ? "BEGIN READ ONLY" : "BEGIN");
+      await client.query(isolation === "REPEATABLE READ" ? (readOnly ? "BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY" : "BEGIN ISOLATION LEVEL REPEATABLE READ") : readOnly ? "BEGIN READ ONLY" : "BEGIN");
       await client.query("select set_config('cvg.organization_id', $1, true)", [organizationId]);
       if (scope) {
         await client.query("select set_config('cvg.unit_id', $1, true)", [scope.unitId ?? ""]);

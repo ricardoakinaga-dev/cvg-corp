@@ -50,6 +50,13 @@ try {
     const result = await client.query<{ version: string; database: string }>("select version(), current_database() as database");
     process.stdout.write(JSON.stringify({ connected: true, database: result.rows[0]?.database, version: result.rows[0]?.version }, null, 2) + "\n");
   } else if (command === "migrate") {
+    // One session owns schema creation, role provisioning and the complete
+    // migration sequence. The lock survives each migration's COMMIT and is
+    // released by client.end() even after SQL failure or process termination.
+    // Bound competing startup attempts without changing their DDL timeouts.
+    await client.query("set lock_timeout = '30s'");
+    await client.query("select pg_advisory_lock(hashtext('cvg-corp.schema-migrations'))");
+    await client.query("reset lock_timeout");
     await client.query("create table if not exists schema_migrations (version text primary key, applied_at timestamptz not null default now(), checksum text not null)");
     await provisionRuntimeRole();
     const files = (await readdir("db/migrations")).filter((file) => file.endsWith(".sql")).sort();

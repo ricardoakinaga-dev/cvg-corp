@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "label": "design token audit",
+  "command": [
+    "npm",
+    "run",
+    "audit:tokens"
+  ],
+  "capturedAt": "2026-10-03T05:37:12.125Z",
+  "exitStatus": 0,
+  "signal": null,
+  "stdout": "\n> cvg-corp@0.1.0 audit:tokens\n> tsx scripts/audit-design-tokens.ts apps/web/src --strict\n\n{\n  \"schema_version\": 2,\n  \"root\": \"/home/ricardo/Área de trabalho/cvg-corp/apps/web/src\",\n  \"strict\": true,\n  \"files_scanned\": [\n    \"api/client.ts\",\n    \"api/correlation.ts\",\n    \"api/session.ts\",\n    \"api/telemetry.ts\",\n    \"api/validation.ts\",\n    \"app-shell/App.tsx\",\n    \"app-shell/ErrorBoundary.tsx\",\n    \"app-shell/Shell.tsx\",\n    \"app-shell/ShellPrimitives.tsx\",\n    \"components/Icon.tsx\",\n    \"components/Login.tsx\",\n    \"components/OfflineReadOnlyState.tsx\",\n    \"components/SessionBlockedState.tsx\",\n    \"components/ui.tsx\",\n    \"features/admin/Admin.tsx\",\n    \"features/agenda/Agenda.tsx\",\n    \"features/clinical/Clinical.tsx\",\n    \"features/communications/Communications.tsx\",\n    \"features/copilot/Copilot.tsx\",\n    \"features/copilot/assistant-state.ts\",\n    \"features/diagnostics/Exams.tsx\",\n    \"features/finance/Finance.tsx\",\n    \"features/hospital/Internacao.tsx\",\n    \"features/knowledge/Knowledge.tsx\",\n    \"features/overview/Overview.tsx\",\n    \"features/patients/Patients.tsx\",\n    \"features/reports/Reports.tsx\",\n    \"features/stock/Stock.tsx\",\n    \"hooks/use-mobile-menu.ts\",\n    \"hooks/use-runtime-state.ts\",\n    \"hooks/use-session.ts\",\n    \"hooks/use-toast.ts\",\n    \"main.tsx\",\n    \"routes/AppRoutes.tsx\",\n    \"state/formatters.ts\",\n    \"state/persistence.ts\",\n    \"state/runtime-state.ts\",\n    \"state/session-state.ts\",\n    \"state/sign-out.ts\",\n    \"state/types.ts\",\n    \"styles.css\"\n  ],\n  \"registered_colors\": 56,\n  \"findings\": [],\n  \"summary\": {\n    \"high\": 0,\n    \"medium\": 0\n  },\n  \"blocking_findings\": false,\n  \"limitations\": [\n    \"Static source scan only; browser cascade and computed styles are not evaluated.\",\n    \"Palette consolidation is checked through named semantic roles; visually similar primitive values remain valid when they represent distinct surfaces or states.\"\n  ]\n}\n",
+  "stderr": ""
+}

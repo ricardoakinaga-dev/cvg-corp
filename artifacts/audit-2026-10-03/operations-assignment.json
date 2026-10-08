@@ -1,0 +1,385 @@
+{
+  "lane": "operations",
+  "files": [
+    {
+      "path": "docs/06-operacao-qualidade-e-recuperacao.md",
+      "bytes": 17591,
+      "sha256": "26e19045d94812823f56c67a4c398ca8bc5b73389ef1ea9b9d950b1f571a8d8c"
+    },
+    {
+      "path": "docs/09-gauntlet-verdict.md",
+      "bytes": 24263,
+      "sha256": "c8193031cfc1d47c50e2db526d2c64e162e67d46bc8e17886880d1b9534b7fa0"
+    },
+    {
+      "path": "docs/11-transicao-para-producao.md",
+      "bytes": 8113,
+      "sha256": "5b4fe1eaf6e1101d9b704008311741e7ae632c3a33f1d524f32ebe76c1709328"
+    },
+    {
+      "path": "docs/12-estado-da-implementacao.md",
+      "bytes": 91567,
+      "sha256": "6185f5caf0509f923b85a6d1ef84a91c04d722b67bf7cbd9d19f0b4d8227431a"
+    },
+    {
+      "path": "docs/README.md",
+      "bytes": 30899,
+      "sha256": "f42fa429b0a3c8364c515453c5f4467b7f3911806cd160153851550d0fcece60"
+    },
+    {
+      "path": "docs/auditoria-2026-09-12.md",
+      "bytes": 16294,
+      "sha256": "87e95cf57d2f905e55cabf61b1aecf9825d2fed193851aac849596fd28d32ca6"
+    },
+    {
+      "path": "docs/auditoria-continuacao-aaa2-02-2026-09-13.md",
+      "bytes": 10505,
+      "sha256": "6c187488d064f4b197e7f2c3f9e181496e4d60dc5e34d99674a58a9a47375d47"
+    },
+    {
+      "path": "docs/auditoria-entrega-cvg-aud22-002-2026-09-20.md",
+      "bytes": 8435,
+      "sha256": "a2d6303fd14fcff1e00a554a58fb92f9437aaad700b72400f56e18a1d1647ab9"
+    },
+    {
+      "path": "docs/auditoria-entrega-cvg-aud23-004-2026-09-20.md",
+      "bytes": 12070,
+      "sha256": "a563210a12503cdb5bac9d7868e885db39053bc104affc1cff0bcf78bfb901e8"
+    },
+    {
+      "path": "docs/auditoria-repositorio-2026-09-26.md",
+      "bytes": 9215,
+      "sha256": "c241afa2ed6b41d7fb1d7704436b5f182fde42bcc14e6cdc291c595e73be67cf"
+    },
+    {
+      "path": "docs/auditoria-resultado-cvg-aud26-2026-09-21.md",
+      "bytes": 12561,
+      "sha256": "80301c506963d1e04e0bfe8dba24b109522ced51732e251bf1de983a7f35864b"
+    },
+    {
+      "path": "docs/backlog-2026-09-26.md",
+      "bytes": 7062,
+      "sha256": "87bcdb2d833c063d3d074d3f93a968a62bf80229aad7e72ea81209e22e792035"
+    },
+    {
+      "path": "docs/backlog-melhorias-cvg-aud20-2026-09-20.md",
+      "bytes": 18514,
+      "sha256": "7fa6f1b639e7b9e9257360fe2e42dd1e404bdb9abe461392532831c7757147d3"
+    },
+    {
+      "path": "docs/backlog-melhorias-cvg-aud22-2026-09-20.md",
+      "bytes": 13464,
+      "sha256": "42fcc2eb10753621ae84d1ddc3742a01c76692b56ba1fb0427cd45fbe5b3acba"
+    },
+    {
+      "path": "docs/backlog-melhorias-cvg-aud24-2026-09-20.md",
+      "bytes": 17694,
+      "sha256": "e8100aed4450329e6e7ba6ba973651af6a5f2e81ec41850dbd0f82b85e100462"
+    },
+    {
+      "path": "docs/benchmarks/local-baseline.md",
+      "bytes": 906,
+      "sha256": "a54f62c6a5b8ce716a28ff35572747a6d2eb40d69d5c1eadba78dfdefb5005f0"
+    },
+    {
+      "path": "docs/branch-consolidation-2026-09-11.md",
+      "bytes": 3292,
+      "sha256": "7b9a0c13f2d2c03d014d0110b4e0df8af1d70cd2238f9d4be88f74f92851386e"
+    },
+    {
+      "path": "docs/chaos-proof.md",
+      "bytes": 391,
+      "sha256": "6eba205234aca13b1283f4e90af8b315cd32a7d0a38095b19fbd414c69fd0962"
+    },
+    {
+      "path": "docs/deployment-vNext.md",
+      "bytes": 2479,
+      "sha256": "b3c6bf3e3edd4262c4000c4995ea22a4c99cc5273c2349d3dfc2d455f91ca31c"
+    },
+    {
+      "path": "docs/final-operational-proof-audit.md",
+      "bytes": 95291,
+      "sha256": "9219aca25f00d35135712bbbf246ca2bf72282bd364754a2700175c7d7224588"
+    },
+    {
+      "path": "docs/instalacao-e-dependencias.md",
+      "bytes": 3658,
+      "sha256": "0fd4d6243afa44c1e84e8e3ac987b821b6e7ed8d2f96061ae5dede24a19866f7"
+    },
+    {
+      "path": "docs/load-and-chaos.md",
+      "bytes": 2319,
+      "sha256": "b8b8e6c156e871c2c427b297a909f189548864031cd40e660b8ce5b600f4065e"
+    },
+    {
+      "path": "docs/load-proof.md",
+      "bytes": 1378,
+      "sha256": "5e2f9b139428d77d5a65524852acd18bc0b2e42492ecc6cc0bf5d2bc30545ef7"
+    },
+    {
+      "path": "docs/mel23-aud27-reconciliation.json",
+      "bytes": 27028,
+      "sha256": "a1b8c38f200fe4647993615a0663c7290cd907bdd18a284add6a609f2999f029"
+    },
+    {
+      "path": "docs/melhorias-50-priorizadas-2026-09-23.md",
+      "bytes": 5058,
+      "sha256": "4280bb7ffa7a7a5749e1915082b9da5760e44a008687ef4799d3f1ac904068c9"
+    },
+    {
+      "path": "docs/observability-production.md",
+      "bytes": 3528,
+      "sha256": "c2ce4e8f1b5321338287fe688d5a73654d84b208fda25075deaa498040171c5c"
+    },
+    {
+      "path": "docs/observability-proof.md",
+      "bytes": 1081,
+      "sha256": "d997bf2af23cbd5aea2f3a9e4028cefa91d4dc44413e628d470a79931c2f8bf6"
+    },
+    {
+      "path": "docs/observability-vNext.md",
+      "bytes": 1455,
+      "sha256": "d0d0cfe075865994564b5b5d4b1542f999dadc8889001811616b7cbf9775282b"
+    },
+    {
+      "path": "docs/plano-triplo-aaa-pos-entrega-2026-09-13/README.md",
+      "bytes": 819,
+      "sha256": "ff93386c1698559f2bee506bc81ac142c25c45f15bce4ef8f3d718cd3127771b"
+    },
+    {
+      "path": "docs/plano-triplo-aaa-pos-entrega-2026-09-13/qualidade-e-execucao.md",
+      "bytes": 4091,
+      "sha256": "f73e0cb573a7acd87cdb4affe101ef6bccca27f72875611c79b4573b035c533b"
+    },
+    {
+      "path": "docs/production-readiness-vNext.md",
+      "bytes": 4012,
+      "sha256": "20e28645fe890a401ac4392094d85dab0f7d34b4db634db0d78c830bd34e5dbc"
+    },
+    {
+      "path": "docs/production-reality-audit-vNext.md",
+      "bytes": 17298,
+      "sha256": "de7ce408a0bf6b83d21b5c8e934e17de6d308c99fbfab311a12290e0632d01fc"
+    },
+    {
+      "path": "docs/prompt-final-operational-proof-2026-09-10.txt",
+      "bytes": 20360,
+      "sha256": "39dfbb610267b61854b972bf8513f6562b0ee374aa308f7a79b38d21f2cdeae3"
+    },
+    {
+      "path": "docs/recovery-proof-final.md",
+      "bytes": 1188,
+      "sha256": "d529a48b35fcdffc0cadc3555583d114b7eb2eb06f07865d8c86a6c340ea20c2"
+    },
+    {
+      "path": "docs/recovery-proof.md",
+      "bytes": 1898,
+      "sha256": "91d77c54563447e923280db09025da8742ad0d37b121523866da3fd89f2b4472"
+    },
+    {
+      "path": "docs/recovery-vNext.md",
+      "bytes": 1613,
+      "sha256": "6331846ecbaf500e023ac9d6de8818140291d5ec99ae7e8ba469137cfaa3bbc4"
+    },
+    {
+      "path": "docs/release-provenance.md",
+      "bytes": 4716,
+      "sha256": "c18e2d268ae9ced186902b6feb852aa96d4fcdb9f2f3beb0d1d4281d208ff457"
+    },
+    {
+      "path": "docs/roadmap-2026-09-23.md",
+      "bytes": 7619,
+      "sha256": "15de9fbf497e7812175e78b3140645fa4fe4ccc8ad5d8d0b51f39f3eee677a83"
+    },
+    {
+      "path": "docs/roadmap-2026-09-26.md",
+      "bytes": 6173,
+      "sha256": "f32da0993bba6741b6a6a8d09df9e575ba7a829eee64b628359b4675a3bc4595"
+    },
+    {
+      "path": "docs/rodada-aaa3-2026-09-13/README.md",
+      "bytes": 988,
+      "sha256": "6f336bffcbaed7bfbbbdc546f4f6f712b45d4438a16212f8d2a6b46a3a4c1f21"
+    },
+    {
+      "path": "docs/rodada-aaa3-2026-09-13/validar-plano.py",
+      "bytes": 3105,
+      "sha256": "b42423e6987e3fd5f6ecbdd2dc69e9c5e35493cdd7ae6a7a7c56ee1ffb6f77fd"
+    },
+    {
+      "path": "docs/rodada-aaa3-2026-09-14/README.md",
+      "bytes": 7186,
+      "sha256": "29478778bb2c94c01a98f6eaf20036a0647f14d6e6ba7bbd945442fe4a389d14"
+    },
+    {
+      "path": "docs/runbooks/backup-incidente.md",
+      "bytes": 2668,
+      "sha256": "c3c32b5f89d1142b3fcaa4f3158f4dc271f2a9d28272909f74ef8806c2905579"
+    },
+    {
+      "path": "docs/runbooks/backup.md",
+      "bytes": 2112,
+      "sha256": "52df8c44aba383c91fa6a3149eca59f594930cf9f9d7d64e44d9cdddbbabd2da"
+    },
+    {
+      "path": "docs/runbooks/break-glass.md",
+      "bytes": 1584,
+      "sha256": "e00b11fc4478e95e16e44f7250cf24080f7095ad4220f85f531d59413edf81b2"
+    },
+    {
+      "path": "docs/runbooks/clinical-incident.md",
+      "bytes": 10979,
+      "sha256": "71c864de880169cf9422d6965d7421f38d13b90ea1479b66390e59d87c1404df"
+    },
+    {
+      "path": "docs/runbooks/credential-rotation.md",
+      "bytes": 1133,
+      "sha256": "d4a082c462009a247bb0db3026b49d21ec720fdbc6267b5f920d854ae5061486"
+    },
+    {
+      "path": "docs/runbooks/database-incident.md",
+      "bytes": 730,
+      "sha256": "51ca3df252d2b56ae14ebdb667eefbf1dfa983e0fdaa4ae0476f23cbf0e979a3"
+    },
+    {
+      "path": "docs/runbooks/deploy.md",
+      "bytes": 1453,
+      "sha256": "3a0af87f3a695305d5d47356a0708dc14ed55c5b8c4e0df8dd1ba95899df3a8e"
+    },
+    {
+      "path": "docs/runbooks/deployment.md",
+      "bytes": 1502,
+      "sha256": "74d6be54dc31ce7c05d85fa9ddb5ab4840eedc350e1cfcfcb6f84758456939ab"
+    },
+    {
+      "path": "docs/runbooks/disk-capacity.md",
+      "bytes": 8605,
+      "sha256": "18807891c53c4e69b823059747085240a935f6004563a62748eadab508415ddc"
+    },
+    {
+      "path": "docs/runbooks/external-evidence-package.md",
+      "bytes": 2557,
+      "sha256": "946d55e5a2388fa868a051671f4859e85641b98333b7c8b5978a937b606bb2a3"
+    },
+    {
+      "path": "docs/runbooks/key-loss.md",
+      "bytes": 9594,
+      "sha256": "d5e8ae915d8a99012b1c8716b37d1813af66250a97710ff25f672231177712cd"
+    },
+    {
+      "path": "docs/runbooks/lgpd-data-subject-incident.md",
+      "bytes": 11724,
+      "sha256": "4a8950e3839dbabf3609cd7ccca856e5c0f291e1b1f7b891b697ee19b8842a8d"
+    },
+    {
+      "path": "docs/runbooks/load-chaos-dr-local.md",
+      "bytes": 2264,
+      "sha256": "7b6f5256989e1886a641c1219fe3be057d6ce085145451133f1c24060d371458"
+    },
+    {
+      "path": "docs/runbooks/model-provider-down.md",
+      "bytes": 6306,
+      "sha256": "de84e9ab19893f5672d0d5b4ec6a8744988c3a62ed8df58d93a1b7cd7e9af3dd"
+    },
+    {
+      "path": "docs/runbooks/observability-logs.md",
+      "bytes": 2076,
+      "sha256": "61519082932777ab3a9748311f92b7b78e08d23523579423f171a1506984f938"
+    },
+    {
+      "path": "docs/runbooks/observability-slo-alerts.md",
+      "bytes": 2518,
+      "sha256": "15bedd4ce6c9e552e3179ffb0326e5552d496416a94ddb77ade9d1359cb4daea"
+    },
+    {
+      "path": "docs/runbooks/plugin-failure.md",
+      "bytes": 5057,
+      "sha256": "5c0568d843610dca9a548a6a9a50cd25d6a71bb58bb53e16623ae3ff4129c255"
+    },
+    {
+      "path": "docs/runbooks/prompt-injection-incident.md",
+      "bytes": 6034,
+      "sha256": "fc92ebf812b8b6f8f340275953f835e9bfec3a18f63124ef074cee3567337140"
+    },
+    {
+      "path": "docs/runbooks/quarantine.md",
+      "bytes": 594,
+      "sha256": "c0a0b43e64ec69525890d8f99e35d8064cabc664e78356492472ca098ffdd6b4"
+    },
+    {
+      "path": "docs/runbooks/restore.md",
+      "bytes": 2592,
+      "sha256": "9a1e2eae2bc6792e4a68efc3514f3213f9ba4cfd883b7cd3a41e52c8d9bb4f4f"
+    },
+    {
+      "path": "docs/runbooks/rollback.md",
+      "bytes": 1243,
+      "sha256": "c59f56fc3f87dc268f3ab38f5ce3bb9f8f2be103ec80a5fafd28965c9da6df79"
+    },
+    {
+      "path": "docs/runbooks/sealed-independent-critic.md",
+      "bytes": 2246,
+      "sha256": "730785f4bbe35ba7e3c29a8cc7dade6da25c21a8ecf82200dbfac462308f40d0"
+    },
+    {
+      "path": "docs/runbooks/session-stuck.md",
+      "bytes": 5956,
+      "sha256": "84f87cc24e65a13262576bb64aaf3c42f4cc0e876f96674c7c3ffe8087ad7a03"
+    },
+    {
+      "path": "docs/runbooks/slo-breach.md",
+      "bytes": 2619,
+      "sha256": "ec36a24c067b7b0cc285d77b20eac657da6a39f82ed602f36e62a806e066590e"
+    },
+    {
+      "path": "docs/runbooks/tls-certificate.md",
+      "bytes": 9044,
+      "sha256": "b265b037679d10229b41b2b70d66a7e39d3324b5ab0bc5aac21e615be80b2222"
+    },
+    {
+      "path": "docs/runbooks/vps-provisioning.md",
+      "bytes": 3026,
+      "sha256": "d8d610e269fcc8b037cbf8c0bd10a9c678fe682285c201247206050789690665"
+    },
+    {
+      "path": "docs/runbooks/worker-backlog.md",
+      "bytes": 1755,
+      "sha256": "ae3039b4b07f8d67f9f1dcb7ff6dd0e69d119418aa12d6d0bf09f31dbb5c5e2f"
+    },
+    {
+      "path": "docs/staging-vNext.md",
+      "bytes": 1264,
+      "sha256": "1b1830864746d80d80cb48f13a74154cbd854c6ca273ecdcc72f6742409f61fe"
+    },
+    {
+      "path": "docs/staging.md",
+      "bytes": 11044,
+      "sha256": "dfd67fc37a1e6c6ca14ddd73668a439c942a105c9c9c99c2371d03ed27ccb0c8"
+    },
+    {
+      "path": "docs/usage-settlement-proof.md",
+      "bytes": 1517,
+      "sha256": "c2543c999a6e5a9461a5669efd89c8fdec5176e2e667a6aac79347a6184b8184"
+    },
+    {
+      "path": "docs/verification-2026-09-10-guardian-source-write.md",
+      "bytes": 2615,
+      "sha256": "eff39bb1ec0f084a259661c538a2a160ee3611f1f802932a83861fdc64b230f5"
+    },
+    {
+      "path": "docs/verification-2026-09-10-local-closure.md",
+      "bytes": 81065,
+      "sha256": "107fe1815e02e5005c868f58cfdd245c0083b6cce6fb919b212bba7f8ec6d88f"
+    },
+    {
+      "path": "docs/verification-2026-09-10-pdp-universal-guard.md",
+      "bytes": 2756,
+      "sha256": "e23fc778af83671bb054884eb1a192145e7df35f78008a2105a5491b56b48e00"
+    },
+    {
+      "path": "docs/worker-production-proof.md",
+      "bytes": 9580,
+      "sha256": "99bf445dfc1e3e3cc635afb0805fedbea2c092f6f077303b485577e5ead66a99"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "agent_id": "01a106cb-700d-7351-93d1-3027dc0eefc5",
+  "nickname": "Arendt",
+  "fork_context": false,
+  "candidate_requested": "sha256:15ece6ef83fb9e9918dddcde7757e337fb81b42b07b6b04474c68580fcb794b2",
+  "status": "REVIEW_NOT_COMPLETED",
+  "observed_error": "stream disconnected before completion: ChatGPT browser stage timed out: send",
+  "decision": null,
+  "closed": true,
+  "counts_as_independent_approval": false,
+  "next_attempt": "01a106ce-cb17-70f0-bbce-d68a1a0cf0ff",
+  "next_attempt_change": "New identity, fresh context, substantially smaller scoped packet; no model override."
+}

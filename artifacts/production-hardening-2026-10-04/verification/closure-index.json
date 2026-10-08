@@ -1,0 +1,70 @@
+{
+  "recorded_at": "2026-10-04T12:32:58.922620+00:00",
+  "subject_fingerprint": "sha256:15ece6ef83fb9e9918dddcde7757e337fb81b42b07b6b04474c68580fcb794b2",
+  "source_sha": "9aab406b164497978b05dd3aa431db49ad11677a",
+  "state_revision": 628,
+  "prior_evidence_index": "artifacts/production-hardening-2026-10-04/verification/check-index.json",
+  "prior_evidence_index_sha256": "dd3a5c87bef92bf6d613700cc021976832b1241e4f1df5c157db645d94dc7bf8",
+  "terminal_checks": [
+    {
+      "name": "control-terminal",
+      "receipt": "artifacts/production-hardening-2026-10-04/verification/after-review/control-terminal.json",
+      "receipt_sha256": "c075fee184d6d22d4bf3934fefd1122295f76428c29d9e83b570e3e076b5384e",
+      "command": [
+        "npm",
+        "run",
+        "verify:control-plane"
+      ],
+      "exit_status": 0,
+      "log": "artifacts/production-hardening-2026-10-04/verification/after-review/control-terminal.log",
+      "log_sha256": "e5f022c48a9e436906523abbe64ba70d25b2b1462fed1aa654d59129fc9df449",
+      "observed_at": "2026-10-04T12:29:13.104944+00:00"
+    },
+    {
+      "name": "suite-terminal",
+      "receipt": "artifacts/production-hardening-2026-10-04/verification/after-review/suite-terminal.json",
+      "receipt_sha256": "32b2a1b5618262df9f8e36fcf22f8957432245a53b9ad821ba20eaa98321cd6d",
+      "command": [
+        "npm",
+        "test"
+      ],
+      "exit_status": 0,
+      "log": "artifacts/production-hardening-2026-10-04/verification/after-review/suite-terminal.log",
+      "log_sha256": "b3872066549f22d92a63997540f7b99c98cf788efe1377acda63f33353e0690f",
+      "observed_at": "2026-10-04T12:29:43.517792+00:00"
+    },
+    {
+      "name": "diff-terminal",
+      "receipt": "artifacts/production-hardening-2026-10-04/verification/after-review/diff-terminal.json",
+      "receipt_sha256": "be7186a85d5f0d3d3baa157cf943dc8a02f994bf33e6c20f4a7ec57534e95660",
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exit_status": 0,
+      "log": "artifacts/production-hardening-2026-10-04/verification/after-review/diff-terminal.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "observed_at": "2026-10-04T12:29:43.985170+00:00"
+    },
+    {
+      "name": "secrets-terminal",
+      "receipt": "artifacts/production-hardening-2026-10-04/verification/after-review/secrets-terminal.json",
+      "receipt_sha256": "d1dcce13501982f02155eeb3f7f839afa964b38270c5e81ce70edfe33437fa80",
+      "command": [
+        "npm",
+        "run",
+        "verify:secrets"
+      ],
+      "exit_status": 0,
+      "log": "artifacts/production-hardening-2026-10-04/verification/after-review/secrets-terminal.log",
+      "log_sha256": "759bc372f74d68043e3167aa1cb36d768a416ec20fa3bf5af1340dfde15460ce",
+      "observed_at": "2026-10-04T12:30:13.891772+00:00"
+    }
+  ],
+  "local_command_results": "PASS",
+  "independent_final_review": "UNAVAILABLE",
+  "qualification": "PARTIAL",
+  "production_promotion": "BLOCKED",
+  "scope": "Final local verification; no commit, push, deployment, production data mutation or real-provider transaction."
+}

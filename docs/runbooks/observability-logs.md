@@ -37,10 +37,11 @@ confirma durabilidade quando o sink está sob pressão.
 ## Verificação local
 
 ```bash
-node --import tsx packages/ops/tests/observability.test.ts
+node --import tsx --test tests/unit/ops-observability.test.ts
 node --import tsx scripts/ops/verify-observability-local.ts
 ```
 
+Os cinco testes de observabilidade também integram `npm test` e `npm run test:unit`.
 Esses comandos usam somente identificadores e payloads sintéticos. Persistência
 após reinício é verificada no diretório temporário do harness. Retenção gerida,
 controle de acesso corporativo, TLS/autenticação e busca em backend aprovado

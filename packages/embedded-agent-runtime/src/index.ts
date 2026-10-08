@@ -31,7 +31,7 @@ import {
   type KernelModelRequest,
   type KernelToolOutcome
 } from "@cvg/agent-kernel";
-import { ContextBuilder, estimateTokens, sha256Hex, type ContextItem, type ModelContext } from "@cvg/agent-context";
+import { ContextBuilder, containsSecretMaterial, estimateTokens, inspectUntrustedContent, sha256Hex, type ContextItem, type ModelContext } from "@cvg/agent-context";
 import { AgentSessionError, MemoryAgentSessionStore, type AgentLease, type AgentSessionStore } from "@cvg/agent-session";
 import type { PluginRuntime } from "@cvg/agent-plugins";
 import { ModelProviderError, ModelRouter, reconcileUsage, withModelRetry, type ModelProvider, type ModelRoutingCandidate } from "@cvg/model-runtime";
@@ -151,6 +151,9 @@ export interface EmbeddedRuntimeControls {
 
 export const DEFAULT_RUNTIME_CONTROLS: EmbeddedRuntimeControls = { aiEnabled: true, safeMode: false, disabledProviders: [], disabledTools: [], disabledPlugins: [] };
 
+const TASK_QUARANTINE_NOTICE = "O objetivo da tarefa foi retido pelo filtro de segurança. Revise o texto e envie uma nova solicitação.";
+const CONTEXT_QUARANTINE_NOTICE = "Parte do contexto foi retida pelo filtro de segurança. A resposta pode estar incompleta; revise os dados de origem.";
+
 export interface EmbeddedTelemetryPort {
   increment(metric: string, value?: number): void;
   recordKernelEvent(event: KernelEvent): void;
@@ -231,6 +234,8 @@ interface TurnRunState {
   currency: string | null;
   pricingRevision: string | null;
   sanitized: boolean;
+  quarantinedItems: number;
+  taskQuarantined: boolean;
   usedDataClasses: DataClass[];
   contextDigest: string | null;
 }
@@ -251,6 +256,8 @@ function emptyRunState(): TurnRunState {
     currency: null,
     pricingRevision: null,
     sanitized: false,
+    quarantinedItems: 0,
+    taskQuarantined: false,
     usedDataClasses: [],
     contextDigest: null
   };
@@ -403,6 +410,10 @@ export class EmbeddedAgentRuntime implements AgentRuntime {
     enforceApplicationPolicy(context, `ai.turn.${input.purpose}`, this.authorizedTurnResource(context, input));
     const controls = this.controls();
     if (!controls.aiEnabled) throw new DomainError("DEPENDENCY_UNAVAILABLE", "O runtime de IA está desabilitado.", 503, { reason: "AI_DISABLED" });
+    if (containsSecretMaterial(input.prompt)) {
+      this.options.telemetry?.increment("agent_prompt_quarantine", 1);
+      throw new DomainError("POLICY_DENIED", "Remova senhas, tokens ou chaves do texto antes de enviá-lo à IA.", 403, { reason: "SECRET_MATERIAL" });
+    }
     const executionKey = this.executionKey(context, input);
     const effectiveApprovalId = approvalId ?? input.approvalId ?? null;
     const existing = this.findExistingTurn(context, input);
@@ -505,9 +516,19 @@ export class EmbeddedAgentRuntime implements AgentRuntime {
     const profile = selectAgentProfile(input.purpose);
     const runState = emptyRunState();
     const prompt = input.prompt;
-    if (this.looksLikeInjection(prompt)) {
+    // Explicit or resumed tools may execute before the kernel builds context.
+    // Apply the same objective signals before either can create an effect.
+    const preflightFindings = input.requestedTool || approvalId ? inspectUntrustedContent(prompt, {
+      id: "task.state", trust: "USER_SUPPLIED",
+      provenance: { source: "task.objective", owner: "CVG session", version: null, digest: sha256Hex(prompt), retrievedAt: null }
+    }) : [];
+    if (this.looksLikeInjection(prompt) || preflightFindings.length > 0) {
       this.options.telemetry?.increment("agent_prompt_quarantine", 1);
-      const turn = this.persistTurn(context, session, prompt, "QUARANTINED", "Conteúdo retido: o texto recebido é dado não confiável e não pode alterar policy ou tools.", { profile, runState, usageStatus: "QUARANTINED", reservedUnits: 0, consumedUnits: 0, idempotencyKey: this.executionKey(context, input), inputTokens: estimateTokens(prompt), outputTokens: 0 });
+      if (preflightFindings.length > 0) {
+        this.recordContextQuarantine(runState, [{ itemId: "task.state", reason: preflightFindings[0]!.code }]);
+        this.options.telemetry?.increment("agent_context_sanitized", 1);
+      }
+      const turn = this.persistTurn(context, session, prompt, "QUARANTINED", TASK_QUARANTINE_NOTICE, { profile, runState, usageStatus: "QUARANTINED", reservedUnits: 0, consumedUnits: 0, idempotencyKey: this.executionKey(context, input), inputTokens: estimateTokens(prompt), outputTokens: 0 });
       return this.result(context, session, turn, null, null, []);
     }
     const requestedTool = input.requestedTool ? TOOL_REGISTRY.find((candidate) => candidate.name === input.requestedTool) : undefined;
@@ -661,8 +682,8 @@ export class EmbeddedAgentRuntime implements AgentRuntime {
         : {})
     };
     const result = await kernel.run(kernelInput);
-    runState.sanitized = result.sanitizedContext;
-    if (result.sanitizedContext) this.options.telemetry?.increment("agent_context_sanitized", 1);
+    runState.sanitized = runState.sanitized || result.sanitizedContext;
+    if (runState.sanitized) this.options.telemetry?.increment("agent_context_sanitized", 1);
     const usageTotals = result.turns.reduce(
       (totals, turn) => ({ inputTokens: totals.inputTokens + (turn.usage?.inputTokens ?? 0), outputTokens: totals.outputTokens + (turn.usage?.outputTokens ?? 0) }),
       { inputTokens: 0, outputTokens: 0 }
@@ -686,8 +707,8 @@ export class EmbeddedAgentRuntime implements AgentRuntime {
       return this.result(context, session, pausedTurn, null, approval, []);
     }
 
-    const status = this.mapTurnStatus(result.stopCondition, result.outcomeUnknown);
-    const response = result.answer;
+    const status = runState.taskQuarantined ? "QUARANTINED" : this.mapTurnStatus(result.stopCondition, result.outcomeUnknown);
+    const response = runState.taskQuarantined ? TASK_QUARANTINE_NOTICE : result.answer;
     await this.assertLeaseHeld(context, session.id, lease);
     const persistedTurn = runState.pausedTurn ?? this.persistTurn(context, session, prompt, status, response, {
       profile,
@@ -797,6 +818,21 @@ export class EmbeddedAgentRuntime implements AgentRuntime {
     return new KernelModelError("MODEL_UNAVAILABLE", error instanceof Error ? error.message : "unknown model failure", true);
   }
 
+  private recordContextQuarantine(runState: TurnRunState, quarantined: ModelContext["quarantined"]): void {
+    if (quarantined.length === 0) return;
+    // Counts are occurrences per evaluation, not unique records. No values,
+    // sources, IDs or user-controlled labels enter telemetry or notices.
+    runState.sanitized = true;
+    runState.quarantinedItems += quarantined.length;
+    this.options.telemetry?.increment("agent_context_quarantined_items", quarantined.length);
+    const secrets = quarantined.filter((item) => item.reason === "SECRET_MATERIAL").length;
+    if (secrets > 0) this.options.telemetry?.increment("agent_context_quarantined_secret_items", secrets);
+    if (quarantined.some((item) => item.itemId === "task.state")) {
+      runState.taskQuarantined = true;
+      this.options.telemetry?.increment("agent_context_quarantined_task", 1);
+    }
+  }
+
   private async buildContext(
     context: CvgContext,
     session: AiSession,
@@ -873,6 +909,11 @@ export class EmbeddedAgentRuntime implements AgentRuntime {
     runState.references = built.retrievalReferences.map((reference) => ({ title: reference.title, source: reference.source }));
     runState.sanitized = runState.sanitized || built.sanitized;
     runState.contextDigest = built.digest;
+    this.recordContextQuarantine(runState, built.quarantined);
+    if (runState.taskQuarantined) {
+      // The kernel stops at a context-build failure, before model dispatch.
+      throw new Error("TASK_OBJECTIVE_QUARANTINED");
+    }
     runState.usedDataClasses = [...new Set(built.items.map((item) => item.dataClass))];
     const messages: KernelMessage[] = built.items
       .filter((item) => item.role !== "system")
@@ -1336,7 +1377,11 @@ export class EmbeddedAgentRuntime implements AgentRuntime {
       id,
       sessionId: session.id,
       prompt,
-      response,
+      // Persist the notice with the response so API consumers and replay see
+      // it. Clinical draft content is created from the raw model answer above.
+      response: options.runState.quarantinedItems > 0 && !options.runState.taskQuarantined
+        ? `${CONTEXT_QUARANTINE_NOTICE}${response ? `\n\n${response}` : ""}`
+        : response,
       status,
       model,
       inputTokens,

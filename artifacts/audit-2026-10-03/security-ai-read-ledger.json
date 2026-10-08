@@ -1,0 +1,1241 @@
+{
+  "head": "9aab406b164497978b05dd3aa431db49ad11677a",
+  "scope": "61 assigned documentation files, followed by read-only source audit",
+  "observed_at": "2026-10-03T05:08:17.896952+00:00",
+  "status": "COMPLETE",
+  "completed_chunks": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    31
+  ],
+  "total_chunks": 31,
+  "files": [
+    {
+      "path": "docs/04-motor-deepseek-e-plugins.md",
+      "bytes": 34937,
+      "sha256": "8bbc0306cf7be2520ef7a5b9e2075f913308d641470dace2dce1df36cf2a7f5d",
+      "index": 1,
+      "observed_sha256": "8bbc0306cf7be2520ef7a5b9e2075f913308d641470dace2dce1df36cf2a7f5d",
+      "sha256_matches_assignment": true,
+      "total_lines": 349,
+      "read_ranges": [
+        [
+          1,
+          349
+        ]
+      ],
+      "full_read": true,
+      "summary": "Harness seam/capability map, monotonic admission, approvals, idempotency, budget, registry and offline design; many CVG integrations explicitly proposed.",
+      "relevance": "Mixed upstream capability baseline and historical CVG target design; not current proof.",
+      "read_lines": 349
+    },
+    {
+      "path": "docs/05-seguranca-privacidade.md",
+      "bytes": 38494,
+      "sha256": "dbd6466227ff13ce673171466a29986d1d843700de02de757a550a88eb987c78",
+      "index": 2,
+      "observed_sha256": "dbd6466227ff13ce673171466a29986d1d843700de02de757a550a88eb987c78",
+      "sha256_matches_assignment": true,
+      "total_lines": 365,
+      "read_ranges": [
+        [
+          1,
+          365
+        ]
+      ],
+      "full_read": true,
+      "summary": "Threat model and D0–D5 classes; universal admission, revocation, clinical restrictions, offline buffers, audit/privacy design, and synthetic M1 authentication contract.",
+      "relevance": "Predominantly normative TARGET/PROPOSED with historical M1 implementation notes.",
+      "read_lines": 365
+    },
+    {
+      "path": "docs/agent-evals.md",
+      "bytes": 6810,
+      "sha256": "b7ab446f71e75744884f7d4d6d14e7ccb640f5ec42cb4d48a1effd0f260430f8",
+      "index": 3,
+      "observed_sha256": "b7ab446f71e75744884f7d4d6d14e7ccb640f5ec42cb4d48a1effd0f260430f8",
+      "sha256_matches_assignment": true,
+      "total_lines": 78,
+      "read_ranges": [
+        [
+          1,
+          78
+        ]
+      ],
+      "full_read": true,
+      "summary": "Seven synthetic golden scenarios and one structural differential comparison; limitations of fixtures, provider proof, shadow/load and promotion.",
+      "relevance": "Historical 2026-09-16 evidence; current eval source must be inspected.",
+      "read_lines": 78
+    },
+    {
+      "path": "docs/agent-runtime-data-flow.md",
+      "bytes": 10947,
+      "sha256": "6fa306ea53a29a22298e912fa26903897c26cad627c57a7fa1d83047474cfdef",
+      "index": 4,
+      "observed_sha256": "6fa306ea53a29a22298e912fa26903897c26cad627c57a7fa1d83047474cfdef",
+      "sha256_matches_assignment": true,
+      "total_lines": 102,
+      "read_ranges": [
+        [
+          1,
+          102
+        ]
+      ],
+      "full_read": true,
+      "summary": "End-to-end authenticated AI turn wiring; context, model, tools, lease and persistence; full prompt/response versus digest-only context and proposed retention.",
+      "relevance": "Historical wiring/evidence baseline at f53f9eb; useful for current reachability inspection.",
+      "read_lines": 102
+    },
+    {
+      "path": "docs/agent-runtime-red-team.md",
+      "bytes": 8941,
+      "sha256": "c0ec6a2bddeae98cb00cb58173670bb750dff5a87bc2e8a29c06a912b2f48ced",
+      "index": 5,
+      "observed_sha256": "c0ec6a2bddeae98cb00cb58173670bb750dff5a87bc2e8a29c06a912b2f48ced",
+      "sha256_matches_assignment": true,
+      "total_lines": 95,
+      "read_ranges": [
+        [
+          1,
+          95
+        ]
+      ],
+      "full_read": true,
+      "summary": "Ten red-team cases and explicit coverage gaps including conditional tenant test, reversible-only approval test, plugin hooks, unknown cost and real SQL.",
+      "relevance": "Historical local attacks, not current assurance; supplies candidate regression checks.",
+      "read_lines": 95
+    },
+    {
+      "path": "docs/agent-runtime-security-review.md",
+      "bytes": 10025,
+      "sha256": "048bc24e6adbf56c9a33a38b07175cfe9bd9c5bde5f63c7a9089ec4c6ad43fe2",
+      "index": 6,
+      "observed_sha256": "048bc24e6adbf56c9a33a38b07175cfe9bd9c5bde5f63c7a9089ec4c6ad43fe2",
+      "sha256_matches_assignment": true,
+      "total_lines": 88,
+      "read_ranges": [
+        [
+          1,
+          88
+        ]
+      ],
+      "full_read": true,
+      "summary": "Local security review and post-critique fencing, approval, budget, usage and context repairs; production/provider/SQL proof limitations.",
+      "relevance": "Historical local review at 2026-09-16; later documents may supersede SQL status.",
+      "read_lines": 88
+    },
+    {
+      "path": "docs/agent-runtime-threat-model.md",
+      "bytes": 13153,
+      "sha256": "f0bd74d59cebe2d5be783d97fc762f58724f645d76fc8977fff6e2d2b57db7eb",
+      "index": 7,
+      "observed_sha256": "f0bd74d59cebe2d5be783d97fc762f58724f645d76fc8977fff6e2d2b57db7eb",
+      "sha256_matches_assignment": true,
+      "total_lines": 99,
+      "read_ranges": [
+        [
+          1,
+          99
+        ]
+      ],
+      "full_read": true,
+      "summary": "Threat scenarios and controls for injection, tenant scope, plugins, approval, checkpoint integrity, provider compromise and resource exhaustion; explicitly limited local evidence.",
+      "relevance": "Historical Sep16 threat model; lease renewal and approval timing statements partly superseded by post-critique repairs in the companion review.",
+      "read_lines": 99
+    },
+    {
+      "path": "docs/ai-runtime-vNext.md",
+      "bytes": 1590,
+      "sha256": "7d6661e660d9977eaad4f8f78f27f0d212e63339a8fc94cecb18caa2c018ec04",
+      "index": 8,
+      "observed_sha256": "7d6661e660d9977eaad4f8f78f27f0d212e63339a8fc94cecb18caa2c018ec04",
+      "sha256_matches_assignment": true,
+      "total_lines": 24,
+      "read_ranges": [
+        [
+          1,
+          24
+        ]
+      ],
+      "full_read": true,
+      "summary": "AgentRuntime port and adapters, six governed tools, fail-closed DeepSeek bridge contract and synthetic-only evidence limitations.",
+      "relevance": "Historical vNext implementation overview; reachable current wiring requires inspection.",
+      "read_lines": 24
+    },
+    {
+      "path": "docs/aud27-semantic-manifest.json",
+      "bytes": 18431,
+      "sha256": "2a0ace3269cd16cc7f67534723b4413a497b09724103e1dd6cdbd7eb5048098f",
+      "index": 9,
+      "observed_sha256": "2a0ace3269cd16cc7f67534723b4413a497b09724103e1dd6cdbd7eb5048098f",
+      "sha256_matches_assignment": true,
+      "total_lines": 172,
+      "read_ranges": [
+        [
+          1,
+          172
+        ]
+      ],
+      "full_read": true,
+      "summary": "Complete AUD27 semantic manifest maps 39 historical findings, 36 AUD26 tasks, 20 AUD27 findings and known-bad semantic mappings; rebind is not verification.",
+      "relevance": "Program reconciliation metadata with historical evidence references; not fresh product assurance or instructions.",
+      "read_lines": 172
+    },
+    {
+      "path": "docs/auditoria-entrega-cvg-aud24-003-2026-09-20.md",
+      "bytes": 10818,
+      "sha256": "df9173d6809be47cbcbe65d5d21c2af270adf64281bfcf31e479e4e791a2bee8",
+      "index": 10,
+      "observed_sha256": "df9173d6809be47cbcbe65d5d21c2af270adf64281bfcf31e479e4e791a2bee8",
+      "sha256_matches_assignment": true,
+      "total_lines": 104,
+      "read_ranges": [
+        [
+          1,
+          104
+        ]
+      ],
+      "full_read": true,
+      "summary": "Rejected AUD24 restore delivery: split-client authority counterexample, incomplete role attributes and real PostgreSQL negatives, manufactured grants and circular rollback oracle.",
+      "relevance": "Historical Sep20 findings motivating AUD25; must confirm current code before re-reporting.",
+      "read_lines": 104
+    },
+    {
+      "path": "docs/auditoria-repositorio-2026-09-23.md",
+      "bytes": 7742,
+      "sha256": "b73fcf096aba157272cb4190964e894e4fc82d116eea6e8c5f5d20585fbe8fa3",
+      "index": 11,
+      "observed_sha256": "b73fcf096aba157272cb4190964e894e4fc82d116eea6e8c5f5d20585fbe8fa3",
+      "sha256_matches_assignment": true,
+      "total_lines": 82,
+      "read_ranges": [
+        [
+          1,
+          82
+        ]
+      ],
+      "full_read": true,
+      "summary": "Sep23 audit scores and executed gates, control-plane failure, snapshot migration debt, licensing and documentation drift, external qualification gaps.",
+      "relevance": "Historical c990 dirty worktree assessment, not current HEAD or fresh gate results.",
+      "read_lines": 82
+    },
+    {
+      "path": "docs/auditoria-repositorio-2026-09-24.md",
+      "bytes": 12397,
+      "sha256": "b9548f635028f36a3c8e756f34a0fee016d1de62bd9c3119f5b716c259dad6e7",
+      "index": 12,
+      "observed_sha256": "b9548f635028f36a3c8e756f34a0fee016d1de62bd9c3119f5b716c259dad6e7",
+      "sha256_matches_assignment": true,
+      "total_lines": 105,
+      "read_ranges": [
+        [
+          1,
+          105
+        ]
+      ],
+      "full_read": true,
+      "summary": "Sep24 full-doc audit, fake-pool persistence failures, coverage and architecture gates, five AI SQL gaps, local secret scan and stale evidence; production unproven.",
+      "relevance": "Historical c990 dirty worktree assessment; current source and lead-run gates determine present status.",
+      "read_lines": 105
+    },
+    {
+      "path": "docs/auditoria-resultado-cvg-aud20-2026-09-20.md",
+      "bytes": 17475,
+      "sha256": "cab90daf71362b23bb524a2d5ab9254d9056a671898ff738ee15abbb5755ed21",
+      "index": 13,
+      "observed_sha256": "cab90daf71362b23bb524a2d5ab9254d9056a671898ff738ee15abbb5755ed21",
+      "sha256_matches_assignment": true,
+      "total_lines": 231,
+      "read_ranges": [
+        [
+          1,
+          231
+        ]
+      ],
+      "full_read": true,
+      "summary": "AUD20 re-audit counterexamples: terminal leases, deferred PDP checks, success after abort, clinical identity mismatch, permissive web contracts, log redaction and evidence drift.",
+      "relevance": "Historical rejected delivery with later remediation tracks; candidate hypotheses only.",
+      "read_lines": 231
+    },
+    {
+      "path": "docs/auth-boundary-vNext.md",
+      "bytes": 5328,
+      "sha256": "5e2b0c9e9de69840682a8ad05bd95666dc043a447e2b5ab274cb14af2ff649f7",
+      "index": 14,
+      "observed_sha256": "5e2b0c9e9de69840682a8ad05bd95666dc043a447e2b5ab274cb14af2ff649f7",
+      "sha256_matches_assignment": true,
+      "total_lines": 51,
+      "read_ranges": [
+        [
+          1,
+          51
+        ]
+      ],
+      "full_read": true,
+      "summary": "Local authentication boundary with password policy, TOTP challenges/enrollment, rotation/recovery, session scope, pre-context identity reads and isolated WebAuthn break-glass crypto.",
+      "relevance": "Mixed implementation contract and explicitly external deployment/secret/identity proof gaps; check current reachability.",
+      "read_lines": 51
+    },
+    {
+      "path": "docs/backlog-melhorias-auditoria-2026-09-21.md",
+      "bytes": 28144,
+      "sha256": "1def7860adfd3d97d2fc3970f7eecdfe6b5224a49cf314cd7ae33b25d9a8797d",
+      "index": 15,
+      "observed_sha256": "1def7860adfd3d97d2fc3970f7eecdfe6b5224a49cf314cd7ae33b25d9a8797d",
+      "sha256_matches_assignment": true,
+      "total_lines": 654,
+      "read_ranges": [
+        [
+          1,
+          654
+        ]
+      ],
+      "full_read": true,
+      "summary": "Complete proposed 36-task AUD26 backlog and 39-finding map; restore authority, DNS-pinned egress, bounded model/message streaming, audit, migrations and external qualification criteria.",
+      "relevance": "Historical normative remediation contracts; does not authorize execution or demonstrate closure.",
+      "read_lines": 654
+    },
+    {
+      "path": "docs/backlog-melhorias-cvg-aud21-2026-09-20.md",
+      "bytes": 19296,
+      "sha256": "e79062c8f663052d405a8d1be32864f83368482c8f264a3a9a04441be8b1230c",
+      "index": 16,
+      "observed_sha256": "e79062c8f663052d405a8d1be32864f83368482c8f264a3a9a04441be8b1230c",
+      "sha256_matches_assignment": true,
+      "total_lines": 276,
+      "read_ranges": [
+        [
+          1,
+          276
+        ]
+      ],
+      "full_read": true,
+      "summary": "Superseded AUD21 remediation backlog with 28 tasks and detailed F0–F38 evidence requirements, including terminality, PDP, cancellation, redaction and identity.",
+      "relevance": "Explicitly SUPERSEDED historical contracts; relevant for regression criteria.",
+      "read_lines": 276
+    },
+    {
+      "path": "docs/backlog-melhorias-cvg-aud25-2026-09-20.md",
+      "bytes": 9920,
+      "sha256": "0a293d3e6648f3b570f89857678d8b71d3b1f1f9d301186500aefd433a99fc39",
+      "index": 17,
+      "observed_sha256": "0a293d3e6648f3b570f89857678d8b71d3b1f1f9d301186500aefd433a99fc39",
+      "sha256_matches_assignment": true,
+      "total_lines": 145,
+      "read_ranges": [
+        [
+          1,
+          145
+        ]
+      ],
+      "full_read": true,
+      "summary": "AUD25 backlog for same-connection restore authority, full role attributes, independent SQL oracles, replay/outcome-unknown and evidence governance.",
+      "relevance": "Historical proposed remediation and promotion conditions, not current verification.",
+      "read_lines": 145
+    },
+    {
+      "path": "docs/backlog-remediacao-auditoria-2026-09-19.md",
+      "bytes": 23605,
+      "sha256": "fabf30749848287710fe0f7872595a2729c1bf0b66ef66fd31364070dcebda17",
+      "index": 18,
+      "observed_sha256": "fabf30749848287710fe0f7872595a2729c1bf0b66ef66fd31364070dcebda17",
+      "sha256_matches_assignment": true,
+      "total_lines": 497,
+      "read_ranges": [
+        [
+          1,
+          497
+        ]
+      ],
+      "full_read": true,
+      "summary": "AUD19 remediation backlog covering runtime authority, clinical/context identity, restore, observability, evidence and release gates.",
+      "relevance": "Historical remediation requirements, not current proof or execution authority.",
+      "read_lines": 497
+    },
+    {
+      "path": "docs/deepseek-acp-bridge.md",
+      "bytes": 5569,
+      "sha256": "d110a12c28648916bb296768b54b624e34dc5e4a1ed41fb992225cf986278370",
+      "index": 19,
+      "observed_sha256": "d110a12c28648916bb296768b54b624e34dc5e4a1ed41fb992225cf986278370",
+      "sha256_matches_assignment": true,
+      "total_lines": 51,
+      "read_ranges": [
+        [
+          1,
+          51
+        ]
+      ],
+      "full_read": true,
+      "summary": "Opt-in ACP bridge, scoped signed context and permission boundary; governance admission, approval and replay obligations.",
+      "relevance": "Historical ACP contract; current signature, approval and durable replay wiring require code inspection.",
+      "read_lines": 51
+    },
+    {
+      "path": "docs/deepseek-integration-vNext.md",
+      "bytes": 2370,
+      "sha256": "b41eaeed018bebdfb0805019b4e79c736e8c1124dabcffd383deb401efdeed3b",
+      "index": 20,
+      "observed_sha256": "b41eaeed018bebdfb0805019b4e79c736e8c1124dabcffd383deb401efdeed3b",
+      "sha256_matches_assignment": true,
+      "total_lines": 50,
+      "read_ranges": [
+        [
+          1,
+          50
+        ]
+      ],
+      "full_read": true,
+      "summary": "DeepSeek HTTP integration architecture, service identity, versioned context, correlation and provider-neutral runtime seam.",
+      "relevance": "Historical vNext integration baseline, with external operation explicitly unproven.",
+      "read_lines": 50
+    },
+    {
+      "path": "docs/deepseek-production-integration.md",
+      "bytes": 4251,
+      "sha256": "5cd1b41c42f5ea343c2620a42249d97a945c0fa8ca54747a1f5ffa7d497d98db",
+      "index": 21,
+      "observed_sha256": "5cd1b41c42f5ea343c2620a42249d97a945c0fa8ca54747a1f5ffa7d497d98db",
+      "sha256_matches_assignment": true,
+      "total_lines": 63,
+      "read_ranges": [
+        [
+          1,
+          63
+        ]
+      ],
+      "full_read": true,
+      "summary": "Production DeepSeek bridge prerequisites, governed context, durable admission and same-candidate evidence requirements.",
+      "relevance": "Mixed local integration contract and external proof limitations; not proof of real-provider execution.",
+      "read_lines": 63
+    },
+    {
+      "path": "docs/deepseek-real-proof.md",
+      "bytes": 9068,
+      "sha256": "c28859319e6799efec0e65321660ea4a062eb9ea15641726e340bb1feb00a249",
+      "index": 22,
+      "observed_sha256": "c28859319e6799efec0e65321660ea4a062eb9ea15641726e340bb1feb00a249",
+      "sha256_matches_assignment": true,
+      "total_lines": 72,
+      "read_ranges": [
+        [
+          1,
+          72
+        ]
+      ],
+      "full_read": true,
+      "summary": "Real DeepSeek proof prerequisites and evidence discipline, distinguishing synthetic bridge tests from authorized model execution.",
+      "relevance": "External-proof procedure and blocked status at document date, not new authorization.",
+      "read_lines": 72
+    },
+    {
+      "path": "docs/embedded-harness-audit.md",
+      "bytes": 15273,
+      "sha256": "16f28deaae1a3584daf0ca308cb1a9163a59ee8a24faff4e4eac4e1b4e38f579",
+      "index": 23,
+      "observed_sha256": "16f28deaae1a3584daf0ca308cb1a9163a59ee8a24faff4e4eac4e1b4e38f579",
+      "sha256_matches_assignment": true,
+      "total_lines": 200,
+      "read_ranges": [
+        [
+          1,
+          200
+        ]
+      ],
+      "full_read": true,
+      "summary": "Harness source/component audit and HYBRID decision; CVG-owned kernel reimplements mechanisms with zero upstream files imported.",
+      "relevance": "Historical architecture/source audit; useful for scope, process-boundary and provenance claims.",
+      "read_lines": 200
+    },
+    {
+      "path": "docs/embedded-harness-verification.md",
+      "bytes": 10938,
+      "sha256": "d0cac561bd6474ef210f4d313b7c85f5c937d4a5b44b9293b2d8085d274aee79",
+      "index": 24,
+      "observed_sha256": "d0cac561bd6474ef210f4d313b7c85f5c937d4a5b44b9293b2d8085d274aee79",
+      "sha256_matches_assignment": true,
+      "total_lines": 110,
+      "read_ranges": [
+        [
+          1,
+          110
+        ]
+      ],
+      "full_read": true,
+      "summary": "Embedded-runtime verification matrix, local commands, session/approval/budget repairs and limits of synthetic or SQL-shaped tests.",
+      "relevance": "Historical verification results, superseded only by observed current source and centrally executed gates.",
+      "read_lines": 110
+    },
+    {
+      "path": "docs/embedded-runtime-rollout.md",
+      "bytes": 8587,
+      "sha256": "caf29d14ae9cab923bdd32024cea74942cca381ded056def0dbcabad2a74e3b0",
+      "index": 25,
+      "observed_sha256": "caf29d14ae9cab923bdd32024cea74942cca381ded056def0dbcabad2a74e3b0",
+      "sha256_matches_assignment": true,
+      "total_lines": 93,
+      "read_ranges": [
+        [
+          1,
+          93
+        ]
+      ],
+      "full_read": true,
+      "summary": "LAB/SHADOW/STAGING/CANARY/PRODUCTION rollout, rollback and explicit proof requirements; local lab and partial synthetic shadow only.",
+      "relevance": "Rollout proposal plus historical local state; external promotion is not demonstrated.",
+      "read_lines": 93
+    },
+    {
+      "path": "docs/embedded-vs-external-comparison.md",
+      "bytes": 8106,
+      "sha256": "e61e698e95b592aac2bfe0395fcc33557f279d7a9f31739d486e2ff1e3e95fb6",
+      "index": 26,
+      "observed_sha256": "e61e698e95b592aac2bfe0395fcc33557f279d7a9f31739d486e2ff1e3e95fb6",
+      "sha256_matches_assignment": true,
+      "total_lines": 79,
+      "read_ranges": [
+        [
+          1,
+          79
+        ]
+      ],
+      "full_read": true,
+      "summary": "Embedded versus external runtime comparison, seven synthetic evals and one narrow structural parity scenario.",
+      "relevance": "Historical synthetic comparison; does not establish real-model quality, latency or full harness parity.",
+      "read_lines": 79
+    },
+    {
+      "path": "docs/final-triplo-aaa-report.md",
+      "bytes": 15005,
+      "sha256": "6bdbb08aaa626ba2efbd7cfa3ecc9534aaaeebe5dc902ad713c659f7e9cb3d5e",
+      "index": 27,
+      "observed_sha256": "6bdbb08aaa626ba2efbd7cfa3ecc9534aaaeebe5dc902ad713c659f7e9cb3d5e",
+      "sha256_matches_assignment": true,
+      "total_lines": 214,
+      "read_ranges": [
+        [
+          1,
+          214
+        ]
+      ],
+      "full_read": true,
+      "summary": "Final AAA implementation/verification report with local architecture, later PostgreSQL evidence and still-blocked external/human gates.",
+      "relevance": "Historical multi-stage report; later SQL results supersede earlier NOT_RUN text within the document, not present HEAD proof.",
+      "read_lines": 214
+    },
+    {
+      "path": "docs/plano-aaa-2026-09-12/areas/04-aig.md",
+      "bytes": 5709,
+      "sha256": "4f76ce8f499cb94dde881412bc3932dc5213b54bf440b662a7d58af99ed0fb36",
+      "index": 28,
+      "observed_sha256": "4f76ce8f499cb94dde881412bc3932dc5213b54bf440b662a7d58af99ed0fb36",
+      "sha256_matches_assignment": true,
+      "total_lines": 118,
+      "read_ranges": [
+        [
+          1,
+          118
+        ]
+      ],
+      "full_read": true,
+      "summary": "AI-governance improvement plan for bounded orchestration, policy, authorization, budget, provenance and operational proof.",
+      "relevance": "Normative AAA area plan, not implemented-state evidence.",
+      "read_lines": 118
+    },
+    {
+      "path": "docs/plano-aaa-2026-09-12/areas/05-dat.md",
+      "bytes": 7303,
+      "sha256": "a26cb9de8d9be224d01f21bf8c4e4e149e2e9031787ff7f4b497759413d47984",
+      "index": 29,
+      "observed_sha256": "a26cb9de8d9be224d01f21bf8c4e4e149e2e9031787ff7f4b497759413d47984",
+      "sha256_matches_assignment": true,
+      "total_lines": 145,
+      "read_ranges": [
+        [
+          1,
+          145
+        ]
+      ],
+      "full_read": true,
+      "summary": "Persistence improvement plan for authoritative durable state, transactions, concurrency, recovery and evidence.",
+      "relevance": "Normative AAA data-area plan; current implementation must be traced separately.",
+      "read_lines": 145
+    },
+    {
+      "path": "docs/plano-triplo-aaa-pos-entrega-2026-09-13/backlog.json",
+      "bytes": 91329,
+      "sha256": "abc39ce6af71729def6dfb251cb7b4097a58e8c8508a0255f80e69a6e9da083a",
+      "index": 30,
+      "observed_sha256": "abc39ce6af71729def6dfb251cb7b4097a58e8c8508a0255f80e69a6e9da083a",
+      "sha256_matches_assignment": true,
+      "total_lines": 2363,
+      "read_ranges": [
+        [
+          1,
+          2363
+        ]
+      ],
+      "full_read": true,
+      "summary": "Complete machine-readable 33-task AAA2 post-delivery backlog and legacy reconciliation with acceptance criteria and dependencies.",
+      "relevance": "Planning-only historical contracts; no task is executed or closed merely by reading.",
+      "read_lines": 2363
+    },
+    {
+      "path": "docs/plano-triplo-aaa-pos-entrega-2026-09-13/backlog.md",
+      "bytes": 43296,
+      "sha256": "122c33b355f76ab720f50891050a6a3b56163327e12747e2939add7cafc53ec5",
+      "index": 31,
+      "observed_sha256": "122c33b355f76ab720f50891050a6a3b56163327e12747e2939add7cafc53ec5",
+      "sha256_matches_assignment": true,
+      "total_lines": 832,
+      "read_ranges": [
+        [
+          1,
+          832
+        ]
+      ],
+      "full_read": true,
+      "summary": "Human-readable AAA2 post-delivery backlog covering budget, revocation, authoritative writes, clinical and external/human requirements.",
+      "relevance": "Historical normative backlog, not current proof.",
+      "read_lines": 832
+    },
+    {
+      "path": "docs/plano-triplo-aaa-pos-entrega-2026-09-13/roadmap.md",
+      "bytes": 2958,
+      "sha256": "032a38fb326575b6330e6a2a39dc444ae900e25e94be68aba1840bf2d9d86b09",
+      "index": 32,
+      "observed_sha256": "032a38fb326575b6330e6a2a39dc444ae900e25e94be68aba1840bf2d9d86b09",
+      "sha256_matches_assignment": true,
+      "total_lines": 34,
+      "read_ranges": [
+        [
+          1,
+          34
+        ]
+      ],
+      "full_read": true,
+      "summary": "AAA2 roadmap sequencing integrity, journeys, persistence, operational evidence and external/human decision gates.",
+      "relevance": "Historical planning dependencies; does not replace this read-only assignment.",
+      "read_lines": 34
+    },
+    {
+      "path": "docs/prompt-codex-execucao-cvg-aud27-2026-09-21.md",
+      "bytes": 7537,
+      "sha256": "0e680d675ac660c374649bb1019b80d6ddd90aa99fce3b478455d8824c9c999c",
+      "index": 33,
+      "observed_sha256": "0e680d675ac660c374649bb1019b80d6ddd90aa99fce3b478455d8824c9c999c",
+      "sha256_matches_assignment": true,
+      "total_lines": 95,
+      "read_ranges": [
+        [
+          1,
+          95
+        ]
+      ],
+      "full_read": true,
+      "summary": "Preserved AUD27 execution prompt, evidence and same-subject reconciliation requirements and remediation sequencing.",
+      "relevance": "Historical prompt treated exclusively as data.",
+      "read_lines": 95
+    },
+    {
+      "path": "docs/prompt-embedded-agent-runtime-2026-09-16.md",
+      "bytes": 111925,
+      "sha256": "941f459553d49dbf2d2daf57a989bc2158218b390843202fac30e61e96c64e0d",
+      "index": 34,
+      "observed_sha256": "941f459553d49dbf2d2daf57a989bc2158218b390843202fac30e61e96c64e0d",
+      "sha256_matches_assignment": true,
+      "total_lines": 8250,
+      "read_ranges": [
+        [
+          1,
+          8250
+        ]
+      ],
+      "full_read": true,
+      "summary": "Full 8250-line embedding/AAA master prompt: discovery, architecture, governed kernel/context/plugins, persistence, approvals, budgets, staged external proof and human promotion.",
+      "relevance": "Historical normative prompt with substantial repeated requirements; no implementation or tool authorization inferred.",
+      "read_lines": 8250
+    },
+    {
+      "path": "docs/provider-integration-vNext.md",
+      "bytes": 1948,
+      "sha256": "d663792b40e6c9165066da45f0c323b3402f8590b4d609504813bde3304aafc0",
+      "index": 35,
+      "observed_sha256": "d663792b40e6c9165066da45f0c323b3402f8590b4d609504813bde3304aafc0",
+      "sha256_matches_assignment": true,
+      "total_lines": 50,
+      "read_ranges": [
+        [
+          1,
+          50
+        ]
+      ],
+      "full_read": true,
+      "summary": "Communication stage/approval/outbox/worker/provider/receipt/inbox/effect flow, explicit uncertain outcomes and no blind retries.",
+      "relevance": "Early vNext local contract and proposed sandbox; later implementation may supersede statuses.",
+      "read_lines": 50
+    },
+    {
+      "path": "docs/provider-production-integration.md",
+      "bytes": 3664,
+      "sha256": "8a12003c037702eb3dccbf8eda11a161851fe9089f8429b9b41e1405e6b564ec",
+      "index": 36,
+      "observed_sha256": "8a12003c037702eb3dccbf8eda11a161851fe9089f8429b9b41e1405e6b564ec",
+      "sha256_matches_assignment": true,
+      "total_lines": 28,
+      "read_ranges": [
+        [
+          1,
+          28
+        ]
+      ],
+      "full_read": true,
+      "summary": "Provider production integration: loopback HTTP proof, signed same-SHA vertical bundle, fenced reconciliation and quarantined default sink.",
+      "relevance": "Mixed local implementation and explicit external-provider NOT_RUN; current code and lead sandbox evidence are authoritative.",
+      "read_lines": 28
+    },
+    {
+      "path": "docs/provider-real-proof.md",
+      "bytes": 1664,
+      "sha256": "2cc62a95873377fef8edaa29eac545c342037e759236469a1344085640452000",
+      "index": 37,
+      "observed_sha256": "2cc62a95873377fef8edaa29eac545c342037e759236469a1344085640452000",
+      "sha256_matches_assignment": true,
+      "total_lines": 9,
+      "read_ranges": [
+        [
+          1,
+          9
+        ]
+      ],
+      "full_read": true,
+      "summary": "Real-provider proof requires allowed host, controlled recipient, signed per-stage evidence, freshness, trusted Ed25519 key and independent reviewer.",
+      "relevance": "Blocked external proof protocol; does not authorize credentials or transmission.",
+      "read_lines": 9
+    },
+    {
+      "path": "docs/roadmap-melhorias-auditoria-2026-09-21.md",
+      "bytes": 12932,
+      "sha256": "ccf0ce8642bd61e56342438c5ecd1db9f05177f355250cd5de6695f198944601",
+      "index": 38,
+      "observed_sha256": "ccf0ce8642bd61e56342438c5ecd1db9f05177f355250cd5de6695f198944601",
+      "sha256_matches_assignment": true,
+      "total_lines": 317,
+      "read_ranges": [
+        [
+          1,
+          317
+        ]
+      ],
+      "full_read": true,
+      "summary": "AUD26 nine-milestone roadmap from restore authority through bounded egress, authoritative persistence, supply chain, operations and repeated qualification.",
+      "relevance": "Historical proposed remediation sequence; acceptance criteria useful, not proof of closure.",
+      "read_lines": 317
+    },
+    {
+      "path": "docs/roadmap-melhorias-cvg-aud24-2026-09-20.md",
+      "bytes": 9162,
+      "sha256": "8269dae87692fea0f5925aa7d791a4cb719f37cc1441c08246c21096d9899954",
+      "index": 39,
+      "observed_sha256": "8269dae87692fea0f5925aa7d791a4cb719f37cc1441c08246c21096d9899954",
+      "sha256_matches_assignment": true,
+      "total_lines": 154,
+      "read_ranges": [
+        [
+          1,
+          154
+        ]
+      ],
+      "full_read": true,
+      "summary": "Superseded AUD24 roadmap emphasizing same-subject evidence, sealed restore, independent SQL oracles, qualification and human approval.",
+      "relevance": "Explicitly SUPERSEDED by AUD25; historical evidence only.",
+      "read_lines": 154
+    },
+    {
+      "path": "docs/roadmap-melhorias-cvg-aud25-2026-09-20.md",
+      "bytes": 6525,
+      "sha256": "ac5f8ebe1c82221d1d2395f2d294c280e934ab481f4de7de41ad2dc038ac34bf",
+      "index": 40,
+      "observed_sha256": "ac5f8ebe1c82221d1d2395f2d294c280e934ab481f4de7de41ad2dc038ac34bf",
+      "sha256_matches_assignment": true,
+      "total_lines": 128,
+      "read_ranges": [
+        [
+          1,
+          128
+        ]
+      ],
+      "full_read": true,
+      "summary": "AUD25 roadmap ties restore validation and transaction to the same client, complete role attributes, independent rollback oracles and release evidence.",
+      "relevance": "Historical remediation contract; current implementation must independently establish properties.",
+      "read_lines": 128
+    },
+    {
+      "path": "docs/rodada-aaa3-2026-09-13/decisao-d02.md",
+      "bytes": 2429,
+      "sha256": "69e5f0978c9f4c6a0cbe507310318cacacb5be90e87276743126303d5f03da4e",
+      "index": 41,
+      "observed_sha256": "69e5f0978c9f4c6a0cbe507310318cacacb5be90e87276743126303d5f03da4e",
+      "sha256_matches_assignment": true,
+      "total_lines": 26,
+      "read_ranges": [
+        [
+          1,
+          26
+        ]
+      ],
+      "full_read": true,
+      "summary": "Clinical decision D-02 preparation for admission, consent, discharge and signed-record correction; expressly no clinical approval granted.",
+      "relevance": "Unresolved human clinical-contract boundary at document date; must not invent or certify protocols.",
+      "read_lines": 26
+    },
+    {
+      "path": "docs/rodada-aaa3-2026-09-13/roadmap.md",
+      "bytes": 3455,
+      "sha256": "e6927e9ebbd0d01e593c7687f1c7ccdf6fec9c0f123da7a82d040fd1e4a4143e",
+      "index": 42,
+      "observed_sha256": "e6927e9ebbd0d01e593c7687f1c7ccdf6fec9c0f123da7a82d040fd1e4a4143e",
+      "sha256_matches_assignment": true,
+      "total_lines": 36,
+      "read_ranges": [
+        [
+          1,
+          36
+        ]
+      ],
+      "full_read": true,
+      "summary": "AAA3 continuation roadmap for budget, revocation, clinical context, stock/bed journeys and preservation of all inherited AAA2 acceptance criteria.",
+      "relevance": "Historical staged plan; preparation of a decision is explicitly not approval.",
+      "read_lines": 36
+    },
+    {
+      "path": "docs/runbooks/agent-loop-runaway.md",
+      "bytes": 5732,
+      "sha256": "5e9539456221990d5c8490c0ce44fa92728e1ee74836b2031b07fdba8d035c94",
+      "index": 43,
+      "observed_sha256": "5e9539456221990d5c8490c0ce44fa92728e1ee74836b2031b07fdba8d035c94",
+      "sha256_matches_assignment": true,
+      "total_lines": 66,
+      "read_ranges": [
+        [
+          1,
+          66
+        ]
+      ],
+      "full_read": true,
+      "summary": "Runaway-agent runbook: bounded turns/tools/tokens/time/failure/repetition, kill switches, cancellation/drain, budget settlement and unknown outcomes.",
+      "relevance": "Local implemented-control references mixed with production containment NOT_RUN and aging line numbers.",
+      "read_lines": 66
+    },
+    {
+      "path": "docs/runbooks/agent-runtime-down.md",
+      "bytes": 5978,
+      "sha256": "fef10a940b5b5d72c261e54ee0d44e3dc88bfde46ed437f02ebcee6c0767a210",
+      "index": 44,
+      "observed_sha256": "fef10a940b5b5d72c261e54ee0d44e3dc88bfde46ed437f02ebcee6c0767a210",
+      "sha256_matches_assignment": true,
+      "total_lines": 66,
+      "read_ranges": [
+        [
+          1,
+          66
+        ]
+      ],
+      "full_read": true,
+      "summary": "AI-down classification, independent core versus AI readiness, disabled runtime, incident evidence and manual-domain continuity.",
+      "relevance": "Operational contract with local verification; cited old AI-off check alone proves readiness/auth gates rather than full workflows.",
+      "read_lines": 66
+    },
+    {
+      "path": "docs/runbooks/agent-runtime-rollback.md",
+      "bytes": 5527,
+      "sha256": "19cb903c7fa860da23727b78be77423d3755bf9ad1951f5536e5112b2658b866",
+      "index": 45,
+      "observed_sha256": "19cb903c7fa860da23727b78be77423d3755bf9ad1951f5536e5112b2658b866",
+      "sha256_matches_assignment": true,
+      "total_lines": 66,
+      "read_ranges": [
+        [
+          1,
+          66
+        ]
+      ],
+      "full_read": true,
+      "summary": "Configuration rollback among embedded/external/disabled modes, preserving append-only state, fences, approvals and schema.",
+      "relevance": "Local rollback design; staging drill NOT_RUN and state portability limitations explicit.",
+      "read_lines": 66
+    },
+    {
+      "path": "docs/runbooks/deepseek-bridge-outage.md",
+      "bytes": 1431,
+      "sha256": "15b2b2ecbca69820cd0e8f6ffa6600b22748ef2aede8c9665007798d10cfbc3a",
+      "index": 46,
+      "observed_sha256": "15b2b2ecbca69820cd0e8f6ffa6600b22748ef2aede8c9665007798d10cfbc3a",
+      "sha256_matches_assignment": true,
+      "total_lines": 25,
+      "read_ranges": [
+        [
+          1,
+          25
+        ]
+      ],
+      "full_read": true,
+      "summary": "DeepSeek bridge outage containment: preserve provenance, block unknown-outcome retry, inspect identity/health, reopen after evidence.",
+      "relevance": "Operational procedure; historical diagnostic commands are not current execution authority.",
+      "read_lines": 25
+    },
+    {
+      "path": "docs/runbooks/deepseek-harness-outage.md",
+      "bytes": 688,
+      "sha256": "d248c4acda6c4d6d0c4e53f4f890c53f28056eee872521a0d3792421908ad29f",
+      "index": 47,
+      "observed_sha256": "d248c4acda6c4d6d0c4e53f4f890c53f28056eee872521a0d3792421908ad29f",
+      "sha256_matches_assignment": true,
+      "total_lines": 8,
+      "read_ranges": [
+        [
+          1,
+          8
+        ]
+      ],
+      "full_read": true,
+      "summary": "DeepSeek harness outage procedure keeps manual CVG paths and denies unapproved endpoint, capability or identity substitutions.",
+      "relevance": "Historical not-connected/NOT_RUN status, not verified current deployment.",
+      "read_lines": 8
+    },
+    {
+      "path": "docs/runbooks/embedded-harness-upgrade.md",
+      "bytes": 6023,
+      "sha256": "e198484d571ec09476774a6fdccf27c39e8c892b81bb386b488433b5c7955452",
+      "index": 48,
+      "observed_sha256": "e198484d571ec09476774a6fdccf27c39e8c892b81bb386b488433b5c7955452",
+      "sha256_matches_assignment": true,
+      "total_lines": 69,
+      "read_ranges": [
+        [
+          1,
+          69
+        ]
+      ],
+      "full_read": true,
+      "summary": "Governed embedded/upstream upgrade: CVG-owned versus third-party components, diff/licensing/security/contract review, gates and rollback.",
+      "relevance": "Historical HYBRID upgrade policy with no upstream code imported or real upgrade proven.",
+      "read_lines": 69
+    },
+    {
+      "path": "docs/runbooks/provider-outage.md",
+      "bytes": 641,
+      "sha256": "7ad8ed723452e7117f4390705b6321f6b35dd13f613abc68b10c39eb2886679a",
+      "index": 49,
+      "observed_sha256": "7ad8ed723452e7117f4390705b6321f6b35dd13f613abc68b10c39eb2886679a",
+      "sha256_matches_assignment": true,
+      "total_lines": 8,
+      "read_ranges": [
+        [
+          1,
+          8
+        ]
+      ],
+      "full_read": true,
+      "summary": "Provider outage procedure preserves idempotency and receipts, quarantines ambiguous effects and forbids blind duplication.",
+      "relevance": "Documented operational procedure; external providers blocked at the snapshot date.",
+      "read_lines": 8
+    },
+    {
+      "path": "docs/runbooks/security-incident.md",
+      "bytes": 722,
+      "sha256": "c0f41b70ba1b426d3cfb42f94815c29b2045e7007c6eeceab33205f30a2bb24b",
+      "index": 50,
+      "observed_sha256": "c0f41b70ba1b426d3cfb42f94815c29b2045e7007c6eeceab33205f30a2bb24b",
+      "sha256_matches_assignment": true,
+      "total_lines": 8,
+      "read_ranges": [
+        [
+          1,
+          8
+        ]
+      ],
+      "full_read": true,
+      "summary": "Security incident procedure for containment, session/capability revocation, preserving evidence, secret rotation and independent reopening.",
+      "relevance": "Documented procedure with incident exercise explicitly NOT_RUN.",
+      "read_lines": 8
+    },
+    {
+      "path": "docs/security-red-team-final.md",
+      "bytes": 1952,
+      "sha256": "6882d86d3d05a667dd24dc179b377114b70eb43a01b5f9643ef74cac1fa13414",
+      "index": 51,
+      "observed_sha256": "6882d86d3d05a667dd24dc179b377114b70eb43a01b5f9643ef74cac1fa13414",
+      "sha256_matches_assignment": true,
+      "total_lines": 9,
+      "read_ranges": [
+        [
+          1,
+          9
+        ]
+      ],
+      "full_read": true,
+      "summary": "Local red-team gate maps 24 criteria to selected tests or static contracts, with explicit independent staging/egress/provider limitations.",
+      "relevance": "Historical local gate evidence, not a production red-team campaign or current same-SHA result.",
+      "read_lines": 9
+    },
+    {
+      "path": "docs/security-review-vNext.md",
+      "bytes": 2460,
+      "sha256": "e35acd598af405ebdb680b0500947c6541ad3e02f96b48fd6a8a1a556d9cb9a9",
+      "index": 52,
+      "observed_sha256": "e35acd598af405ebdb680b0500947c6541ad3e02f96b48fd6a8a1a556d9cb9a9",
+      "sha256_matches_assignment": true,
+      "total_lines": 27,
+      "read_ranges": [
+        [
+          1,
+          27
+        ]
+      ],
+      "full_read": true,
+      "summary": "vNext security review lists config/secrets/CSRF/PDP/tool/RLS/auth controls and then-local distributed/egress/provider/testing gaps.",
+      "relevance": "Historical NOT_READY assessment; several old test gaps are superseded by current central PASS evidence.",
+      "read_lines": 27
+    },
+    {
+      "path": "docs/security-traceability-matrix.md",
+      "bytes": 13729,
+      "sha256": "9dde25759251cfe3f7ec80e555198891df0982e0d89cf80f87a6eaf47b4da501",
+      "index": 53,
+      "observed_sha256": "9dde25759251cfe3f7ec80e555198891df0982e0d89cf80f87a6eaf47b4da501",
+      "sha256_matches_assignment": true,
+      "total_lines": 74,
+      "read_ranges": [
+        [
+          1,
+          74
+        ]
+      ],
+      "full_read": true,
+      "summary": "Security requirement-control-code-test matrix for PDP/tools/secrets/approval/tenant/fencing/data routing and AI-off; local/synthetic limitations disclosed.",
+      "relevance": "Historical f53f9eb mapping with aging line numbers and old SQL-wiring limitation; not current certification.",
+      "read_lines": 74
+    },
+    {
+      "path": "docs/third-party/deepseek-harness-provenance.md",
+      "bytes": 3700,
+      "sha256": "ddb9bb79a783fb402e3886d8854534420c5e972ff6fd6b59d0b0474dfe68629e",
+      "index": 54,
+      "observed_sha256": "ddb9bb79a783fb402e3886d8854534420c5e972ff6fd6b59d0b0474dfe68629e",
+      "sha256_matches_assignment": true,
+      "total_lines": 72,
+      "read_ranges": [
+        [
+          1,
+          72
+        ]
+      ],
+      "full_read": true,
+      "summary": "Upstream identity/license/provenance record, HYBRID concept adaptation without copied code, local dirty clone and unassessed upstream CVEs.",
+      "relevance": "Historical third-party provenance, not a current upstream security scan or legal certification.",
+      "read_lines": 72
+    },
+    {
+      "path": "docs/third-party/deepseek-harness-upstream.md",
+      "bytes": 3033,
+      "sha256": "0326859f08faaa1e861c7a3c4d689499946fa576430d1ecffc7ec7390c662163",
+      "index": 55,
+      "observed_sha256": "0326859f08faaa1e861c7a3c4d689499946fa576430d1ecffc7ec7390c662163",
+      "sha256_matches_assignment": true,
+      "total_lines": 76,
+      "read_ranges": [
+        [
+          1,
+          76
+        ]
+      ],
+      "full_read": true,
+      "summary": "Upstream tracking, no-file import register, explicit diff/review/compatibility/update gates and /v1 contract expectations.",
+      "relevance": "Historical baseline and maintenance procedure; no automatic update authority.",
+      "read_lines": 76
+    },
+    {
+      "path": "docs/third-party/license-policy-review-2026-09-23.md",
+      "bytes": 3881,
+      "sha256": "2e63973191f3c3b1cb7e07b5f6804ecfddcdf68784663c915b992f06a26c4e41",
+      "index": 56,
+      "observed_sha256": "2e63973191f3c3b1cb7e07b5f6804ecfddcdf68784663c915b992f06a26c4e41",
+      "sha256_matches_assignment": true,
+      "total_lines": 61,
+      "read_ranges": [
+        [
+          1,
+          61
+        ]
+      ],
+      "full_read": true,
+      "summary": "Sep23 lockfile license review and later Sep25 owner decisions: proprietary root license, unchanged third-party allowlist and notices follow-up.",
+      "relevance": "Mixed historical audit and superseding recorded owner decision; later addendum supersedes earlier missing-license state.",
+      "read_lines": 61
+    },
+    {
+      "path": "docs/verification-2026-09-10-diagnostic-request-source-write.md",
+      "bytes": 4423,
+      "sha256": "370a9d6edb9da38d1e2bfbc498416ea058131897b8c4f84ab6475333377350cd",
+      "index": 57,
+      "observed_sha256": "370a9d6edb9da38d1e2bfbc498416ea058131897b8c4f84ab6475333377350cd",
+      "sha256_matches_assignment": true,
+      "total_lines": 93,
+      "read_ranges": [
+        [
+          1,
+          93
+        ]
+      ],
+      "full_read": true,
+      "summary": "Diagnostic-request normalized authoritative write, scoped transaction/replay, local SQL-shaped evidence and later exact-SHA CI results.",
+      "relevance": "Historical slice verification; synthetic pools and old CI do not prove current runtime or production.",
+      "read_lines": 93
+    },
+    {
+      "path": "docs/verification-2026-09-10-encounter-source-write.md",
+      "bytes": 4188,
+      "sha256": "4817e7a00b7e96684c9820dd67b2ad6e49bb398590d368975f1a996f0b4628ca",
+      "index": 58,
+      "observed_sha256": "4817e7a00b7e96684c9820dd67b2ad6e49bb398590d368975f1a996f0b4628ca",
+      "sha256_matches_assignment": true,
+      "total_lines": 86,
+      "read_ranges": [
+        [
+          1,
+          86
+        ]
+      ],
+      "full_read": true,
+      "summary": "Encounter normalized command write with same transaction, scope/replay/rollback, local tests and later exact-SHA CI success.",
+      "relevance": "Historical slice verification with explicit incomplete independent review and external limits.",
+      "read_lines": 86
+    },
+    {
+      "path": "docs/verification-2026-09-10-patient-source-write.md",
+      "bytes": 3190,
+      "sha256": "f916e0e273a49d6ae7455135b3f1990a5a30575ba96819f253d75486b96718b8",
+      "index": 59,
+      "observed_sha256": "f916e0e273a49d6ae7455135b3f1990a5a30575ba96819f253d75486b96718b8",
+      "sha256_matches_assignment": true,
+      "total_lines": 68,
+      "read_ranges": [
+        [
+          1,
+          68
+        ]
+      ],
+      "full_read": true,
+      "summary": "Patient normalized creation with scoped authoritative commit and rollback, local tests plus exact-SHA remote CI.",
+      "relevance": "Historical slice evidence; old snapshot/restore gaps require current confirmation.",
+      "read_lines": 68
+    },
+    {
+      "path": "docs/verification-2026-09-10-restore-audit-receipt.md",
+      "bytes": 1718,
+      "sha256": "dd86941ca0035c6113bfee272b3012f3ca064e7d8cc88f57da39623f5c610a8f",
+      "index": 60,
+      "observed_sha256": "dd86941ca0035c6113bfee272b3012f3ca064e7d8cc88f57da39623f5c610a8f",
+      "sha256_matches_assignment": true,
+      "total_lines": 36,
+      "read_ranges": [
+        [
+          1,
+          36
+        ]
+      ],
+      "full_read": true,
+      "summary": "Historical restore audit/receipt drill, ordered chain/digest preservation, quarantined destination and CI result.",
+      "relevance": "Early restore evidence superseded by later rejected/repair audits; not sufficient for present assurance.",
+      "read_lines": 36
+    },
+    {
+      "path": "docs/verification/mel23-container-smoke-supply-chain-2026-09-23.md",
+      "bytes": 6070,
+      "sha256": "14fc9e0341714687c71ba03437f626aa6d187c7be4b6d9de0310e0e50c77b0b9",
+      "index": 61,
+      "observed_sha256": "14fc9e0341714687c71ba03437f626aa6d187c7be4b6d9de0310e0e50c77b0b9",
+      "sha256_matches_assignment": true,
+      "total_lines": 106,
+      "read_ranges": [
+        [
+          1,
+          106
+        ]
+      ],
+      "full_read": true,
+      "summary": "Local API/web container smoke, constrained identities/filesystems/network, image digests, SBOM/SLSA and Trivy results; unbound dirty subject and 0/50 qualification.",
+      "relevance": "Historical local container/supply-chain evidence; neither current image scan nor release qualification.",
+      "read_lines": 106
+    }
+  ],
+  "full_read_count": 61,
+  "unread_files": [],
+  "unread_lines": 0,
+  "reading_completed_at": "2026-10-03T05:26:05.559169+00:00",
+  "review_status": "COMPLETE",
+  "review_verdict": "FAIL_WITH_FINDINGS",
+  "completed_at": "2026-10-03T05:49:27.712274+00:00",
+  "scores": {
+    "authentication_session": 74,
+    "authorization_pdp": 76,
+    "privacy": 42,
+    "audit_traceability": 64,
+    "ai_governance": 55,
+    "integrations": 56,
+    "ai_off_continuity": 58
+  },
+  "findings": [
+    "SEC-AI-01",
+    "SEC-AI-02",
+    "SEC-AI-03",
+    "SEC-AI-04"
+  ],
+  "probe_manifest": "security-ai-probe-manifest.json",
+  "report": "security-ai-review.md",
+  "final_document_hash_verification": {
+    "at": "2026-10-03T05:49:27.712274+00:00",
+    "files_checked": 61,
+    "drift": []
+  },
+  "central_gate": {
+    "command": "npm run verify:production",
+    "exit_status": 1,
+    "log": "verify-production.log",
+    "attribution": "Lead execution; not rerun in this lane",
+    "failed_categories": [
+      "unit/integration tests",
+      "dependency audit",
+      "diff whitespace"
+    ]
+  }
+}

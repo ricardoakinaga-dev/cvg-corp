@@ -8,6 +8,34 @@ import { buildSubjectManifest, subjectFingerprint, subjectPathIsExcluded, valida
 
 const defaultEvidenceRoot = "cvg-aud27-evidence";
 
+test("subject manifest binds tracked deletions before and after staging", () => {
+  const root = mkdtempSync(join(tmpdir(), "cvg-subject-deletion-"));
+  const git = (...args: string[]) => execFileSync("git", args, { cwd: root, stdio: "ignore" });
+  try {
+    writeFileSync(join(root, "obsolete.ts"), "export const obsolete = true;\n");
+    git("init", "--quiet");
+    git("add", "obsolete.ts");
+    git("-c", "user.email=subject-test@example.invalid", "-c", "user.name=Subject Test", "commit", "--quiet", "-m", "fixture");
+    const baseline = buildSubjectManifest(root);
+    rmSync(join(root, "obsolete.ts"));
+    const deleted = buildSubjectManifest(root);
+    assert.notEqual(deleted.fingerprint, baseline.fingerprint);
+    assert.equal(deleted.manifest.trackedFiles.length, 0);
+    assert.match(deleted.manifest.unstagedDiff, /deleted file mode/);
+    assert.deepEqual(validateSubjectManifest(deleted, root), []);
+    assert.ok(validateSubjectManifest(baseline, root).some((error) => error.includes("current candidate")));
+    git("add", "--update");
+    const staged = buildSubjectManifest(root);
+    assert.notEqual(staged.fingerprint, deleted.fingerprint);
+    assert.match(staged.manifest.stagedDiff, /deleted file mode/);
+    assert.deepEqual(validateSubjectManifest(staged, root), []);
+    writeFileSync(join(root, "obsolete.ts"), "export const replacement = true;\n");
+    assert.notEqual(buildSubjectManifest(root).fingerprint, staged.fingerprint);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("subject manifest is recalculated from the current candidate", () => {
   const result = buildSubjectManifest();
   assert.match(result.fingerprint, /^sha256:[a-f0-9]{64}$/);

@@ -528,8 +528,8 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     rawRequestBodies.set(request, rawBody);
     try {
       done(null, JSON.parse(rawBody) as unknown);
-    } catch (error) {
-      done(error instanceof Error ? error : new Error("invalid JSON body"));
+    } catch {
+      done(new DomainError("INVALID_INPUT", "O corpo da requisição deve conter JSON válido.", 400));
     }
   });
 
@@ -2404,8 +2404,13 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
       message = "A entrada não atende ao contrato desta operação.";
       details = { issues: error.issues.map((issue) => ({ path: issue.path, message: issue.message })) };
     } else {
-      const maybe = error as { validation?: unknown; statusCode?: number; message?: string };
+      const maybe = error as { code?: string; validation?: unknown; statusCode?: number; message?: string };
       if (maybe.validation) { code = "INVALID_INPUT"; status = 400; message = "A entrada não atende ao contrato desta operação."; }
+      else if (maybe.code === "FST_ERR_CTP_BODY_TOO_LARGE" || maybe.code === "FST_ERR_CTP_INVALID_MEDIA_TYPE" || maybe.code === "FST_ERR_CTP_INVALID_CONTENT_LENGTH") {
+        code = "INVALID_INPUT";
+        status = maybe.code === "FST_ERR_CTP_BODY_TOO_LARGE" ? 413 : maybe.code === "FST_ERR_CTP_INVALID_MEDIA_TYPE" ? 415 : 400;
+        message = "O corpo da requisição não atende ao formato ou limite desta operação.";
+      }
     }
     const rawSession = request.cookies[SESSION_COOKIE];
     const session = rawSession ? store.findSession(tokenDigest(rawSession)) : undefined;

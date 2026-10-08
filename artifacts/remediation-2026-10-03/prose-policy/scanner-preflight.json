@@ -1,0 +1,41 @@
+[
+  {
+    "command": [
+      "docker",
+      "context",
+      "show"
+    ],
+    "exit_status": 0,
+    "stdout": "default",
+    "stderr": ""
+  },
+  {
+    "command": [
+      "docker",
+      "context",
+      "inspect",
+      "--format",
+      "{{.Endpoints.docker.Host}}"
+    ],
+    "exit_status": 0,
+    "stdout": "unix:///var/run/docker.sock",
+    "stderr": ""
+  },
+  {
+    "command": [
+      "docker",
+      "image",
+      "inspect",
+      "zricethezav/gitleaks:v8.28.0@sha256:bf00b5e039f0fad4b32935dc5ec1e358f227ccd097bcb64b971f0331072fe2ae",
+      "--format",
+      "{{.Id}}"
+    ],
+    "exit_status": 0,
+    "stdout": "sha256:bf00b5e039f0fad4b32935dc5ec1e358f227ccd097bcb64b971f0331072fe2ae",
+    "stderr": ""
+  },
+  {
+    "docker_host_override_present": false,
+    "docker_context_override_present": false
+  }
+]

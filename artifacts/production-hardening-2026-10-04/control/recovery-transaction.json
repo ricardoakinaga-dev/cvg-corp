@@ -1,0 +1,9 @@
+{
+  "timestamp": "2026-10-04T10:55:09.479Z",
+  "records": [
+    "VER-CVG-AUD27-015-CORRECTION-20261004",
+    "VER-CVG-AUD27-001-RECOVERY-20261004"
+  ],
+  "event": "EVT-CVG-AUD27-001-RECOVERY-20261004",
+  "plan": ".agent/plans/2026-10-04-production-hardening.md"
+}

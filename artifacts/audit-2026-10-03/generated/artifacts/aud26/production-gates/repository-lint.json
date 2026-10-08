@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "label": "repository lint",
+  "command": [
+    "npm",
+    "run",
+    "lint"
+  ],
+  "capturedAt": "2026-10-03T05:10:19.399Z",
+  "exitStatus": 0,
+  "signal": null,
+  "stdout": "\n> cvg-corp@0.1.0 lint\n> npm run lint:custom && npm run lint:oxlint\n\n\n> cvg-corp@0.1.0 lint:custom\n> tsx scripts/lint.ts\n\nlint passed: 305 repository source files checked\n\n> cvg-corp@0.1.0 lint:oxlint\n> oxlint . --deny-warnings\n\n",
+  "stderr": ""
+}

@@ -1,0 +1,27 @@
+{
+  "scope": [
+    "apps/api/src",
+    "packages/integrations/src",
+    "new production-hardening-*.test.ts"
+  ],
+  "excluded": [
+    "application/agent-service.ts preexisting changes",
+    "persistence",
+    "packaging",
+    "evidence controller",
+    "MFA/detector",
+    "manifests/lock",
+    ".agent",
+    "historical artifacts"
+  ],
+  "criteria": [
+    "Reproduce failures before source changes",
+    "Malformed HTTP bodies return redacted valid 4xx envelopes",
+    "Configuration/dependency failures remain controlled with no provider effects",
+    "Cancellation before dispatch performs zero POSTs; cancellation after dispatch remains unknown without retry",
+    "ACCEPTED receipt is not final delivery evidence",
+    "Catalog/PDP and targeted API/integration regression tests pass"
+  ],
+  "verification": "memory runtime, synthetic secrets, loopback HTTP only; no deployment, real sends, full suite/build or scanners",
+  "review": "self-review; independent review belongs to delegating controller"
+}

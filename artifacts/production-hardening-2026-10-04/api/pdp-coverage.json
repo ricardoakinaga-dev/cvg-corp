@@ -1,0 +1,12 @@
+{
+  "command": [
+    "node",
+    "--import",
+    "tsx",
+    "scripts/verify-pdp-coverage.ts"
+  ],
+  "startedAt": "2026-10-04T10:59:12.061367+00:00",
+  "finishedAt": "2026-10-04T10:59:13.850457+00:00",
+  "exitStatus": 0,
+  "log": "artifacts/production-hardening-2026-10-04/api/pdp-coverage.log"
+}

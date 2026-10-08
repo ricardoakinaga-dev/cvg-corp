@@ -1,0 +1,16 @@
+{
+  "name": "image-smoke-final",
+  "command": [
+    "python3",
+    "artifacts/production-hardening-2026-10-04/runtime/smoke-images.py",
+    "artifacts/production-hardening-2026-10-04/runtime/verified-builds.json"
+  ],
+  "exit_status": 0,
+  "started_at": "2026-10-04T11:52:28.426039+00:00",
+  "finished_at": "2026-10-04T11:52:31.389352+00:00",
+  "source_fingerprint_before": "sha256:15ece6ef83fb9e9918dddcde7757e337fb81b42b07b6b04474c68580fcb794b2",
+  "source_fingerprint_after": "sha256:15ece6ef83fb9e9918dddcde7757e337fb81b42b07b6b04474c68580fcb794b2",
+  "source_unchanged": true,
+  "log": "artifacts/production-hardening-2026-10-04/verification/after-review/image-smoke-final.log",
+  "log_sha256": "d1e53ea0013790ba7b45d3abbc6b88b96b54513667932747642a0c2e6bdf5fcb"
+}

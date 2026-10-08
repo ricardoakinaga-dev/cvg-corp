@@ -1,0 +1,24 @@
+{
+  "name": "browser-verified",
+  "command": [
+    "npm",
+    "run",
+    "test:e2e",
+    "--",
+    "tests/e2e/app.spec.ts",
+    "tests/e2e/routed-journeys.spec.ts",
+    "--project=chromium-wide-1440",
+    "--project=firefox-wide-1440",
+    "--workers=1",
+    "--grep",
+    "demonstra\u00e7\u00e3o local atravessa|agenda alterna|revalida\u00e7\u00e3o bloqueia conte\u00fado|403 de autoriza\u00e7\u00e3o|401 durante uma sess\u00e3o|logout online|login com challenge MFA|challenge MFA expirado|challenge MFA bloqueado|prontu\u00e1rio manual|cadeia diagn\u00f3stica|jornada de interna\u00e7\u00e3o|jornada de estoque|jornada financeira|comunica\u00e7\u00e3o: preparar|shell exp\u00f5e|deep links das jornadas novas"
+  ],
+  "exit_status": 0,
+  "started_at": "2026-10-04T11:55:57.930006+00:00",
+  "finished_at": "2026-10-04T11:58:15.854694+00:00",
+  "source_fingerprint_before": "sha256:15ece6ef83fb9e9918dddcde7757e337fb81b42b07b6b04474c68580fcb794b2",
+  "source_fingerprint_after": "sha256:15ece6ef83fb9e9918dddcde7757e337fb81b42b07b6b04474c68580fcb794b2",
+  "source_unchanged": true,
+  "log": "artifacts/production-hardening-2026-10-04/verification/after-review/browser-verified.log",
+  "log_sha256": "5042a1c08a072b9015d6782a6c7159ab49b70c57ec77330137adf4bfe95034ad"
+}

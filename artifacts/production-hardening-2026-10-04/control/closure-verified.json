@@ -1,0 +1,9 @@
+{
+  "receipt": "VER-CVG-AUD27-001-CLOSURE-VERIFIED-20261004",
+  "event": "EVT-CVG-AUD27-001-CLOSURE-VERIFIED-20261004",
+  "control_result": "PASS",
+  "qualification": "PARTIAL",
+  "promotion": "BLOCKED",
+  "state_revision": 628,
+  "ledger_prefixes_preserved": true
+}

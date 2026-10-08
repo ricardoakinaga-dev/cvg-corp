@@ -1,0 +1,23 @@
+{
+  "source_fingerprint": "sha256:15ece6ef83fb9e9918dddcde7757e337fb81b42b07b6b04474c68580fcb794b2",
+  "source_sha": "9aab406b164497978b05dd3aa431db49ad11677a",
+  "scope": "local modified source; not a frozen release",
+  "builds": [
+    {
+      "kind": "api",
+      "tag": "cvg-corp-hardening-api:20261004-15ece6ef83fb",
+      "image_id": "sha256:9ec13a452d97f53e308dc417bc032a093002e6bee47149699caed98db673df5b",
+      "user": "65532:65532",
+      "exit_status": 0,
+      "receipt": "verification/after-review/image-api-final.json"
+    },
+    {
+      "kind": "web",
+      "tag": "cvg-corp-hardening-web:20261004-15ece6ef83fb",
+      "image_id": "sha256:2ae8cd776a9c5f4e3c89a6c59164d233381407a1129e64a2bf908455b2280285",
+      "user": "101",
+      "exit_status": 0,
+      "receipt": "verification/after-review/image-web-final.json"
+    }
+  ]
+}

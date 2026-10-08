@@ -1,0 +1,111 @@
+{
+  "checks": [
+    {
+      "name": "final-focused",
+      "command": [
+        "node",
+        "--import",
+        "tsx",
+        "--test",
+        "--test-reporter=tap",
+        "tests/unit/agent-context.test.ts",
+        "tests/unit/embedded-runtime.test.ts",
+        "tests/integration/ai-secret-boundary.test.ts",
+        "tests/integration/auth-challenge-race.test.ts"
+      ],
+      "exit_status": 0,
+      "started_at": "2026-10-03T13:05:03.871902+00:00",
+      "finished_at": "2026-10-03T13:05:11.847150+00:00",
+      "log": "artifacts/remediation-2026-10-03/follow-up/report-fixes/final-focused.log",
+      "sha256": "878f12d42d19ce2e42d79ad611dda8f43403dbc034a0852a7297be333166e40b"
+    },
+    {
+      "name": "final-full-tests",
+      "command": [
+        "npm",
+        "test"
+      ],
+      "exit_status": 1,
+      "started_at": "2026-10-03T13:05:11.848571+00:00",
+      "finished_at": "2026-10-03T13:05:57.619084+00:00",
+      "log": "artifacts/remediation-2026-10-03/follow-up/report-fixes/final-full-tests.log",
+      "sha256": "cfab0d53a40c55a58fac9867fe0504512ab96310866a49190e05a2fa556b5095"
+    },
+    {
+      "name": "final-build",
+      "command": [
+        "npm",
+        "run",
+        "build"
+      ],
+      "exit_status": 2,
+      "started_at": "2026-10-03T13:05:11.848889+00:00",
+      "finished_at": "2026-10-03T13:06:00.832289+00:00",
+      "log": "artifacts/remediation-2026-10-03/follow-up/report-fixes/final-build.log",
+      "sha256": "60c863594fbe75b85c818d330a56a19340cc47fa4bea707af9a250c16b3034d5"
+    },
+    {
+      "name": "final-lint",
+      "command": [
+        "npm",
+        "run",
+        "lint"
+      ],
+      "exit_status": 0,
+      "started_at": "2026-10-03T13:05:11.849198+00:00",
+      "finished_at": "2026-10-03T13:05:13.492582+00:00",
+      "log": "artifacts/remediation-2026-10-03/follow-up/report-fixes/final-lint.log",
+      "sha256": "92bb6b395d809b041c21c1277507d16f872f9b30c687d530b05dc4bc1f415dc0"
+    },
+    {
+      "name": "final-architecture",
+      "command": [
+        "npm",
+        "run",
+        "verify:architecture"
+      ],
+      "exit_status": 0,
+      "started_at": "2026-10-03T13:05:13.492706+00:00",
+      "finished_at": "2026-10-03T13:05:14.389837+00:00",
+      "log": "artifacts/remediation-2026-10-03/follow-up/report-fixes/final-architecture.log",
+      "sha256": "fb1b1996bc31cfb350a1d4d982956ea8ef984b22ba3f4a0fe045023fd2efc7e2"
+    },
+    {
+      "name": "final-secrets",
+      "command": [
+        "npm",
+        "run",
+        "verify:secrets"
+      ],
+      "exit_status": 0,
+      "started_at": "2026-10-03T13:05:14.389963+00:00",
+      "finished_at": "2026-10-03T13:05:56.565577+00:00",
+      "log": "artifacts/remediation-2026-10-03/follow-up/report-fixes/final-secrets.log",
+      "sha256": "759bc372f74d68043e3167aa1cb36d768a416ec20fa3bf5af1340dfde15460ce"
+    },
+    {
+      "name": "final-diff",
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exit_status": 0,
+      "started_at": "2026-10-03T13:05:56.565680+00:00",
+      "finished_at": "2026-10-03T13:05:56.610948+00:00",
+      "log": "artifacts/remediation-2026-10-03/follow-up/report-fixes/final-diff.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "source_sha256": {
+    "packages/agent-context/src/index.ts": "c26e85abaf664830666d65c3da4c99441e7a9712c1bb3828d24bac341e9e23d4",
+    "packages/embedded-agent-runtime/src/index.ts": "58ec1758a360dde6477f3e3b42bbc9fb1cae11df1a17e47ad1b9f43324ac22f4",
+    "packages/domain/src/index.ts": "9c1a135d23dbc14b277ebb3d03fe2aa318d131d21615ec79a25a2e04bc3e3107",
+    "tests/fixtures/secret-material.ts": "0913d904da7dfe2b8d83ac5744be9d23774d8c30eebce7ea42fb33f39c3ca405",
+    "tests/unit/agent-context.test.ts": "fd657de69eaba05756ebd5802b37b37439b2421942daceae2e4ec028813fc0ac",
+    "tests/unit/embedded-runtime.test.ts": "5a23ba71cb7357465408b974a3d84748b9de2e2854858d410f53e4e06a34bebb",
+    "tests/integration/ai-secret-boundary.test.ts": "fe378a9508116c2069eb0c00c289d030770a0081ba802e74aa4bfe9fbaeb726d",
+    "tests/integration/auth-challenge-race.test.ts": "3dd0f526fc0285da7ac3295e79d95265522ce13b994059cc3d0614cb7e6e545d"
+  },
+  "source_unchanged_during_checks": true
+}

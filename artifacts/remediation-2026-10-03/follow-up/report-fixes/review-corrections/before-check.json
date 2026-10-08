@@ -1,0 +1,15 @@
+{
+  "command": [
+    "node",
+    "--import",
+    "tsx",
+    "--test",
+    "--test-reporter=tap",
+    "tests/unit/secret-detector-review.test.ts"
+  ],
+  "exit_status": 1,
+  "started_at": "2026-10-04T01:47:14.577759+00:00",
+  "finished_at": "2026-10-04T01:47:20.304493+00:00",
+  "log": "artifacts/remediation-2026-10-03/follow-up/report-fixes/review-corrections/before.log",
+  "sha256": "b8ba48421d267fcbada31f79936b2fa03cf0fcd2e225bba861823c746a8023b4"
+}

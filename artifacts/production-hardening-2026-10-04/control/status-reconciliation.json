@@ -1,0 +1,10 @@
+{
+  "event": "EVT-CVG-AUD27-001-STATUS-RECONCILIATION-20261004",
+  "status_from": "IN_PROGRESS",
+  "status_to": "PARTIAL",
+  "receipt_preserved": "VER-CVG-AUD27-001-HARDENING-20261004",
+  "prior_event_prefix_sha256": "6b0b63fc9788c9fff5099175371d0bfa0225c4870fd22f0fb23bfbfe797f4cb1",
+  "prior_event_prefix_length": 919343,
+  "prior_event_prefix_preserved": true,
+  "promotion": "BLOCKED"
+}

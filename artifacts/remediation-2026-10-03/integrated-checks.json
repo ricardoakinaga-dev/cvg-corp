@@ -1,0 +1,38 @@
+[
+  {
+    "name": "lint",
+    "command": "npm run lint",
+    "exit_status": 0,
+    "started_at": "2026-10-03T11:18:23.640117+00:00",
+    "finished_at": "2026-10-03T11:18:25.065046+00:00",
+    "log": "artifacts/remediation-2026-10-03/lint.log",
+    "sha256": "92bb6b395d809b041c21c1277507d16f872f9b30c687d530b05dc4bc1f415dc0"
+  },
+  {
+    "name": "architecture",
+    "command": "npm run verify:architecture",
+    "exit_status": 0,
+    "started_at": "2026-10-03T11:18:25.065258+00:00",
+    "finished_at": "2026-10-03T11:18:25.725189+00:00",
+    "log": "artifacts/remediation-2026-10-03/architecture.log",
+    "sha256": "fb1b1996bc31cfb350a1d4d982956ea8ef984b22ba3f4a0fe045023fd2efc7e2"
+  },
+  {
+    "name": "build",
+    "command": "npm run build",
+    "exit_status": 0,
+    "started_at": "2026-10-03T11:18:23.639891+00:00",
+    "finished_at": "2026-10-03T11:18:48.308644+00:00",
+    "log": "artifacts/remediation-2026-10-03/build.log",
+    "sha256": "fbf911e959659cc985942d5d65b63ddd4dc08b895a40049529a13953e3398b45"
+  },
+  {
+    "name": "full-tests",
+    "command": "npm test",
+    "exit_status": 1,
+    "started_at": "2026-10-03T11:18:23.639691+00:00",
+    "finished_at": "2026-10-03T11:18:48.632153+00:00",
+    "log": "artifacts/remediation-2026-10-03/full-tests.log",
+    "sha256": "ff4dd684ecfdf7de96c2aaf5a787433929cb168e1a9dc49f2a1e58827816f5ab"
+  }
+]

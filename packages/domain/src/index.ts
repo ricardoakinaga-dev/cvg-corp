@@ -918,7 +918,7 @@ export class CvgStore {
     const challenge = [...this.authChallengesStore.values()].find((candidate) => candidate.type === type && candidate.tokenDigest === tokenDigest);
     if (!challenge || challenge.status !== "PENDING") return undefined;
     const user = this.usersStore.get(challenge.userId);
-    if (!user || user.status !== "ACTIVE" || user.security.credentialVersion !== challenge.credentialVersion) {
+    if (!user || user.status !== "ACTIVE" || user.security.credentialVersion !== challenge.credentialVersion || (challenge.type === "MFA" && this.isAccountLocked(user))) {
       challenge.status = "EXPIRED";
       return undefined;
     }
@@ -943,6 +943,13 @@ export class CvgStore {
   consumeAuthChallenge(challenge: AuthChallenge): void {
     const current = this.authChallengesStore.get(challenge.id);
     if (!current || current.status !== "PENDING") throw new DomainError("MFA_INVALID", "O desafio de autenticação não está disponível.", 401);
+    // Verification may have awaited a resolver; only stored records carry current authority.
+    // A login lockout invalidates MFA, while recovery must remain available to unlock the account.
+    const user = this.usersStore.get(current.userId);
+    if (!user || user.status !== "ACTIVE" || user.security.credentialVersion !== current.credentialVersion || (current.type === "MFA" && this.isAccountLocked(user)) || !(Date.parse(current.expiresAt) > Date.now())) {
+      current.status = "EXPIRED";
+      throw new DomainError("MFA_INVALID", "O desafio de autenticação não está disponível.", 401);
+    }
     current.status = "CONSUMED";
     current.consumedAt = now();
   }

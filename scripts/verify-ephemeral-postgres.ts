@@ -285,6 +285,11 @@ async function runPostgresVerifier(context: ContainerContext): Promise<void> {
   delete verifierEnvironment.CVG_RUNTIME_DB_PASSWORD;
   const result = await command("npm", ["run", "verify:postgres"], verifierEnvironment);
   if (!result.ok) throw new EphemeralPostgresFailure("POSTGRES_BEHAVIOR_FAILED", `real PostgreSQL behavior verifier failed: ${commandDetail(result)}`);
+  const rollbackProof = "POSTGRES_RLS_FIXTURE_ROLLBACK_VERIFIED tables=3 rows_remaining=0";
+  const oracleProof = "POSTGRES_RLS_ZERO_RESIDUE_ORACLE_VERIFIED present_controls_rejected=3 empty_controls_accepted=3";
+  if (!result.stdout.split(/\r?\n/).includes(oracleProof)) throw new EphemeralPostgresFailure("POSTGRES_BEHAVIOR_FAILED", "RLS residue oracle did not reject known-present fixtures under visible scopes");
+  if (!result.stdout.split(/\r?\n/).includes(rollbackProof)) throw new EphemeralPostgresFailure("POSTGRES_BEHAVIOR_FAILED", "RLS verifier did not prove rollback of its synthetic fixtures");
+  process.stdout.write(`${oracleProof}\n${rollbackProof}\n`);
 }
 
 async function runRestoreVerifier(context: ContainerContext): Promise<void> {

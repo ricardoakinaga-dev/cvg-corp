@@ -1,0 +1,30 @@
+{
+  "recorded_at": "2026-10-04T11:29:35.544627+00:00",
+  "source_fingerprint": "sha256:9970a499e6ab53738da3eab27fef1cc95d61bd94c765c86a7d256856f91c0840",
+  "worktree": "modified; local verification only; not a release freeze",
+  "builds": [
+    {
+      "kind": "api",
+      "tag": "cvg-corp-hardening-api:20261004-8f67644c-final",
+      "image_id": "sha256:fafce762e8ad0a41e3da6bd2cadf1bbacc9c26993b03f636c0bbf8ad6c3e0444",
+      "user": "65532:65532",
+      "entrypoint": [
+        "/nodejs/bin/node",
+        "/app/runtime/entrypoint.mjs"
+      ],
+      "exit_status": 0,
+      "log": "artifacts/production-hardening-2026-10-04/runtime/final-api-build.log"
+    },
+    {
+      "kind": "web",
+      "tag": "cvg-corp-hardening-web:20261004-8f67644c-final",
+      "image_id": "sha256:552202852ffe74403cd1ff3af7be521b0eaa895e2ad9616e6cec561dd4194646",
+      "user": "101",
+      "entrypoint": [
+        "/docker-entrypoint.sh"
+      ],
+      "exit_status": 0,
+      "log": "artifacts/production-hardening-2026-10-04/runtime/final-web-build.log"
+    }
+  ]
+}

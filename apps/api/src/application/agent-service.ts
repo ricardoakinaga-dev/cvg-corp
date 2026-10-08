@@ -3,6 +3,7 @@ import { digest, isInContext, makeId, type CvgStore, type IdempotencyInput } fro
 import type { AgentDraftPromotion, AgentReplayResult, AgentRuntime, AgentRuntimeHealth, AgentTurnResult } from "@cvg/agent-runtime";
 import { DomainError } from "@cvg/domain";
 import { enforceApplicationPolicy } from "@cvg/agent-policy";
+import { containsSecretMaterial } from "@cvg/agent-context";
 import { DurableIdempotencyService, type IdempotentCommandResult } from "./idempotency-service.ts";
 
 /** Application boundary for AI commands: context validation, idempotency and runtime delegation live here. */
@@ -21,6 +22,7 @@ export class AgentApplicationService {
   async executeTurn(context: CvgContext, input: AiTurnInput): Promise<IdempotentCommandResult<AgentTurnResult>> {
     this.store.validateContext(context);
     enforceApplicationPolicy(context, `ai.turn.${input.purpose}`, this.authorizedTurnResource(context, input));
+    this.validatePrompt(input.prompt);
     return this.commands.execute(this.command(context, "ai.turn", input.idempotencyKey, input.sessionId, input), async () => this.persistRuntimeResult(context, input, await this.runtime.executeTurn(context, input, input.approvalId)), { external: true });
   }
 
@@ -33,7 +35,14 @@ export class AgentApplicationService {
   async retryTurn(context: CvgContext, input: AiTurnInput, approvalId: OpaqueId): Promise<IdempotentCommandResult<AgentTurnResult>> {
     this.store.validateContext(context);
     enforceApplicationPolicy(context, "ai.approval.retry", this.authorizedTurnResource(context, input, approvalId));
+    this.validatePrompt(input.prompt);
     return this.commands.execute(this.command(context, "ai.approval.retry", input.idempotencyKey, approvalId, input), async () => this.persistRuntimeResult(context, input, await this.runtime.executeTurn(context, input, approvalId)), { external: true });
+  }
+
+  private validatePrompt(prompt: string): void {
+    // Reject before a durable idempotency claim or any runtime can retain or
+    // dispatch the input. Retrying an edited, unadmitted prompt is safe.
+    if (containsSecretMaterial(prompt)) throw new DomainError("POLICY_DENIED", "Remova senhas, tokens ou chaves do texto antes de enviá-lo à IA.", 403, { reason: "SECRET_MATERIAL" });
   }
 
   /**

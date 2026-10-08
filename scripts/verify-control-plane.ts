@@ -1,6 +1,7 @@
+import { execFileSync } from "node:child_process";
 import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
-import { buildSubjectManifest, validateSubjectManifest, evidenceRootIsExternal, type SubjectManifestResult } from "./subject-manifest.ts";
+import { buildSubjectManifest, validateSubjectManifest, evidenceRootIsExternal, subjectPathIsExcluded, type SubjectManifestResult } from "./subject-manifest.ts";
 import { validateAud27Semantics } from "./verify-aud27-semantics.ts";
 
 /**
@@ -103,6 +104,35 @@ export interface ControlPlaneInput {
   planContent?: string;
   subject?: SubjectManifestResult;
   semanticManifest?: Parameters<typeof validateAud27Semantics>[0] | undefined;
+  /** Committed history from the recorded source to HEAD, observed by the loader. */
+  sourceLineage?: SourceLineage | undefined;
+}
+
+export interface SourceLineage {
+  sourceSha: string;
+  isAncestor: boolean;
+  changedPaths: readonly string[];
+}
+
+/** Observes whether HEAD descends from sourceSha and which paths changed since. */
+export function observeSourceLineage(root: string, sourceSha: string | undefined): SourceLineage | undefined {
+  if (!sourceSha || !/^[0-9a-f]{40}$/.test(sourceSha)) return undefined;
+  const git = (args: string[]) => execFileSync("git", args, { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
+  try {
+    git(["merge-base", "--is-ancestor", sourceSha, "HEAD"]);
+  } catch {
+    return { sourceSha, isAncestor: false, changedPaths: [] };
+  }
+  return { sourceSha, isAncestor: true, changedPaths: git(["diff", "--name-only", "-z", sourceSha, "HEAD"]).split("\0").filter(Boolean) };
+}
+
+/**
+ * Recording the qualified source in a control commit necessarily moves HEAD.
+ * The record stays current only when HEAD descends from that source and every
+ * path changed since then is outside the code subject (control and evidence).
+ */
+function sourceAdvancedOnlyThroughControl(sourceSha: string, lineage: SourceLineage | undefined): boolean {
+  return Boolean(lineage && lineage.sourceSha === sourceSha && lineage.isAncestor && lineage.changedPaths.length > 0 && lineage.changedPaths.every((path) => subjectPathIsExcluded(path)));
 }
 
 export interface ControlPlaneFinding {
@@ -422,7 +452,7 @@ export function validateControlPlane(input: ControlPlaneInput): ControlPlaneFind
   const currentAddendum = input.state.current_audit_addendum;
   if (currentAddendum) {
     if (!currentAddendum.record || currentAddendum.record !== recordId(lastGate)) findings.push({ code: "CURRENT_AUDIT_ADDENDUM_STALE", detail: `current_audit_addendum ${currentAddendum.record ?? "(missing)"} does not identify the current gate ${recordId(lastGate) ?? "(missing)"}` });
-    if (input.subject && currentAddendum.sourceSha && currentAddendum.sourceSha !== input.subject.manifest.sourceSha) findings.push({ code: "CURRENT_AUDIT_ADDENDUM_SOURCE_DIVERGENT", detail: `current_audit_addendum source ${currentAddendum.sourceSha} does not match ${input.subject.manifest.sourceSha}` });
+    if (input.subject && currentAddendum.sourceSha && currentAddendum.sourceSha !== input.subject.manifest.sourceSha && !sourceAdvancedOnlyThroughControl(currentAddendum.sourceSha, input.sourceLineage)) findings.push({ code: "CURRENT_AUDIT_ADDENDUM_SOURCE_DIVERGENT", detail: `current_audit_addendum source ${currentAddendum.sourceSha} does not match ${input.subject.manifest.sourceSha}` });
   }
 
   const fingerprintSources: Array<[string, string | null | undefined]> = [
@@ -575,7 +605,7 @@ function main(): void {
   const semanticManifest = state.active_action_id?.startsWith("AUD27-") && existsSync(semanticPath)
     ? JSON.parse(readFileSync(semanticPath, "utf8")) as Parameters<typeof validateAud27Semantics>[0]
     : undefined;
-  const findings = validateControlPlane({ backlog, state, verificationRecords, executionEvents, now: new Date().toISOString(), planExists, planContent, subject: buildSubjectManifest(root), semanticManifest });
+  const findings = validateControlPlane({ backlog, state, verificationRecords, executionEvents, now: new Date().toISOString(), planExists, planContent, subject: buildSubjectManifest(root), semanticManifest, sourceLineage: observeSourceLineage(root, state.current_audit_addendum?.sourceSha) });
   if (findings.length > 0) {
     process.stderr.write(`CONTROL_PLANE_INVALID ${JSON.stringify(findings)}\n`);
     process.exitCode = 1;

@@ -1,8 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { validateControlPlane, type ControlPlaneInput } from "../../scripts/verify-control-plane.ts";
+import { observeSourceLineage, validateControlPlane, type ControlPlaneInput } from "../../scripts/verify-control-plane.ts";
 import { buildSubjectManifest } from "../../scripts/subject-manifest.ts";
 
 const root = resolve(".");
@@ -21,7 +22,8 @@ function loadLiveInput(): ControlPlaneInput {
     now: new Date().toISOString(),
     planExists,
     planContent: planExists ? readFileSync(resolve(root, state.active_execplan!), "utf8") : "",
-    subject: buildSubjectManifest(root)
+    subject: buildSubjectManifest(root),
+    sourceLineage: observeSourceLineage(root, state.current_audit_addendum?.sourceSha)
   };
 }
 
@@ -180,4 +182,28 @@ test("CVG-AUD24 rejects an opaque subject fingerprint", () => {
   const input = loadLiveInput();
   input.subject!.fingerprint = `sha256:${"0".repeat(64)}`;
   assert.ok(validateControlPlane(input).some(({ code }) => code === "SUBJECT_MANIFEST_INVALID" || code === "FINGERPRINT_DIVERGENT"));
+});
+
+test("the audit addendum source may trail HEAD only through control and evidence commits", () => {
+  const input = loadLiveInput();
+  const qualified = "a".repeat(40);
+  input.state.current_audit_addendum = { ...input.state.current_audit_addendum, sourceSha: qualified };
+  const divergent = (lineage: ControlPlaneInput["sourceLineage"]) => validateControlPlane({ ...copy(input), sourceLineage: lineage })
+    .some(({ code }) => code === "CURRENT_AUDIT_ADDENDUM_SOURCE_DIVERGENT");
+  assert.equal(divergent({ sourceSha: qualified, isAncestor: true, changedPaths: [".agent/state.json", "artifacts/run/receipt.json"] }), false);
+  assert.equal(divergent({ sourceSha: qualified, isAncestor: true, changedPaths: [".agent/state.json", "apps/api/src/app.ts"] }), true);
+  assert.equal(divergent({ sourceSha: qualified, isAncestor: true, changedPaths: [] }), true);
+  assert.equal(divergent({ sourceSha: qualified, isAncestor: false, changedPaths: [".agent/state.json"] }), true);
+  assert.equal(divergent({ sourceSha: "b".repeat(40), isAncestor: true, changedPaths: [".agent/state.json"] }), true);
+  assert.equal(divergent(undefined), true);
+});
+
+test("source lineage is observed from the real Git history", () => {
+  const head = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
+  const parent = execFileSync("git", ["rev-parse", "HEAD~1"], { cwd: root, encoding: "utf8" }).trim();
+  const changed = execFileSync("git", ["diff", "--name-only", parent, "HEAD"], { cwd: root, encoding: "utf8" }).split("\n").filter(Boolean);
+  assert.deepEqual(observeSourceLineage(root, parent), { sourceSha: parent, isAncestor: true, changedPaths: changed });
+  assert.deepEqual(observeSourceLineage(root, head), { sourceSha: head, isAncestor: true, changedPaths: [] });
+  assert.equal(observeSourceLineage(root, "f".repeat(40))?.isAncestor, false);
+  assert.equal(observeSourceLineage(root, "not-a-sha"), undefined);
 });

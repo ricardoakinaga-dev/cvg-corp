@@ -85,9 +85,6 @@ jobs:
       - name: Coverage thresholds
         run: npm run verify:coverage
 
-      - name: Capture AUD26 current evidence envelope
-        run: npm run verify:aud26-evidence -- --capture
-
       - name: Provider contract loopback boundary
         run: npm run verify:provider-sandbox
 
@@ -102,9 +99,6 @@ jobs:
 
       - name: Build compiled server runtime
         run: npm run build:runtime
-
-      - name: Capture evidence snapshot
-        run: npm run verify:evidence-snapshot
 
       - name: Static verification
         run: |
@@ -237,6 +231,15 @@ jobs:
 
       - name: Generate dependency SBOM
         run: npm sbom --sbom-format cyclonedx > artifacts/sbom.cdx.json
+
+      # Same-SHA evidence envelopes run after every behavioral gate so a stale or
+      # unbound evidence package fails the job without hiding build, PDP, E2E
+      # and PostgreSQL results behind skipped steps.
+      - name: Capture AUD26 current evidence envelope
+        run: npm run verify:aud26-evidence -- --capture
+
+      - name: Capture evidence snapshot
+        run: npm run verify:evidence-snapshot
 
       - name: Upload verification artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2

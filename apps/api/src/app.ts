@@ -85,6 +85,7 @@ import { AgentRuntimeUnavailableError } from "@cvg/agent-runtime";
 import { EmbeddedAgentRuntime } from "@cvg/embedded-agent-runtime";
 import { createAgentToolExecutor } from "./agent-tool-executor.ts";
 import { createInboxSignatureVerifier } from "./integration-callback.ts";
+import { aiTurnAudit } from "./ai-turn-audit.ts";
 import { PostgresAgentSessionStore, createScopedSqlExecutor } from "@cvg/agent-session";
 import { createDeepSeekModelProvider, createLocalModelProvider, MockModelProvider } from "@cvg/model-adapters";
 import { configuredSecretProvider, IntegrationGateway, inboxEventToOutbox, integrationContracts, isSecretReferenceUsable, OutboxWorker, reconcileUnknownExternalEffect, type ExternalEffectQueryAdapter, type OutboxSink, type OutboxWorkerResult, type SecretProvider, type SecretProviderStatus } from "@cvg/integrations";
@@ -990,7 +991,9 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     // A receipt is linked only by the exact receipt returned by the command
     // boundary. Reverse-searching by actor/operation is ambiguous under
     // concurrent requests and can attach an audit event to the wrong effect.
-    if (!linkCommandReceipt || result !== "ALLOWED" || !commandReceiptId) return record;
+    // An UNKNOWN record is still the audit of that receipt: leaving it unlinked
+    // would report a missing audit instead of an effect awaiting reconciliation.
+    if (!linkCommandReceipt || (result !== "ALLOWED" && result !== "UNKNOWN") || !commandReceiptId) return record;
     const receipt = [...store.commandReceipts.values()].find((candidate) => candidate.id === commandReceiptId
       && candidate.organizationId === context.organizationId
       && candidate.actorId === context.actorId
@@ -2021,7 +2024,8 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const { context } = requestContext(request, `ai.turn.${input.purpose}`, resource?.patientId ?? input.patientId, resource?.encounterId ?? input.encounterId, false, true, resource?.resourceId ?? input.resourceId ?? null, resource ? { unitId: resource.unitId, workspaceId: resource.workspaceId } : null);
     const result = await agentApplication.executeTurn(context, input);
     const turnResult = result.value;
-    audit(context, "ai.turn", "AiTurn", turnResult.turn.id, turnResult.turn.status === "DENIED" ? "DENIED" : "ALLOWED", turnResult.turn.status === "QUARANTINED" ? "untrusted content quarantined" : null, { inputTokens: turnResult.turn.inputTokens, outputTokens: turnResult.turn.outputTokens, provider: turnResult.provenance.provider, replay: result.replayed }, true, result.receipt.id);
+    const turnAudit = aiTurnAudit(turnResult.turn.status);
+    audit(context, "ai.turn", "AiTurn", turnResult.turn.id, turnAudit.result, turnAudit.reason, { turnStatus: turnResult.turn.status, inputTokens: turnResult.turn.inputTokens, outputTokens: turnResult.turn.outputTokens, provider: turnResult.provenance.provider, replay: result.replayed }, true, result.receipt.id);
     return response(reply, success({ ...turnResult, receiptId: result.receipt.id }, context.correlationId), turnResult.approval ? 202 : 201);
   }));
 

@@ -102,7 +102,8 @@ export function verifyAud26Evidence(snapshot: Aud26EvidenceSnapshot, now = Date.
       const metadata = artifactStatus(value, entry.path);
       if (AUD26_REQUIRED_EXECUTION_ARTIFACTS.has(entry.path) && metadata.status === "NOT_RUN") errors.push(`${entry.path} is NOT_RUN; current execution evidence is required`);
       if (sha256(bytes) !== entry.digest) errors.push(`${entry.path} digest differs from the snapshot`);
-      if (entry.modifiedAt !== statSync(absolute).mtime.toISOString()) errors.push(`${entry.path} modifiedAt differs from the snapshot`);
+      // Git does not preserve modification times, so a fresh checkout cannot
+      // reproduce modifiedAt; the digest above is what binds the bytes.
       if (metadata.observedAt !== entry.observedAt || metadata.status !== entry.status) errors.push(`${entry.path} status metadata differs from the snapshot`);
       if (value.sourceSha !== snapshot.sourceSha || value.candidateFingerprint !== snapshot.candidateFingerprint) errors.push(`${entry.path} is not bound to the historical snapshot subject`);
     } catch (error) {

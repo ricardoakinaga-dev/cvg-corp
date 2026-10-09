@@ -3,7 +3,7 @@
   "manifest_id": "CVG-AUD27-SEMANTICS-V1",
   "round": "CVG-AUD27",
   "status": "CURRENT_RECONCILED",
-  "canonical_digest": "c0502338a37289520b680a56a0c47da16a0a8bdfc244eb51a7a775832d8b3a93",
+  "canonical_digest": "b77b00f2b3daf09993a7f1b885cf07d5eb0036f75320412dcbdea530fa4ed05d",
   "authority_order": [
     "docs/auditoria-resultado-cvg-aud27-2026-09-21.md",
     "docs/roadmap-melhorias-cvg-aud27-2026-09-21.md",
@@ -15,7 +15,7 @@
   ],
   "source_documents": {
     "prompt_attachment": {
-      "path": "/home/ricardo/.codex/attachments/4d3aad92-89b7-4851-b54f-4fc80cb7861e/pasted-text-1.txt",
+      "path": "docs/prompt-codex-aud27-attachment-2026-09-21.txt",
       "sha256": "4907917624c0191c5b4db64644735b5d2d0c6caf78adb881864ca05a01167ae1"
     },
     "audit": {

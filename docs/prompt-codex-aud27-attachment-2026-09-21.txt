@@ -1,0 +1,370 @@
+Você está na raiz do repositório CVG-Corp. Sua missão é implementar integralmente a rodada CVG-AUD27,
+  seguindo estes documentos em ordem de autoridade:
+
+  1. docs/auditoria-resultado-cvg-aud27-2026-09-21.md
+  2. docs/roadmap-melhorias-cvg-aud27-2026-09-21.md
+  3. docs/backlog-melhorias-cvg-aud27-2026-09-21.md
+  4. docs/auditoria-resultado-cvg-aud26-2026-09-21.md, apenas como histórico
+  5. .agent/state.json, .agent/backlog.json, o ExecPlan ativo e a quality bar existente, preservando seu
+  histórico append-only
+
+  OBJETIVO
+
+  Implemente todas as 27 tarefas AUD27, respeitando dependências, critérios de aceite e evidências exigidas.
+
+  O estado inicial é:
+
+  PROMOTION_BLOCKED — AAA_NOT_PROVEN
+
+  Esse veredito somente pode mudar quando:
+
+  - todos os gates obrigatórios tiverem evidência real;
+  - todos os P0 estiverem concluídos;
+  - duas qualificações independentes concordarem no mesmo commit e fingerprint;
+  - todos os gates externos obrigatórios estiverem comprovados;
+  - houver aprovação humana explícita do owner.
+
+  AUTORIZAÇÃO
+
+  Você está autorizado a:
+
+  - inspecionar todo o repositório;
+  - alterar localmente código, testes, scripts, configurações e documentação;
+  - criar migrations forward-only;
+  - executar testes, builds, containers e bancos descartáveis;
+  - corrigir o control plane e importar o backlog AUD27 de forma append-only;
+  - criar e atualizar evidências locais e externas previstas no planejamento.
+
+  Você não está autorizado a:
+
+  - apagar ou sobrescrever alterações preexistentes;
+  - usar git reset --hard, git checkout --, git clean destrutivo ou equivalentes;
+  - alterar migrations que já foram aplicadas;
+  - remover bancos, containers ou recursos que não tenham sido criados por esta execução;
+  - usar dados, credenciais, provedores ou ambientes reais sem autorização;
+  - realizar commit, push, merge, tag, release ou deploy sem autorização explícita;
+  - inferir aprovação de gates externos ou humanos.
+
+  Se AUD27-004 exigir um commit para comprovar candidato limpo e reproduzível, prepare a árvore e solicite
+  autorização antes de executar o commit.
+
+  MÉTODO OBRIGATÓRIO
+
+  1. Leia integralmente os três documentos AUD27 antes de editar qualquer arquivo.
+
+  2. Leia AGENTS.md e todas as instruções locais aplicáveis.
+
+  3. Use o engineering framework para descoberta, especificação, implementação e verificação. Use o Gauntlet
+  apenas com quality bar congelada, candidato real e crítico review-only.
+
+  4. Fotografe o estado inicial:
+
+     - HEAD;
+     - git status;
+     - arquivos tracked e untracked;
+     - estado de .agent;
+     - plano ativo;
+     - quality bar;
+     - testes e gates disponíveis;
+     - bancos, containers e recursos externos existentes.
+
+  5. Comece obrigatoriamente por AUD27-001.
+
+  6. Reconcilie os achados F01–F39, tarefas AUD26, títulos, critérios e evidências. Preserve o histórico e
+  faça as correções por eventos append-only.
+
+  7. Implemente AUD27-002 e AUD27-003 antes de registrar qualquer novo DONE.
+
+  8. O control plane precisa distinguir claramente:
+
+     - trabalho observado;
+     - trabalho apenas planejado;
+     - trabalho parcial;
+     - bloqueio local;
+     - bloqueio externo;
+     - bloqueio humano;
+     - trabalho concluído.
+
+  9. O verificador semântico deve rejeitar os deslocamentos encontrados na auditoria AUD27.
+
+  10. Execute o backlog conforme suas dependências:
+
+     - M0 / AUD27-001–003: verdade do control plane;
+     - M1 / AUD27-004–006: candidato e evidências reproduzíveis;
+     - M2 / AUD27-007–014: contratos HTTP e migração dos snapshots;
+     - M3 / AUD27-015–017: container, licenças e supply chain;
+     - M4 / AUD27-018–020: coverage, mutation, browsers, acessibilidade e modularização;
+     - M5 / AUD27-021–022: observabilidade, staging, carga, caos e DR;
+     - M6 / AUD27-023–025: documentação e dupla qualificação;
+     - M7 / AUD27-026–027: gates externos e decisão humana.
+
+  11. Quebre tarefas XL em slices pequenos, reversíveis e verificáveis, sem enfraquecer o critério final.
+
+  12. Antes de alterar cada área:
+
+     - localize testes existentes;
+     - identifique consumidores e contratos;
+     - avalie riscos de compatibilidade;
+     - identifique arquivos compartilhados;
+     - evite alterações concorrentes ou sobrepostas.
+
+  13. Depois de cada slice, execute testes focados.
+
+  14. Ao final de cada marco, execute a regressão proporcional completa.
+
+  15. Toda evidência deve registrar:
+
+     - tarefa;
+     - critério;
+     - comando;
+     - exit code;
+     - resultado;
+     - timestamp;
+     - ambiente;
+     - commit e fingerprint aplicáveis;
+     - artefato produzido;
+     - limitações restantes.
+
+  16. SUBJECT_REBIND é apenas metadado de identidade. Nunca o use como substituto da execução comportamental
+  focal.
+
+  17. Crie uma evidence root externa real para AUD27.
+
+  18. O gate deve falhar quando a evidence root:
+
+     - não existir;
+     - estiver dentro do repositório;
+     - não for gravável;
+     - não possuir o pacote esperado;
+     - tiver sido adulterada;
+     - não estiver vinculada ao candidato correto.
+
+  19. Não grave segredos nas evidências.
+
+  REQUISITOS TÉCNICOS OBRIGATÓRIOS
+
+  Contratos HTTP:
+
+  - inventariar as 105 rotas e os 80 schemas;
+  - implementar validação específica para 80/80 schemas;
+  - remover o fallback genérico por omissão;
+  - validar respostas em runtime;
+  - testar payloads válidos, inválidos, extras e acima dos limites;
+  - preservar compatibilidade explicitamente aprovada;
+  - validar redaction e dados sensíveis.
+
+  Persistência:
+
+  - transformar o plano de migração em executor real;
+  - migrar todos os 24 slices snapshot-primary;
+  - utilizar backfill idempotente;
+  - implementar paridade e reconciliação;
+  - exercitar rollback por slice;
+  - remover fallback depois do cutover;
+  - chegar a 0/32 slices snapshot-primary;
+  - reexecutar restore e replay sobre o modelo final.
+
+  Container:
+
+  - construir a imagem real;
+  - executar smoke pelo digest;
+  - validar non-root;
+  - validar health e readiness;
+  - validar filesystem e persistência;
+  - validar SIGTERM e shutdown;
+  - garantir ausência da toolchain de desenvolvimento no runtime;
+  - produzir SBOM e scan.
+
+  Licenças:
+
+  - resolver as 10 ocorrências fora da allowlist;
+  - substituir dependências ou documentar exceções aprovadas;
+  - adicionar LICENSE ou COPYING na raiz;
+  - produzir notices;
+  - manter exceções com owner, justificativa e expiração;
+  - deixar npm run audit:licenses verde.
+
+  Supply chain:
+
+  - substituir tags mutáveis por digests;
+  - vincular smoke, SBOM, scan e imagem ao mesmo digest;
+  - gerar proveniência;
+  - assinar e verificar a imagem quando houver registry autorizado;
+  - não converter ausência de registry em PASS.
+
+  Qualidade:
+
+  - endurecer thresholds de coverage;
+  - medir statements ou registrar justificativa técnica equivalente;
+  - aplicar ratchet sem regressão;
+  - definir metas maiores para áreas críticas;
+  - executar mutation testing seletivo;
+  - impedir redução silenciosa dos thresholds.
+
+  Frontend e acessibilidade:
+
+  - executar Chromium, Firefox e WebKit;
+  - eliminar skips indevidos;
+  - validar contraste renderizado;
+  - validar estados interativos;
+  - validar teclado e foco;
+  - validar zoom e reflow;
+  - executar avaliação com tecnologia assistiva;
+  - não converter ausência de avaliação humana em aprovação.
+
+  Arquitetura:
+
+  - decompor incrementalmente os monólitos de persistence, API, domain e contracts;
+  - preservar APIs e comportamento;
+  - usar characterization tests;
+  - impedir dependências circulares;
+  - criar limites automatizados de tamanho e complexidade.
+
+  Operação:
+
+  - enviar logs, métricas e traces para coletor durável;
+  - definir retenção;
+  - criar SLOs;
+  - criar dashboards e alertas;
+  - exercitar runbooks;
+  - executar staging autorizado;
+  - executar carga e soak;
+  - executar cenários de caos;
+  - exercitar restore e DR;
+  - medir RTO e RPO;
+  - validar providers, retries, timeouts e circuit breakers;
+  - garantir que segredos não apareçam em logs ou artefatos.
+
+  GATES FINAIS
+
+  No candidato congelado, execute e registre, no mínimo:
+
+  - testes focados;
+  - npm test;
+  - typecheck;
+  - lint sem warnings;
+  - build;
+  - verificações estáticas;
+  - testes de contratos;
+  - coverage;
+  - mutation testing;
+  - auditoria de licenças;
+  - PostgreSQL e migrations;
+  - concorrência;
+  - least privilege;
+  - restore e replay;
+  - verificação dos 32 slices;
+  - build e smoke do container;
+  - SBOM e scan;
+  - Chromium, Firefox e WebKit;
+  - contraste renderizado;
+  - teclado, zoom, reflow e AT;
+  - observabilidade;
+  - carga, soak e caos;
+  - RTO/RPO;
+  - control plane;
+  - evidence root externa;
+  - validação de links e documentação;
+  - diff check;
+  - busca por segredos.
+
+  FREEZE E QUALIFICAÇÃO
+
+  Antes do freeze:
+
+  - remova somente artefatos efêmeros criados por você;
+  - revise o diff;
+  - verifique segredos;
+  - valide dependências;
+  - prepare uma árvore versionável;
+  - não declare worktree limpo enquanto houver mudanças pendentes.
+
+  Depois do freeze:
+
+  - qualquer mudança no subject manifest invalida a qualificação;
+  - gere um novo fingerprint;
+  - sele o pacote de evidências;
+  - execute AUD27-025 com dois revisores fresh-context;
+  - registre identidade e proveniência dos revisores;
+  - registre hashes antes e depois da revisão;
+  - garanta que o crítico não altere o candidato;
+  - preserve os pareceres brutos.
+
+  Se qualquer crítico encontrar falha material:
+
+  - reabra a tarefa relacionada;
+  - corrija o problema;
+  - gere novo fingerprint;
+  - repita os gates afetados;
+  - repita as duas qualificações.
+
+  Não escolha arbitrariamente o parecer mais favorável.
+
+  BLOQUEIOS
+
+  Se encontrar bloqueio:
+
+  - registre exatamente o que falta;
+  - classifique como local, externo ou humano;
+  - identifique quem pode resolver;
+  - registre a evidência da tentativa;
+  - continue executando qualquer trabalho local independente;
+  - não pare enquanto houver tarefas seguras e desbloqueadas.
+
+  Solicite intervenção do usuário somente quando for indispensável para:
+
+  - commit, push, deploy ou release;
+  - uso de credenciais;
+  - acesso a staging, provider, registry ou infraestrutura;
+  - execução humana de acessibilidade;
+  - decisão jurídica de licença;
+  - aceitação de risco;
+  - aprovação final de promoção.
+
+  COMUNICAÇÃO
+
+  Durante a execução, informe periodicamente:
+
+  - tarefa ativa;
+  - arquivos alterados;
+  - decisões tomadas;
+  - testes executados;
+  - resultados;
+  - evidências produzidas;
+  - bloqueios;
+  - próxima ação.
+
+  FORMATO DA ENTREGA FINAL
+
+  Entregue:
+
+  1. veredito PROMOTION_ELIGIBLE ou PROMOTION_BLOCKED;
+  2. contagem AUD27 por status;
+  3. lista de itens não concluídos;
+  4. commit e fingerprint exatos, ou declaração de que o candidato não pôde ser congelado;
+  5. tabela de gates com comando, resultado, ambiente e evidência;
+  6. métricas finais de testes, coverage e mutation score;
+  7. total de schemas específicos;
+  8. total de slices migrados;
+  9. browsers e acessibilidade qualificados;
+  10. resultado de licenças, container e supply chain;
+  11. RTO/RPO medidos;
+  12. riscos residuais;
+  13. plano de rollback;
+  14. parecer dos dois críticos;
+  15. decisão humana, quando fornecida;
+  16. lista dos arquivos alterados;
+  17. comandos para reprodução.
+
+  Comece agora pela inspeção read-only e pela AUD27-001.
+
+  Preserve todas as alterações preexistentes e mantenha PROMOTION_BLOCKED até que a barra completa seja
+  objetivamente satisfeita.
+
+  Worked for 1m 54s · done 8:04 PM
+
+─ Conversation recap ────────────────────────────────────────────────────────────────────────────────────────
+
+  O objetivo era criar um prompt pronto para o Codex executar todo o planejamento. Ele foi entregue e salvo
+  em docs/prompt-codex-execucao-cvg-aud27-2026-09-21.md; basta copiá-lo para o agente, e esta tarefa está
+  concluída.

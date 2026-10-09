@@ -35,7 +35,7 @@ const MANIFEST_PATH = resolve(ROOT, "docs/aud27-semantic-manifest.json");
 const BACKLOG_PATH = resolve(ROOT, ".agent/backlog.json");
 const EXPECTED_FINDINGS = Array.from({ length: 39 }, (_, index) => `F${String(index + 1).padStart(2, "0")}`);
 const EXPECTED_TASKS = Array.from({ length: 36 }, (_, index) => `CVG-AUD26-${String(index + 1).padStart(3, "0")}`);
-const CANONICAL_MANIFEST_DIGEST = "c0502338a37289520b680a56a0c47da16a0a8bdfc244eb51a7a775832d8b3a93";
+const CANONICAL_MANIFEST_DIGEST = "b77b00f2b3daf09993a7f1b885cf07d5eb0036f75320412dcbdea530fa4ed05d";
 
 function sha256(bytes: Buffer): string {
   return createHash("sha256").update(bytes).digest("hex");

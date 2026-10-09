@@ -10841,7 +10841,7 @@
         "docs/aud27-semantic-manifest.json"
       ],
       "candidate_fingerprint": null,
-      "observed": "35 local checks PASS on sha256:40bf979cbf90f948a0e2892255c3acdc6ad662e645695f17b1969193a37418a9; Alertmanager sink BLOCKED_EXTERNAL; code unfrozen and production release unqualified.",
+      "observed": "46 local checks PASS on 3f5a736 (sha256:184e1f7dbb767479f74fa0ed37a139d14b0692d42e960ced8ab0fde4dd3611aa); firefox-stress BLOCKED_HOST locally (CI 37876416723 passed it); Alertmanager and same-SHA evidence envelopes BLOCKED; code unfrozen and production release unqualified.",
       "remaining": "Current local qualification recorded; target staging, immutable candidate, external provider/operations evidence and release acceptance remain separate.",
       "evidence_state": "LOCAL_CURRENT_VERIFIED_PROMOTION_BLOCKED",
       "blocker_type": "NONE",
@@ -10853,7 +10853,8 @@
         "VER-CVG-AUD27-001-CLOSURE-RECOVERY-20261004",
         "VER-CVG-AUD27-001-CLOSURE-VERIFIED-20261004",
         "VER-CVG-AUD27-001-READINESS-20261008",
-        "VER-CVG-AUD27-001-COMMITTED-SOURCE-20261008"
+        "VER-CVG-AUD27-001-COMMITTED-SOURCE-20261008",
+        "VER-CVG-AUD27-001-REQUALIFIED-20261008"
       ],
       "current_reconciliation": {
         "observed_subject_fingerprint": "sha256:492181ca3eb8452c80f55b4c35de91ddf3f01d5cb17e8b0d22bb552cc9ab8501",
@@ -10939,19 +10940,14 @@
         "independent_review": "UNAVAILABLE",
         "promotion": "BLOCKED"
       },
-      "latest_control_receipt": "VER-CVG-AUD27-001-COMMITTED-SOURCE-20261008",
+      "latest_control_receipt": "VER-CVG-AUD27-001-REQUALIFIED-20261008",
       "local_production_readiness": {
-        "receipt": "VER-CVG-AUD27-001-READINESS-20261008",
-        "observed_subject_fingerprint": "sha256:40bf979cbf90f948a0e2892255c3acdc6ad662e645695f17b1969193a37418a9",
+        "receipt": "VER-CVG-AUD27-001-REQUALIFIED-20261008",
+        "source_sha": "3f5a736d4c7bd27be76554bb91e1e0048b3656da",
+        "observed_subject_fingerprint": "sha256:184e1f7dbb767479f74fa0ed37a139d14b0692d42e960ced8ab0fde4dd3611aa",
         "result": "PARTIAL",
         "report": "artifacts/production-readiness-2026-10-08/resultado.md",
-        "promotion": "BLOCKED",
-        "committed_source": {
-          "receipt": "VER-CVG-AUD27-001-COMMITTED-SOURCE-20261008",
-          "sourceSha": "cc02bd689d243f89f5982677aea2976db624633e",
-          "branch": "production-readiness-2026-10-08",
-          "observed_subject_fingerprint": "sha256:af85038c2806f1979a526f3171d9905da1aba458b2fa98d9c64f996f5017ec66"
-        }
+        "promotion": "BLOCKED"
       }
     },
     {
@@ -13167,7 +13163,7 @@
     "owner_next_action_policy": "Owner and singular next_action remain on each canonical backlog item; AAA2 source roles/actions are planning input until mapped.",
     "reconciled_at": "2026-09-13T20:38:00-03:00"
   },
-  "updated_at": "2026-10-08T10:45:48.691549+00:00",
+  "updated_at": "2026-10-09T10:55:13.774160+00:00",
   "catalog_contract_digest": "1b6fc4e05b9a9f2c612021f2f6376da17372931d8a78df94e85f6aded67fa0ba",
   "reconciled_at": "2026-09-24T12:46:44.053Z",
   "aud19_remediation_reconciliation": {

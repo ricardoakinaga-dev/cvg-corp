@@ -1,0 +1,122 @@
+captured_at_utc: 2026-10-09T10:17:16Z
+== process table (requalification tree)
+    PID    PPID    PGID     SID ELAPSED     TIME %CPU   RSS STAT WCHAN                COMMAND
+2040040  110435 2040040 2040040   26829 00:00:00  0.0  4020 Ss   do_wait              /bin/bash -c source /home/ricardo/.claude/shell-snapshots/snapshot-bash-1791437115199-6f9bi2.sh 2>/dev/null || true && shopt -u extglob 2>/dev/null || true && { \builtin unal
+2040041 2040040 2040041 2040040   26829 00:00:00  0.0 17428 S    do_wait              python3 /tmp/claude-1000/-home-ricardo--rea-de-trabalho-cvg-corp/7bb373b5-a17c-4b1f-898f-5e365e4ddc59/scratchpad/requalify.py
+2111705 2040041 2040041 2040040   26366 00:00:00  0.0 82372 Sl   ep_poll              npm exec playwright test --reporter=list,json
+2111754 2111705 2040041 2040040   26366 00:00:00  0.0  1920 S    do_wait              sh -c 'playwright' test --reporter=list,json
+2111755 2111754 2040041 2040040   26366 00:00:08  0.0 180752 Sl  ep_poll              node /home/ricardo/Área de trabalho/cvg-corp/node_modules/.bin/playwright test --reporter=list,json
+2111791 2111755 2111791 2111791   26366 00:00:00  0.0  1924 Ss   do_wait              /bin/sh -c CVG_HOST=127.0.0.1 CVG_API_PORT=37329 CVG_WEB_ORIGIN=http://127.0.0.1:33971 CVG_STORAGE=memory CVG_DEMO_MODE=true CVG_RATE_LIMIT_REQUESTS_PER_WINDOW=10000 npm run
+2111792 2111791 2111791 2111791   26366 00:00:00  0.0 69956 Sl   ep_poll              npm run dev:api
+2112092 2111755 2112092 2112092   26364 00:00:00  0.0  1924 Ss   do_wait              /bin/sh -c npm run dev:web -- --port 33971
+2112093 2112092 2112092 2112092   26364 00:00:00  0.0 69332 Sl   ep_poll              npm run dev:web --port 33971
+2303228 2111755 2040041 2040040   24877 00:00:01  0.0 152104 Sl  ep_poll              /home/ricardo/.nvm/versions/node/v24.20.0/bin/node /home/ricardo/Área de trabalho/cvg-corp/node_modules/playwright/lib/worker/workerProcessEntry.js
+2303486       1 2303244 2303244   24875 06:54:26 99.9 143960 R   -                    /home/ricardo/.cache/ms-playwright/firefox-1543/firefox/firefox -contentproc -isForBrowser -prefsHandle 0:27142 -prefMapHandle 1:291963 -jsInitHandle 2:160936 -parentBuildID
+== firefox content threads (top CPU)
+2303486 99.9 06:54:26 R    Web Content
+    TID %CPU     TIME STAT COMMAND
+== firefox content /proc status
+Name:	Web Content
+State:	R (running)
+PPid:	1
+VmRSS:	  143960 kB
+Threads:	1
+voluntary_ctxt_switches:	368
+nonvoluntary_ctxt_switches:	590411
+== worker threads
+    TID %CPU     TIME STAT WCHAN                COMMAND
+2303228  0.0 00:00:00 Sl   ep_poll              MainThread
+2303229  0.0 00:00:00 Sl   ep_poll              DelayedTaskSche
+2303230  0.0 00:00:00 Sl   futex_do_wait        V8Worker
+2303231  0.0 00:00:00 Sl   futex_do_wait        V8Worker
+2303232  0.0 00:00:00 Sl   futex_do_wait        V8Worker
+2303233  0.0 00:00:00 Sl   futex_do_wait        V8Worker
+2303234  0.0 00:00:00 Sl   futex_do_wait        SignalInspector
+2303239  0.0 00:00:00 Sl   futex_do_wait        libuv-worker
+2303240  0.0 00:00:00 Sl   futex_do_wait        libuv-worker
+2303241  0.0 00:00:00 Sl   futex_do_wait        libuv-worker
+2303242  0.0 00:00:00 Sl   futex_do_wait        libuv-worker
+== worker fds (sockets/pipes)
+      3 anon_inode:[io_uring]
+      3 anon_inode:[eventpoll]
+      3 anon_inode:[eventfd]
+      2 pipe:[102680810]
+      2 pipe:[102680808]
+      2 pipe:[102680807]
+      2 pipe:[102669291]
+      2 /dev/null
+      1 socket:[102680803]
+      1 socket:[102680801]
+== firefox content fds
+     19 (deleted)
+     10 pipe:[]
+      6 socket:[]
+      4 /dev/null
+      1 /home/ricardo/.cache/ms-playwright/firefox-/firefox/omni.ja
+      1 /home/ricardo/.cache/ms-playwright/firefox-/firefox/browser/omni.ja
+      1 anon_inode:[eventpoll]
+      1 anon_inode:[eventfd]
+      1 ..
+      1 .
+== shared pipe inodes worker(2303228) <-> firefox content(2303486)
+== firefox content fd -> target
+1 socket:[102670111]
+10 pipe:[102682859]
+12 pipe:[102675295]
+14 socket:[102683683]
+16 socket:[102675274]
+17 pipe:[102675290]
+18 pipe:[102675290]
+19 pipe:[102675291]
+2 socket:[102670113]
+20 pipe:[102675291]
+23 socket:[102681766]
+24 socket:[102681764]
+29 pipe:[102673966]
+3 pipe:[102682859]
+30 pipe:[102673966]
+4 pipe:[102675295]
+== worker fd -> target
+1 socket:[102680799]
+13 pipe:[102669291]
+14 pipe:[102669291]
+18 pipe:[102680810]
+19 pipe:[102680810]
+2 socket:[102680801]
+22 socket:[102670110]
+24 socket:[102670112]
+3 socket:[102680803]
+6 pipe:[102680807]
+7 pipe:[102680807]
+8 pipe:[102680808]
+9 pipe:[102680808]
+== cpu split (clock ticks, CLK_TCK=100)
+utime=30 stime=2492620
+== syscall now (3 samples)
+running
+running
+running
+== io
+rchar: 308922
+wchar: 637
+syscr: 943
+syscw: 607
+== flags/faults
+minflt=21907 stime=2493990
+minflt=21907 stime=2494090
+== sched
+se.sum_exec_runtime                          :      24940924.139544
+nr_switches                                  :               592361
+nr_voluntary_switches                        :                  368
+nr_involuntary_switches                      :               591993
+== maps count
+786
+== io_uring/fdinfo kinds
+2
+flags=0x400140 PF_EXITING=False PF_SIGNALED=False
+['SigPnd:\t0000000000000100', 'ShdPnd:\t0000000000000100', 'SigBlk:\t0000000000000000', 'SigCgt:\t0000000f40800e88']
+SIGKILL pending on 2303486 (SigPnd/ShdPnd=0x100, signal 9) since Playwright's group kill; process keeps running in kernel (stime>>utime, few syscalls) and cannot be killed from user space.
+
+== follow-up 2026-10-09T10:55Z
+First stuck content process 2303486 was gone in the listing taken right after the hung worker 2303228 was killed (between ~10:19:00Z and ~10:19:50Z); exact exit time unknown.
+Second stuck content process 847487 (attempt 1, next firefox-stress case) is still running in the kernel: utime 0.35 s, stime ~2076 s, Threads 1, ShdPnd 0x100 (SIGKILL pending). Its stdio sockets 112127594/112127596 have no peer left (ss: peer 0), so the closed socket is not what keeps it alive. Kernel stack needs root: sudo cat /proc/847487/stack

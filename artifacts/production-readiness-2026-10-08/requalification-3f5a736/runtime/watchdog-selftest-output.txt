@@ -1,0 +1,4 @@
+stall: rc -15 fired STALLED survivors [] left []
+limit: rc -15 fired TIMEOUT survivors []
+normal: rc 3 fired None survivors []
+WATCHDOG_SELFTEST PASS

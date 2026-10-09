@@ -1,0 +1,45 @@
+{
+  "name": "e2e-concurrent-isolation",
+  "observed_at": "2026-10-08T23:41:56Z",
+  "environment": {
+    "CI": "unset",
+    "PLAYWRIGHT_OUTPUT_DIR": "unset"
+  },
+  "commands": [
+    "npx playwright test tests/e2e/app.spec.ts --project=chromium-wide-1440 -g 'captura os limites visuais'",
+    "npx playwright test tests/e2e/app.spec.ts --project=chromium-tablet-768 -g 'captura os limites visuais'"
+  ],
+  "started": "both within the same second, in parallel",
+  "subject": "working tree with the db04017 change before commit (same content as db04017)",
+  "result": {
+    "a": "exit=0",
+    "b": "exit=0"
+  },
+  "runs": {
+    "2026-10-08T23-41-56-527Z-ZASfiJ": {
+      "files": [
+        "playwright-report/index.html",
+        "test-results/app-captura-os-limites-visuais-principais-chromium-tablet-768/chromium-tablet-768-agenda.png",
+        "test-results/app-captura-os-limites-visuais-principais-chromium-tablet-768/chromium-tablet-768-dashboard.png"
+      ],
+      "screenshots": {
+        "test-results/app-captura-os-limites-visuais-principais-chromium-tablet-768/chromium-tablet-768-agenda.png": "3f41f1d028ee381369f1a5c9b164439099ae5cbda98747bc1ad11c96a9406418",
+        "test-results/app-captura-os-limites-visuais-principais-chromium-tablet-768/chromium-tablet-768-dashboard.png": "4b45380f01621630faec9482defe5a45a5c095ebadd3cd5b759cd71baabbb758"
+      }
+    },
+    "2026-10-08T23-41-56-536Z-2Ot1xj": {
+      "files": [
+        "playwright-report/index.html",
+        "test-results/app-captura-os-limites-visuais-principais-chromium-wide-1440/chromium-wide-1440-dashboard.png"
+      ],
+      "screenshots": {
+        "test-results/app-captura-os-limites-visuais-principais-chromium-wide-1440/chromium-wide-1440-dashboard.png": "3528ed7aaca41bc2f5113b837ffe8586a46e8a566778e43b0271fb427c8fc678"
+      }
+    }
+  },
+  "shared_report_untouched": "artifacts/playwright-report/index.html mtime 2026-10-04 08:58:15 -0300 after both runs",
+  "logs": {
+    "a": "Playwright outputs for this run: /home/ricardo/Área de trabalho/cvg-corp/test-results/runs/2026-10-08T23-41-56-536Z-2Ot1xj\n\nRunning 1 test using 1 worker\n\n  ✓  1 [chromium-wide-1440] › tests/e2e/app.spec.ts:156:1 › captura os limites visuais principais (1.3s)\n\n  1 passed (4.7s)\nexit=0\n",
+    "b": "Playwright outputs for this run: /home/ricardo/Área de trabalho/cvg-corp/test-results/runs/2026-10-08T23-41-56-527Z-ZASfiJ\n\nRunning 1 test using 1 worker\n\n  ✓  1 [chromium-tablet-768] › tests/e2e/app.spec.ts:156:1 › captura os limites visuais principais (2.2s)\n\n  1 passed (5.6s)\nexit=0\n"
+  }
+}

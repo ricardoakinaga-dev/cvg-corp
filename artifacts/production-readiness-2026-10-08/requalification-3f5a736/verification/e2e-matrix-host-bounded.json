@@ -1,0 +1,37 @@
+{
+  "name": "e2e-matrix-host-bounded",
+  "command": [
+    "npx",
+    "playwright",
+    "test",
+    "--reporter=list,json",
+    "--project=chromium-wide-1440",
+    "--project=chromium-tablet-768",
+    "--project=chromium-mobile-375",
+    "--project=firefox-wide-1440",
+    "--project=firefox-tablet-768",
+    "--project=firefox-mobile-375",
+    "--project=webkit-wide-1440",
+    "--project=webkit-tablet-768",
+    "--project=webkit-mobile-375",
+    "--project=chromium-stress",
+    "--project=webkit-stress"
+  ],
+  "exit_status": 0,
+  "started_at": "2026-10-09T10:25:33.333331+00:00",
+  "duration_s": 1717.1,
+  "head_sha": "3e7308ab0e012b81046eda82f59ca86ed48ed6d9",
+  "code_sha": "3f5a736d4c7bd27be76554bb91e1e0048b3656da",
+  "subject_fingerprint": "sha256:184e1f7dbb767479f74fa0ed37a139d14b0692d42e960ced8ab0fde4dd3611aa",
+  "subject_tracked_changes_before": [],
+  "subject_tracked_changes_after": [],
+  "subject_after": "UNCHANGED",
+  "log": "artifacts/production-readiness-2026-10-08/requalification-3f5a736/verification/e2e-matrix-host-bounded.log",
+  "log_sha256": "488e23e81048ac0ce3e52410ffd70ed9757dd135fac9a4b5482b943735efb012",
+  "watchdog": {
+    "stall_limit_s": 600,
+    "time_limit_s": 3600,
+    "fired": null,
+    "surviving_descendants": []
+  }
+}

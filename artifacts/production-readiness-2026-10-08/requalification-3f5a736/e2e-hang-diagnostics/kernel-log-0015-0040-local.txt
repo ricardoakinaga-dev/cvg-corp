@@ -1,0 +1,1 @@
+No kernel messages matched lockup|rcu|stall|hung|firefox|Web Content|BUG|watchdog|oops|warn between 2026-10-09 00:15 and 00:40 local time (UTC-3); query: journalctl -k --since '2026-10-09 00:15' --until '2026-10-09 00:40'.

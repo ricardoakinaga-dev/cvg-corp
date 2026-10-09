@@ -29,10 +29,27 @@ alterada. Nenhum commit, push, deploy, provedor real ou dado real foi usado.
 | FQ-01 produto criado antes de lote recusado fica irrecuperável | P2 | Nova rota `GET /stock/products` (catálogo com RLS); formulário mantém o produto criado e usa nova intenção após recusa definitiva | E2E com reload; verificador PostgreSQL (lista, 409 na chave recusada, 201 na nova intenção) |
 | FQ-02 pagamento parcial abre com o total | P2 | Valor sugerido = saldo em aberto | E2E financeiro verifica `100,00` e depois `60,00` |
 | FQ-03 boundary afirma que nada foi alterado | P2 | Mensagem não nega escritas já aceitas | `root-boundary.spec.ts` |
-| FQ-04 mutação conta falha de execução como KILLED | P2 | Só falha de teste reportada mata; timeout/sinal/spawn/baseline falha = INVALID | `mutation-verifier.test.ts`; execução real 30/30 KILLED |
-| FQ-05 execuções E2E concorrentes compartilham saídas | P2 | `PLAYWRIGHT_OUTPUT_DIR` isola traces, relatório e cache Vite; CI mantém caminhos | Execução isolada observada |
+| FQ-04 mutação conta falha de execução como KILLED | P2 | Classificação por eventos estruturados do runner: só falha lançada dentro de um teste em execução mata; arquivo que não carrega ou termina o processo, timeout, sinal, spawn e baseline reprovada = INVALID | `mutation-verifier.test.ts` dirige o runner real (erro de sintaxe, `process.exit`, throw no topo); execução real 30/30 KILLED |
+| FQ-05 execuções E2E concorrentes compartilham saídas | P2 | Cada execução local usa `test-results/runs/<run>/` por padrão (traces, screenshots, relatório, cache Vite); `PLAYWRIGHT_OUTPUT_DIR` escolhe outro; CI mantém caminhos | Duas execuções simultâneas sem variável: diretórios distintos, relatório compartilhado intocado |
 | Dependências fastify/fast-uri (moderadas) e source-map-js (alta) | — | `npm audit fix` restrito a 4 pacotes do registro oficial | `npm audit` sem vulnerabilidades |
 | Ponte DeepSeek lê resposta sem limite | — | Leitura incremental com teto (padrão 2 MiB) | `vnext.test.ts` |
+
+## Critical review of this unit (2026-10-08, second round)
+
+Uma revisão crítica da entrega confirmou as correções e apontou cinco pendências
+reais, todas reproduzidas antes de corrigir:
+
+| Pendência | Correção | Commit |
+| --- | --- | --- |
+| P2 classificador de mutação aceitava erro de sintaxe e `process.exit(1)` como KILLED (o runner imprime `fail 1`) | Reporter estruturado; falha de processo/carregamento invalida; kill exige falha lançada num teste em execução | `60ae0c0` |
+| P2 `ai.turn` auditava `OUTCOME_UNKNOWN` como `ALLOWED` | Mapa exaustivo por status; `UNKNOWN` com `turnStatus`; recibo vinculado ao registro honesto; regressão HTTP com ledger indisponível | `daef871` |
+| P2 isolamento E2E dependia de variável manual | Diretório por execução por padrão; screenshots via `testInfo.outputPath` | `db04017` |
+| P2 envelopes de evidência bloqueavam o job de imagens; upload pulado em falha | Job `evidence-binding` independente (ainda reprova o workflow); uploads com `!cancelled()` | `779cda2` |
+| P2 relatório atribuía provas à versão errada (imagens de árvore não commitada, "todos aprovados" com dois recibos reprovados, 997×999 casos) | Requalificação do commit `8cd545f` com recibos que registram HEAD, commit de código, fingerprint e estado da árvore; docs do sujeito sem números circulares | `8cd545f` |
+
+O primeiro CI do lote revelou mais uma falha que só existia fora desta máquina: 55 links de relatórios históricos apontavam para arquivos ignorados pelo Git (`*.log`, `artifacts/runs/*.png`). O gate de documentação passou a recusar esses links em qualquer ambiente (`LOCAL_ONLY_LINK`) e as referências viraram caminhos marcados como evidência local (`e658c00`). Também entraram as correções de CI pendentes: digest do AUD26 sem mtime
+(`0c9a429`) e prompt AUD27 versionado com digest refixado com aprovação do
+dono do repositório (`e5464ea`).
 
 ## Next Action — AUD27-001
 

@@ -311,43 +311,81 @@ function shortOutput(stdout: string, stderr: string): string {
   return output.length <= 2_000 ? output : `${output.slice(-1_997)}...`;
 }
 
+/** One finished node:test test, as written by `scripts/mutation-test-reporter.ts`. */
+export interface TestRunEvent {
+  outcome: "pass" | "fail";
+  kind: string;
+  failureType: string | null;
+  processExit: boolean;
+  thrown: boolean;
+}
+
 export interface MutationRunObservation {
   status: number | null;
   signal: NodeJS.Signals | null;
   timedOut: boolean;
   spawnFailed: boolean;
   output: string;
+  /** Structured test events; null when the reporter stream is missing or unreadable. */
+  events: readonly TestRunEvent[] | null;
 }
 
 /**
- * FQ-04: only an ordinary failing test kills a mutant. A timeout, signal,
- * spawn error or an exit without a reported test failure says nothing about
- * the assertions, so it is INVALID and blocks the policy instead of inflating it.
+ * FQ-04: only an ordinary failing test kills a mutant. The decision uses the
+ * runner's structured events, not its text summary: a syntax error, a
+ * top-level throw or a `process.exit` inside a test file is reported as a
+ * failed file without any assertion having run, and any such file makes the
+ * run INVALID. A kill needs at least one failure thrown inside a running test;
+ * a timeout, hook failure or unhandled rejection alone does not kill. Process
+ * timeouts, signals, spawn errors and a missing event stream are INVALID and
+ * block the policy instead of inflating it.
  */
 export function classifyMutationRun(run: MutationRunObservation): MutationResult["status"] {
-  if (run.timedOut || run.spawnFailed || run.signal !== null) return "INVALID";
-  if (run.status === 0) return "SURVIVED";
-  return run.status === 1 && /^(?:ℹ|#) fail [1-9]\d*$/m.test(run.output) ? "KILLED" : "INVALID";
+  if (run.timedOut || run.spawnFailed || run.signal !== null || run.events === null) return "INVALID";
+  const failures = run.events.filter((event) => event.outcome === "fail");
+  if (run.status === 0) return failures.length === 0 && run.events.some((event) => event.outcome === "pass" && event.kind === "test") ? "SURVIVED" : "INVALID";
+  if (failures.some((event) => event.processExit)) return "INVALID";
+  const killedByTest = failures.some((event) => event.failureType === "testCodeFailure" && event.thrown);
+  return run.status === 1 && killedByTest ? "KILLED" : "INVALID";
 }
 
-function runTests(sandbox: string, tests: readonly string[]): MutationRunObservation {
-  const result = spawnSync(process.execPath, ["--import", "tsx", "--test", ...tests], {
-    cwd: sandbox,
-    encoding: "utf8",
-    env: { ...process.env, CI: "1", NODE_ENV: "test" },
-    timeout: 120_000,
-    maxBuffer: 8 * 1024 * 1024
-  });
-  const spawnError = result.error as (NodeJS.ErrnoException | undefined);
-  return {
-    status: result.status,
-    signal: result.signal,
-    timedOut: spawnError?.code === "ETIMEDOUT",
-    spawnFailed: Boolean(spawnError),
-    // Classified on the complete output: the runner prints its fail summary
-    // before the failure details, so a truncated tail can omit it.
-    output: `${result.stdout ?? ""}\n${result.stderr ?? (result.error ? String(result.error) : "")}`.trim()
-  };
+const MUTATION_TEST_REPORTER = fileURLToPath(new URL("./mutation-test-reporter.ts", import.meta.url));
+
+function readTestEvents(path: string): TestRunEvent[] | null {
+  if (!existsSync(path)) return null;
+  try {
+    return readFileSync(path, "utf8").split("\n").filter((line) => line.trim()).map((line) => JSON.parse(line) as TestRunEvent);
+  } catch {
+    return null;
+  }
+}
+
+export function observeTestRun(cwd: string, tests: readonly string[], timeoutMs = 120_000): MutationRunObservation {
+  const eventsDirectory = mkdtempSync(join(tmpdir(), "cvg-mutation-events-"));
+  const eventsPath = join(eventsDirectory, "events.jsonl");
+  // Inside another node:test process this variable would turn the child into a
+  // reporter-less subtest stream instead of a top-level runner.
+  const env: NodeJS.ProcessEnv = { ...process.env, CI: "1", NODE_ENV: "test" };
+  delete env.NODE_TEST_CONTEXT;
+  try {
+    const result = spawnSync(process.execPath, [
+      "--import", "tsx", "--test",
+      "--test-reporter=spec", "--test-reporter-destination=stdout",
+      `--test-reporter=${MUTATION_TEST_REPORTER}`, `--test-reporter-destination=${eventsPath}`,
+      ...tests
+    ], { cwd, encoding: "utf8", env, timeout: timeoutMs, maxBuffer: 8 * 1024 * 1024 });
+    const spawnError = result.error as (NodeJS.ErrnoException | undefined);
+    return {
+      status: result.status,
+      signal: result.signal,
+      timedOut: spawnError?.code === "ETIMEDOUT",
+      spawnFailed: Boolean(spawnError),
+      output: `${result.stdout ?? ""}\n${result.stderr ?? (result.error ? String(result.error) : "")}`.trim(),
+      events: readTestEvents(eventsPath)
+    };
+  } finally {
+    rmSync(eventsDirectory, { recursive: true, force: true });
+  }
 }
 
 function runMutation(sandbox: string, mutation: MutationSpec, tests: readonly string[], baseline: MutationRunObservation): MutationResult {
@@ -364,7 +402,7 @@ function runMutation(sandbox: string, mutation: MutationSpec, tests: readonly st
 
   writeFileSync(target, mutated, "utf8");
   try {
-    const run = runTests(sandbox, tests);
+    const run = observeTestRun(sandbox, tests);
     return { ...mutation, status: classifyMutationRun(run), exitStatus: run.status, signal: run.signal, output: shortOutput(run.output, "") };
   } finally {
     writeFileSync(target, original, "utf8");
@@ -385,7 +423,7 @@ export function runMutationVerification(): void {
     const results = MUTATION_PLAN.map((mutation) => {
       const tests = testFiles(root, mutation);
       const key = tests.join("\0");
-      if (!baselines.has(key)) baselines.set(key, runTests(sandbox, tests));
+      if (!baselines.has(key)) baselines.set(key, observeTestRun(sandbox, tests));
       return runMutation(sandbox, mutation, tests, baselines.get(key)!);
     });
     const score = mutationScore(results);

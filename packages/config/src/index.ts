@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isIP } from "node:net";
 
 export const CVG_SECRET_PROVIDER_KINDS = ["none", "env", "file", "docker", "vault", "aws", "gcp", "azure", "kubernetes"] as const;
 export type CvgSecretProviderKind = (typeof CVG_SECRET_PROVIDER_KINDS)[number];
@@ -26,6 +27,15 @@ const booleanFromEnv = z.string().trim().toLowerCase().transform((value, ctx) =>
   ctx.addIssue({ code: "custom", message: "boolean must be true/false or 1/0" });
   return z.NEVER;
 });
+
+function isIpv6Cidr(value: string): boolean {
+  const match = value.match(/^([^/]+)\/(\d{1,3})$/);
+  if (!match) return false;
+  const bits = Number(match[2]);
+  return isIP(match[1]!) === 6 && Number.isInteger(bits) && bits >= 0 && bits <= 128;
+}
+
+const ipv6PrefixList = z.array(z.string().trim().max(80).refine(isIpv6Cidr, "must be a valid IPv6 CIDR prefix")).max(20).default([]);
 
 export const cvgConfigSchema = z.object({
   nodeEnv: z.enum(["development", "test", "production"]).default("development"),
@@ -97,9 +107,12 @@ export const cvgConfigSchema = z.object({
   secretProvider: z.enum(CVG_SECRET_PROVIDER_KINDS).default("none"),
   messagingProviderEndpoint: z.string().url().nullable().default(null),
   messagingProviderAllowedHosts: z.array(z.string().trim().regex(/^[A-Za-z0-9.-]{1,253}$/)).max(20).default([]),
+  messagingBlockedIpv6Prefixes: ipv6PrefixList,
   messagingCredentialRef: z.string().trim().regex(/^[A-Za-z0-9._:-]{1,160}$/).nullable().default(null),
   messagingSendPath: z.string().trim().regex(/^\/[A-Za-z0-9._~:/-]{1,200}$/).default("/messages"),
   messagingQueryPath: z.string().trim().regex(/^\/[A-Za-z0-9._~:/-]{1,200}$/).nullable().default(null),
+  // Server-held provider=keyRef bindings for signed integration callbacks.
+  integrationCallbackKeyRefs: z.array(z.string().trim().regex(/^[A-Za-z0-9._:-]{1,120}=[A-Za-z0-9._:-]{1,160}$/)).max(64).default([]),
   rateLimitBackend: z.enum(["local", "distributed"]).default("local"),
   rateLimitRequestsPerWindow: z.number().int().min(1).max(10_000).default(120),
   rateLimitWindowSeconds: z.number().int().min(1).max(3_600).default(60)
@@ -116,7 +129,9 @@ export const cvgConfigSchema = z.object({
   if (value.nodeEnv === "production" && value.secretProvider === "none") ctx.addIssue({ code: "custom", path: ["secretProvider"], message: "production requires an explicit secret provider" });
   if (value.nodeEnv === "production" && value.authMfaMode !== "required") ctx.addIssue({ code: "custom", path: ["authMfaMode"], message: "production requires MFA" });
   if (value.nodeEnv === "production" && value.passwordMaxAgeDays === 0) ctx.addIssue({ code: "custom", path: ["passwordMaxAgeDays"], message: "production requires credential rotation" });
-  if (value.nodeEnv === "production" && !value.deepseekRuntimeEnabled) ctx.addIssue({ code: "custom", path: ["deepseekRuntimeEnabled"], message: "production cannot use the local mock runtime" });
+  // An explicitly disabled AI runtime is the contingency mode: it needs no
+  // model integration, so its prerequisites must not keep the core blocked.
+  if (value.nodeEnv === "production" && value.agentRuntimeMode !== "disabled" && !value.deepseekRuntimeEnabled) ctx.addIssue({ code: "custom", path: ["deepseekRuntimeEnabled"], message: "production cannot use the local mock runtime; set CVG_AGENT_RUNTIME=disabled to run without AI" });
   if (value.nodeEnv === "production" && value.deepseekBaseUrl && !value.deepseekBaseUrl.startsWith("https://")) ctx.addIssue({ code: "custom", path: ["deepseekBaseUrl"], message: "production DeepSeek bridge must use HTTPS" });
   if (value.deepseekRuntimeEnabled && !value.deepseekBaseUrl) ctx.addIssue({ code: "custom", path: ["deepseekBaseUrl"], message: "DeepSeek runtime requires an explicit base URL" });
   if (value.deepseekRuntimeEnabled && !value.deepseekExpectedEngineCommit) ctx.addIssue({ code: "custom", path: ["deepseekExpectedEngineCommit"], message: "DeepSeek runtime requires an approved engine commit" });
@@ -180,6 +195,7 @@ export const cvgWorkerConfigSchema = z.object({
   secretDir: z.string().trim().min(1).max(1_024).default("/run/secrets/cvg"),
   messagingProviderEndpoint: z.string().url().nullable().default(null),
   messagingProviderAllowedHosts: z.array(z.string().trim().regex(/^[A-Za-z0-9.-]{1,253}$/)).max(20).default([]),
+  messagingBlockedIpv6Prefixes: ipv6PrefixList,
   messagingCredentialRef: z.string().trim().regex(/^[A-Za-z0-9._:-]{1,160}$/).nullable().default(null),
   messagingSendPath: z.string().trim().regex(/^\/[A-Za-z0-9._~:/-]{1,200}$/).default("/messages"),
   messagingQueryPath: z.string().trim().regex(/^\/[A-Za-z0-9._~:/-]{1,200}$/).nullable().default(null)
@@ -236,7 +252,7 @@ export class WorkerConfigError extends ConfigError {
   }
 }
 
-const knownEnvironmentKeys = new Set(["NODE_ENV", "SESSION_TTL_MINUTES", "CVG_AUTH_MFA_MODE", "CVG_PASSWORD_MIN_LENGTH", "CVG_PASSWORD_MAX_AGE_DAYS", "CVG_AUTH_MAX_FAILED_ATTEMPTS", "CVG_AUTH_IDENTIFIER_RATE_LIMIT", "CVG_AUTH_IP_RATE_LIMIT", "CVG_AUTH_LOCKOUT_MINUTES", "CVG_AUTH_CHALLENGE_TTL_SECONDS", "CVG_AUTH_MAX_CHALLENGE_ATTEMPTS", "DATABASE_URL", "CVG_HOST", "CVG_API_PORT", "CVG_WEB_ORIGIN", "CVG_RELEASE_SHA", "CVG_RELEASE_ARTIFACT_DIGEST", "CVG_TRUST_PROXY", "CVG_TRUSTED_PROXY_IPS", "CVG_STORAGE", "CVG_DEMO_MODE", "CVG_BOOTSTRAP_PASSWORD", "CVG_DEEPSEEK_BASE_URL", "CVG_DEEPSEEK_RUNTIME_ENABLED", "CVG_DEEPSEEK_EXPECTED_ENGINE_COMMIT", "CVG_DEEPSEEK_EXPECTED_MANIFEST_VERSION", "CVG_DEEPSEEK_EXPECTED_TOOL_NAMES", "CVG_DEEPSEEK_BRIDGE_TIMEOUT_MS", "CVG_DEEPSEEK_BRIDGE_HOST", "CVG_DEEPSEEK_BRIDGE_PORT", "CVG_DEEPSEEK_ACP_COMMAND", "CVG_DEEPSEEK_ACP_ARGS_JSON", "CVG_DEEPSEEK_ACP_ENGINE_ROOT", "CVG_DEEPSEEK_ACP_WORKSPACE_ROOT", "CVG_DEEPSEEK_ACP_MANIFEST_PATH", "CVG_DEEPSEEK_ACP_DSH_HOME", "CVG_DEEPSEEK_ACP_EXPECTED_AGENT_NAME", "CVG_DEEPSEEK_ACP_EXPECTED_AGENT_VERSION", "CVG_DEEPSEEK_ACP_MODEL", "CVG_DEEPSEEK_ACP_PERMISSION_MODE", "CVG_DEEPSEEK_ACP_STARTUP_TIMEOUT_MS", "CVG_DEEPSEEK_ACP_SHUTDOWN_TIMEOUT_MS", "CVG_DEEPSEEK_BEARER_TOKEN_REF", "CVG_DEEPSEEK_CONTEXT_SIGNING_SECRET_REF", "CVG_AGENT_RUNTIME", "CVG_AI_SAFE_MODE", "CVG_AI_DISABLED_PROVIDERS", "CVG_AI_DISABLED_TOOLS", "CVG_AI_MAX_CONCURRENT_TURNS", "CVG_EMBEDDED_MODEL_PROVIDER", "CVG_EMBEDDED_MODEL_BASE_URL", "CVG_EMBEDDED_MODEL_NAME", "CVG_EMBEDDED_MODEL_TIMEOUT_MS", "CVG_EMBEDDED_MODEL_ALLOWED_DATA_CLASSES", "CVG_EMBEDDED_RUNTIME_COMMIT", "CVG_EMBEDDED_MODEL_PRICING_JSON", "CVG_AI_MAX_COST_MICROS", "CVG_RECOVERY_ENCRYPTION_KEY_REF", "CVG_SECRET_DIR", "CVG_WORKER_ORGANIZATION_ID", "CVG_WORKER_ID", "CVG_WORKER_INTERVAL_MS", "CVG_WORKER_MAX_OUTSTANDING", "CVG_WORKER_SINK_MODE", "CVG_WORKER_HEARTBEAT_FILE", "CVG_SECRET_PROVIDER", "CVG_MESSAGING_PROVIDER_ENDPOINT", "CVG_MESSAGING_PROVIDER_ALLOWED_HOSTS", "CVG_MESSAGING_CREDENTIAL_REF", "CVG_MESSAGING_SEND_PATH", "CVG_MESSAGING_QUERY_PATH", "CVG_RATE_LIMIT_BACKEND", "CVG_RATE_LIMIT_REQUESTS_PER_WINDOW", "CVG_RATE_LIMIT_WINDOW_SECONDS"]);
+const knownEnvironmentKeys = new Set(["NODE_ENV", "SESSION_TTL_MINUTES", "CVG_AUTH_MFA_MODE", "CVG_PASSWORD_MIN_LENGTH", "CVG_PASSWORD_MAX_AGE_DAYS", "CVG_AUTH_MAX_FAILED_ATTEMPTS", "CVG_AUTH_IDENTIFIER_RATE_LIMIT", "CVG_AUTH_IP_RATE_LIMIT", "CVG_AUTH_LOCKOUT_MINUTES", "CVG_AUTH_CHALLENGE_TTL_SECONDS", "CVG_AUTH_MAX_CHALLENGE_ATTEMPTS", "DATABASE_URL", "CVG_HOST", "CVG_API_PORT", "CVG_WEB_ORIGIN", "CVG_RELEASE_SHA", "CVG_RELEASE_ARTIFACT_DIGEST", "CVG_TRUST_PROXY", "CVG_TRUSTED_PROXY_IPS", "CVG_STORAGE", "CVG_DEMO_MODE", "CVG_BOOTSTRAP_PASSWORD", "CVG_DEEPSEEK_BASE_URL", "CVG_DEEPSEEK_RUNTIME_ENABLED", "CVG_DEEPSEEK_EXPECTED_ENGINE_COMMIT", "CVG_DEEPSEEK_EXPECTED_MANIFEST_VERSION", "CVG_DEEPSEEK_EXPECTED_TOOL_NAMES", "CVG_DEEPSEEK_BRIDGE_TIMEOUT_MS", "CVG_DEEPSEEK_BRIDGE_HOST", "CVG_DEEPSEEK_BRIDGE_PORT", "CVG_DEEPSEEK_ACP_COMMAND", "CVG_DEEPSEEK_ACP_ARGS_JSON", "CVG_DEEPSEEK_ACP_ENGINE_ROOT", "CVG_DEEPSEEK_ACP_WORKSPACE_ROOT", "CVG_DEEPSEEK_ACP_MANIFEST_PATH", "CVG_DEEPSEEK_ACP_DSH_HOME", "CVG_DEEPSEEK_ACP_EXPECTED_AGENT_NAME", "CVG_DEEPSEEK_ACP_EXPECTED_AGENT_VERSION", "CVG_DEEPSEEK_ACP_MODEL", "CVG_DEEPSEEK_ACP_PERMISSION_MODE", "CVG_DEEPSEEK_ACP_STARTUP_TIMEOUT_MS", "CVG_DEEPSEEK_ACP_SHUTDOWN_TIMEOUT_MS", "CVG_DEEPSEEK_BEARER_TOKEN_REF", "CVG_DEEPSEEK_CONTEXT_SIGNING_SECRET_REF", "CVG_AGENT_RUNTIME", "CVG_AI_SAFE_MODE", "CVG_AI_DISABLED_PROVIDERS", "CVG_AI_DISABLED_TOOLS", "CVG_AI_MAX_CONCURRENT_TURNS", "CVG_EMBEDDED_MODEL_PROVIDER", "CVG_EMBEDDED_MODEL_BASE_URL", "CVG_EMBEDDED_MODEL_NAME", "CVG_EMBEDDED_MODEL_TIMEOUT_MS", "CVG_EMBEDDED_MODEL_ALLOWED_DATA_CLASSES", "CVG_EMBEDDED_RUNTIME_COMMIT", "CVG_EMBEDDED_MODEL_PRICING_JSON", "CVG_AI_MAX_COST_MICROS", "CVG_RECOVERY_ENCRYPTION_KEY_REF", "CVG_SECRET_DIR", "CVG_WORKER_ORGANIZATION_ID", "CVG_WORKER_ID", "CVG_WORKER_INTERVAL_MS", "CVG_WORKER_MAX_OUTSTANDING", "CVG_WORKER_SINK_MODE", "CVG_WORKER_HEARTBEAT_FILE", "CVG_SECRET_PROVIDER", "CVG_MESSAGING_PROVIDER_ENDPOINT", "CVG_MESSAGING_PROVIDER_ALLOWED_HOSTS", "CVG_MESSAGING_BLOCKED_IPV6_PREFIXES", "CVG_MESSAGING_CREDENTIAL_REF", "CVG_MESSAGING_SEND_PATH", "CVG_MESSAGING_QUERY_PATH", "CVG_INTEGRATION_CALLBACK_KEYS", "CVG_RATE_LIMIT_BACKEND", "CVG_RATE_LIMIT_REQUESTS_PER_WINDOW", "CVG_RATE_LIMIT_WINDOW_SECONDS"]);
 
 function parseEnvironmentValue(value: string | undefined, parser: (value: string) => unknown): unknown {
   return value === undefined ? undefined : parser(value);
@@ -319,9 +335,11 @@ export function loadCvgConfig(environment: NodeJS.ProcessEnv = process.env): Cvg
     ...(environment.CVG_SECRET_PROVIDER === undefined ? {} : { secretProvider: environment.CVG_SECRET_PROVIDER }),
     ...(environment.CVG_MESSAGING_PROVIDER_ENDPOINT === undefined ? {} : { messagingProviderEndpoint: environment.CVG_MESSAGING_PROVIDER_ENDPOINT }),
     ...(environment.CVG_MESSAGING_PROVIDER_ALLOWED_HOSTS === undefined ? {} : { messagingProviderAllowedHosts: environment.CVG_MESSAGING_PROVIDER_ALLOWED_HOSTS.split(",").map((value) => value.trim()).filter(Boolean) }),
+    ...(environment.CVG_MESSAGING_BLOCKED_IPV6_PREFIXES === undefined ? {} : { messagingBlockedIpv6Prefixes: environment.CVG_MESSAGING_BLOCKED_IPV6_PREFIXES.split(",").map((value) => value.trim()).filter(Boolean) }),
     ...(environment.CVG_MESSAGING_CREDENTIAL_REF === undefined ? {} : { messagingCredentialRef: environment.CVG_MESSAGING_CREDENTIAL_REF }),
     ...(environment.CVG_MESSAGING_SEND_PATH === undefined ? {} : { messagingSendPath: environment.CVG_MESSAGING_SEND_PATH }),
     ...(environment.CVG_MESSAGING_QUERY_PATH === undefined ? {} : { messagingQueryPath: environment.CVG_MESSAGING_QUERY_PATH }),
+    ...(environment.CVG_INTEGRATION_CALLBACK_KEYS === undefined ? {} : { integrationCallbackKeyRefs: environment.CVG_INTEGRATION_CALLBACK_KEYS.split(",").map((value) => value.trim()).filter(Boolean) }),
     ...(environment.CVG_RATE_LIMIT_BACKEND === undefined ? {} : { rateLimitBackend: environment.CVG_RATE_LIMIT_BACKEND }),
     ...(environment.CVG_RATE_LIMIT_REQUESTS_PER_WINDOW === undefined ? {} : { rateLimitRequestsPerWindow: Number(environment.CVG_RATE_LIMIT_REQUESTS_PER_WINDOW) }),
     ...(environment.CVG_RATE_LIMIT_WINDOW_SECONDS === undefined ? {} : { rateLimitWindowSeconds: Number(environment.CVG_RATE_LIMIT_WINDOW_SECONDS) })
@@ -329,7 +347,7 @@ export function loadCvgConfig(environment: NodeJS.ProcessEnv = process.env): Cvg
   return validateCvgConfig(candidate);
 }
 
-const workerEnvironmentKeys = new Set(["NODE_ENV", "DATABASE_URL", "CVG_STORAGE", "CVG_WORKER_ORGANIZATION_ID", "CVG_WORKER_ID", "CVG_WORKER_INTERVAL_MS", "CVG_WORKER_MAX_OUTSTANDING", "CVG_WORKER_SINK_MODE", "CVG_WORKER_HEARTBEAT_FILE", "CVG_BACKUP_ENABLED", "CVG_BACKUP_ORGANIZATION_ID", "CVG_BACKUP_DIRECTORY", "CVG_BACKUP_INTERVAL_MS", "CVG_BACKUP_KEEP_LAST", "CVG_RECOVERY_ENCRYPTION_KEY_REF", "CVG_SECRET_PROVIDER", "CVG_SECRET_DIR", "CVG_MESSAGING_PROVIDER_ENDPOINT", "CVG_MESSAGING_PROVIDER_ALLOWED_HOSTS", "CVG_MESSAGING_CREDENTIAL_REF", "CVG_MESSAGING_SEND_PATH", "CVG_MESSAGING_QUERY_PATH"]);
+const workerEnvironmentKeys = new Set(["NODE_ENV", "DATABASE_URL", "CVG_STORAGE", "CVG_WORKER_ORGANIZATION_ID", "CVG_WORKER_ID", "CVG_WORKER_INTERVAL_MS", "CVG_WORKER_MAX_OUTSTANDING", "CVG_WORKER_SINK_MODE", "CVG_WORKER_HEARTBEAT_FILE", "CVG_BACKUP_ENABLED", "CVG_BACKUP_ORGANIZATION_ID", "CVG_BACKUP_DIRECTORY", "CVG_BACKUP_INTERVAL_MS", "CVG_BACKUP_KEEP_LAST", "CVG_RECOVERY_ENCRYPTION_KEY_REF", "CVG_SECRET_PROVIDER", "CVG_SECRET_DIR", "CVG_MESSAGING_PROVIDER_ENDPOINT", "CVG_MESSAGING_PROVIDER_ALLOWED_HOSTS", "CVG_MESSAGING_BLOCKED_IPV6_PREFIXES", "CVG_MESSAGING_CREDENTIAL_REF", "CVG_MESSAGING_SEND_PATH", "CVG_MESSAGING_QUERY_PATH"]);
 
 function validateWorkerConfig(value: unknown): CvgWorkerConfig {
   const parsed = cvgWorkerConfigSchema.safeParse(value);
@@ -361,6 +379,7 @@ export function loadWorkerConfig(environment: NodeJS.ProcessEnv = process.env): 
     ...(environment.CVG_SECRET_DIR === undefined ? {} : { secretDir: environment.CVG_SECRET_DIR }),
     ...(optionalEnvironmentValue(environment.CVG_MESSAGING_PROVIDER_ENDPOINT) === undefined ? {} : { messagingProviderEndpoint: optionalEnvironmentValue(environment.CVG_MESSAGING_PROVIDER_ENDPOINT) }),
     ...(environment.CVG_MESSAGING_PROVIDER_ALLOWED_HOSTS === undefined ? {} : { messagingProviderAllowedHosts: environment.CVG_MESSAGING_PROVIDER_ALLOWED_HOSTS.split(",").map((value) => value.trim()).filter(Boolean) }),
+    ...(environment.CVG_MESSAGING_BLOCKED_IPV6_PREFIXES === undefined ? {} : { messagingBlockedIpv6Prefixes: environment.CVG_MESSAGING_BLOCKED_IPV6_PREFIXES.split(",").map((value) => value.trim()).filter(Boolean) }),
     ...(optionalEnvironmentValue(environment.CVG_MESSAGING_CREDENTIAL_REF) === undefined ? {} : { messagingCredentialRef: optionalEnvironmentValue(environment.CVG_MESSAGING_CREDENTIAL_REF) }),
     ...(environment.CVG_MESSAGING_SEND_PATH === undefined ? {} : { messagingSendPath: environment.CVG_MESSAGING_SEND_PATH }),
     ...(optionalEnvironmentValue(environment.CVG_MESSAGING_QUERY_PATH) === undefined ? {} : { messagingQueryPath: optionalEnvironmentValue(environment.CVG_MESSAGING_QUERY_PATH) })

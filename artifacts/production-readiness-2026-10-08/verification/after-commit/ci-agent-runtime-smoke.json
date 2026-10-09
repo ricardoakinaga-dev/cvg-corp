@@ -1,0 +1,13 @@
+{
+  "name": "ci-agent-runtime-smoke",
+  "command": [
+    "npm",
+    "run",
+    "verify:agent-runtime-smoke"
+  ],
+  "exit_status": 0,
+  "started_at": "2026-10-08T10:45:15.271895+00:00",
+  "duration_s": 0.6,
+  "log": "artifacts/production-readiness-2026-10-08/verification/after-commit/ci-agent-runtime-smoke.log",
+  "log_sha256": "7ae336606d71dc45e2277f56996acf04a58b8692bf9ae29527893fdccab80b71"
+}

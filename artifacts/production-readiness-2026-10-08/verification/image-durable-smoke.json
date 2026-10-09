@@ -1,0 +1,12 @@
+{
+  "name": "image-durable-smoke",
+  "command": [
+    "python3",
+    "artifacts/production-readiness-2026-10-08/runtime/smoke-durable-images.py"
+  ],
+  "exit_status": 0,
+  "duration_s": 8.3,
+  "log": "artifacts/production-readiness-2026-10-08/verification/image-durable-smoke.log",
+  "log_sha256": "ad08897c3bc3f809cb416d20e389bab90f3714865c5af0430ce24befa8a6e2d0",
+  "observed_at": "2026-10-08T06:12:11.229891+00:00"
+}

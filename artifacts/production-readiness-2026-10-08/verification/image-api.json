@@ -1,0 +1,21 @@
+{
+  "name": "image-api",
+  "command": [
+    "docker",
+    "build",
+    "--file",
+    "Dockerfile.api",
+    "--build-arg",
+    "CVG_SOURCE_REVISION=9aab406b164497978b05dd3aa431db49ad11677a",
+    "--label",
+    "io.cvg.qualification.fingerprint=sha256:47858deb7efadf92cf8bff380e9ce5c73bb0d1f651d6851a99d6708e1b79ff89",
+    "--tag",
+    "cvg-corp-readiness-api:20261008-47858deb7efa",
+    "."
+  ],
+  "exit_status": 0,
+  "duration_s": 18.0,
+  "log": "artifacts/production-readiness-2026-10-08/verification/image-api.log",
+  "log_sha256": "82bb0ef47e8fc1e854b11e72044a7aef7ea8dc464d349f93d0ee8f825311ddc1",
+  "observed_at": "2026-10-08T06:11:32.716251+00:00"
+}

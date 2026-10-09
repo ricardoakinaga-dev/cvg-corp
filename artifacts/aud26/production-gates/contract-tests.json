@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "label": "contract tests",
+  "command": [
+    "npm",
+    "run",
+    "test:contract"
+  ],
+  "capturedAt": "2026-09-25T02:28:57.156Z",
+  "exitStatus": 0,
+  "signal": null,
+  "stdout": "\n> cvg-corp@0.1.0 test:contract\n> node --import tsx --test tests/unit/contracts.test.ts\n\n✔ governed D4 export contract fixes purpose, organization scope and TTL (5.361655ms)\n✔ bounded input refinements and API factories cover their fail-closed branches (6.150916ms)\n✔ versioned command and event envelopes accept known-good input (1.871418ms)\n✔ versioned envelopes reject unknown fields and malformed digests (0.674157ms)\n✔ prepared API compatibility is an explicit fail-closed upcaster registry (0.788209ms)\n✔ AI usage settlement keeps cost uncertainty explicit and binds tokens to the turn (1.726298ms)\n✔ AI wire contract preserves provenance, references and settled usage across the boundary (3.499523ms)\n✔ login response discriminates a completed session from a pending MFA challenge (2.561736ms)\n✔ web client payload validation fails closed inside a valid envelope (24.9833ms)\n✔ CVG-AUD19-018: every UI-consumed endpoint has a runtime contract or a justified allowlist entry (23.51811ms)\n✔ CVG-AUD21-006: semantic contracts preserve Knowledge fields and reject cross-family mutants (9.579056ms)\n✔ partial envelopes and command receipts stay discriminated inside the contract (4.198607ms)\nℹ tests 12\nℹ suites 0\nℹ pass 12\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 326.947831\n",
+  "stderr": ""
+}

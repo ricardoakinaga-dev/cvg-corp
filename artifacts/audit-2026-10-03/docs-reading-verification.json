@@ -1,0 +1,37 @@
+{
+  "status": "PASS",
+  "observed_at": "2026-10-03T10:49:46.992335+00:00",
+  "head": "9aab406b164497978b05dd3aa431db49ad11677a",
+  "files": 284,
+  "bytes": 2978574,
+  "fully_read": 284,
+  "unread": 0,
+  "changed": 0,
+  "lanes": [
+    {
+      "lane": "architecture",
+      "files": 89,
+      "ledger": "architecture-read-ledger.json",
+      "ledger_sha256": "1c6cc3afa861d2ba87000d5733a0b2210dd1065d8d6c5cab443adefeb884d5e2"
+    },
+    {
+      "lane": "security-ai",
+      "files": 61,
+      "ledger": "security-ai-read-ledger.json",
+      "ledger_sha256": "c66da7f71634a1f4b49e5ee28bb5638e17c87278e896a997b65bb42b681be6d3"
+    },
+    {
+      "lane": "operations",
+      "files": 76,
+      "ledger": "operations-read-ledger.json",
+      "ledger_sha256": "4820965f88e39fa431e48ffe03e79752f60e4ed89e74be4ad5f4160af37e69c3"
+    },
+    {
+      "lane": "frontend-quality",
+      "files": 58,
+      "ledger": "frontend-quality-read-ledger.json",
+      "ledger_sha256": "0d2bba7af424cbb068b91dc590b2b4eee6ea622b519837bf53984e983cdd7525"
+    }
+  ],
+  "method": "Content-read acknowledgements plus exact original inventory and per-file SHA256 validation. Hashes alone do not establish reading."
+}

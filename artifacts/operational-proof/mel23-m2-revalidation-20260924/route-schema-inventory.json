@@ -1,0 +1,19 @@
+{
+  "route_count": 105,
+  "unique_route_response_names": 80,
+  "nominal_schema_count": 80,
+  "executable_contract_descriptors": 105,
+  "payload_schema_count": 80,
+  "payload_schema_descriptors": 80,
+  "all_nominal_schemas_have_contract": true,
+  "runtime_route_integration": "All 105 catalog routes were invoked and returned versioned success/error envelopes for synthetic requests; 41/45 authenticated GET responses passed their exact executable payload schemas, with four expected versioned 404s; 35 explicit valid synthetic success fixtures also pass.",
+  "subject_scope": "local current observed source; synthetic in-memory fixtures only",
+  "source_sha": "c990914148a8f375082cd12bbdb2ad20cfe1900f",
+  "observed_subject_fingerprint": "sha256:59f31c53baaae3d62b0f4857bef1f6e76930926a2df194ff37a6dd3ca8673f77",
+  "authenticated_get_route_count": 45,
+  "authenticated_get_payload_schema_pass_count": 41,
+  "authenticated_get_versioned_404_count": 4,
+  "authenticated_get_empty_204_count": 0,
+  "explicit_valid_success_fixture_count": 35,
+  "postgres_success_route_count": 2
+}

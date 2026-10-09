@@ -1,0 +1,446 @@
+{
+  "recorded_at": "2026-10-04T12:09:09.735627+00:00",
+  "subject_fingerprint": "sha256:15ece6ef83fb9e9918dddcde7757e337fb81b42b07b6b04474c68580fcb794b2",
+  "source_sha": "9aab406b164497978b05dd3aa431db49ad11677a",
+  "worktree": "modified; not frozen",
+  "checks": [
+    {
+      "name": "typecheck-final",
+      "receipt": "artifacts/production-hardening-2026-10-04/verification/after-review/typecheck-final.json",
+      "receipt_sha256": "5dd4c2ae77bec90781ac6b5034a1f0d87cfdcc0f9c91cc2eb138e61cb1386789",
+      "command": [
+        "npm",
+        "run",
+        "typecheck"
+      ],
+      "exit_status": 0,
+      "log": "artifacts/production-hardening-2026-10-04/verification/after-review/typecheck-final.log",
+      "log_sha256": "19c71cde12d596f5abd6f07b9713c068230e6bd3a8086d6bdf9ba3a34d1a9409",
+      "observed_at": "2026-10-04T11:53:18.538949+00:00"
+    },
+    {
+      "name": "lint-fixed",
+      "receipt": "artifacts/production-hardening-2026-10-04/verification/after-review/lint-fixed.json",
+      "receipt_sha256": "d4faafc077e10c62c8f8b21d22351978dc9997a7a378af279779b129568922e4",
+      "command": [
+        "npm",
+        "run",
+        "lint"
+      ],
+      "exit_status": 0,
+      "log": "artifacts/production-hardening-2026-10-04/verification/after-review/lint-fixed.log",
+      "log_sha256": "92bb6b395d809b041c21c1277507d16f872f9b30c687d530b05dc4bc1f415dc0",
+      "observed_at": "2026-10-04T11:51:02.968586+00:00"
+    },
+    {
+      "name": "build-final",
+      "receipt": "artifacts/production-hardening-2026-10-04/verification/after-review/build-final.json",
+      "receipt_sha256": "bf171d14917d9ef1f2140ae7a6b6d3061eab45f7f2e11f1588e0e8df06513a1f",
+      "command": [
+        "npm",
+        "run",
+        "build"
+      ],
+      "exit_status": 0,
+      "log": "artifacts/production-hardening-2026-10-04/verification/after-review/build-final.log",
+      "log_sha256": "b1b95673f3e6dcac0beb6df0224e8c141dbc00126d0032db6e07d8a3d73716a2",
+      "observed_at": "2026-10-04T11:53:46.666450+00:00"
+    },
+    {
+      "name": "full-suite-verified",
+      "receipt": "artifacts/production-hardening-2026-10-04/verification/after-review/full-suite-verified.json",
+      "receipt_sha256": "e35e1ee7aaaf2d3e3b15147d7a38325853bdfc1fa9244607d6afb1c07e624e8d",
+      "command": [
+        "npm",
+        "test"
+      ],
+      "exit_status": 0,
+      "log": "artifacts/production-hardening-2026-10-04/verification/after-review/full-suite-verified.log",
+      "log_sha256": "a617c8526e4f6dc940c4e1b41831957e1ccb7d8d53904aa81f3be623c9302772",
+      "observed_at": "2026-10-04T11:54:28.648446+00:00"
+    },
+    {
+      "name": "architecture-final",
+      "receipt": "artifacts/production-hardening-2026-10-04/verification/after-review/architecture-final.json",
+      "receipt_sha256": "9a11e745a5d2eb60d525ace6a091ddccbf097b47e805dba25a0c797aefd29d5d",
+      "command": [
+        "npm",
+        "run",
+        "verify:architecture"
+      ],
+      "exit_status": 0,
+      "log": "artifacts/production-hardening-2026-10-04/verification/after-review/architecture-final.log",
+      "log_sha256": "fb1b1996bc31cfb350a1d4d982956ea8ef984b22ba3f4a0fe045023fd2efc7e2",
+      "observed_at": "2026-10-04T11:54:29.675479+00:00"
+    },
+    {
+      "name": "static-final",
+      "receipt": "artifacts/production-hardening-2026-10-04/verification/after-review/static-final.json",
+      "receipt_sha256": "98a99caf51b48ee1e64f97c40401045a37ed8dd409d48007afb29290ae2fdfc5",
+      "command": [
+        "npm",
+        "run",
+        "verify:static"
+      ],
+      "exit_status": 0,
+      "log": "artifacts/production-hardening-2026-10-04/verification/after-review/static-final.log",
+      "log_sha256": "38e20147f6678e1b3c5215525438bb660be2110bba0a2f4d11c4a84c58c946e1",
+      "observed_at": "2026-10-04T11:54:32.343980+00:00"
+    },
+    {
+      "name": "docs-final",
+      "receipt": "artifacts/production-hardening-2026-10-04/verification/after-review/docs-final.json",
+      "receipt_sha256": "5c5a6d03fbdac482cf50aec6d3c30f049f2b0468f6b6f95ed4bdb2dc2420bcde",
+      "command": [
+        "npm",
+        "run",
+        "verify:docs-integrity"
+      ],
+      "exit_status": 0,
+      "log": "artifacts/production-hardening-2026-10-04/verification/after-review/docs-final.log",
+      "log_sha256": "39b46d1e1d58aa74fee8faed3bf46d05938da379c08b846c80b174dd8fa9a96f",
+      "observed_at": "2026-10-04T11:54:33.416316+00:00"
+    },
+    {
+      "name": "schema-final",
+      "receipt": "artifacts/production-hardening-2026-10-04/verification/after-review/schema-final.json",
+      "receipt_sha256": "3416394fae7c54e92d091ad0a94a108117fe0faa106f3da402857a48401bba9d",
+      "command": [
+        "npm",
+        "run",
+        "verify:schema-manifest"
+      ],
+      "exit_status": 0,
+      "log": "artifacts/production-hardening-2026-10-04/verification/after-review/schema-final.log",
+      "log_sha256": "3f71d84e1208d12145289b8b60a89df78ba09f1065c6813cd4352b1149e7d12b",
+      "observed_at": "2026-10-04T11:54:34.673449+00:00"
+    },
+    {
+      "name": "pdp-final",
+      "receipt": "artifacts/production-hardening-2026-10-04/verification/after-review/pdp-final.json",
+      "receipt_sha256": "77472cae99304363d67948f063355323c9a4b9a40e965b7822aaffd436e85865",
+      "command": [
+        "npm",
+        "run",
+        "verify:pdp"
+      ],
+      "exit_status": 0,
+      "log": "artifacts/production-hardening-2026-10-04/verification/after-review/pdp-final.log",
+      "log_sha256": "072b703036a53ff03b2f6aaf88057c7bce584f998ebe63a4fafed33957cef2db",
+      "observed_at": "2026-10-04T11:54:39.474960+00:00"
+    },
+    {
+      "name": "worker-final",
+      "receipt": "artifacts/production-hardening-2026-10-04/verification/after-review/worker-final.json",
+      "receipt_sha256": "3d5aa517a5fd552b34f17ae99b99428319485ed14578bc5843d293e51fcc6de4",
+      "command": [
+        "npm",
+        "run",
+        "verify:worker-runtime"
+      ],
+      "exit_status": 0,
+      "log": "artifacts/production-hardening-2026-10-04/verification/after-review/worker-final.log",
+      "log_sha256": "e75bb2c5bac027cb80aa14fb4d584366f3ab414bb5d7be0c00cfe4c244fa264f",
+      "observed_at": "2026-10-04T11:55:49.630767+00:00"
+    },
+    {
+      "name": "postgres-final",
+      "receipt": "artifacts/production-hardening-2026-10-04/verification/after-review/postgres-final.json",
+      "receipt_sha256": "c944fb7bc93239aa575699d0f261b4c7e7bd61564b3879360dc2cfad0f3ab771",
+      "command": [
+        "npm",
+        "run",
+        "verify:ephemeral-postgres",
+        "--",
+        "--rounds=1",
+        "--run-restore"
+      ],
+      "exit_status": 0,
+      "log": "artifacts/production-hardening-2026-10-04/verification/after-review/postgres-final.log",
+      "log_sha256": "a8cedad3c787cb562c3a001a40d40dbb5fce65634abdbb02a702404f157813e8",
+      "observed_at": "2026-10-04T11:56:13.670744+00:00"
+    },
+    {
+      "name": "migration-cli-final",
+      "receipt": "artifacts/production-hardening-2026-10-04/verification/after-review/migration-cli-final.json",
+      "receipt_sha256": "0f96f225e33b9619a546452ae2ecbe19484e458e435ca110bb67a724efd27279",
+      "command": [
+        "npm",
+        "run",
+        "verify:db-migration-cli"
+      ],
+      "exit_status": 0,
+      "log": "artifacts/production-hardening-2026-10-04/verification/after-review/migration-cli-final.log",
+      "log_sha256": "2d6929800c2f34dede7680658646d2c3f155b54bde51608e697ce84e9a17d0c5",
+      "observed_at": "2026-10-04T11:56:52.693268+00:00"
+    },
+    {
+      "name": "migration-data-final",
+      "receipt": "artifacts/production-hardening-2026-10-04/verification/after-review/migration-data-final.json",
+      "receipt_sha256": "98ae0d05049544a99e3f938c0e4c326c233712be7606654da3fcacec83c413d3",
+      "command": [
+        "npm",
+        "run",
+        "verify:ephemeral-postgres",
+        "--",
+        "--rounds=1",
+        "--run-aud27-migration",
+        "--run-aud27-normalized-writes"
+      ],
+      "exit_status": 0,
+      "log": "artifacts/production-hardening-2026-10-04/verification/after-review/migration-data-final.log",
+      "log_sha256": "cfffae93eca85fb647ce12fe09e209e85490289a721b30630c952fa40b2f74d7",
+      "observed_at": "2026-10-04T11:57:02.525828+00:00"
+    },
+    {
+      "name": "slices-final",
+      "receipt": "artifacts/production-hardening-2026-10-04/verification/after-review/slices-final.json",
+      "receipt_sha256": "4c04a9495bd90f19178a5c8e2e2b9e3aa531d639b17a10a33c63c27173bb0b13",
+      "command": [
+        "npm",
+        "run",
+        "verify:ephemeral-postgres",
+        "--",
+        "--rounds=1",
+        "--run-aud27-24-slices"
+      ],
+      "exit_status": 0,
+      "log": "artifacts/production-hardening-2026-10-04/verification/after-review/slices-final.log",
+      "log_sha256": "c0a137ec4ebe2126f8bc36f6a2aac2cf65f79754fb7a6a6fb6dbdc92e76f6cbb",
+      "observed_at": "2026-10-04T11:57:11.433101+00:00"
+    },
+    {
+      "name": "provider-final",
+      "receipt": "artifacts/production-hardening-2026-10-04/verification/after-review/provider-final.json",
+      "receipt_sha256": "a3729bf60415f244ff0d597f9d3e7095a1f384ebb0055404d3485ade5528a2d9",
+      "command": [
+        "npm",
+        "run",
+        "verify:provider-sandbox"
+      ],
+      "exit_status": 0,
+      "log": "artifacts/production-hardening-2026-10-04/verification/after-review/provider-final.log",
+      "log_sha256": "e6d54950810c26bba5e40a392a2e76d222834afb9b99f6744f696c85f1f383e6",
+      "observed_at": "2026-10-04T11:57:13.226708+00:00"
+    },
+    {
+      "name": "image-api-final",
+      "receipt": "artifacts/production-hardening-2026-10-04/verification/after-review/image-api-final.json",
+      "receipt_sha256": "b46b9bea780643d944953dfc37ad409fc3fbdf0320604a6b149e69aa92431fdd",
+      "command": [
+        "docker",
+        "build",
+        "--file",
+        "Dockerfile.api",
+        "--build-arg",
+        "CVG_SOURCE_REVISION=9aab406b164497978b05dd3aa431db49ad11677a",
+        "--label",
+        "io.cvg.qualification.fingerprint=sha256:15ece6ef83fb9e9918dddcde7757e337fb81b42b07b6b04474c68580fcb794b2",
+        "--tag",
+        "cvg-corp-hardening-api:20261004-15ece6ef83fb",
+        "."
+      ],
+      "exit_status": 0,
+      "log": "artifacts/production-hardening-2026-10-04/verification/after-review/image-api-final.log",
+      "log_sha256": "e08a4de7346b413863d5b63a3853eaceddc46c65e0f8f35fdddf8896fd6741a4",
+      "observed_at": "2026-10-04T11:51:32.030140+00:00"
+    },
+    {
+      "name": "image-web-final",
+      "receipt": "artifacts/production-hardening-2026-10-04/verification/after-review/image-web-final.json",
+      "receipt_sha256": "3dbd908550c7fe784986d7bda1db70fb5bdaae40d8e8b022136c2c5cf6f3d03b",
+      "command": [
+        "docker",
+        "build",
+        "--file",
+        "Dockerfile.web",
+        "--build-arg",
+        "CVG_SOURCE_REVISION=9aab406b164497978b05dd3aa431db49ad11677a",
+        "--label",
+        "io.cvg.qualification.fingerprint=sha256:15ece6ef83fb9e9918dddcde7757e337fb81b42b07b6b04474c68580fcb794b2",
+        "--tag",
+        "cvg-corp-hardening-web:20261004-15ece6ef83fb",
+        "."
+      ],
+      "exit_status": 0,
+      "log": "artifacts/production-hardening-2026-10-04/verification/after-review/image-web-final.log",
+      "log_sha256": "5b67b9eaccb00e23097614fd61e679ab4bc6d4778877a2e9e7049c695d10a925",
+      "observed_at": "2026-10-04T11:51:52.036907+00:00"
+    },
+    {
+      "name": "image-smoke-final",
+      "receipt": "artifacts/production-hardening-2026-10-04/verification/after-review/image-smoke-final.json",
+      "receipt_sha256": "7f76e2d725080cbeb64a41f980cb0f195ac6984994b72f2cdc5c1fa1b853a533",
+      "command": [
+        "python3",
+        "artifacts/production-hardening-2026-10-04/runtime/smoke-images.py",
+        "artifacts/production-hardening-2026-10-04/runtime/verified-builds.json"
+      ],
+      "exit_status": 0,
+      "log": "artifacts/production-hardening-2026-10-04/verification/after-review/image-smoke-final.log",
+      "log_sha256": "d1e53ea0013790ba7b45d3abbc6b88b96b54513667932747642a0c2e6bdf5fcb",
+      "observed_at": "2026-10-04T11:52:31.389352+00:00"
+    },
+    {
+      "name": "durable-image-verified",
+      "receipt": "artifacts/production-hardening-2026-10-04/verification/after-review/durable-image-verified.json",
+      "receipt_sha256": "866daf56cf60d7aa2bc04acdd2f529fb3b96c6dff3b3cca86e35e3052ea0b13d",
+      "command": [
+        "python3",
+        "artifacts/production-hardening-2026-10-04/runtime/smoke-durable-images.py"
+      ],
+      "exit_status": 0,
+      "log": "artifacts/production-hardening-2026-10-04/verification/after-review/durable-image-verified.log",
+      "log_sha256": "0a8e35915523ab28713efbc8735db8a8880c41479c208e5a4f546ded0db793ee",
+      "observed_at": "2026-10-04T12:03:39.021700+00:00"
+    },
+    {
+      "name": "browser-verified",
+      "receipt": "artifacts/production-hardening-2026-10-04/verification/after-review/browser-verified.json",
+      "receipt_sha256": "f284fa826ea5bd3742d062f8793535f4063ab552121a96da5651537a7e27d403",
+      "command": [
+        "npm",
+        "run",
+        "test:e2e",
+        "--",
+        "tests/e2e/app.spec.ts",
+        "tests/e2e/routed-journeys.spec.ts",
+        "--project=chromium-wide-1440",
+        "--project=firefox-wide-1440",
+        "--workers=1",
+        "--grep",
+        "demonstração local atravessa|agenda alterna|revalidação bloqueia conteúdo|403 de autorização|401 durante uma sessão|logout online|login com challenge MFA|challenge MFA expirado|challenge MFA bloqueado|prontuário manual|cadeia diagnóstica|jornada de internação|jornada de estoque|jornada financeira|comunicação: preparar|shell expõe|deep links das jornadas novas"
+      ],
+      "exit_status": 0,
+      "log": "artifacts/production-hardening-2026-10-04/verification/after-review/browser-verified.log",
+      "log_sha256": "5042a1c08a072b9015d6782a6c7159ab49b70c57ec77330137adf4bfe95034ad",
+      "observed_at": "2026-10-04T11:58:15.854694+00:00"
+    },
+    {
+      "name": "production-structure-final",
+      "receipt": "artifacts/production-hardening-2026-10-04/verification/after-review/production-structure-final.json",
+      "receipt_sha256": "708985880d46f69e0d25242913151c42f5d5524686a31705253325392a83a503",
+      "command": [
+        "node",
+        "--import",
+        "tsx",
+        "scripts/verify-production.ts",
+        "--structural",
+        "--skip-local-gates"
+      ],
+      "exit_status": 0,
+      "log": "artifacts/production-hardening-2026-10-04/verification/after-review/production-structure-final.log",
+      "log_sha256": "160cf4dd9fc1ca782c063115c89a4c4bb66b684f098b324529ede14ed5cc0cf4",
+      "observed_at": "2026-10-04T11:57:33.375991+00:00"
+    },
+    {
+      "name": "control-before-closure",
+      "receipt": "artifacts/production-hardening-2026-10-04/verification/after-review/control-before-closure.json",
+      "receipt_sha256": "4158859031e82af2d2f7efd4afcb4b1f3a722ea82df80555b4d5f54854760b69",
+      "command": [
+        "npm",
+        "run",
+        "verify:control-plane"
+      ],
+      "exit_status": 0,
+      "log": "artifacts/production-hardening-2026-10-04/verification/after-review/control-before-closure.log",
+      "log_sha256": "e5f022c48a9e436906523abbe64ba70d25b2b1462fed1aa654d59129fc9df449",
+      "observed_at": "2026-10-04T11:57:34.916782+00:00"
+    },
+    {
+      "name": "secrets-after-browser",
+      "receipt": "artifacts/production-hardening-2026-10-04/verification/after-review/secrets-after-browser.json",
+      "receipt_sha256": "057a6a669376ee1d160408ce8574b8d94f63b564c1f821c6655a4032db8cab24",
+      "command": [
+        "npm",
+        "run",
+        "verify:secrets"
+      ],
+      "exit_status": 0,
+      "log": "artifacts/production-hardening-2026-10-04/verification/after-review/secrets-after-browser.log",
+      "log_sha256": "759bc372f74d68043e3167aa1cb36d768a416ec20fa3bf5af1340dfde15460ce",
+      "observed_at": "2026-10-04T12:00:52.303379+00:00"
+    },
+    {
+      "name": "diff-final",
+      "receipt": "artifacts/production-hardening-2026-10-04/verification/after-review/diff-final.json",
+      "receipt_sha256": "473f98428fd45567990e172abc4a7ac08fb70b3d10b5c9f4757b88dd19a1c605",
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exit_status": 0,
+      "log": "artifacts/production-hardening-2026-10-04/verification/after-review/diff-final.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "observed_at": "2026-10-04T12:14:01.217188+00:00"
+    }
+  ],
+  "preserved_failures": [
+    {
+      "receipt": "artifacts/production-hardening-2026-10-04/verification/after-review/durable-image-diagnostic.json",
+      "exit_status": 1,
+      "status": "PRESERVED_FAILURE_NOT_CURRENT_APPROVAL"
+    },
+    {
+      "receipt": "artifacts/production-hardening-2026-10-04/verification/after-review/durable-image-smoke-fixed.json",
+      "exit_status": 1,
+      "status": "PRESERVED_FAILURE_NOT_CURRENT_APPROVAL"
+    },
+    {
+      "receipt": "artifacts/production-hardening-2026-10-04/verification/after-review/durable-image-smoke.json",
+      "exit_status": 1,
+      "status": "PRESERVED_FAILURE_NOT_CURRENT_APPROVAL"
+    },
+    {
+      "receipt": "artifacts/production-hardening-2026-10-04/verification/after-review/lint-final.json",
+      "exit_status": 1,
+      "status": "PRESERVED_FAILURE_NOT_CURRENT_APPROVAL"
+    },
+    {
+      "receipt": "artifacts/production-hardening-2026-10-04/verification/after-review/migration-cli-baseline.json",
+      "exit_status": 1,
+      "status": "PRESERVED_FAILURE_NOT_CURRENT_APPROVAL"
+    },
+    {
+      "receipt": "artifacts/production-hardening-2026-10-04/verification/after-review/secrets-reviewed.json",
+      "exit_status": 1,
+      "status": "PRESERVED_FAILURE_NOT_CURRENT_APPROVAL"
+    }
+  ],
+  "review_status": "UNAVAILABLE",
+  "external_release_status": "NOT_VERIFIED",
+  "limits": [
+    "Local synthetic data and providers only.",
+    "Browser subset: Chromium and Firefox wide-1440, not full matrix.",
+    "NODE_ENV=test durable image proof does not establish target production TLS/MFA/OTLP.",
+    "24 normalized collections remain SNAPSHOT_PRIMARY; no live data cutover.",
+    "No commit, push, deployment, production database mutation or real provider transaction."
+  ],
+  "runtime_artifacts": [
+    {
+      "path": "artifacts/production-hardening-2026-10-04/runtime/verified-builds.json",
+      "sha256": "5b4cc811fc8e4947a1e0a6df66ea6971db2d7abd385d43302a9eac5d65d7a89a"
+    },
+    {
+      "path": "artifacts/production-hardening-2026-10-04/runtime/smoke-images.py",
+      "sha256": "76a35e65ceef75b18b654255931f5b8b1d6546e25d9f192d3c58f15958acf255"
+    },
+    {
+      "path": "artifacts/production-hardening-2026-10-04/runtime/smoke-durable-images.py",
+      "sha256": "10e236bb247c3c1bbad3b95091e27e92c262ec3dd027fd0ccf359c23310184fc"
+    },
+    {
+      "path": "artifacts/production-hardening-2026-10-04/runtime/owned-cleanup-verification.json",
+      "sha256": "ab0ffa564f33af96875dde7b181a31d382b8405ad65e210e21b52e6bfa4daaf7"
+    },
+    {
+      "path": "artifacts/production-hardening-2026-10-04/verification/record-command.py",
+      "sha256": "1f5f7a7a55f460ff0363251bb64b7e2af16146aa65a67236177667cd32df4e3e"
+    }
+  ],
+  "review": {
+    "path": "artifacts/production-hardening-2026-10-04/review/final-review.json",
+    "sha256": "b396774ea93a47b0e94fe640325fa894f226fc62dabe384e5fa7adfa78e21d31"
+  }
+}

@@ -1,6 +1,6 @@
 import { loadWorkerConfig } from "@cvg/config";
 import { id } from "@cvg/contracts";
-import { createOpenTelemetryRuntime, OpsTelemetry } from "@cvg/ops";
+import { createOpenTelemetryRuntime, FileDurableLogSink, OpsTelemetry, runWithSpanLifecycle, SpanLifecycleError } from "@cvg/ops";
 import { PostgresPersistence } from "@cvg/persistence";
 import { createOperationalBackupJob } from "./operational-backup.ts";
 import { createConfiguredWorkerSink, createDurableWorkerAuditSink, createWorkerDependencies, CvgWorkerApplication } from "./worker.ts";
@@ -16,8 +16,11 @@ const persistence = new PostgresPersistence({ connectionString: databaseUrl });
 const configuredSink = createConfiguredWorkerSink(config);
 const otelRuntime = createOpenTelemetryRuntime({ serviceName: "cvg-worker", requireTls: config.nodeEnv === "production" });
 if (config.nodeEnv === "production" && otelRuntime.status !== "READY") throw new Error("Produção exige exportação OTLP OpenTelemetry pronta para o worker.");
+const durableLogFile = process.env.CVG_DURABLE_LOG_FILE?.trim();
+const durableLogSink = durableLogFile ? new FileDurableLogSink({ path: durableLogFile, maxBytes: 8 * 1024 * 1024, maxBackups: 7 }) : null;
 const telemetry = new OpsTelemetry({
   ...(otelRuntime.exporter ? { exporter: otelRuntime.exporter } : {}),
+  ...(durableLogSink ? { durableLogSink } : {}),
   telemetryMode: otelRuntime.status === "READY" ? "OTEL_OTLP_REDACTED" : "REDACTED_BEST_EFFORT"
 });
 const worker = new CvgWorkerApplication(createWorkerDependencies(persistence, config, configuredSink, {
@@ -26,7 +29,9 @@ const worker = new CvgWorkerApplication(createWorkerDependencies(persistence, co
   metrics: {
     record(event) {
       const span = telemetry.startCorrelatedSpan(event.name, { requestId: null, correlationId: event.cycleId ?? null, sessionId: null, toolInvocationId: null, jobId: event.jobId ?? null, outboxId: event.outboxId ?? null, providerRequestId: event.providerRequestId ?? null }, { lane: event.lane, jobType: event.jobType, durationMs: event.durationMs });
-      telemetry.finishSpan(span, event.name.endsWith("quarantined") ? 500 : event.name.endsWith("retry") || event.name.endsWith("backpressure") ? 503 : 200);
+      const statusCode = event.name.endsWith("quarantined") ? 500 : event.name.endsWith("retry") || event.name.endsWith("backpressure") ? 503 : 200;
+      telemetry.finishSpan(span, statusCode, statusCode >= 500 ? "error" : "response");
+      telemetry.logCorrelated({ context: { requestId: null, correlationId: event.cycleId ?? null, sessionId: null, toolInvocationId: null, jobId: event.jobId ?? null, outboxId: event.outboxId ?? null, providerRequestId: event.providerRequestId ?? null }, event: event.name, level: statusCode >= 500 ? "error" : "info", metadata: { lane: event.lane, jobType: event.jobType, durationMs: event.durationMs }, outcome: statusCode >= 500 ? "ERROR" : "OBSERVED" });
     }
   }
 }));
@@ -40,7 +45,8 @@ const operationalBackup = createOperationalBackupJob({
   }
 });
 let stopping = false;
-const stop = (): void => { stopping = true; worker.stop(); };
+const lifecycleController = new AbortController();
+const stop = (): void => { stopping = true; lifecycleController.abort(new Error("worker shutdown requested")); worker.stop(); };
 process.on("SIGINT", stop);
 process.on("SIGTERM", stop);
 
@@ -50,6 +56,7 @@ const sleep = async (durationMs: number): Promise<void> => {
 
 try {
   const health = await worker.health();
+  telemetry.logCorrelated({ context: { requestId: null, correlationId: workerOrganizationId, sessionId: null, toolInvocationId: null, jobId: null, outboxId: null, providerRequestId: null }, event: "worker.health", level: health.status === "UNAVAILABLE" ? "error" : "info", metadata: { status: health.status, persistence: health.persistence, dispatch: health.dispatch }, outcome: health.status });
   if (health.status === "UNAVAILABLE") {
     process.stdout.write(`${JSON.stringify({ service: "cvg-worker", ...health })}\n`);
     process.exitCode = 1;
@@ -61,13 +68,13 @@ try {
     operationalBackup?.start({ runImmediately: false });
     process.stdout.write(`${JSON.stringify({ service: "cvg-worker", ...health })}\n`);
     while (!stopping) {
-      const span = telemetry.startCorrelatedSpan("cvg.worker.run_cycle", { requestId: null, correlationId: workerOrganizationId, sessionId: null, toolInvocationId: null, jobId: null, outboxId: null, providerRequestId: null }, { workerId: config.workerId, organizationId: workerOrganizationId });
       try {
-        const result = await worker.runCycle(id(workerOrganizationId), config.workerId, { limit: 10, leaseSeconds: 30, maxAttempts: 5 });
-        telemetry.finishSpan(span, result.status === "FAILED" ? 500 : result.status === "DEGRADED" ? 503 : 200);
+        const result = await runWithSpanLifecycle(telemetry, "cvg.worker.run_cycle", { requestId: null, correlationId: workerOrganizationId, sessionId: null, toolInvocationId: null, jobId: null, outboxId: null, providerRequestId: null }, (signal) => worker.runCycle(id(workerOrganizationId), config.workerId, { limit: 10, leaseSeconds: 30, maxAttempts: 5, signal }), { signal: lifecycleController.signal });
+        telemetry.logCorrelated({ context: { requestId: null, correlationId: result.cycleId, sessionId: null, toolInvocationId: null, jobId: null, outboxId: null, providerRequestId: null }, event: "worker.cycle.completed", level: result.status === "COMPLETED" ? "info" : "warn", metadata: { status: result.status, durationMs: result.durationMs, laneRuns: result.metrics.laneRuns, laneFailures: result.metrics.laneFailures }, outcome: result.status });
         process.stdout.write(`${JSON.stringify({ service: "cvg-worker", healthStatus: health.status, ...result })}\n`);
       } catch (error) {
-        telemetry.finishSpan(span, 503);
+        if (stopping && error instanceof SpanLifecycleError) break;
+        telemetry.logCorrelated({ context: { requestId: null, correlationId: workerOrganizationId, sessionId: null, toolInvocationId: null, jobId: null, outboxId: null, providerRequestId: null }, event: "worker.cycle.failed", level: "error", metadata: { error: error instanceof Error ? error.name : "UnknownError" }, outcome: "FAILED" });
         throw error;
       }
       if (!stopping) await sleep(config.workerIntervalMs);
@@ -75,6 +82,7 @@ try {
   }
 } finally {
   await operationalBackup?.stop();
+  await telemetry.close();
   await otelRuntime.shutdown();
   await persistence.close();
 }

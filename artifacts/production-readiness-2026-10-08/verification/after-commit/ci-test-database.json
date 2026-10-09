@@ -1,0 +1,13 @@
+{
+  "name": "ci-test-database",
+  "command": [
+    "npm",
+    "run",
+    "test:database"
+  ],
+  "exit_status": 0,
+  "started_at": "2026-10-08T10:44:51.215846+00:00",
+  "duration_s": 17.5,
+  "log": "artifacts/production-readiness-2026-10-08/verification/after-commit/ci-test-database.log",
+  "log_sha256": "13d929adb2ef5f7b70f639bf03cbd61d6753c4e9d02a9cf7c3cc327cf3eb8b44"
+}

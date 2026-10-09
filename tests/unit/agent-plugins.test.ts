@@ -19,11 +19,9 @@ function manifest(overrides: Partial<Omit<Parameters<typeof pluginManifestDigest
 
 function plugin(overrides: Partial<Omit<Parameters<typeof pluginManifestDigest>[0], "digest">> = {}, hooks: AgentPlugin["hooks"] extends () => infer H ? H : never = [], behavior: { initThrows?: boolean; shutdownThrows?: boolean } = {}): AgentPlugin {
   const changedManifest = manifest(overrides);
-  let initializedWith: AgentPluginContext | null = null;
   return {
     manifest: changedManifest,
-    async initialize(context) {
-      initializedWith = context;
+    async initialize(_context) {
       if (behavior.initThrows) throw new Error("plugin init failed");
     },
     capabilities: () => changedManifest.capabilities.map((capability) => capability.name),

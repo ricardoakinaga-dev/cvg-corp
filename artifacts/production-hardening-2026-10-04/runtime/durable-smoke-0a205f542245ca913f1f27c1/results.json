@@ -1,0 +1,36 @@
+{
+  "source_fingerprint": "sha256:15ece6ef83fb9e9918dddcde7757e337fb81b42b07b6b04474c68580fcb794b2",
+  "image_id": "sha256:9ec13a452d97f53e308dc417bc032a093002e6bee47149699caed98db673df5b",
+  "scope": "local compiled entrypoints; synthetic PostgreSQL; NODE_ENV=test; no TLS or provider qualification",
+  "checks": [
+    "compiled_migrate_exit_0",
+    "migrations_49",
+    "runtime_role_unprivileged",
+    "postgres_api_ready",
+    "anonymous_401",
+    "authenticated_login",
+    "durable_session_sql"
+  ],
+  "containers": [
+    {
+      "kind": "postgres",
+      "id": "e975ddf34816f01785883e98a848474eff30e361417b141bd186966abb1f5ef1",
+      "removed": true
+    },
+    {
+      "kind": "migrate",
+      "id": "f0ed310bad0dff64b4bf257e4d542147b83905d969e176d6b28a62f91df79938",
+      "removed": true
+    },
+    {
+      "kind": "api",
+      "id": "c8a7269240306ba9a53fc263e4ef04310f5c1318ba348947f808322f4f18a266",
+      "removed": true
+    }
+  ],
+  "network_removed": true,
+  "started_at": "2026-10-04T11:59:17.048656+00:00",
+  "status": "FAIL",
+  "error": "AssertionError: ",
+  "finished_at": "2026-10-04T11:59:26.755810+00:00"
+}

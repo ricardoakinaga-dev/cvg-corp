@@ -1,0 +1,928 @@
+✔ patient read returns only the minimal authorized projection (184.459322ms)
+✔ agenda read is context-scoped and bounded (160.656017ms)
+✔ a resource outside the authenticated scope is rejected (159.901544ms)
+✔ model-provided arguments cannot redirect the authoritative resource (155.553975ms)
+✔ patient executor rejects a patient resource combined with an encounter identity (159.086617ms)
+✔ effect tools without an application binding fail closed instead of faking success (156.383457ms)
+✔ all cataloged API routes preserve versioned envelopes for synthetic invalid or unauthenticated requests (950.36798ms)
+ℹ authenticated GET payload schemas: 41/45; versioned errors=GET /ai/sessions/:id/replay 404, GET /clinical/documents/:id 404, GET /knowledge/:id/index 404, GET /patients/:id 404; empty 204s=none
+✔ valid synthetic success fixtures reach the remaining safely executable catalog routes (1829.606233ms)
+✔ M1 login, context and health use the real HTTP boundary (406.26083ms)
+✔ development session cookies follow request transport, not the 0.0.0.0 bind address (506.921297ms)
+✔ health, readiness and metrics distinguish live process from dependencies (17.311738ms)
+✔ operational reports expose filtered real aggregates without clinical payloads (27.945802ms)
+✔ readiness does not promote a degraded secret provider for an enabled DeepSeek runtime (197.757203ms)
+✔ readiness observes secret revocation after startup instead of serving a stale READY snapshot (197.462945ms)
+✔ the v1 envelope is versioned and unknown input fields are rejected (7.10036ms)
+✔ administrative snapshots cross the HTTP JSON boundary without leaking secrets or BigInt (3.79971ms)
+✔ CSRF and cross-scope requests fail closed (2.975426ms)
+✔ role grant idempotency returns the same receipt (6.177333ms)
+✔ API blocks unavailable production capabilities (18.395415ms)
+✔ API exposes the core clinical, treatment, finance and knowledge boundaries (1037.047445ms)
+✔ API protects terminal prescriptions and keeps medication dispense idempotent under concurrency (898.614523ms)
+✔ AI approval is bound to the original request and consumed once (294.080009ms)
+✔ PostgreSQL mode fails closed until its transactional adapter is available (164.809244ms)
+✔ role boundaries are enforced by the API, independently of UI visibility (1195.989504ms)
+✔ context is explicit for scoped API operations (1.046336ms)
+✔ login abuse is throttled without revealing account existence (1389.084023ms)
+✔ production-auth boundary requires MFA, tracks redacted sessions, rotates credentials and consumes recovery codes (1859.249847ms)
+✔ TOTP enrollment validates an external secret reference and revocation kills sessions (1324.918875ms)
+✔ account lockout is durable in the user security state and blocks a valid password (271.013284ms)
+✔ legacy password digests verify once and upgrade storage without changing credential identity (755.925585ms)
+✔ appointment ranges validate paired bounded timestamps and preserve legacy reads (309.647033ms)
+✔ appointment range includes Sao Paulo 21:00 on the next UTC day and excludes boundaries outside scope (294.778981ms)
+✔ appointment ranges select precise membership across both DST transitions (299.760017ms)
+✔ appointment legacy today and week preserve server-local membership (303.745332ms)
+✔ two concurrent reservation attempts yield one booking, a clear conflict and a safe replay (575.923564ms)
+✔ clinical record chain runs manually with review, immutable signature and addendum (295.565704ms)
+✔ diagnostic chain runs through HTTP with provenance, quarantine and human review (294.485976ms)
+✔ hospitalization chain keeps prescription, dispensation and administration distinct and gates discharge (299.340487ms)
+✔ stock entry, concurrent dispense race, replay and inventory adjustment stay consistent (574.882197ms)
+✔ finance journey keeps settlements unique, ledger append-only and refund policy explicit (574.583642ms)
+✔ knowledge ingestion, approval, indexing, retrieval with checksums and quarantine invalidation (583.43023ms)
+✔ CVG-AUD19-002: recurso de outro workspace da mesma organização nao alcanca tool nem provider (400.723048ms)
+✔ CVG-AUD19-002: divergencia entre resourceId e encounterId falha fechado (284.886005ms)
+✔ CVG-AUD20-006: patient resourceId plus encounterId is divergent and never reaches tool or provider (285.493255ms)
+✔ CVG-AUD21-003: ID desconhecido ao lado de identidade conhecida é DIVERGENT, não NOT_FOUND (277.425936ms)
+✔ CVG-AUD19-002: fluxo same-workspace autorizado continua funcional (295.939851ms)
+✔ runtime response contract admits a cataloged JSON route and explicit text metrics (72.343764ms)
+✔ runtime response contract returns a bounded generic error without echoing invalid secrets (12.097297ms)
+✔ fault harness quarantines a dispatch crash and never retries an unknown effect blindly (2.663586ms)
+✔ fault harness fails loudly when a stale worker loses its lease (0.735889ms)
+✔ Postgres persistence commits journal and snapshot atomically (198.780577ms)
+✔ snapshot projector exercises seeded residual rows without command-owned overrides (164.173632ms)
+✔ AUD27 normalized projection writes every residual collection through its owner (168.750137ms)
+✔ projectDomain rejects ambiguous authoritative inputs and duplicate or divergent normalized writes (168.554533ms)
+✔ AUD27 normalized removals execute tenant-scoped relational deletes in dependency-safe order (160.504605ms)
+✔ durable command receipt claim is serialized and body-digest bound (157.445565ms)
+✔ patient creation can own one authoritative normalized write inside the durable commit (155.441516ms)
+✔ stock product creation uses its owner path once and a durable replay skips product DML (161.660166ms)
+✔ stock product SKU uniqueness remains a typed conflict and rolls back the durable commit (160.636962ms)
+✔ stock product command rejects snapshot divergence before product DML (159.252025ms)
+✔ guardian creation can own one authoritative normalized write inside the durable commit (166.716934ms)
+✔ authoritative guardian writes fail closed when the candidate diverges from the canonical snapshot (162.004736ms)
+✔ guardian replay advances the audit/receipt snapshot without issuing a second guardian DML (159.0501ms)
+✔ diagnostic request creation can own one authoritative normalized write inside the durable commit (160.030233ms)
+✔ authoritative diagnostic request writes fail closed when PostgreSQL returns no normalized row (157.800575ms)
+✔ authoritative diagnostic request writes fail closed when the candidate diverges from the canonical snapshot (160.461356ms)
+✔ diagnostic request replay advances the audit/receipt snapshot without issuing a second diagnostic DML (162.706903ms)
+✔ specimen and diagnostic result creation can own authoritative scoped writes in the durable commit (162.219456ms)
+✔ authoritative diagnostic result writes fail closed when PostgreSQL returns no normalized row (162.679352ms)
+✔ authoritative specimen writes fail closed when the candidate diverges from the canonical snapshot (168.745668ms)
+✔ specimen replay advances the audit/receipt snapshot without issuing a second specimen DML (167.960367ms)
+✔ appointment creation can own one authoritative normalized write inside the durable commit (160.26482ms)
+✔ encounter creation can own one authoritative normalized write inside the durable commit (158.967165ms)
+✔ authoritative encounter writes fail closed when the candidate diverges from the canonical snapshot (165.230318ms)
+✔ Postgres persistence fails closed when a contextual projection loses its scope (161.087209ms)
+✔ authoritative domain registry covers every normalized business collection (167.438937ms)
+✔ authoritative validation rejects cross-parent and cross-tenant child relationships (175.926117ms)
+✔ authoritative validation rejects workspace and unit drift in operational children (179.471644ms)
+✔ authoritative validation rejects medication product and actor organization drift (171.420294ms)
+✔ AI projections derive mandatory tenant scope from the persisted session (180.388109ms)
+✔ inbox divergent duplicate is quarantined inside the durable transaction (167.690736ms)
+✔ appointment range parity keeps exact bounds and tenant scope through memory and Postgres repositories (171.13316ms)
+✔ normalized read repositories scope the transaction and preserve joined projections (175.095262ms)
+✔ normalized audit reads quarantine malformed durable rows (165.832138ms)
+✔ normalized clinical reads quarantine unsupported durable status (163.959093ms)
+✔ normalized diagnostic reads quarantine unsupported durable status (165.025557ms)
+✔ normalized stock reads quarantine unsupported durable status (168.943828ms)
+✔ normalized finance, communication and knowledge reads quarantine unsupported durable status (166.120674ms)
+✔ normalized queue and AI session reads quarantine unsupported durable status (165.722844ms)
+✔ durable break-glass lifecycle keeps evidence immutable behind the transaction boundary (1.466468ms)
+✔ Postgres persistence exposes readiness, revision and empty-snapshot boundaries (163.806729ms)
+✔ Postgres persistence rolls back a failed projection and rejects stale writers (171.815299ms)
+✔ normal commit rejects recovered runtime projection before opening a connection (179.713013ms)
+✔ Postgres persistence preserves corruption signals instead of downgrading them to outage (181.685994ms)
+✔ outbox failure cannot mutate an expired lease (0.754002ms)
+✔ recovery bundle encryption round-trips BigInt state and rejects tampering (183.709207ms)
+✔ recovery validation rejects a rehashed snapshot with a tampered audit chain (167.059911ms)
+✔ sealed restore rejects invalid recovered agent state before connection (178.602907ms)
+✔ recovery validation binds durable ledger digests to immutable record content (160.999217ms)
+✔ sealed restore projects non-empty recovery ledgers under the restore authority (165.454465ms)
+✔ recovery validation rejects authentication records with missing temporal fields (161.563386ms)
+✔ CVG-AUD19-010: recovery bundle validates, binds and rejects agent runtime state (174.885962ms)
+✔ operational backup writes an atomic manifest, verifies before rotation and rejects tampering (205.952791ms)
+✔ operational backup job runs periodically, serializes ticks and records failures (210.100227ms)
+✔ governed export binds policy, secret resolution and idempotent encrypted delivery (170.332551ms)
+✔ governed export rejects expired, tampered, wrong-key and cross-organization recovery use (164.671368ms)
+✔ recovery manifest rejects partial, stale, and migration-incompatible restores (172.174999ms)
+✔ PostgreSQL runtime wires bootstrap and HTTP mutations through the durable boundary (628.202329ms)
+✔ a final durable commit failure settles the claimed command as OUTCOME_UNKNOWN (516.776934ms)
+✔ PostgreSQL patient creation commits its normalized source row before the HTTP response (507.975039ms)
+✔ PostgreSQL guardian creation commits one normalized row and replays without a second guardian DML (496.557266ms)
+✔ PostgreSQL stock product creation commits once and replays without a second product DML (528.422802ms)
+✔ PostgreSQL stock product SKU collision returns 409 and settles its receipt as failed (506.835158ms)
+✔ PostgreSQL diagnostic request creation commits one normalized row and replays without a second diagnostic DML (528.025041ms)
+✔ PostgreSQL diagnostic child creation commits authoritative specimen/result rows and replays without duplicate DML (518.622238ms)
+✔ PostgreSQL appointment creation commits its normalized source row before the HTTP response (495.918227ms)
+✔ PostgreSQL encounter creation commits its normalized source row before the HTTP response (504.633161ms)
+✔ PostgreSQL clinical signing commits one authoritative update and replays idempotently (532.65756ms)
+✔ authoritative clinical signing fails closed when the CAS update affects no row (166.184573ms)
+✔ PostgreSQL runtime routes audit reads through the normalized repository (559.078846ms)
+✔ durable claim fence reconciles expired NOT_STARTED as safe failure and DISPATCHED as unknown (1.241369ms)
+✔ a stale command commit cannot resurrect a receipt reconciled by another process (161.104452ms)
+✔ messaging provider crosses the real loopback HTTP boundary (363.551421ms)
+✔ restore fixture never reactivates old authority (175.762092ms)
+✔ restore reconciliation reapplies post-backup decisions only under an independent authority (161.334289ms)
+✔ restore reconciliation stays quarantined while any post-backup decision is unresolved (158.718573ms)
+✔ restore reconciliation refuses non-quarantined snapshots, unauthorized or non-independent authorities (159.569426ms)
+✔ recovery store coverage declares every store with an explicit owner (0.335084ms)
+✔ runtime inventory is unavailable until readiness and captures the actual GET and derived HEAD (122.485312ms)
+✔ registration rejects undocumented GET /api/v1/uncataloged and a caught violation cannot serve handlers (4.877905ms)
+✔ registration rejects undocumented GET /api/v2/patients and a caught violation cannot serve handlers (3.662194ms)
+✔ registration rejects undocumented GET /outside and a caught violation cannot serve handlers (3.119123ms)
+✔ registration rejects undocumented POST /api/v1/patients and a caught violation cannot serve handlers (3.335556ms)
+✔ registration rejects undocumented OPTIONS /api/v1/patients and a caught violation cannot serve handlers (2.847467ms)
+✔ registration rejects undocumented OPTIONS * and a caught violation cannot serve handlers (2.432365ms)
+✔ missing catalog routes prevent readiness (1.985093ms)
+✔ suppressing an expected implicit HEAD prevents readiness and GET effects (2.48838ms)
+✔ explicit HEAD must use its GET handler (2.365241ms)
+✔ HEAD before its GET cannot claim derived status (1.911216ms)
+✔ a rejected generated HEAD poisons the GET that Fastify already registered (2.646314ms)
+✔ GET and HEAD in a method array preserve one shared handler (2.046918ms)
+✔ method arrays reject every undocumented member (2.493269ms)
+✔ plugin prefixes are checked as resolved URLs (3.650883ms)
+✔ a plugin prefix cannot smuggle a v2 route (2.173955ms)
+✔ prefix-root registrations cannot add an uncataloged trailing-slash alias (2.499721ms)
+✔ host-constrained variants cannot reuse catalog membership (2.067908ms)
+✔ duplicate canonical keys are rejected before installing the guard (1.470837ms)
+✔ duplicate runtime registration poisons an already populated router (2.223897ms)
+✔ later onRoute url mutation cannot bypass admission (2.237343ms)
+✔ later onRoute method mutation cannot bypass admission (6.031271ms)
+✔ later onRoute handler mutation cannot bypass admission (2.061165ms)
+✔ later onRoute constraints mutation cannot bypass admission (2.635954ms)
+✔ late plugin registrations before readiness are still admitted against the catalog (2.331848ms)
+✔ createRuntime exposes the complete sealed inventory while HEAD and CORS preserve authorization (227.694ms)
+✔ durable worker admission is tenant-scoped and idempotent by immutable digest (9.025812ms)
+✔ durable worker claim fences stale completion and quarantines poison attempts (1.905175ms)
+✔ worker heartbeat upsert rejects stale liveness and preserves tenant scope (1.08024ms)
+✔ worker maintenance prunes only old completed jobs and stopped heartbeats (0.550093ms)
+✔ malformed durable worker rows fail closed before application code can consume them (0.364788ms)
+✔ recovery encryption carries durable worker jobs and their fence token (187.409412ms)
+✔ context builder prioritizes trusted sections and keeps untrusted content as delimited data (2.409012ms)
+✔ context builder quarantines injection patterns in untrusted retrieval (0.544513ms)
+✔ tool and assistant history is delimited and injection findings are reported (0.286232ms)
+✔ context builder rejects data classes outside the agent profile (0.200483ms)
+✔ context builder respects the token budget instead of truncating from the start (0.205031ms)
+✔ knowledge governor only exposes approved, in-scope, allowed-class documents (1.055575ms)
+✔ compaction is deterministic, keeps recent turns and never replaces records (0.405935ms)
+✔ data minimization projects only the allowed fields (0.190755ms)
+✔ kernel completes a normal message turn (3.122289ms)
+✔ kernel executes a tool and then completes (1.747882ms)
+✔ kernel pauses on approval and resumes with the exact checkpoint (0.993448ms)
+✔ kernel keeps waiting when the checkpoint is resumed without an approval id (0.519466ms)
+✔ kernel denies a tool that was not declared and audits the decision (0.326537ms)
+✔ kernel denies a tool rejected by the gateway (0.353819ms)
+✔ kernel stops on max turns (0.488659ms)
+✔ kernel stops on token exhaustion (0.332549ms)
+✔ kernel stops on cost exhaustion when the cost is known (0.3226ms)
+✔ kernel stops when the budget reservation cannot be confirmed (0.470115ms)
+✔ kernel keeps unknown cost explicit instead of assuming zero (0.348168ms)
+✔ kernel maps a model timeout to TIMEOUT (0.373565ms)
+✔ kernel reports dependency unavailable after exhausting failures (0.331026ms)
+✔ kernel cancels before the first turn when the signal is aborted (0.222434ms)
+✔ kernel retries an invalid structured response within the failure budget (0.420372ms)
+✔ kernel detects a runaway tool loop with no progress (0.753291ms)
+✔ kernel stops on context build failure without corrupting state (0.348638ms)
+✔ kernel returns WAITING_HUMAN with missing information instead of guessing (1.077164ms)
+✔ kernel records progress from the tool port, not from model text (0.568117ms)
+✔ kernel reports OUTCOME_UNKNOWN instead of retrying a tool with unknown outcome (0.376921ms)
+✔ kernel dispatches a deterministic initial tool without spending a model decision (0.435149ms)
+✔ kernel checkpoints keep digests, not raw content, and enforce the default limits (0.413579ms)
+✔ agent counters are sanitized, aggregated and rendered without tenant labels (6.683966ms)
+✔ metrics without agent counters still render the base families (0.759904ms)
+✔ plugin with a valid manifest and allowlist reaches READY and exposes capabilities (3.130754ms)
+✔ tampered manifest digest is rejected before load (0.320206ms)
+✔ plugin outside the allowlist or with a forbidden permission is rejected (0.259903ms)
+✔ risky plugin requires explicit runtime approval (0.201535ms)
+✔ plugin receives no ambient authority: no database, filesystem, secrets or http client (0.347256ms)
+✔ plugin without the approved-tools permission has no tool client (0.341565ms)
+✔ dependency graph detects missing capabilities and cycles and fails startup closed (0.391909ms)
+✔ capability version conflicts are detected (0.310637ms)
+✔ a failed plugin never offers capabilities and disable removes hooks (0.749314ms)
+✔ plugin logger redacts secret-like metadata (0.560382ms)
+✔ CVG-AUD21-003: qualquer combinação contraditória conhecida ou parcialmente conhecida retorna DIVERGENT (175.163949ms)
+✔ CVG-AUD21-003: recurso resolvido mantém tenant, unit e workspace autoritativos (158.822026ms)
+✔ direct and indirect injection never reach the model or the tool gateway (191.049174ms)
+✔ a tool outside the allowlist is denied with no dispatch (166.538552ms)
+✔ cross-tenant replay and cross-organization resource access are denied (160.951046ms)
+✔ approval cannot be forged, reused, expired or self-approved for high impact (328.255945ms)
+✔ stale fencing prevents an old writer from committing (162.155207ms)
+✔ malicious plugin cannot escalate privileges or reach ambient authority (1.129511ms)
+✔ malicious skill remains low-privilege data and cannot grant tools (0.577584ms)
+✔ secret-like material in untrusted context is quarantined (0.244826ms)
+✔ an AI turn cannot produce a side effect without the tool gateway and PDP (165.431993ms)
+✔ plugin manifest digest pins the effective manifest (0.271916ms)
+✔ session store creates, loads and completes a scoped session (1.947063ms)
+✔ terminal completion invalidates lease authority and keeps cleanup idempotent (0.388663ms)
+✔ leases fence concurrent owners and reject stale writers (0.490312ms)
+✔ renew and release require the current owner and fence (0.208007ms)
+✔ checkpoint is append-only, versioned and tamper-evident (1.013576ms)
+✔ turn ledger is append-only and fenced (2.432396ms)
+✔ CVG-AUD19-003: TTL expirado bloqueia load, lease, renovacao e operacoes terminais (1.470856ms)
+✔ CVG-AUD21-010: TTL boundary remains deterministic across 20 repetitions (0.931413ms)
+✔ CVG-AUD19-007: checkpoints and turns are not visible to another actor (0.285291ms)
+✔ postgres session store rejects a stale fence and numbers sequences globally per session (1.353749ms)
+✔ postgres session store separates invalid usage references from stale fences (0.424369ms)
+✔ postgres session store issues fenced SQL and rejects stale completion (0.769832ms)
+✔ postgres lease renewal requires an active session and completion deletes its lease (0.471257ms)
+✔ skill requires a matching digest and supported schema (1.507535ms)
+✔ skills are selected only when approved and requirements are satisfied (0.380238ms)
+✔ a quarantined skill stops being selectable immediately (0.172ms)
+✔ skill markdown frontmatter parses without executing content (0.954355ms)
+✔ a skill cannot grant a tool or capability it declares (0.154217ms)
+✔ exports exactly the AUD27-008 response-schema names (1.808905ms)
+✔ accepts actual success payload shapes, receipts, nulls, and empty collections (28.861346ms)
+✔ rejects missing and unknown required top-level fields (2.889616ms)
+✔ rejects unsafe/redacted fields at explicit and broad nested boundaries (0.753431ms)
+✔ rejects invalid primitive values, malformed domain records, and unbounded lists (8.716487ms)
+✔ exports exactly the assigned response-schema names as a readonly map (1.496745ms)
+✔ accepts actual clinical and diagnostic success payloads (13.128074ms)
+✔ rejects missing or unknown top-level payload fields (1.903852ms)
+✔ rejects redacted clinical content, unsafe nested fields, and invalid primitives (1.585049ms)
+✔ rejects malformed list items and pagination outside the bounded contract (4.30534ms)
+✔ exports exactly the assigned response-schema names (3.593666ms)
+✔ accepts live success payload shapes, receipts, nulls, empty lists and bounded pagination (38.139438ms)
+✔ rejects missing and unknown top-level payload fields (0.525978ms)
+✔ rejects unsafe/redacted fields and invalid primitive values at nested boundaries (1.033613ms)
+✔ rejects representative malformed domain and AI payloads (0.78505ms)
+✔ every cataloged API response has an executable egress contract (1.031148ms)
+✔ known-bad response names fail closed and dead mappings stay unregistered (0.503396ms)
+✔ known-good JSON, error, text and empty responses cross the bounded boundary (5.805952ms)
+✔ known-bad output is rejected before it can be serialized to the client (2.2682ms)
+✔ rejects a schema-valid audit payload that exceeds the JSON response byte budget (8.032976ms)
+✔ AI availability never collapses into a generic error (1.039324ms)
+✔ turn outcomes map to actionable states instead of a single failure (0.26351ms)
+✔ API failure codes are translated to operator distinctions (0.302914ms)
+✔ approval preview exposes effect, target, scope, digest and expiry (0.266686ms)
+✔ unknown tools are presented as unknown risk, never as safe (0.131806ms)
+✔ historical AUD26 evidence remains valid without rebinding to the current AUD27 subject (120.296179ms)
+✔ historical AUD26 evidence rejects an artifact rebound to another subject (103.831778ms)
+✔ historical AUD26 evidence rejects a future capture (0.37624ms)
+✔ expected normalized row counts cover every AUD27 snapshot collection and table (1.052298ms)
+✔ full snapshot parity rejects a missing unchanged seed row (0.433597ms)
+✔ full snapshot parity rejects missing or extra normalized tables (0.229497ms)
+✔ persistence control constants keep the restore authority and latest migration marker explicit (0.943375ms)
+✔ authoritative writer seam preserves scoped writes and fail-closed conflicts (2.512955ms)
+✔ stock product writer uses organization scope and fails closed on conflicting row identity (0.646473ms)
+✔ normalized early read seam preserves null joins and optional scope branches (1.372253ms)
+✔ operational backup job seam preserves lifecycle state and injected failure boundaries (4.223257ms)
+✔ AUD27 normalized write plan is content-bound, ordered and limited to changed residual rows (186.427615ms)
+✔ AUD27 normalized write plan reports deletion instead of silently treating it as an upsert (159.515386ms)
+✔ AUD27 removal scope derives tenant and RLS scope from direct and parent-owned rows (162.805718ms)
+✔ AUD27 normalized write inventory covers exactly the 24 residual snapshot collections (0.147094ms)
+✔ AI projection seam writes session-linked turns and drafts with derived scope (158.687274ms)
+✔ AI usage projection binds organization through the session and fails closed on provenance drift (156.850598ms)
+✔ rejects DONE items backed only by a subject rebind receipt (1.684915ms)
+✔ rejects a partial item without typed evidence references (0.149959ms)
+✔ accepts a current execution receipt and path-qualified references (0.136394ms)
+✔ AUD27 evidence root accepts a structurally valid package but keeps synthetic evidence blocked (13.907905ms)
+✔ AUD27 evidence root accepts the complete external package shape (5.803126ms)
+✔ AUD27 evidence root rejects a tampered package payload (4.171091ms)
+✔ AUD27 evidence root rejects a package bound to another candidate (5.222096ms)
+✔ AUD27 evidence root requires an external directory and rejects missing packages (1.1661ms)
+✔ AUD27 evidence root rejects a fully bound package payload above the bounded-read limit (5.012325ms)
+✔ AUD27 evidence root rejects a fully bound artifact above the per-file read limit (27.733328ms)
+✔ AUD27 evidence root rejects an oversized manifest before JSON parsing (4.505593ms)
+✔ AUD27 evidence root rejects packages with too many artifact paths before opening them (4.202429ms)
+✔ AUD27 evidence root fails closed on excessive structural nesting (4.404134ms)
+✔ AUD27 evidence root bounds aggregate artifact reads across the package (76.092058ms)
+✔ AUD27 evidence root rejects artifacts reached through an external symlinked directory (3.660951ms)
+✔ AUD27 migration harness supports dry-run, checkpoints, parity and replay (8.545128ms)
+✔ AUD27 migration harness quarantines a drifted target during replay (0.958885ms)
+✔ AUD27 migration harness rejects tenant crossing and rolls back failed batches (0.486425ms)
+✔ AUD27 migration harness rejects a tampered target through parity (0.503847ms)
+✔ AUD27 migration harness rejects a concurrent owner for the same run key (0.858738ms)
+✔ PostgreSQL migration checkpoint store validates durable rows and source-digest conflicts (3.470778ms)
+✔ PostgreSQL migration adapter authorizes, applies, reads and rolls back bounded batches (6.318726ms)
+✔ PostgreSQL migration adapter rolls back failed transactions and rejects target conflicts (0.640331ms)
+✔ owned PostgreSQL migration pools can close without contacting a database (0.524266ms)
+✔ PostgreSQL migration run lock shares its owning session with checkpoint and target SQL (1.73598ms)
+✔ PostgreSQL migration executor fails closed when its durable components use different run scopes (0.299207ms)
+✔ AUD27 semantic manifest validates the current F01-F39 and AUD26 mappings (6.419333ms)
+✔ AUD27 rejects all known historical subject shifts (7.349874ms)
+✔ AUD27 rejects a title mutation even when the subject label is unchanged (4.137347ms)
+✔ AUD27 rejects a coordinated manifest and backlog semantic mutation (7.094128ms)
+✔ audit-chain verification reconstructs a valid chain from database order (6.894106ms)
+✔ audit-chain verification rejects gaps, branches and multiple heads (0.729508ms)
+✔ TOTP accepts the current time step and rejects malformed or stale codes (1.620525ms)
+✔ password policy is explicit and recovery codes are one-way values (0.87593ms)
+✔ WebAuthn and break-glass boundaries fail closed before provider cryptography (0.604515ms)
+✔ WebAuthn cryptographic verification binds origin, relying party and monotonic counter (42.065542ms)
+✔ break-glass lifecycle requires explicit activation, expires automatically and records independent review (0.86567ms)
+✔ password hasher stores algorithm parameters, migrates legacy hashes and limits derivation concurrency (955.211565ms)
+✔ command-owned authoritative writes are fully inventoried with owner and invariants (18.292804ms)
+✔ break-glass activation verifies one-shot WebAuthn, scope, TTL and atomic audit input (3.093966ms)
+✔ break-glass rejects self approval before WebAuthn or persistence (0.610216ms)
+✔ break-glass remains disabled without a real WebAuthn, scope or persistence authority (0.560994ms)
+✔ break-glass denies wrong scope, wrong target, expiry and assertion reuse (0.821779ms)
+✔ the provider adapter blocks when either WebAuthn authority half is absent (0.319995ms)
+✔ break-glass requires the registered purpose and context binding (0.359639ms)
+✔ ACP sem budget/reservation falha fechado e não admite dispatch (177.664552ms)
+✔ ACP reconstituído liquida o vínculo persistido uma vez e replay não executa duas vezes (160.442561ms)
+✔ harness local reutiliza o turno terminal em replay sem nova reserva (164.283497ms)
+✔ revogação durante await retém usage e impede COMPLETED/draft no boundary da aplicação (164.570681ms)
+✔ budget reservations are atomic per scope/category, expire and never double-spend (184.362663ms)
+✔ harness denies before dispatch when the atomic reservation cannot cover the turn (164.092301ms)
+✔ late absolute usage reconciles above an exhausted hold and unknown usage remains committed (164.673603ms)
+✔ harness settles a reserved turn with usage instead of releasing it as free (166.243874ms)
+✔ container smoke rejects weak edge headers (16.616385ms)
+✔ container smoke requires Secure, HttpOnly and strict SameSite on session cookies (0.968522ms)
+✔ container smoke requires a durable provider receipt, effect and audit outcome (0.20408ms)
+✔ governed D4 export contract fixes purpose, organization scope and TTL (4.248044ms)
+✔ bounded input refinements and API factories cover their fail-closed branches (5.989062ms)
+✔ versioned command and event envelopes accept known-good input (2.95112ms)
+✔ versioned envelopes reject unknown fields and malformed digests (1.067246ms)
+✔ prepared API compatibility is an explicit fail-closed upcaster registry (1.322901ms)
+✔ AI usage settlement keeps cost uncertainty explicit and binds tokens to the turn (1.564391ms)
+✔ AI wire contract preserves provenance, references and settled usage across the boundary (2.864189ms)
+✔ login response discriminates a completed session from a pending MFA challenge (2.759234ms)
+✔ web client payload validation fails closed inside a valid envelope (25.502567ms)
+✔ CVG-AUD19-018: every UI-consumed endpoint has a runtime contract or a justified allowlist entry (12.713473ms)
+✔ CVG-AUD21-006: semantic contracts preserve Knowledge fields and reject cross-family mutants (6.870593ms)
+✔ partial envelopes and command receipts stay discriminated inside the contract (3.186539ms)
+✔ CVG-AUD23 strict verifier rejects each semantic known-bad (2000.96295ms)
+✔ CVG-AUD24 rejects a satisfied dependency left blocked (281.164032ms)
+✔ CVG-AUD24 rejects an opaque subject fingerprint (287.036406ms)
+✔ rejects a plan marker that still points to AUD21-013 while state points to AUD21-014 (2.877424ms)
+✔ rejects state updated before its referenced event and receipt (0.374917ms)
+✔ rejects a DONE item without a current exact-subject receipt (0.212435ms)
+✔ rejects DONE when a referenced receipt fails, is unrelated, action-mismatched, duplicated or unresolved (0.909463ms)
+✔ rejects an event whose composite exit hides a failed command (0.229998ms)
+✔ rejects tail command results with missing statuses on both gate and event (0.320736ms)
+✔ rejects empty command-results lists when a tail declares a composite result (0.170297ms)
+✔ rejects malformed or missing aggregate exits when a tail has command results (0.375568ms)
+✔ accepts a valid standalone exit status on an execution event (0.689683ms)
+✔ accepts one aligned append-only control-plane action (0.14512ms)
+✔ accepts a coherent append-only transition to the next action (0.134821ms)
+✔ requires active AUD27 DONE receipts to carry successful command and MEL23 evidence (7.286827ms)
+✔ recognizes AUD25 and requires the AUD24 authority closure to be reopened (338.807867ms)
+✔ recognizes AUD26 as a current program with an exact subject manifest (235.419765ms)
+✔ coverage parser reports the explicit statements line-equivalent and its justification (1.297163ms)
+✔ coverage policy declares global and all required critical-area thresholds (0.759684ms)
+✔ known-bad coverage mutation is deterministically rejected (0.477688ms)
+✔ global and critical-area thresholds accept a complete report at policy headroom (0.296141ms)
+✔ egress IP policy rejects private, reserved and alternative IPv4/IPv6 representations (5.281396ms)
+✔ egress blocks IPv4 translation/tunnel ranges and operator-configured network-specific prefixes (1.248824ms)
+✔ egress validates every redirect and never replays a POST (1.04227ms)
+✔ egress re-resolves a read redirect and strips sensitive headers on the next hop (1.328471ms)
+✔ messaging adapter cancels an oversized chunked response before full buffering (9.333505ms)
+✔ messaging adapter rejects DNS answers that include a private address before dispatch (1.079899ms)
+✔ messaging adapter applies configured network-specific IPv6 deny prefixes (0.587473ms)
+✔ model adapter rejects output requests above the configured model budget before dispatch (1.724779ms)
+✔ model adapter cancels a hostile chunked body at the byte budget without exposing body content (27.130296ms)
+✔ model adapter accepts a bounded chunked response and rejects invalid response shapes (3.2574ms)
+✔ model adapter sends true SSE streaming requests and emits bounded deltas incrementally (1.598344ms)
+✔ model stream cancels and rejects text beyond the requested output token budget (0.639039ms)
+✔ model stream charges tool-call output against the requested token budget (0.52128ms)
+✔ model stream rejects provider-reported usage above the requested token budget (0.488339ms)
+✔ local rate buckets remove expired entries while preserving an active bucket (1.866613ms)
+✔ distributed rate bucket cleanup is incremental, concurrent-safe and observable (16.39345ms)
+✔ distributed rate bucket cleanup records failures without taking down the hot path (0.490162ms)
+✔ distributed rate-limit peeks fail closed when the database is unavailable (0.756889ms)
+✔ sessão ACP durável é recarregada após restart com o profile atestado e respeita escopo (179.726799ms)
+✔ tool fora do catálogo ou role sem alçada resultam em DENY com turno persistido (163.462109ms)
+✔ ação com aprovação exige decisão humana independente e consome uma única vez (164.388453ms)
+✔ usage ausente vira OUTCOME_UNKNOWN com reconciliação obrigatória e nunca custo zero (164.196705ms)
+✔ orçamento reserva antes do dispatch, libera em DENY e mantém retido quando o custo é desconhecido (169.008678ms)
+✔ admissões ACP concorrentes na mesma sessão não reservam duas vezes (161.158212ms)
+✔ resultado ACP com correlationId divergente nunca expõe resposta como concluída (159.560379ms)
+✔ promoção de rascunho cria documento clínico durável e não promove duas vezes (159.906293ms)
+✔ ACP factory stays disabled until the complete explicit deployment contract exists (1.29533ms)
+✔ ACP manifest attestation hashes the exact profile and requires the ACP bundle (7.536862ms)
+✔ ACP native port blocks an ungoverned model turn (1.372093ms)
+✔ governed ACP crosses authorization and durable-result seams before returning a model turn (2571.20071ms)
+﹣ real DeepSeek Harness ACP boundary initializes only when explicitly enabled (0.266215ms) # SKIP
+✔ HTTP DeepSeek entrypoint refuses to listen without an explicit durable authority (1.430741ms)
+✔ DeepSeek bridge is unavailable without an explicit native port and never falls back to Mock (3.991826ms)
+✔ DeepSeek bridge accepts known-good manifest and preserves correlation/provenance (6.902321ms)
+✔ DeepSeek bridge rejects an approval envelope that disagrees with the turn input (0.470175ms)
+✔ DeepSeek bridge rejects manifest, commit and tool mismatches before any turn (0.548771ms)
+✔ DeepSeek bridge does not report readiness when native capabilities are incomplete (0.49408ms)
+✔ DeepSeek bridge rejects malformed native responses (1.238734ms)
+✔ DeepSeek bridge distinguishes timeout and caller cancellation (101.824393ms)
+✔ HTTP bridge exposes structured unavailable health and errors without a native port (36.815685ms)
+✔ HTTP bridge rejects a degraded file SecretProvider even when the named secret exists (1.007334ms)
+✔ HTTP bridge requires a bearer token when configured and never accepts caller identity alone (10.888748ms)
+✔ HTTP bridge binds the caller-supplied context to an HMAC and the adapter signs POST and GET calls (33.929555ms)
+✔ HTTP bridge and provider-neutral adapter complete a known-good synthetic protocol round trip (24.549964ms)
+✔ HTTP bridge rejects expired, future and request-rebound signatures before native execution (18.36049ms)
+✔ HTTP disconnect after request body delivery cancels the native turn (6.284022ms)
+✔ real-proof smoke accepts the actual structured wire shape and rejects missing or altered replay (53.827395ms)
+✔ bridge independently rejects each identity drift and rechecks identity after native restart (0.975024ms)
+✔ adapter rejects a stale session engine and draft bound to another turn (14.376668ms)
+✔ DeepSeek real proof requires the complete positive and negative matrix (3.728657ms)
+✔ DeepSeek real proof binds its chain digest and current timestamps (0.538532ms)
+✔ DeepSeek real proof requires independent attribution and residual-risk text (0.638297ms)
+✔ accepts live links and heading anchors (2.575031ms)
+✔ rejects deleted links and unresolved anchors (0.379005ms)
+✔ rejects duplicate ADR numbers and filename-heading mismatches (0.724107ms)
+✔ requires focused contributor checks and safe database preconditions (0.235007ms)
+✔ public domain collections reject direct mutation (177.91031ms)
+✔ diagnostic result quarantine is recorded outside the authoritative result collection (158.343105ms)
+✔ hydrate rejects an orphan quarantined diagnostic result before replacing authority (157.25973ms)
+✔ snapshot parser rejects unknown top-level fields and quarantined diagnostic rows (165.310738ms)
+✔ snapshot validation rejects duplicate identifiers in every populated collection (166.11297ms)
+✔ hydrate and restore apply full aggregate semantics before replacing authority (169.081514ms)
+✔ audit records form a tamper-evident per-organization hash chain (162.542127ms)
+✔ snapshot validation enforces audit and command receipt foreign keys (165.023885ms)
+✔ password fixture is valid only for the generated admin secret (247.001072ms)
+✔ domain security and audit helpers reject malformed branches and preserve exact appointment bounds (164.669565ms)
+✔ session lookup and MFA lifecycle fail closed for expired, revoked and missing sessions (161.887709ms)
+✔ domain reads and session mutators fail closed for absent records (164.047188ms)
+✔ authentication challenges expire, cannot replay and lock after the bounded attempt budget (164.754613ms)
+✔ appointment invariant rejects provider overlap (164.711313ms)
+✔ stock cannot become negative and movements remain append-only (162.229866ms)
+✔ signed clinical document requires addendum instead of overwrite (161.492935ms)
+✔ snapshot validation enforces signed clinical and stock movement actors (325.566031ms)
+✔ clinical sign rejects a stale expected version before mutation (161.502884ms)
+✔ same idempotency key returns the original receipt without re-running (161.719908ms)
+✔ hydrated receipts remain addressable by idempotency key after restart (162.266735ms)
+✔ patient disable and merge preserve history while removing active visibility (161.671929ms)
+✔ harness quarantines prompt injection and requires approval for impact tools (164.954505ms)
+✔ knowledge retrieval excludes an indirect prompt injection from approved references (163.030415ms)
+✔ high-impact harness approvals require a different authorized actor (162.243111ms)
+✔ snapshot validation enforces AI approval actor and scope foreign keys (166.868837ms)
+✔ clinical treatment lifecycle keeps facts separate and approvals are one-shot (163.598172ms)
+✔ medication terminal states cannot dispense, reopen, or create indirect stock exits (160.225316ms)
+✔ hydrate rejects a dispensation whose lot product differs from the prescription (160.35578ms)
+✔ hydrate rejects medication execution actors from another organization (159.195941ms)
+✔ restore enters quarantine and sessions are invalidated (318.010334ms)
+✔ scoped knowledge, communications and AI replay never cross workspaces (164.165257ms)
+✔ communication approval requires a second actor and produces a queued message (161.310035ms)
+✔ domain PDP invalidates contexts after an authorization revision change (163.39792ms)
+✔ domain PDP rejects forged scope and capability policy widening (166.914342ms)
+✔ patient creation rejects duplicate identifiers and cross-scope guardians without partial writes (165.606419ms)
+✔ appointment lifecycle enforces versioned transitions, conflicts and idempotent handoff (164.327348ms)
+✔ cancel before service cancels the waiting queue entry atomically (163.210591ms)
+✔ clinical documents require review before signature, stay immutable and accept only addenda (162.437523ms)
+✔ diagnostic chain quarantines duplicates and requires a valid result before review (159.989398ms)
+✔ hospitalization enforces bed admission, distinct medication facts, duplicate protection and discharge pendencies (161.347846ms)
+✔ stock entry, movements and inventory stay atomic, auditable and reject invalid balances (164.291753ms)
+✔ financial sequences keep ledger append-only and the balance contract explicit under seeded randomness (207.74117ms)
+✔ knowledge lifecycle gates retrieval on approval, indexing and quarantine (162.941681ms)
+✔ trusted TLS edge overwrites caller X-Forwarded-For (4.926416ms)
+✔ cleartext development servers do not emit HSTS and keep health headers (0.957021ms)
+✔ TLS edge emits HSTS only from the TLS server and protects healthz (0.549663ms)
+✔ embedded runtime health reflects provider and AI kill switch (179.038439ms)
+✔ embedded runtime completes a normal turn and persists provenance/usage (176.444412ms)
+✔ embedded runtime executes a read-only tool through the governed gateway (170.156514ms)
+✔ embedded runtime rejects divergent identities before provider dispatch (165.515579ms)
+✔ embedded runtime pauses for approval, resumes via checkpoint and consumes the approval once (163.061394ms)
+✔ a consumed approval cannot be reused even when the effect fails (165.233455ms)
+✔ a known cost cap stops the loop before exceeding the operator budget (169.366184ms)
+✔ unknown provider usage is never settled as if measured (163.658946ms)
+✔ a turn whose ledger entry cannot be written is not reported as completed (162.912857ms)
+✔ embedded runtime is idempotent for the same key (162.36062ms)
+✔ embedded runtime quarantines prompt injection without dispatch (158.321124ms)
+✔ embedded runtime denies a tool outside the agent profile (159.703116ms)
+✔ embedded runtime fails closed when the provider data policy does not cover the context (165.309477ms)
+✔ embedded runtime respects tool kill switch and safe mode (160.446308ms)
+✔ embedded runtime denies concurrent execution of the same session across instances (158.464882ms)
+✔ CVG-AUD19-008: different idempotency keys cannot overlap on the same session (159.497463ms)
+✔ CVG-AUD19-008: a lost fence stops the next tool dispatch before any effect (163.337978ms)
+✔ CVG-AUD19-008: a fence stolen before the next provider call stops the model egress (164.179754ms)
+✔ CVG-AUD19-006: an approval for one resource cannot authorize a changed resource (163.316749ms)
+✔ embedded runtime replay returns a stable digest of persisted turns (161.24798ms)
+✔ embedded runtime enforces the plugin kill switch before a turn (165.614183ms)
+✔ support bundle is sanitized and never carries prompts or secrets (162.241118ms)
+✔ embedded runtime manifests are deterministic and content-bound (158.060019ms)
+✔ startup name collision preserves the container that owns the conflicting name (353.284661ms)
+✔ partial startup is cleaned by ownership identity and followed by an inventory check (464.499014ms)
+✔ container created before a failed detached-start response is found and removed by its run token (380.318056ms)
+✔ cleanup failure still captures the after inventory and reports the surviving container (597.070362ms)
+✔ external evidence roots cannot be inside or symlinked into the source worktree (5.623252ms)
+✔ evidence fixture verifies in clean and modified checkouts with byte-identical copies (7.502508ms)
+✔ evidence snapshot rejects a worktree state that contradicts the controlled checkout (13.387528ms)
+✔ evidence snapshot rejects stale capture timestamps (1.117319ms)
+✔ evidence snapshot rejects tampered artifact bytes even with an otherwise valid record (0.794408ms)
+✔ evidence snapshot rejects a tampered inventory even when the runId is resealed (0.681277ms)
+✔ evidence snapshot rejects tampered modification and observation times (1.018455ms)
+✔ evidence snapshot rejects a historical run resealed as current (0.646503ms)
+✔ evidence snapshot rejects stale duplicated verification metadata (0.249193ms)
+✔ a paid charge of 10000 cents never increases the open amount (3.892321ms)
+✔ partial payment reports the exact remaining cents without double counting (0.304396ms)
+✔ an open charge reports the full amount and a refund stays explicitly unresolved (0.941521ms)
+✔ a refunded charge without an observed refunded payment is UNKNOWN, not a settled state (0.154507ms)
+✔ multiple settled payments sum once and close the charge (0.136755ms)
+✔ payments from another charge or context do not leak into the balance (0.141444ms)
+✔ mixed currencies cannot be represented as a single settled balance (0.152964ms)
+✔ stable identity excludes the session and keeps a legacy lookup for old receipts (6.293749ms)
+✔ a re-login session replays the original receipt instead of a second effect (175.304412ms)
+✔ an expired pre-dispatch claim becomes CLAIM_ABANDONED and never silently retries (157.173078ms)
+✔ an expired post-dispatch claim stays OUTCOME_UNKNOWN under every retry (156.987874ms)
+✔ a legacy claim without a lease deadline is reconciled instead of remaining stuck (157.073153ms)
+✔ a live claim reports ADMISSION_IN_PROGRESS with its lease deadline (156.750432ms)
+✔ durable command executor claims before work and replays without invoking work (181.798424ms)
+✔ durable command executor rejects a concurrent claim before the callback (159.627154ms)
+✔ durable command executor rejects a reused key with a different body (157.52852ms)
+✔ durable command executor settles a failed claim and preserves the original error (156.081858ms)
+✔ external command work does not hold the organization coordinator while the provider is pending (160.506851ms)
+✔ an external idempotency replay returns the stored result without a second remote call (160.504396ms)
+✔ external command never calls the provider when the durable dispatch fence is lost (159.15702ms)
+✔ an external failure after the dispatch fence is always outcome unknown (156.545681ms)
+✔ concurrent in-memory external claims admit one provider call (168.171541ms)
+✔ a final commit failure can durably settle a successful claim as outcome unknown (159.23799ms)
+✔ a known rolled-back commit rejection settles its local command receipt as failed (160.709157ms)
+✔ route guard rejects direct identity/context reads and leaves auth bootstrap lookups explicit (8.373979ms)
+✔ read application service keeps identity/context reads behind policy and the bounded pre-context seam (162.159275ms)
+✔ the production API composition contains no direct identity/context store reads (189.471129ms)
+✔ outbox worker acknowledges delivery and quarantines exhausted retries (2.667042ms)
+✔ outbox worker records the external dispatch boundary before completing the outbox (0.538111ms)
+✔ outbox worker quarantines a delivered receipt that arrives after abort (0.559601ms)
+✔ signed inbox projection creates a bounded local outbox without copying signature metadata (0.655871ms)
+✔ provider reconciliation binds the query proof to the exact effect (6.105218ms)
+✔ provider reconciliation enforces a hard query deadline (101.569429ms)
+✔ provider reconciliation claims an eligible effect once before querying (0.636013ms)
+✔ integration gateway exposes secret-provider health without exposing secret material (0.433227ms)
+✔ unsupported secret-provider kinds remain explicit and fail closed (0.162813ms)
+✔ secret readiness validates the approved reference without returning its value (0.362134ms)
+✔ file and Docker secret providers reject empty mounted secret files (0.915644ms)
+✔ synthetic messaging preserves idempotency and reconciles an unknown outcome (1.347106ms)
+✔ synthetic provider vertical closes outbox, unknown outcome and reconciliation without a blind resend (0.925021ms)
+✔ HTTP messaging validates receipts, keeps credentials out of results and never retries ambiguous transport (207.753333ms)
+✔ messaging callbacks require a valid HMAC and external sinks require the durable effect ledger (1.109965ms)
+✔ HTTP messaging fails closed, rejects malformed receipts and redacts provider failures (0.85998ms)
+✔ messaging rate limiter and circuit breaker stop new egress explicitly (0.966949ms)
+✔ CVG-AUD20-009: cooperative cancellation reaches the messaging provider (0.825536ms)
+✔ load contract declares the required production-like scenarios and fail-closed inputs (5.741351ms)
+✔ load contract rejects a fixture that omits the burst or worker scenario (0.3818ms)
+✔ load burst starts after two complete user phases (0.672692ms)
+✔ links a MEL23 requirement to its task, test, receipt, environment, result, and observed fingerprint (2.102111ms)
+✔ keeps a passing MEL23 criterion distinct from its partially complete AUD27 parent (0.207326ms)
+✔ fails closed when focal evidence fields are missing or use an ambiguous result alias (0.147234ms)
+✔ rejects ambiguous task status synonyms (0.133849ms)
+✔ requires the full 50-item crosswalk and rejects duplicate active MEL23 tasks (1.118661ms)
+✔ checks the documented status vocabulary and catches omitted values (0.222123ms)
+✔ evidence report defaults to a fresh path and refuses to overwrite the registered Gauntlet matrix (0.447693ms)
+✔ control-plane capture defaults to a fresh path and preserves the registered historical artifact (0.163033ms)
+✔ requires a real post-append control-plane pass bound to both ledger tails (0.229898ms)
+✔ mock provider is deterministic and declares tool calling (2.76778ms)
+✔ deepseek provider fails closed without a credential before any network call (0.560393ms)
+✔ deepseek provider maps a chat-completions response with usage (25.677283ms)
+✔ deepseek provider maps tool calls and rejects malformed tool arguments (1.474994ms)
+✔ deepseek provider normalizes HTTP errors and enforces timeout (102.558429ms)
+✔ operator-supplied pricing produces a known, revisioned cost (0.984081ms)
+✔ without pricing the cost stays explicitly unknown, never zero (0.550955ms)
+✔ local provider declares on-prem data policy and works without credentials (0.669877ms)
+✔ local provider rejects insecure configuration unless explicitly allowed (0.352956ms)
+✔ mock provider satisfies the shared ModelProvider contract (2.175347ms)
+✔ deepseek provider satisfies the shared ModelProvider contract (25.768482ms)
+✔ local provider satisfies the shared ModelProvider contract (0.561094ms)
+✔ providers normalize HTTP failures into classified errors (2.260606ms)
+✔ providers fail closed without credentials and never call the network (0.266185ms)
+✔ tool calling is only advertised when the provider declares it (0.227914ms)
+✔ model router rejects providers without the required capability (1.26859ms)
+✔ model router never routes a data class the provider is not authorized for (0.164857ms)
+✔ model router fails closed on fallback unless the policy allows it (0.309125ms)
+✔ dynamic kill switches disable a provider per routing call (0.156511ms)
+✔ circuit breaker opens, blocks, half-opens and closes (0.176678ms)
+✔ retry applies jittered backoff only to retryable errors (1.727033ms)
+✔ retry classification keeps unknown outcomes explicit (0.18262ms)
+✔ usage reconciliation never silently rewrites a mismatch (0.182319ms)
+✔ mutation application requires one unambiguous production anchor (1.082674ms)
+✔ mutation score excludes invalid mutants but exposes them (0.796712ms)
+✔ MEL23-026 mutation plan covers authorization, finance, clinical, and persistence seams (0.218306ms)
+✔ Alertmanager rendering fails closed without an authority URL (1.157043ms)
+✔ Alertmanager rendering produces an effective governed config for a controlled local sink (4.363799ms)
+✔ production Alertmanager rendering requires HTTPS and removes the template token (0.879507ms)
+✔ redacted telemetry preserves safe diagnostics and removes sensitive metadata (2.183693ms)
+✔ telemetry exposes an OpenTelemetry-compatible span seam without sensitive attributes (1.200814ms)
+✔ correlated spans preserve the cross-boundary identifiers with nulls when a boundary has no value (0.299507ms)
+✔ Prometheus rendering exposes aggregate operational signals without tenant or route labels (0.685445ms)
+✔ operational metrics expose the oldest scoped worker heartbeat for the alert contract (0.623039ms)
+✔ OTLP runtime exports a real protobuf span only after redaction (28.021434ms)
+✔ SLO catalog preserves proposed targets and evaluates a measured synthetic observation (0.39252ms)
+✔ SLO evaluation fails closed for a breach, missing sample and unapproved target (0.191055ms)
+✔ SLO alerts are linked to runbooks and stay NOT_RUN without an evaluated signal (0.346955ms)
+✔ telemetry keeps logs and latencies bounded and reports observable discards (37.297591ms)
+✔ telemetry percentiles never depend on lifetime history after rotation (0.28483ms)
+✔ production application boundaries have universal PDP coverage (178.035804ms)
+✔ PDP boundary guard reports a known-bad service without enforcement (0.619132ms)
+✔ PDP boundary guard rejects an unknown operation and a dynamic bypass (0.736711ms)
+✔ PDP boundary guard accepts only an enumerated DomainCommandService delegation (0.839332ms)
+✔ PDP boundary guard accepts a verified pure resource resolver and rejects an effectful one (4.498991ms)
+✔ PDP boundary guard rejects syntactic enforcement that does not guard execution (8.577558ms)
+✔ PDP boundary guard verifies DomainCommandService delegation implementations (2.430251ms)
+✔ PDP boundary guard rejects policy bindings shadowed by enclosing scopes (1.972961ms)
+✔ PDP boundary guard accepts enforced callable properties, accessors and static methods (0.617719ms)
+✔ authorization delegates cannot defer their policy through async or generator bodies (1.10161ms)
+✔ readiness exemptions are pinned to audited identities and unchanged bodies (77.79629ms)
+✔ GovernedHarness fails closed before creating a session without an authenticated context (162.063598ms)
+✔ HTTP inventory accepts cataloged handler-local operation and receiver alias (11.796889ms)
+✔ HTTP inventory rejects new nested-module routes even outside API prefix (1.079629ms)
+✔ HTTP inventory ties operation to its handler instead of a global text set (2.009208ms)
+✔ HTTP inventory rejects dynamic URL, named handler, duplicate and missing registration (1.78969ms)
+✔ HTTP inventory distinguishes a wrong verb from an unknown path (0.829473ms)
+✔ HTTP inventory rejects duplicate path parameters and unexpected aliases (1.148867ms)
+✔ typed catalog rejects placeholder schema metadata before inventory (0.459836ms)
+✔ HTTP inventory covers route objects, method arrays and bracket registration (2.490784ms)
+✔ HTTP inventory includes inline plugins and rejects extracted route methods (1.646824ms)
+✔ HTTP inventory rejects chained unknown routes, bound methods and plugin prefixes (2.087403ms)
+✔ HTTP inventory rejects computed option overrides and inventories chained plugins (1.627528ms)
+✔ universal PDP gate is green for the local route, application and worker boundary (5234.548905ms)
+✔ AST store guard follows aliases, bracket access, destructuring and casts (1.565763ms)
+✔ AST store guard ignores unrelated maps and comments (0.39762ms)
+✔ AST store guard fails closed on dynamic collection access (0.500982ms)
+✔ AST store guard follows function argument and return aliases (0.891208ms)
+✔ CVG-AUD20-007: route inventory follows verified wrappers and rejects deferred or unguarded ones (7.668788ms)
+✔ production verification fails closed before any runtime work when required authority is absent (269.249525ms)
+✔ production verification rejects insecure, placeholder and disabled production controls (4382.684154ms)
+✔ promotion invariant binds referenced evidence bytes, authority, residual risk and timestamp order (17.827448ms)
+✔ provider real proof requires every vertical stage and a matching chain digest (3.901529ms)
+✔ provider real proof is bound to the expected clean source SHA (0.400255ms)
+✔ AUD22-002 accepts a current recovery bundle with a compatible usage reference (192.67518ms)
+✔ recovery validation binds non-empty outbox, inbox and external-effect ledgers (163.89763ms)
+✔ recovery validation preserves complete authentication security state (163.27397ms)
+✔ operational backup verification fails closed when its directory is absent (4.121588ms)
+✔ AUD22-002 rejects rehashed semantic known-bads instead of trusting old digests (1638.878976ms)
+✔ release provenance binds the SBOM digest to regular file bytes (8.247424ms)
+✔ release provenance requires a current completed CI result bound to the source SHA (0.597762ms)
+✔ runbook gate covers the prompt scenarios and the complete local runbook contract (5.840987ms)
+✔ runtime manifest digest is deterministic and content-bound (1.098593ms)
+✔ replay classification never claims exact equivalence across runtimes (0.213818ms)
+✔ compatibility matrix fails closed for unknown contract versions (0.159587ms)
+✔ usage settlement keeps an unknown price explicit (0.171639ms)
+✔ the disabled runtime degrades AI without touching the domain (0.959415ms)
+✔ snapshot migration inventory covers all 32 collections without hiding the 24 residual primary paths (1.846515ms)
+✔ idempotent migration coordinator serializes concurrent replay and rejects divergent input (8.794673ms)
+✔ migration coordinator rolls back an adapter failure and reconciliation detects drift (0.576062ms)
+✔ subject manifest is recalculated from the current candidate (239.538568ms)
+✔ subject fingerprint is independent of checkout and external evidence roots (116.516988ms)
+✔ subject known-bad mutation is rejected by independent recalculation (241.74801ms)
+✔ Gauntlet metadata writes do not change the subject fingerprint, but source edits do (128.98746ms)
+✔ Triplo AAA manifest inventory accepts a complete candidate shape (1.675658ms)
+✔ Triplo AAA inventory requires explicit F31-F37 closure gates (0.517543ms)
+✔ active quality bar binds phase labels to the final operational prompt (0.466798ms)
+✔ promotion phase ownership follows the final prompt F28-F38 contract (0.847036ms)
+✔ promotion phase ownership gives F12 to WebAuthn break-glass and F13 to staging (0.145731ms)
+✔ Triplo AAA manifest inventory rejects omitted gates, malformed digests and incomplete status (0.561464ms)
+✔ Triplo AAA scorecard requires every prompt dimension and the overall record (0.600978ms)
+✔ Triplo AAA scorecard enforces the prompt's per-dimension thresholds (0.360921ms)
+✔ Triplo AAA candidate scorecard binding requires the exact source SHA (0.175316ms)
+✔ Triplo AAA phase coverage is exact and bound to the receipt digests (0.596349ms)
+✔ promotion receipts bind gate, source SHA, execution, freshness and attribution (11.662598ms)
+✔ final gauntlet requires every prompt critic category (0.195354ms)
+✔ independent review is a separately signed statement (2.789409ms)
+✔ external gate receipts require an Ed25519 signature bound to the exact evidence digest (0.885277ms)
+✔ human approval receipt requires an explicit cryptographically verifiable attestation (1.07528ms)
+✔ vNext PDP rejects foreign scope and requires independent approval (187.382984ms)
+✔ application policy catalog denies an unlisted role before a durable read (157.357742ms)
+✔ application PDP binds the authenticated session, registered capability and patient target (158.143785ms)
+✔ tool registry digest excludes parser functions and remains deterministic (0.44614ms)
+✔ ToolGateway denies a descriptor outside the canonical tool policy before registration (155.121432ms)
+✔ API catalog covers the versioned surface without duplicate route keys (0.219027ms)
+✔ Mock adapter exposes the provider-neutral runtime lifecycle (158.645368ms)
+✔ DeepSeek adapter fails closed on unavailable or mismatched harness (164.693941ms)
+✔ DeepSeek adapter fails closed when the harness omits mandatory capabilities (163.165117ms)
+✔ DeepSeek adapter never sends a request without a resolved credential (0.388212ms)
+✔ typed configuration rejects unknown CVG keys and insecure production (11.650967ms)
+✔ worker configuration has a role-specific production contract (2.131365ms)
+✔ typed configuration accepts the explicit ACP boundary without enabling it implicitly (0.514828ms)
+✔ local rate limiting is bounded and production requires a distributed seam (0.534024ms)
+✔ production runtime rejects injected synthetic dependencies while preserving explicit authority seams (0.336486ms)
+✔ default runtime registers the complete tool catalog (329.871783ms)
+✔ tool gateway reports an unknown outcome when an executor exceeds its deadline (258.725216ms)
+✔ secret providers resolve only approved references (0.479543ms)
+✔ web runtime state machine never grants writes during reconnect or context loss (0.276445ms)
+✔ context authorization failures force a safe revalidation boundary (0.22573ms)
+✔ permission and stale states remain stable until an explicit retry (0.137536ms)
+✔ initial authentication failure remains a login state instead of a session-expired state (4.156283ms)
+✔ worker backup configuration binds one explicit organization and rejects partial or cross-tenant scope (5.391681ms)
+✔ operational backup composition resolves the named key before exporting the bound organization (1.189944ms)
+✔ enabled worker sink rejects a degraded file SecretProvider even when the named secret exists (1.878885ms)
+✔ worker entrypoint composition applies the configured limit to every durable lane (0.432475ms)
+✔ worker entrypoint composition wires a complete durable effect ledger before external dispatch (2.339913ms)
+✔ outbox success is only audited after the durable acknowledgement (CVG-AUD19-015) (0.399754ms)
+✔ an acknowledgement failure after delivery never reports SUCCEEDED (CVG-AUD19-015) (0.484231ms)
+✔ worker factory keeps an enabled ledger-required sink blocked when persistence is partial (0.503076ms)
+✔ outbox dispatch is admitted by the worker policy before any claim (0.214529ms)
+✔ separate worker exposes health, quarantine and stopped lifecycle (0.449606ms)
+✔ worker health fails closed when persistence is unavailable (0.26901ms)
+✔ worker without a sink refuses to claim external work (0.209139ms)
+✔ worker cycle executes every configured lane and exposes per-lane counts (1.813354ms)
+✔ worker cycle propagates stop to outbox delivery and rejects a late receipt (0.560062ms)
+✔ worker cycle blocks unconfigured lanes without claiming outbox work (0.229366ms)
+✔ worker cycle contains a lane failure and keeps the failure visible (0.531499ms)
+✔ worker exposes outbox backpressure while allowing consumers to drain (0.567967ms)
+✔ worker enforces lane budgets and bounded concurrency (31.145867ms)
+✔ worker executes durable jobs with handler fencing and records a cycle heartbeat (1.69306ms)
+✔ worker quarantines an unknown durable job handler and keeps the poison visible (0.609915ms)
+✔ worker fails closed before claiming when durable heartbeat cannot be written (0.278728ms)
+✔ worker exposes durable queue pressure while allowing consumers to drain (0.448855ms)
+✔ worker resource bulkheads reject excess AI/provider work without an in-memory wait queue (1.42981ms)
+✔ worker degrades before heartbeat or claim when the database pool is saturated (0.407778ms)
+✔ durable item budget bounds the database claim instead of detecting excess after execution (0.516671ms)
+✔ CVG-AUD19-016: a cancelled cycle stops before the next cooperative effect (140.502283ms)
+✔ typed handler timeout quarantines an ambiguous provider attempt and never acknowledges it late (47.148209ms)
+✔ typed durable handlers emit redacted audit outcomes and aggregate metrics for a successful attempt (1.289129ms)
+✔ production worker refuses to acknowledge a job when the durable audit append fails (0.674134ms)
+✔ production worker factory blocks durable lanes without an audit sink (0.17746ms)
+✔ production composition provides executable typed handlers for all five durable lanes (8.104819ms)
+✔ reconciliation runCycle uses the durable handler with policy, audit, metrics and fencing (0.946721ms)
+✔ production audit mode cannot execute a custom lane runner before the durable handler (0.234316ms)
+✔ worker queue admission rejects producers at capacity while the consumer lane remains runnable (0.612891ms)
+ℹ tests 723
+ℹ suites 0
+ℹ pass 722
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 1
+ℹ todo 0
+ℹ duration_ms 120402.686351
+ℹ start of coverage report
+ℹ ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ℹ file                                       | line % | branch % | funcs % | uncovered lines
+ℹ ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ℹ apps                                       |        |          |         | 
+ℹ  api                                       |        |          |         | 
+ℹ   src                                      |        |          |         | 
+ℹ    agent-tool-executor.ts                  |  93.65 |    68.18 |   94.44 | 25-27 37 52 66-68
+ℹ    app.ts                                  |  92.72 |    78.68 |   85.08 | 103-133 159 356 363 370 396-400 407-410 428-429 435 445 449-450 496 547 566 573 575-580 585-591 630-631 658-662 675-677 731-732 744-746 748 800-809 811-816 825 887-890 916 925-932 948-949 965-969 990 994 1007-1010 1069-1071 1535 1647 1654-1656 1685 1833-1834 1852-1853 1879-1880 1913-1914 1933-1935 1944-1950 1956 1972-1975 1981-1982 1997-2013 2024-2026 2028-2029 2036
+ℹ    application                             |        |          |         | 
+ℹ     agent-service.ts                       |  97.78 |    60.38 |  100.00 | 31-32 34 61
+ℹ     appointment-service.ts                 | 100.00 |   100.00 |  100.00 | 
+ℹ     break-glass-service.ts                 |  79.60 |    69.84 |  100.00 | 30 34-41 43-49 60-61 63-65 68-71 84 89-92 96-100 107-110 149 174 180-184 188-192
+ℹ     clinical-command-service.ts            |  90.48 |    94.74 |   93.33 | 21-23 27-29
+ℹ     diagnostic-service.ts                  | 100.00 |   100.00 |  100.00 | 
+ℹ     domain-command-service.ts              |  95.41 |   100.00 |   91.67 | 20-21 39 48-49 52-53 56-57
+ℹ     encounter-service.ts                   | 100.00 |   100.00 |  100.00 | 
+ℹ     export-service.ts                      |  91.30 |    66.67 |   88.89 | 46 48 51-52 58-59 67-68
+ℹ     guardian-service.ts                    | 100.00 |   100.00 |  100.00 | 
+ℹ     idempotency-service.ts                 |  89.55 |    82.42 |   96.15 | 31-36 65-66 71-73 85-87 112-113 125 132-134 153-160
+ℹ     integration-service.ts                 |  69.23 |   100.00 |   80.00 | 7-14
+ℹ     keyed-coordinator.ts                   | 100.00 |    83.33 |   87.50 | 
+ℹ     operational-metrics-service.ts         | 100.00 |    81.82 |  100.00 | 
+ℹ     patient-service.ts                     |  94.81 |    90.91 |   89.47 | 22 24-26
+ℹ     read-services.ts                       |  96.64 |    95.24 |   93.70 | 65-71 86-88 155-160 187-188 282-284 286-287 311-313
+ℹ    rate-limiter.ts                         |  82.89 |    78.43 |   85.00 | 16 60 68-104
+ℹ    response-contract.ts                    |  93.63 |    82.30 |  100.00 | 67-71 84 119 121-124 134-135
+ℹ    response-schemas                        |        |          |         | 
+ℹ     auth-ops.ts                            |  97.57 |    61.54 |  100.00 | 166 168-170 175-178 181 183-185
+ℹ     clinical.ts                            | 100.00 |   100.00 |  100.00 | 
+ℹ     index.ts                               |  96.30 |    85.71 |  100.00 | 22
+ℹ     remaining.ts                           | 100.00 |   100.00 |  100.00 | 
+ℹ    route-catalog.ts                        |  98.35 |    91.94 |  100.00 | 51-52
+ℹ    routes                                  |        |          |         | 
+ℹ     health.ts                              |  97.56 |    48.15 |   87.50 | 19-20 24
+ℹ    sensitive-identifiers.ts                | 100.00 |   100.00 |  100.00 | 
+ℹ    server.ts                               |  61.54 |    50.00 |    0.00 | 6-10
+ℹ  deepseek-bridge                           |        |          |         | 
+ℹ   src                                      |        |          |         | 
+ℹ    server.ts                               |  92.86 |    72.63 |   82.05 | 31-32 105 107-108 112-114 159-162 235-237 245-252 257-258 275-277
+ℹ  web                                       |        |          |         | 
+ℹ   src                                      |        |          |         | 
+ℹ    api                                     |        |          |         | 
+ℹ     client.ts                              |  85.06 |    34.69 |   75.00 | 18 23 31-32 46-47 50-51 84-85 93-98 109-115
+ℹ     correlation.ts                         |  80.00 |   100.00 |   66.67 | 9-10
+ℹ     validation.ts                          |  99.15 |    86.36 |   81.82 | 382 493-496
+ℹ    features                                |        |          |         | 
+ℹ     copilot                                |        |          |         | 
+ℹ      assistant-state.ts                    |  83.05 |    76.00 |  100.00 | 21-22 33-40 49 55-65 69 73 81-85 89
+ℹ    state                                   |        |          |         | 
+ℹ     runtime-state.ts                       |  64.55 |    81.48 |   71.43 | 15-20 40 57-58 66-95
+ℹ  worker                                    |        |          |         | 
+ℹ   src                                      |        |          |         | 
+ℹ    operational-backup.ts                   |  82.61 |    40.00 |   83.33 | 10-16 27-28 40-42
+ℹ    runtime-controls.ts                     |  93.48 |    87.88 |   95.45 | 29-32 62-64 80-81
+ℹ    worker.ts                               |  90.63 |    81.33 |   84.00 | 7-14 52 57 65 71-72 85-87 94 112-114 146 227 240-242 266 277-281 460-461 478 513 523-537 541-552 562-567 569 573-580
+ℹ packages                                   |        |          |         | 
+ℹ  agent-context                             |        |          |         | 
+ℹ   src                                      |        |          |         | 
+ℹ    index.ts                                |  96.24 |    86.15 |   88.24 | 74-80 98-99 113-114 195 215-218
+ℹ  agent-kernel                              |        |          |         | 
+ℹ   src                                      |        |          |         | 
+ℹ    index.ts                                |  94.87 |    87.83 |  100.00 | 56 99-103 192-193 202-204 216 241 245-248 251-255 286-288 414-421 449-450 460-469 487 541 546
+ℹ  agent-plugins                             |        |          |         | 
+ℹ   src                                      |        |          |         | 
+ℹ    index.ts                                |  97.13 |    72.73 |   65.12 | 156-162 175 186
+ℹ  agent-policy                              |        |          |         | 
+ℹ   src                                      |        |          |         | 
+ℹ    index.ts                                |  93.98 |    76.03 |   90.32 | 62-63 74-75 78-79 85-88 91 96-100 103 108-110 134-138 182 197-198
+ℹ  agent-runtime                             |        |          |         | 
+ℹ   src                                      |        |          |         | 
+ℹ    bridge-request.ts                       | 100.00 |   100.00 |  100.00 | 
+ℹ    disabled.ts                             |  87.76 |   100.00 |   70.00 | 11-13 19-21
+ℹ    errors.ts                               | 100.00 |   100.00 |  100.00 | 
+ℹ    index.ts                                | 100.00 |   100.00 |  100.00 | 
+ℹ    replay-digest.ts                        | 100.00 |    92.86 |  100.00 | 
+ℹ    runtime-manifest.ts                     | 100.00 |   100.00 |  100.00 | 
+ℹ  agent-session                             |        |          |         | 
+ℹ   src                                      |        |          |         | 
+ℹ    index.ts                                |  92.12 |    82.84 |   89.09 | 115-117 189-199 217-220 239-253 296 347-360
+ℹ  agent-skills                              |        |          |         | 
+ℹ   src                                      |        |          |         | 
+ℹ    index.ts                                | 100.00 |    84.62 |   83.33 | 
+ℹ  agent-tools                               |        |          |         | 
+ℹ   src                                      |        |          |         | 
+ℹ    index.ts                                |  89.02 |    77.67 |   97.06 | 58-60 76-77 87 89-93 106-108 111 131-133 141 157 172-179
+ℹ  auth                                      |        |          |         | 
+ℹ   src                                      |        |          |         | 
+ℹ    index.ts                                |  94.64 |    71.43 |   92.00 | 26 91 106-108 125-126 132 144-145 148 166-168 170 172 227-230 242 298-300 330-331
+ℹ  config                                    |        |          |         | 
+ℹ   src                                      |        |          |         | 
+ℹ    index.ts                                |  96.87 |    69.18 |   81.82 | 25 144-145 172-173 175 177 184 190 192 198 252
+ℹ  contracts                                 |        |          |         | 
+ℹ   src                                      |        |          |         | 
+ℹ    api-catalog.ts                          |  92.96 |    63.54 |   92.86 | 41-42 77-81 209-211 217 244-260
+ℹ    index.ts                                |  92.70 |    63.68 |   79.03 | 556-561 565-572 576-577 583-584 733-736 740-743 758-762 767-769 782 784-787 796 798-803 872-888 891-896 900-901 907-909 918-931 979-983 996-997 1004-1006 1015-1019 1054-1056 1072-1073 1086-1089 1119-1120 1124-1128 1131-1132 1134-1135 1143-1145 1147 1149 1152 1154 1177-1179 1183-1186 1209 1216 1221-1222 1224-1225 1230-1232
+ℹ    version.ts                              | 100.00 |   100.00 |  100.00 | 
+ℹ  deepseek-bridge                           |        |          |         | 
+ℹ   src                                      |        |          |         | 
+ℹ    acp.ts                                  |  84.52 |    64.17 |   80.65 | 32 46-48 51-54 76-79 140-141 144-148 158-159 181-182 190 199-205 215-216 224 238-245 248-258 261-268 272-283 285-293 306-308 312 315 351-353 355-357 369-370 376-379 404 408 415 422-423 428 430 450 458-461
+ℹ    index.ts                                |  86.99 |    86.09 |   80.00 | 145-147 152 181 190 195-197 208 220-222 224-241 279 299-300 306-312 342-356 358-367 381
+ℹ    real-proof.ts                           |  96.97 |    85.71 |  100.00 | 105-109
+ℹ  domain                                    |        |          |         | 
+ℹ   src                                      |        |          |         | 
+ℹ    authorization.ts                        | 100.00 |    93.33 |  100.00 | 
+ℹ    errors.ts                               | 100.00 |   100.00 |  100.00 | 
+ℹ    idempotency.ts                          |  97.78 |    80.70 |  100.00 | 56-57 108-109
+ℹ    index.ts                                |  97.08 |    79.24 |   96.56 | 319-321 325-326 332 352-355 585-586 728 771-772 780 791 793-794 806-809 815 817-818 966-971 1025-1026 1037 1062 1112 1120-1121 1187-1188 1202 1222-1223 1291-1292 1343-1344 1371 1426 1461 1463-1464 1505-1506 1509 1513 1560 1625-1626 1628-1629
+ℹ    primitives.ts                           | 100.00 |   100.00 |  100.00 | 
+ℹ    snapshot-validation.ts                  | 100.00 |    97.26 |  100.00 | 
+ℹ  embedded-agent-runtime                    |        |          |         | 
+ℹ   src                                      |        |          |         | 
+ℹ    index.ts                                |  90.39 |    74.41 |   86.32 | 39 46-47 52-60 68 113-114 141-143 197-201 203 239-243 284-289 293 298-323 329-332 339-343 347 351-352 363 381-388 404-409 433-434 543-548 550-567 649 664 741-744 809 852 890-900 921-922 1016-1017
+ℹ    profiles.ts                             | 100.00 |    83.33 |  100.00 | 
+ℹ  harness-adapters                          |        |          |         | 
+ℹ   src                                      |        |          |         | 
+ℹ    index.ts                                |  92.98 |    77.74 |   88.16 | 106 109-110 118 128 132 141 150-158 194-205 207-209 231 296-297 398-401 407-408 486 489 495-497 510-515 580-581
+ℹ  harness                                   |        |          |         | 
+ℹ   src                                      |        |          |         | 
+ℹ    index.ts                                |  95.43 |    79.73 |   91.30 | 44-46 138-139 148-151 205-208 219 222-224 263-264 285 338 350
+ℹ  integrations                              |        |          |         | 
+ℹ   src                                      |        |          |         | 
+ℹ    egress.ts                               |  85.03 |    73.72 |   87.50 | 49-52 56-87 90 117 146-147 150-153 160-162 177-181 211
+ℹ    index.ts                                |  88.21 |    70.87 |   92.59 | 89 94 148-152 154 192 215-216 218-224 246-254 285-286 296-297 301 307-309 311-312 327-328 364-367 371-372 376-378 382-383 397-401 447-448 474-476 484 506-507 519 528 530-534 558 568-569 571 575 592-593 620 629-636 642-648 662-664 668-673 676-680 707 713-714 721 738 742-744 755-756 777-778 812-816 858 872 874 879 884 896 947-979
+ℹ    provider-proof.ts                       | 100.00 |    84.31 |  100.00 | 
+ℹ  model-adapters                            |        |          |         | 
+ℹ   src                                      |        |          |         | 
+ℹ    index.ts                                |  88.42 |    69.85 |   91.38 | 55 75-76 88-89 119 122-123 154-158 161-163 205 209 214-216 228-230 232-235 242-243 261-263 300-305 328 330 338-340 379 381 402 419-422 437-439 445-446 463 479-484 487-491 496-497 502-503 512-513 518-519 522-523 528 536-537 554 564-566 588-589
+ℹ  model-runtime                             |        |          |         | 
+ℹ   src                                      |        |          |         | 
+ℹ    index.ts                                |  87.47 |    90.11 |   89.66 | 26-30 61 117-142 157-159 172-174 220-233
+ℹ  ops                                       |        |          |         | 
+ℹ   src                                      |        |          |         | 
+ℹ    index.ts                                |  85.07 |    77.17 |   69.44 | 86-92 94-97 100 102-107 109-126 128-134 205-209 211-225 247-252 254-267 335 337 347 414-417 419-468 730-732 734-736 748-750
+ℹ    otel.ts                                 |  85.37 |    48.39 |   82.35 | 11 19-21 34-35 42 65-75
+ℹ  persistence                               |        |          |         | 
+ℹ   src                                      |        |          |         | 
+ℹ    ai-projection.ts                        | 100.00 |    80.00 |  100.00 | 
+ℹ    ai-usage-projection.ts                  | 100.00 |   100.00 |  100.00 | 
+ℹ    aud27-domain-writer.ts                  |  98.10 |    84.75 |  100.00 | 64-65 162-163
+ℹ    aud27-domain-writes.ts                  |  97.09 |    95.65 |   90.00 | 67-68 70-72
+ℹ    aud27-postgres-migration.ts             |  94.92 |    88.89 |   93.02 | 26-29 38 40-41 46-47 58-64
+ℹ    aud27-removals.ts                       |  94.87 |    90.91 |  100.00 | 11-12
+ℹ    authoritative-writes.ts                 | 100.00 |    97.87 |  100.00 | 
+ℹ    identity-projection.ts                  |  91.07 |    88.89 |  100.00 | 47-51
+ℹ    index.ts                                |  85.08 |    69.77 |   86.12 | 104-105 129-131 137 154-155 184 191 243-244 360 432-436 449 526 532 539 542-544 547-548 554-557 563-564 568-572 621-623 630-635 710-713 715-716 754-755 768 794-795 805 807 831 840 845-849 942-943 964-966 1004 1029 1031 1109 1130 1146 1157 1203-1204 1206 1248 1253 1262 1295-1296 1319-1326 1329-1344 1347-1354 1356-1359 1365-1367 1371-1373 1377-1378 1397-1398 1402-1404 1411-1413 1425 1452-1462 1464-1486 1526-1549 1581 1589-1594 1599 1613-1614 1619 1627 1726-1727 1768-1773 1780-1784 1925-1927 2048-2051 2070-2084 2086-2089 2160-2161 2177-2181 2192-2195 2206-2208 2236 2243-2246 2280-2281 2324-2325 2342-2343 2371-2372 2383 2386 2435 2481-2483 2498-2500 2509-2510 2524 2549 2559-2560 2572 2574-2577 2606-2625 2686-2689 2692 2704-2712 2715 2724-2730 2779 2789-2790 2793 2799 2929-2935 2959-2963 3004-3006 3009-3019 3021-3070 3148-3149 3175 3211-3212 3250-3251 3291 3347 3408-3409 3412-3414 3453 3457 3484-3504 3534-3537 3539-3541 3559 3627 3638-3664 3666-3671 3683-3693 3695-3699 3704-3711 3713-3722 3724-3772 3774-3820 3822-3836 3838-3884 3886-3893 3895-3903
+ℹ    migration-harness.ts                    |  95.11 |    82.93 |  100.00 | 31 50-53 56 66-68 92-93
+ℹ    normalized-early-reads.ts               |  95.41 |    68.18 |  100.00 | 26 29 58 86-87
+ℹ    operational-backup-job.ts               |  96.34 |    87.88 |   86.67 | 22 28-29
+ℹ    persistence-errors.ts                   |  96.49 |    94.44 |   94.12 | 53-54
+ℹ    recovery-reconciliation.ts              |  96.23 |    82.50 |   90.00 | 53-55 73
+ℹ    snapshot-migration.ts                   |  92.70 |    71.43 |  100.00 | 56 59 62 65 68-70 72 76-78 86 88
+ℹ    stock-product-persistence.ts            | 100.00 |    83.33 |  100.00 | 
+ℹ scripts                                    |        |          |         | 
+ℹ  aud27-24-slice-parity.ts                  | 100.00 |    92.86 |  100.00 | 
+ℹ  capture-mel23-control-plane.ts            |  66.67 |    46.67 |   40.00 | 28-30 44-70 73-75
+ℹ  docs-integrity.ts                         |  80.26 |    69.77 |   83.33 | 7-13 28 107-128
+ℹ  evidence-boundary.ts                      | 100.00 |   100.00 |  100.00 | 
+ℹ  fixtures                                  |        |          |         | 
+ℹ   coverage-known-bad-mutation.ts           | 100.00 |   100.00 |  100.00 | 
+ℹ  identity-context-boundary.ts              |  96.77 |    88.89 |  100.00 | 17-18
+ℹ  lib                                       |        |          |         | 
+ℹ   agent-session-contract.ts                |  93.10 |    33.33 |  100.00 | 17-18 26 37 53 66
+ℹ  pdp-boundary.ts                           |  96.61 |    89.78 |  100.00 | 104 106-109 139-142 298-299 318-319 323-324
+ℹ  pdp-route-inventory.ts                    | 100.00 |    92.11 |  100.00 | 
+ℹ  prompt-integrity.ts                       |  97.64 |    81.25 |   85.71 | 67 93-94
+ℹ  render-alertmanager.ts                    |  69.86 |    71.88 |   62.50 | 18 40 44-48 50 52-65
+ℹ  subject-manifest.ts                       |  99.45 |    78.43 |  100.00 | 124
+ℹ  verify-aud26-evidence.ts                  |  72.66 |    40.74 |   60.00 | 34-40 43-44 49-50 60-77 98 101-105
+ℹ  verify-aud27-evidence-completeness.ts     |  72.13 |    76.92 |   80.00 | 14 37-38 56 58 60-88
+ℹ  verify-aud27-evidence-root.ts             |  91.57 |    71.26 |   96.97 | 112-114 125-126 136-139 163-164 166-168 197-199 208-209 220 239-241 295 357 370-382
+ℹ  verify-aud27-semantics.ts                 |  87.90 |    71.93 |   91.67 | 26-27 41-43 62-63 66-67 98-100 106 121-126
+ℹ  verify-audit-chain.ts                     |  41.90 |    66.67 |   25.00 | 6-29 32-36 39-70
+ℹ  verify-container-smoke.ts                 |  35.49 |    87.50 |   48.28 | 6-9 52-61 64-67 70 72-74 78-96 101-102 105-107 109-112 117-121 123-138 141-230 234-261
+ℹ  verify-control-plane.ts                   |  91.31 |    68.86 |   92.86 | 77-79 92-102 115-116 137 145 148 203 221 227 273 281-282 286 289-290 318 320-322 369 394 423 440 442 445 447-459
+ℹ  verify-coverage.ts                        |  75.90 |    84.62 |   78.57 | 43-48 175 189-255
+ℹ  verify-deepseek-real.ts                   |  47.92 |    72.73 |   50.00 | 16-18 21-46 63-83
+ℹ  verify-ephemeral-postgres.ts              |  70.08 |    40.78 |   66.67 | 51 59 71 89 95 98 101 132-139 191 198 204 227-235 237-243 246-300 302-303 305-308 312-314 316-320 324-361 384-385 402-403 413-419 423-425
+ℹ  verify-evidence-snapshot.ts               |  77.58 |    61.90 |   70.00 | 30-32 34-41 67-68 78-79 83-89 101-116 140-141 145 155-159 171 177-179
+ℹ  verify-load.ts                            |  80.70 |    80.00 |  100.00 | 39-49
+ℹ  verify-mel23-evidence.ts                  |  75.39 |    48.42 |   86.67 | 63-64 69 71-72 77 85-86 97-99 114 119 171-222 225-237
+ℹ  verify-mutation.ts                        |  74.71 |    81.82 |   54.55 | 206-209 221-226 229-233 235-249 251-308
+ℹ  verify-pdp-universal.ts                   |  87.23 |    83.60 |   93.55 | 31-32 54-58 193-195 200-202 212-213 218-219 224-226 242-244 247-253 256-257 272-273 275-278 285-286 288-295
+ℹ  verify-production.ts                      |  70.71 |    40.63 |   45.00 | 155 159-160 163 180-181 229 382-417 420-436 439-462 465-483 486-495 497-575 577-595 666-668 670-674 678-681 684-687
+ℹ  verify-promotion-invariant.ts             |  90.28 |    37.50 |   76.92 | 19 93-94 96-99 120-122 136 170 197-198 212-213 228-229 234 236-238 242-250
+ℹ  verify-provider-sandbox.ts                |  94.87 |    66.67 |   90.91 | 58-59 75-76 121 156 192-195 228-231
+ℹ  verify-release-provenance.ts              |  47.17 |    76.19 |   40.00 | 20-31 36-39 41 50-51 54-60 76-86 100-133 135-166 169-177
+ℹ  verify-runbook-execution.ts               |  68.71 |    60.00 |   71.43 | 51 62 67-110
+ℹ  verify-triplo-aaa.ts                      |  75.74 |    81.58 |   76.67 | 130-131 139-141 400-402 510-511 514-674 681-694 697 700 703-706 710-763
+ℹ tests                                      |        |          |         | 
+ℹ  load                                      |        |          |         | 
+ℹ   duration.js                              | 100.00 |    54.55 |  100.00 | 
+ℹ ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ℹ all files                                  |  89.16 |    76.34 |   87.97 | 
+ℹ ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ℹ end of coverage report

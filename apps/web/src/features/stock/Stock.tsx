@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
-import type { ApiClient } from "../../api/client";
+import { ApiError, type ApiClient } from "../../api/client";
 import { Icon } from "../../components/Icon";
 import { PageHeader, StatePanel, StatusBadge } from "../../components/ui";
 import { formatDate } from "../../state/formatters";
@@ -15,6 +15,7 @@ type StockItem = {
   location: { id: string; name: string } | null;
 };
 type StockLocation = { id: string; name: string };
+type StockProduct = { id: string; sku: string; name: string; unit: string };
 type StockMovement = { id: string; productId: string; lotId: string; locationId: string; quantity: number; movementType: string; reason: string; createdBy: string; createdAt: string };
 type DialogState = { kind: "entry" } | { kind: "movement"; item: StockItem } | { kind: "inventory"; item: StockItem } | null;
 
@@ -72,10 +73,12 @@ function Dialog({ titleId, title, description, onClose, closeDisabled = false, c
   return <div className="dialog-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !closeDisabled) onClose(); }}><section ref={cardRef} className="dialog-card" style={{ maxHeight: "min(88vh, 760px)", overflowY: "auto" }} role="dialog" aria-modal="true" aria-labelledby={titleId} aria-describedby={`${titleId}-description`}><div className="dialog-head"><div><span className="eyebrow">ESTOQUE</span><h2 id={titleId}>{title}</h2></div><button className="icon-button" type="button" aria-label="Fechar" onClick={onClose} disabled={closeDisabled}><Icon name="close" size={17} /></button></div><p id={`${titleId}-description`} className="dialog-description">{description}</p>{children}</section></div>;
 }
 
-export function Stock({ client, context, notify }: { client: ApiClient; context: ContextOption | null; notify: (message: string) => void }) {
+export function Stock({ client, context, notify: _notify }: { client: ApiClient; context: ContextOption | null; notify: (message: string) => void }) {
   const canWriteStock = (context?.roles ?? []).some((role) => role === "admin" || role === "estoque");
   const [items, setItems] = useState<StockItem[]>([]);
   const [locations, setLocations] = useState<StockLocation[]>([]);
+  // The product catalog, not the lot list: a product whose first lot was refused stays selectable.
+  const [products, setProducts] = useState<StockProduct[]>([]);
   const [movements, setMovements] = useState<StockMovement[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -104,13 +107,15 @@ export function Stock({ client, context, notify }: { client: ApiClient; context:
     setLoading(true);
     setError("");
     try {
-      const [stockList, locationList, movementList] = await Promise.all([
+      const [stockList, locationList, movementList, productList] = await Promise.all([
         client.get<{ items: StockItem[] }>("/stock", context),
         client.get<{ items: StockLocation[] }>("/stock/locations", context),
-        client.get<{ items: StockMovement[] }>("/stock/movements", context)
+        client.get<{ items: StockMovement[] }>("/stock/movements", context),
+        client.get<{ items: StockProduct[] }>("/stock/products", context)
       ]);
       setItems(stockList.items);
       setLocations(locationList.items);
+      setProducts(productList.items);
       setMovements(movementList.items);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Estoque indisponível.");
@@ -121,15 +126,14 @@ export function Stock({ client, context, notify }: { client: ApiClient; context:
 
   useEffect(() => { void load(); }, [load]);
   const low = items.filter((item) => (item.product?.reorderPoint ?? 0) >= item.quantity);
-  const productOptions = [...new Map(items.filter((item) => item.product).map((item) => [item.product!.id, item.product!])).values()];
 
   const openDialog = (next: Exclude<DialogState, null>) => {
     submissionKey.current = null;
     setFormError("");
     setDialog(next);
     if (next.kind === "entry") {
-      setProductMode(productOptions.length ? "existing" : "new");
-      setProductId(productOptions[0]?.id ?? "");
+      setProductMode(products.length ? "existing" : "new");
+      setProductId(products[0]?.id ?? "");
       setSku("");
       setProductName("");
       setCategory("");
@@ -176,6 +180,11 @@ export function Stock({ client, context, notify }: { client: ApiClient; context:
           body: JSON.stringify({ sku, name: productName, category, unit, reorderPoint: Number(reorderPoint) })
         }, context);
         resolvedProductId = productResult.product.id;
+        // The product now exists even if the lot below is refused: switch the
+        // form to it so correcting the lot never re-creates the same SKU.
+        setProducts((current) => current.some((product) => product.id === resolvedProductId) ? current : [...current, { id: resolvedProductId, sku, name: productName, unit }]);
+        setProductId(resolvedProductId);
+        setProductMode("existing");
       }
       const result = await client.request<{ lot: { id: string; lotNumber: string; quantity: number }; movement: StockMovement | null; receiptId: string }>("/stock/lots", {
         method: "POST",
@@ -183,7 +192,12 @@ export function Stock({ client, context, notify }: { client: ApiClient; context:
         body: JSON.stringify({ productId: resolvedProductId, lotNumber, expiresOn, quantity: Number(quantity), locationId })
       }, context);
       finish(`Lote ${result.lot.lotNumber} com saldo ${result.lot.quantity}`, result.receiptId);
-    } catch (reason) { setFormError(reason instanceof Error ? reason.message : "Entrada não registrada."); }
+    } catch (reason) {
+      // A definitive refusal settles its key, so a corrected entry needs a new
+      // intent; an unknown or in-flight outcome keeps the key for a safe replay.
+      if (reason instanceof ApiError && reason.status >= 400 && reason.status < 500 && reason.code !== "OUTCOME_UNKNOWN" && reason.code !== "ADMISSION_IN_PROGRESS") submissionKey.current = null;
+      setFormError(reason instanceof Error ? reason.message : "Entrada não registrada.");
+    }
     finally { setSubmitting(false); }
   };
 
@@ -253,10 +267,10 @@ export function Stock({ client, context, notify }: { client: ApiClient; context:
       {dialog?.kind === "entry" && <Dialog titleId="stock-entry-title" title="Registrar entrada" description="Entrada exige produto, lote, validade futura e quantidade; SKU e lote duplicados são negados." onClose={closeDialog} closeDisabled={submitting}>
         <form onSubmit={submitEntry} className="dialog-form">
           <div className="segmented" role="group" aria-label="Origem do produto">
-            <button className={productMode === "existing" ? "selected" : undefined} aria-pressed={productMode === "existing"} type="button" onClick={() => setProductMode("existing")} disabled={!productOptions.length}>Produto existente</button>
+            <button className={productMode === "existing" ? "selected" : undefined} aria-pressed={productMode === "existing"} type="button" onClick={() => setProductMode("existing")} disabled={!products.length}>Produto existente</button>
             <button className={productMode === "new" ? "selected" : undefined} aria-pressed={productMode === "new"} type="button" onClick={() => setProductMode("new")}>Novo produto</button>
           </div>
-          {productMode === "existing" ? <label htmlFor="stock-product">Produto<select id="stock-product" value={productId} onChange={(event) => setProductId(event.target.value)} required><option value="">Selecione…</option>{productOptions.map((product) => <option key={product.id} value={product.id}>{product.name} · {product.unit}</option>)}</select></label> : <>
+          {productMode === "existing" ? <label htmlFor="stock-product">Produto<select id="stock-product" value={productId} onChange={(event) => setProductId(event.target.value)} required><option value="">Selecione…</option>{products.map((product) => <option key={product.id} value={product.id}>{product.name} · {product.unit}</option>)}</select></label> : <>
             <label htmlFor="stock-sku">SKU<input id="stock-sku" value={sku} onChange={(event) => setSku(event.target.value)} required minLength={2} maxLength={40} /></label>
             <label htmlFor="stock-name">Nome<input id="stock-name" value={productName} onChange={(event) => setProductName(event.target.value)} required minLength={2} maxLength={160} /></label>
             <label htmlFor="stock-category">Categoria<input id="stock-category" value={category} onChange={(event) => setCategory(event.target.value)} required minLength={2} maxLength={80} /></label>

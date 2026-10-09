@@ -1,0 +1,37 @@
+{
+  "http_examples": 2,
+  "json_examples": 4,
+  "requests": [
+    {
+      "name": "POST /auth/login",
+      "pass": true
+    },
+    {
+      "name": "POST /guardians",
+      "pass": true
+    }
+  ],
+  "success_payloads": [
+    {
+      "name": "LoginResponse",
+      "pass": true
+    },
+    {
+      "name": "GuardianResponse",
+      "pass": true
+    },
+    {
+      "name": "GuardianListResponse",
+      "pass": true
+    }
+  ],
+  "error_envelope": {
+    "name": "versioned error envelope",
+    "pass": true
+  },
+  "all_valid": true,
+  "schema_version": 1,
+  "generated_at": "2026-09-24T06:44:20.157Z",
+  "source_sha": "c990914148a8f375082cd12bbdb2ad20cfe1900f",
+  "observed_subject_fingerprint": "sha256:59f31c53baaae3d62b0f4857bef1f6e76930926a2df194ff37a6dd3ca8673f77"
+}

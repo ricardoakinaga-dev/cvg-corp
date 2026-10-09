@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "errata_id": "CVG-BAR-2026-09-21-AUD27-V1-ERRATA-001",
+  "original_bar": ".gauntlet/bar-aud27-v1.json",
+  "original_bar_sha256": "f0e4cdcacd8c7f3903ab56003ca1c7643e823dabfc377f2591df111052d1345d",
+  "immutable_original_preserved": true,
+  "status": "BLOCKED_UNTIL_AUTHORITY_REVIEW",
+  "finding": "original bar source.aud26_report path names docs/auditoria-profunda-repositorio-2026-09-21.md but source hash 80301c... belongs to docs/auditoria-resultado-cvg-aud26-2026-09-21.md",
+  "observed": {
+    "original_path": "docs/auditoria-profunda-repositorio-2026-09-21.md",
+    "original_path_sha256": "0485eef7559d1bfc761636734de6dac5e442ee2ceb1381d00dd7e393faa13fff",
+    "canonical_aud26_result_path": "docs/auditoria-resultado-cvg-aud26-2026-09-21.md",
+    "canonical_aud26_result_sha256": "80301c506963d1e04e0bfe8dba24b109522ced51732e251bf1de983a7f35864b"
+  },
+  "decision": "Do not mutate the frozen v1 bar. Promotion remains blocked until a named authority accepts this erratum or issues a new immutable bar.",
+  "promotion": "BLOCKED",
+  "global_verdict": "AAA_NOT_PROVEN"
+}

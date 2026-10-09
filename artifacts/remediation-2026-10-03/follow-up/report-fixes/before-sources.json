@@ -1,0 +1,10 @@
+{
+  "packages/agent-context/src/index.ts": "dfeb75d6adc58fafe139c5ddef614beae07e5e7f9b5cb941be338e167836647b",
+  "packages/embedded-agent-runtime/src/index.ts": "529c8af7e5d98fd90efe4ea5af6eeaa2e3744eddfeed95e0d1fb0c6ca87d0aec",
+  "packages/domain/src/index.ts": "9c1a135d23dbc14b277ebb3d03fe2aa318d131d21615ec79a25a2e04bc3e3107",
+  "tests/fixtures/secret-material.ts": "0913d904da7dfe2b8d83ac5744be9d23774d8c30eebce7ea42fb33f39c3ca405",
+  "tests/unit/agent-context.test.ts": "fd657de69eaba05756ebd5802b37b37439b2421942daceae2e4ec028813fc0ac",
+  "tests/unit/embedded-runtime.test.ts": "ed5b134f5741ceff562b580b58e0ea0fdb49b13d85c26d6fc93c0ee0ba00bfd9",
+  "tests/integration/ai-secret-boundary.test.ts": "8389877b6319ab2ee3aa5165ad9873fad07eedbbf0b33d2b77716f462991a1d8",
+  "tests/integration/auth-challenge-race.test.ts": "3dd0f526fc0285da7ac3295e79d95265522ce13b994059cc3d0614cb7e6e545d"
+}

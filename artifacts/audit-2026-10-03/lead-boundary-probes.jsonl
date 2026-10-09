@@ -1,0 +1,3 @@
+{"probe":"MFA_ROTATION_DURING_RESOLVER","loginStatus":202,"challengeCredentialVersion":1,"currentCredentialVersion":2,"verifyStatus":200,"sessionAcceptedAfterRotation":true,"newSessionCredentialVersion":2,"scope":"real HTTP handler via app.inject; isolated memory; rotation via actual domain method; no PostgreSQL or network"}
+{"probe":"PRODUCTION_AI_DISABLED_CONFIG","accepted":false,"issues":[{"path":["deepseekRuntimeEnabled"],"message":"production cannot use the local mock runtime"}],"scope":"pure schema parse; no database or provider"}
+{"probe":"CALLBACK_KEY_PROVIDER_BINDING","targetProvider":"provider-b","signingKeyFor":"provider-a","policyAccepted":true,"hmacAccepted":true,"scope":"actual policy and secret-provider/HMAC components; HTTP-to-SQL path inspected only"}

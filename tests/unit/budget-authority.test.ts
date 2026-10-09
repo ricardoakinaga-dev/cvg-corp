@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { CvgStore, DomainError } from "@cvg/domain";
-import { id, type AiTurn, type AiTurnInput, type OpaqueId } from "@cvg/contracts";
+import { CvgStore } from "@cvg/domain";
+import { id, type AiTurnInput, type OpaqueId } from "@cvg/contracts";
 import { createDurableDeepSeekAcpGovernance, type DurableAcpGovernanceBudgetPort } from "@cvg/harness-adapters";
 import type { AgentRuntime, AgentTurnResult } from "@cvg/agent-runtime";
 import { AgentApplicationService } from "../../apps/api/src/application/agent-service.ts";

@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "label": "application PDP coverage",
+  "command": [
+    "npm",
+    "run",
+    "verify:pdp"
+  ],
+  "capturedAt": "2026-09-25T02:30:04.283Z",
+  "exitStatus": 0,
+  "signal": null,
+  "stdout": "\n> cvg-corp@0.1.0 verify:pdp\n> tsx scripts/verify-pdp-coverage.ts && npm run verify:pdp:runtime\n\nPDP coverage passed: 85 request-bound operations, 88 registered rules, 6 canonical tool policies, 12 critical domains\n\n> cvg-corp@0.1.0 verify:pdp:runtime\n> node --import tsx --test tests/integration/route-catalog.test.ts\n\n✔ runtime inventory is unavailable until readiness and captures the actual GET and derived HEAD (103.268623ms)\n✔ registration rejects undocumented GET /api/v1/uncataloged and a caught violation cannot serve handlers (4.809473ms)\n✔ registration rejects undocumented GET /api/v2/patients and a caught violation cannot serve handlers (3.097263ms)\n✔ registration rejects undocumented GET /outside and a caught violation cannot serve handlers (3.000021ms)\n✔ registration rejects undocumented POST /api/v1/patients and a caught violation cannot serve handlers (2.782305ms)\n✔ registration rejects undocumented OPTIONS /api/v1/patients and a caught violation cannot serve handlers (3.111138ms)\n✔ registration rejects undocumented OPTIONS * and a caught violation cannot serve handlers (3.020119ms)\n✔ missing catalog routes prevent readiness (2.539001ms)\n✔ suppressing an expected implicit HEAD prevents readiness and GET effects (3.502267ms)\n✔ explicit HEAD must use its GET handler (4.122773ms)\n✔ HEAD before its GET cannot claim derived status (3.46083ms)\n✔ a rejected generated HEAD poisons the GET that Fastify already registered (3.313505ms)\n✔ GET and HEAD in a method array preserve one shared handler (2.240275ms)\n✔ method arrays reject every undocumented member (3.064441ms)\n✔ plugin prefixes are checked as resolved URLs (4.222539ms)\n✔ a plugin prefix cannot smuggle a v2 route (2.888783ms)\n✔ prefix-root registrations cannot add an uncataloged trailing-slash alias (3.207487ms)\n✔ host-constrained variants cannot reuse catalog membership (1.812679ms)\n✔ duplicate canonical keys are rejected before installing the guard (2.007622ms)\n✔ duplicate runtime registration poisons an already populated router (3.483121ms)\n✔ later onRoute url mutation cannot bypass admission (3.000632ms)\n✔ later onRoute method mutation cannot bypass admission (3.017183ms)\n✔ later onRoute handler mutation cannot bypass admission (2.439947ms)\n✔ later onRoute constraints mutation cannot bypass admission (3.364891ms)\n✔ late plugin registrations before readiness are still admitted against the catalog (3.229588ms)\n✔ createRuntime exposes the complete sealed inventory while HEAD and CORS preserve authorization (258.847201ms)\nℹ tests 26\nℹ suites 0\nℹ pass 26\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 1127.910233\n",
+  "stderr": ""
+}

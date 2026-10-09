@@ -1,0 +1,12 @@
+{
+  "name": "full-suite",
+  "command": [
+    "npm",
+    "test"
+  ],
+  "exit_status": 0,
+  "started_at": "2026-10-08T10:44:15.417877+00:00",
+  "duration_s": 28.5,
+  "log": "artifacts/production-readiness-2026-10-08/verification/after-commit/full-suite.log",
+  "log_sha256": "27875635dfcf2541320fe435eef93feea87e725caff8a68d78a634041e1ba867"
+}

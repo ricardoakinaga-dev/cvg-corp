@@ -1,0 +1,909 @@
+{
+  "schema_version": 1,
+  "as_of": "2026-09-23",
+  "source_backlog": "docs/backlog-2026-09-23.md",
+  "source_sha256": "af8ea7b2e112c174f36d815b0e75690644f855ddfa819102a29b08b2a724bb5a",
+  "aud27_status_source": ".agent/backlog.json#items",
+  "execution_status_in_this_file": "NONE; status remains owned by the mapped AUD27 items in .agent/backlog.json",
+  "reconciliation_method": "Each MEL23 remains a requirement reference under one or more existing AUD27 tasks. No new top-level AUD27 tasks are justified. ADD_ACCEPTANCE entries are required details on their linked parent tasks.",
+  "denominator_note": "MEL23-008..012 describe 24 residual collections; AUD27-014 has a 32-slice total inventory. Keep both denominators visible; a local test of 24 rows is not a cutover.",
+  "requirements": [
+    {
+      "id": "MEL23-001",
+      "milestone": "M0",
+      "priority": "P0",
+      "dependencies": [],
+      "target": "Reconciliar `last_gate_record` e `last_event_id` por novo evento; `verify:control-plane` passa e ambos apontam às caudas corretas.",
+      "primary_aud27_id": "AUD27-001",
+      "aud27_ids": [
+        "AUD27-001",
+        "AUD27-003"
+      ],
+      "coverage": "SUBSCOPE",
+      "acceptance_additions": [],
+      "new_aud27_task": false
+    },
+    {
+      "id": "MEL23-002",
+      "milestone": "M0",
+      "priority": "P0",
+      "dependencies": [
+        "001"
+      ],
+      "target": "Mutante `missing_transition` remove a transição do evento lido pelo verificador; known-bad é rejeitado e conhecido-bom passa.",
+      "primary_aud27_id": "AUD27-002",
+      "aud27_ids": [
+        "AUD27-002"
+      ],
+      "coverage": "ACCEPTANCE_ADDITION",
+      "acceptance_additions": [
+        "Add a named negative fixture that removes next_state from the event selected by state.last_event_id; known-good passes and known-bad produces MISSING_ACTIVE_TRANSITION."
+      ],
+      "new_aud27_task": false
+    },
+    {
+      "id": "MEL23-003",
+      "milestone": "M0",
+      "priority": "P0",
+      "dependencies": [
+        "001",
+        "002"
+      ],
+      "target": "`npm test` termina com zero falhas no candidato observado; guardar contagens e exit status.",
+      "primary_aud27_id": "AUD27-004",
+      "aud27_ids": [
+        "AUD27-004",
+        "AUD27-025"
+      ],
+      "coverage": "SUBSCOPE",
+      "acceptance_additions": [],
+      "new_aud27_task": false
+    },
+    {
+      "id": "MEL23-004",
+      "milestone": "M1",
+      "priority": "P0",
+      "dependencies": [
+        "003"
+      ],
+      "target": "Revisão Git limpa e checkout novo reproduzem instalação, typecheck, build e manifesto; nenhuma alteração necessária fica untracked.",
+      "primary_aud27_id": "AUD27-004",
+      "aud27_ids": [
+        "AUD27-004",
+        "AUD27-025"
+      ],
+      "coverage": "SUBSCOPE",
+      "acceptance_additions": [],
+      "new_aud27_task": false
+    },
+    {
+      "id": "MEL23-005",
+      "milestone": "M1",
+      "priority": "P0",
+      "dependencies": [
+        "004"
+      ],
+      "target": "Fingerprint é recalculado dos bytes do candidato e coincide em checkout independente; repetir após qualquer mudança.",
+      "primary_aud27_id": "AUD27-004",
+      "aud27_ids": [
+        "AUD27-004",
+        "AUD27-005",
+        "AUD27-025"
+      ],
+      "coverage": "SUBSCOPE",
+      "acceptance_additions": [],
+      "new_aud27_task": false
+    },
+    {
+      "id": "MEL23-006",
+      "milestone": "M1",
+      "priority": "P0",
+      "dependencies": [
+        "005"
+      ],
+      "target": "`verify:aud27-evidence-root` passa para o fingerprint exato; pacote externo contém recibos aplicáveis e atuais.",
+      "primary_aud27_id": "AUD27-005",
+      "aud27_ids": [
+        "AUD27-005",
+        "AUD27-006",
+        "AUD27-025"
+      ],
+      "coverage": "SUBSCOPE",
+      "acceptance_additions": [],
+      "new_aud27_task": false
+    },
+    {
+      "id": "MEL23-007",
+      "milestone": "M1",
+      "priority": "P0",
+      "dependencies": [
+        "006"
+      ],
+      "target": "Adulteração de recibo/hash é rejeitada; outro checkout valida pacote, digest e origem sem depender da árvore original.",
+      "primary_aud27_id": "AUD27-005",
+      "aud27_ids": [
+        "AUD27-005",
+        "AUD27-025"
+      ],
+      "coverage": "SUBSCOPE",
+      "acceptance_additions": [],
+      "new_aud27_task": false
+    },
+    {
+      "id": "MEL23-008",
+      "milestone": "M2",
+      "priority": "P0",
+      "dependencies": [
+        "003"
+      ],
+      "target": "As 24 coleções residuais têm caminho de comando autoritativo; inventário final registra 0 `SNAPSHOT_PRIMARY`, sem fallback oculto.",
+      "primary_aud27_id": "AUD27-011",
+      "aud27_ids": [
+        "AUD27-011",
+        "AUD27-012",
+        "AUD27-013",
+        "AUD27-014"
+      ],
+      "coverage": "SUBSCOPE",
+      "acceptance_additions": [],
+      "new_aud27_task": false
+    },
+    {
+      "id": "MEL23-009",
+      "milestone": "M2",
+      "priority": "P0",
+      "dependencies": [
+        "008"
+      ],
+      "target": "Cada coleção possui backfill idempotente, contagem/digest/invariantes iguais e registro de divergência em quarentena.",
+      "primary_aud27_id": "AUD27-011",
+      "aud27_ids": [
+        "AUD27-011",
+        "AUD27-012",
+        "AUD27-013",
+        "AUD27-014"
+      ],
+      "coverage": "SUBSCOPE",
+      "acceptance_additions": [],
+      "new_aud27_task": false
+    },
+    {
+      "id": "MEL23-010",
+      "milestone": "M2",
+      "priority": "P0",
+      "dependencies": [
+        "008"
+      ],
+      "target": "Testes de concorrência, replay e idempotência rejeitam duplicata/divergência para cada novo comando em PostgreSQL.",
+      "primary_aud27_id": "AUD27-011",
+      "aud27_ids": [
+        "AUD27-011",
+        "AUD27-012",
+        "AUD27-013",
+        "AUD27-014"
+      ],
+      "coverage": "SUBSCOPE",
+      "acceptance_additions": [],
+      "new_aud27_task": false
+    },
+    {
+      "id": "MEL23-011",
+      "milestone": "M2",
+      "priority": "P0",
+      "dependencies": [
+        "009",
+        "010"
+      ],
+      "target": "Cada onda demonstra rollback e compatibilidade antes de retirar fallback; falha não perde nem duplica dados.",
+      "primary_aud27_id": "AUD27-011",
+      "aud27_ids": [
+        "AUD27-011",
+        "AUD27-012",
+        "AUD27-013",
+        "AUD27-014"
+      ],
+      "coverage": "SUBSCOPE",
+      "acceptance_additions": [],
+      "new_aud27_task": false
+    },
+    {
+      "id": "MEL23-012",
+      "milestone": "M2",
+      "priority": "P0",
+      "dependencies": [
+        "011"
+      ],
+      "target": "Restore e replay são executados sobre o esquema após cutover; hashes, escopo, quarentena e continuidade são conferidos.",
+      "primary_aud27_id": "AUD27-011",
+      "aud27_ids": [
+        "AUD27-011",
+        "AUD27-012",
+        "AUD27-013",
+        "AUD27-014",
+        "AUD27-022"
+      ],
+      "coverage": "SUBSCOPE",
+      "acceptance_additions": [],
+      "new_aud27_task": false
+    },
+    {
+      "id": "MEL23-013",
+      "milestone": "M3",
+      "priority": "P0",
+      "dependencies": [
+        "003"
+      ],
+      "target": "As 10 ocorrências da allowlist recebem substituição ou decisão formal de política; `audit:licenses` passa para o lockfile candidato.",
+      "primary_aud27_id": "AUD27-016",
+      "aud27_ids": [
+        "AUD27-016"
+      ],
+      "coverage": "DIRECT",
+      "acceptance_additions": [],
+      "new_aud27_task": false
+    },
+    {
+      "id": "MEL23-014",
+      "milestone": "M3",
+      "priority": "P0",
+      "dependencies": [
+        "013"
+      ],
+      "target": "`LICENSE` ou `COPYING` de raiz corresponde à decisão do responsável e é verificado no pacote de release.",
+      "primary_aud27_id": "AUD27-016",
+      "aud27_ids": [
+        "AUD27-016",
+        "AUD27-017"
+      ],
+      "coverage": "SUBSCOPE",
+      "acceptance_additions": [],
+      "new_aud27_task": false
+    },
+    {
+      "id": "MEL23-015",
+      "milestone": "M3",
+      "priority": "P0",
+      "dependencies": [
+        "004"
+      ],
+      "target": "Smoke usa a imagem real: start, health, non-root, escrita/leitura controlada, shutdown e restart com resultado registrado.",
+      "primary_aud27_id": "AUD27-015",
+      "aud27_ids": [
+        "AUD27-015"
+      ],
+      "coverage": "DIRECT",
+      "acceptance_additions": [],
+      "new_aud27_task": false
+    },
+    {
+      "id": "MEL23-016",
+      "milestone": "M3",
+      "priority": "P0",
+      "dependencies": [
+        "013",
+        "015"
+      ],
+      "target": "Digests de API/web correspondem a SBOM, scan e proveniência OCI do mesmo build; divergência bloqueia release.",
+      "primary_aud27_id": "AUD27-015",
+      "aud27_ids": [
+        "AUD27-015",
+        "AUD27-017"
+      ],
+      "coverage": "DIRECT",
+      "acceptance_additions": [],
+      "new_aud27_task": false
+    },
+    {
+      "id": "MEL23-017",
+      "milestone": "M5",
+      "priority": "P0",
+      "dependencies": [
+        "015"
+      ],
+      "target": "Staging autorizado prova Secret Authority, login, revogação e falha fechada sem segredos expostos em logs.",
+      "primary_aud27_id": "AUD27-022",
+      "aud27_ids": [
+        "AUD27-022",
+        "AUD27-026"
+      ],
+      "coverage": "ACCEPTANCE_ADDITION",
+      "acceptance_additions": [
+        "Name Secret Authority, login and revocation scenarios, fail-closed outcomes, and secret-leak checks in staging logs."
+      ],
+      "new_aud27_task": false
+    },
+    {
+      "id": "MEL23-018",
+      "milestone": "M5",
+      "priority": "P0",
+      "dependencies": [
+        "017"
+      ],
+      "target": "Provedores e DeepSeek reais passam casos positivo, negativo, timeout, receipt e reconciliação no mesmo candidato.",
+      "primary_aud27_id": "AUD27-022",
+      "aud27_ids": [
+        "AUD27-022",
+        "AUD27-026"
+      ],
+      "coverage": "ACCEPTANCE_ADDITION",
+      "acceptance_additions": [
+        "Name real DeepSeek/provider positive, negative, timeout, receipt, and reconciliation cases bound to the same candidate."
+      ],
+      "new_aud27_task": false
+    },
+    {
+      "id": "MEL23-019",
+      "milestone": "M5",
+      "priority": "P0",
+      "dependencies": [
+        "012",
+        "017"
+      ],
+      "target": "Restore em infraestrutura equivalente mede RTO/RPO aprovados e verifica não reativação de dados ou privilégios revogados.",
+      "primary_aud27_id": "AUD27-022",
+      "aud27_ids": [
+        "AUD27-022",
+        "AUD27-026"
+      ],
+      "coverage": "ACCEPTANCE_ADDITION",
+      "acceptance_additions": [
+        "After restore, explicitly prove revoked data and privileges are not reactivated."
+      ],
+      "new_aud27_task": false
+    },
+    {
+      "id": "MEL23-020",
+      "milestone": "M6",
+      "priority": "P0",
+      "dependencies": [
+        "M0–M5"
+      ],
+      "target": "Duas revisões independentes qualificam o mesmo fingerprint e a autoridade humana registra decisão explícita; sem qualquer gate, permanece bloqueado.",
+      "primary_aud27_id": "AUD27-025",
+      "aud27_ids": [
+        "AUD27-025",
+        "AUD27-026",
+        "AUD27-027"
+      ],
+      "coverage": "DIRECT",
+      "acceptance_additions": [],
+      "new_aud27_task": false
+    },
+    {
+      "id": "MEL23-021",
+      "milestone": "M2",
+      "priority": "P1",
+      "dependencies": [
+        "003"
+      ],
+      "target": "Fixtures de respostas reais cobrem 105/105 rotas e satisfazem os 80 schemas específicos, incluindo erros versionados.",
+      "primary_aud27_id": "AUD27-007",
+      "aud27_ids": [
+        "AUD27-007",
+        "AUD27-008",
+        "AUD27-009",
+        "AUD27-010"
+      ],
+      "coverage": "DIRECT",
+      "acceptance_additions": [],
+      "new_aud27_task": false
+    },
+    {
+      "id": "MEL23-022",
+      "milestone": "M2",
+      "priority": "P1",
+      "dependencies": [
+        "021"
+      ],
+      "target": "Cada família de API rejeita campos sensíveis, payload excessivo e forma inválida antes do envio; casos negativos passam.",
+      "primary_aud27_id": "AUD27-008",
+      "aud27_ids": [
+        "AUD27-008",
+        "AUD27-009",
+        "AUD27-010"
+      ],
+      "coverage": "DIRECT",
+      "acceptance_additions": [],
+      "new_aud27_task": false
+    },
+    {
+      "id": "MEL23-023",
+      "milestone": "M2",
+      "priority": "P1",
+      "dependencies": [
+        "008"
+      ],
+      "target": "Após cada onda, testes PostgreSQL negam leitura/escrita cross-tenant e cross-workspace nas tabelas afetadas.",
+      "primary_aud27_id": "AUD27-011",
+      "aud27_ids": [
+        "AUD27-011",
+        "AUD27-012",
+        "AUD27-013",
+        "AUD27-014"
+      ],
+      "coverage": "SUBSCOPE",
+      "acceptance_additions": [],
+      "new_aud27_task": false
+    },
+    {
+      "id": "MEL23-024",
+      "milestone": "M2",
+      "priority": "P1",
+      "dependencies": [
+        "008"
+      ],
+      "target": "Fault injection entre commit, checkpoint e receipt retoma sem segundo efeito e sem falso sucesso.",
+      "primary_aud27_id": "AUD27-011",
+      "aud27_ids": [
+        "AUD27-011"
+      ],
+      "coverage": "ACCEPTANCE_ADDITION",
+      "acceptance_additions": [
+        "Inject failures between commit, checkpoint, and receipt; prove safe resume, one effect, and no false success."
+      ],
+      "new_aud27_task": false
+    },
+    {
+      "id": "MEL23-025",
+      "milestone": "M4",
+      "priority": "P1",
+      "dependencies": [
+        "003"
+      ],
+      "target": "Metas e exceções de cobertura por área crítica são versionadas; gate rejeita regressão abaixo do limite aprovado.",
+      "primary_aud27_id": "AUD27-018",
+      "aud27_ids": [
+        "AUD27-018"
+      ],
+      "coverage": "DIRECT",
+      "acceptance_additions": [],
+      "new_aud27_task": false
+    },
+    {
+      "id": "MEL23-026",
+      "milestone": "M4",
+      "priority": "P1",
+      "dependencies": [
+        "025"
+      ],
+      "target": "Mutantes relevantes de autorização, finanças, clínica e persistência são rejeitados; relatório identifica sobreviventes.",
+      "primary_aud27_id": "AUD27-018",
+      "aud27_ids": [
+        "AUD27-018"
+      ],
+      "coverage": "DIRECT",
+      "acceptance_additions": [],
+      "new_aud27_task": false
+    },
+    {
+      "id": "MEL23-027",
+      "milestone": "M4",
+      "priority": "P1",
+      "dependencies": [
+        "003"
+      ],
+      "target": "Matriz E2E completa executa na CI para o candidato; falhas intermitentes têm reprodução e diagnóstico.",
+      "primary_aud27_id": "AUD27-004",
+      "aud27_ids": [
+        "AUD27-004",
+        "AUD27-019",
+        "AUD27-025"
+      ],
+      "coverage": "ACCEPTANCE_ADDITION",
+      "acceptance_additions": [
+        "Specify the full E2E CI matrix and require reproduction and diagnosis for intermittent failures."
+      ],
+      "new_aud27_task": false
+    },
+    {
+      "id": "MEL23-028",
+      "milestone": "M4",
+      "priority": "P1",
+      "dependencies": [
+        "027"
+      ],
+      "target": "WebKit executa em host suportado; jornadas prioritárias passam ou falhas ficam abertas com reprodução.",
+      "primary_aud27_id": "AUD27-019",
+      "aud27_ids": [
+        "AUD27-019",
+        "AUD27-026"
+      ],
+      "coverage": "DIRECT",
+      "acceptance_additions": [],
+      "new_aud27_task": false
+    },
+    {
+      "id": "MEL23-029",
+      "milestone": "M4",
+      "priority": "P1",
+      "dependencies": [
+        "027"
+      ],
+      "target": "Testes renderizados documentam contraste, foco/teclado, zoom e reflow nos estados principais.",
+      "primary_aud27_id": "AUD27-019",
+      "aud27_ids": [
+        "AUD27-019"
+      ],
+      "coverage": "DIRECT",
+      "acceptance_additions": [],
+      "new_aud27_task": false
+    },
+    {
+      "id": "MEL23-030",
+      "milestone": "M4",
+      "priority": "P1",
+      "dependencies": [
+        "029"
+      ],
+      "target": "Revisão com tecnologia assistiva cobre login e jornadas clínicas/administrativas prioritárias, com achados e correção.",
+      "primary_aud27_id": "AUD27-019",
+      "aud27_ids": [
+        "AUD27-019",
+        "AUD27-026"
+      ],
+      "coverage": "DIRECT",
+      "acceptance_additions": [],
+      "new_aud27_task": false
+    },
+    {
+      "id": "MEL23-031",
+      "milestone": "M2",
+      "priority": "P1",
+      "dependencies": [
+        "008"
+      ],
+      "target": "Responsabilidades de `persistence/index.ts` são extraídas por dono sem mudar contratos; testes de banco e imports passam.",
+      "primary_aud27_id": "AUD27-020",
+      "aud27_ids": [
+        "AUD27-020"
+      ],
+      "coverage": "DIRECT",
+      "acceptance_additions": [],
+      "new_aud27_task": false
+    },
+    {
+      "id": "MEL23-032",
+      "milestone": "M2",
+      "priority": "P1",
+      "dependencies": [
+        "021"
+      ],
+      "target": "Rotas/serviços saem de `app.ts` com ownership explícito; inventário runtime e testes HTTP continuam verdes.",
+      "primary_aud27_id": "AUD27-020",
+      "aud27_ids": [
+        "AUD27-020"
+      ],
+      "coverage": "DIRECT",
+      "acceptance_additions": [],
+      "new_aud27_task": false
+    },
+    {
+      "id": "MEL23-033",
+      "milestone": "M2",
+      "priority": "P1",
+      "dependencies": [
+        "031",
+        "032"
+      ],
+      "target": "Domínio e contratos centrais são decompostos sem ciclos de import ou alteração pública não versionada.",
+      "primary_aud27_id": "AUD27-020",
+      "aud27_ids": [
+        "AUD27-020"
+      ],
+      "coverage": "DIRECT",
+      "acceptance_additions": [],
+      "new_aud27_task": false
+    },
+    {
+      "id": "MEL23-034",
+      "milestone": "M4",
+      "priority": "P1",
+      "dependencies": [
+        "003"
+      ],
+      "target": "Carga sustentada prova limites de fila, backpressure, drenagem e retomada sem claim indevido do worker.",
+      "primary_aud27_id": "AUD27-022",
+      "aud27_ids": [
+        "AUD27-022"
+      ],
+      "coverage": "ACCEPTANCE_ADDITION",
+      "acceptance_additions": [
+        "Measure bounded queue behavior, backpressure, draining, recovery, and worker claim/effect outcomes under sustained load."
+      ],
+      "new_aud27_task": false
+    },
+    {
+      "id": "MEL23-035",
+      "milestone": "M4",
+      "priority": "P1",
+      "dependencies": [
+        "034"
+      ],
+      "target": "Timeout/resposta perdida produzem `OUTCOME_UNKNOWN` e consulta/reconciliação; nenhum retry cego duplica efeito.",
+      "primary_aud27_id": "AUD27-022",
+      "aud27_ids": [
+        "AUD27-022"
+      ],
+      "coverage": "ACCEPTANCE_ADDITION",
+      "acceptance_additions": [
+        "On timeout or lost response, observe OUTCOME_UNKNOWN and reconciliation; prohibit blind retry that duplicates an effect."
+      ],
+      "new_aud27_task": false
+    },
+    {
+      "id": "MEL23-036",
+      "milestone": "M5",
+      "priority": "P1",
+      "dependencies": [
+        "017"
+      ],
+      "target": "SLOs recebem dono, baseline, janela e meta aprovada; queries medem os SLIs em tráfego representativo.",
+      "primary_aud27_id": "AUD27-021",
+      "aud27_ids": [
+        "AUD27-021"
+      ],
+      "coverage": "DIRECT",
+      "acceptance_additions": [],
+      "new_aud27_task": false
+    },
+    {
+      "id": "MEL23-037",
+      "milestone": "M5",
+      "priority": "P1",
+      "dependencies": [
+        "036"
+      ],
+      "target": "Falha de serviço dispara alerta entregue; retenção e perda de telemetria são observadas e não substituem auditoria.",
+      "primary_aud27_id": "AUD27-021",
+      "aud27_ids": [
+        "AUD27-021"
+      ],
+      "coverage": "ACCEPTANCE_ADDITION",
+      "acceptance_additions": [
+        "Observe actual alert delivery, retention, telemetry loss, and separation from the audit trail."
+      ],
+      "new_aud27_task": false
+    },
+    {
+      "id": "MEL23-038",
+      "milestone": "M5",
+      "priority": "P1",
+      "dependencies": [
+        "017",
+        "036"
+      ],
+      "target": "Carga e caos em staging registram workload, janela, limites, recuperação e critério de parada.",
+      "primary_aud27_id": "AUD27-022",
+      "aud27_ids": [
+        "AUD27-022"
+      ],
+      "coverage": "DIRECT",
+      "acceptance_additions": [],
+      "new_aud27_task": false
+    },
+    {
+      "id": "MEL23-039",
+      "milestone": "M3",
+      "priority": "P1",
+      "dependencies": [
+        "015"
+      ],
+      "target": "Compose das imagens finais passa inspeção de usuário, capabilities, filesystem, rede e secrets conforme threat model.",
+      "primary_aud27_id": "AUD27-015",
+      "aud27_ids": [
+        "AUD27-015",
+        "AUD27-017"
+      ],
+      "coverage": "ACCEPTANCE_ADDITION",
+      "acceptance_additions": [
+        "Inspect final Compose network, filesystem, and secrets settings against the threat model."
+      ],
+      "new_aud27_task": false
+    },
+    {
+      "id": "MEL23-040",
+      "milestone": "M0",
+      "priority": "P1",
+      "dependencies": [
+        "001",
+        "005"
+      ],
+      "target": "Relatório automático liga cada requisito obrigatório a teste, recibo, ambiente, resultado e fingerprint; lacunas falham.",
+      "primary_aud27_id": "AUD27-002",
+      "aud27_ids": [
+        "AUD27-002",
+        "AUD27-006",
+        "AUD27-024",
+        "AUD27-025"
+      ],
+      "coverage": "ACCEPTANCE_ADDITION",
+      "acceptance_additions": [
+        "Generate a mandatory requirement-to-test/receipt/environment/result/fingerprint report and fail closed on any missing link."
+      ],
+      "new_aud27_task": false
+    },
+    {
+      "id": "MEL23-041",
+      "milestone": "M0",
+      "priority": "P2",
+      "dependencies": [
+        "003"
+      ],
+      "target": "`docs/README.md` aponta à fotografia atual; não chama 78/80 schemas genéricos nem raiz externa ausente de fatos atuais.",
+      "primary_aud27_id": "AUD27-003",
+      "aud27_ids": [
+        "AUD27-003",
+        "AUD27-024"
+      ],
+      "coverage": "SUBSCOPE",
+      "acceptance_additions": [],
+      "new_aud27_task": false
+    },
+    {
+      "id": "MEL23-042",
+      "milestone": "M0",
+      "priority": "P2",
+      "dependencies": [
+        "041"
+      ],
+      "target": "`12-estado-da-implementacao.md` distingue o último checkpoint dos registros históricos e reflete os gates atuais.",
+      "primary_aud27_id": "AUD27-003",
+      "aud27_ids": [
+        "AUD27-003",
+        "AUD27-024"
+      ],
+      "coverage": "SUBSCOPE",
+      "acceptance_additions": [],
+      "new_aud27_task": false
+    },
+    {
+      "id": "MEL23-043",
+      "milestone": "M0",
+      "priority": "P2",
+      "dependencies": [
+        "041"
+      ],
+      "target": "`production-readiness-vNext.md` é rotulado como histórico ou revalidado; contagens/gates vencidos não são apresentados como atuais.",
+      "primary_aud27_id": "AUD27-003",
+      "aud27_ids": [
+        "AUD27-003",
+        "AUD27-024"
+      ],
+      "coverage": "SUBSCOPE",
+      "acceptance_additions": [],
+      "new_aud27_task": false
+    },
+    {
+      "id": "MEL23-044",
+      "milestone": "M0",
+      "priority": "P2",
+      "dependencies": [],
+      "target": "Cada ADR tem número único; referências ao antigo ADR 036 são resolvidas sem quebrar rastreabilidade histórica.",
+      "primary_aud27_id": "AUD27-024",
+      "aud27_ids": [
+        "AUD27-024"
+      ],
+      "coverage": "ACCEPTANCE_ADDITION",
+      "acceptance_additions": [
+        "Require unique ADR numbers and resolve old ADR 036 references without rewriting historical reports."
+      ],
+      "new_aud27_task": false
+    },
+    {
+      "id": "MEL23-045",
+      "milestone": "M0",
+      "priority": "P2",
+      "dependencies": [
+        "041–043"
+      ],
+      "target": "Índices mostram claramente estado atual, plano proposto e histórico datado; links internos passam.",
+      "primary_aud27_id": "AUD27-003",
+      "aud27_ids": [
+        "AUD27-003",
+        "AUD27-024"
+      ],
+      "coverage": "SUBSCOPE",
+      "acceptance_additions": [],
+      "new_aud27_task": false
+    },
+    {
+      "id": "MEL23-046",
+      "milestone": "M0",
+      "priority": "P2",
+      "dependencies": [
+        "040"
+      ],
+      "target": "Vocabulário de status/evidência é único entre docs, backlog e `.agent`; verificador rejeita sinônimos ambíguos.",
+      "primary_aud27_id": "AUD27-002",
+      "aud27_ids": [
+        "AUD27-002",
+        "AUD27-003",
+        "AUD27-024"
+      ],
+      "coverage": "ACCEPTANCE_ADDITION",
+      "acceptance_additions": [
+        "Define one canonical task/evidence vocabulary and make the verifier reject ambiguous synonyms in current records."
+      ],
+      "new_aud27_task": false
+    },
+    {
+      "id": "MEL23-047",
+      "milestone": "M2",
+      "priority": "P2",
+      "dependencies": [
+        "021"
+      ],
+      "target": "Contratos principais incluem exemplos válidos de request, success e erro que passam pelos schemas atuais.",
+      "primary_aud27_id": "AUD27-007",
+      "aud27_ids": [
+        "AUD27-007",
+        "AUD27-008",
+        "AUD27-009",
+        "AUD27-010"
+      ],
+      "coverage": "SUBSCOPE",
+      "acceptance_additions": [],
+      "new_aud27_task": false
+    },
+    {
+      "id": "MEL23-048",
+      "milestone": "M3",
+      "priority": "P2",
+      "dependencies": [
+        "003"
+      ],
+      "target": "`CONTRIBUTING.md` documenta checks focais por área, pré-requisitos e execução sem alterar dados compartilhados.",
+      "primary_aud27_id": "AUD27-024",
+      "aud27_ids": [
+        "AUD27-024"
+      ],
+      "coverage": "ACCEPTANCE_ADDITION",
+      "acceptance_additions": [
+        "Document area-specific focused checks, prerequisites, and how to avoid modifying shared data."
+      ],
+      "new_aud27_task": false
+    },
+    {
+      "id": "MEL23-049",
+      "milestone": "M2",
+      "priority": "P2",
+      "dependencies": [
+        "008"
+      ],
+      "target": "Changelog registra cada cutover e mudança pública por versão, com migração/rollback e compatibilidade.",
+      "primary_aud27_id": "AUD27-011",
+      "aud27_ids": [
+        "AUD27-011",
+        "AUD27-012",
+        "AUD27-013",
+        "AUD27-014",
+        "AUD27-024"
+      ],
+      "coverage": "ACCEPTANCE_ADDITION",
+      "acceptance_additions": [
+        "Require a versioned changelog entry per cutover/public change with migration, rollback, and compatibility details."
+      ],
+      "new_aud27_task": false
+    },
+    {
+      "id": "MEL23-050",
+      "milestone": "M3",
+      "priority": "P2",
+      "dependencies": [
+        "044",
+        "045"
+      ],
+      "target": "Gate documental detecta links quebrados, ADR duplicado e referência a arquivo removido; fixture negativa falha.",
+      "primary_aud27_id": "AUD27-002",
+      "aud27_ids": [
+        "AUD27-002",
+        "AUD27-024"
+      ],
+      "coverage": "ACCEPTANCE_ADDITION",
+      "acceptance_additions": [
+        "Add known-good and negative documentation fixtures for broken links, duplicate ADR IDs, and references to removed files."
+      ],
+      "new_aud27_task": false
+    }
+  ]
+}

@@ -1,3 +1,4 @@
+import { mkdirSync, writeFileSync } from "node:fs";
 import { lstat, readFile } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
 import { dirname, join, resolve } from "node:path";
@@ -8,8 +9,13 @@ import { renderAlertmanagerConfig } from "./render-alertmanager.ts";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const productionMode = process.argv.includes("--production");
 const structuralMode = process.argv.includes("--structural");
+// Documented operator override for structural-only runs: skips runLocalGates()
+// (lint, typecheck, test suites, E2E, audits, SBOM, benchmark). CI never passes
+// it, so the default behavior still executes the full local gate matrix.
+const skipLocalGates = process.argv.includes("--skip-local-gates");
 const failures: string[] = [];
 const observations: string[] = [];
+const localGateDiagnosticsDir = resolve(root, "artifacts/aud26/production-gates");
 
 const requiredFiles = [
   "artifacts/operational-proof/local-verification-2026-09-10.json",
@@ -35,6 +41,7 @@ const requiredFiles = [
   "docker/nginx/proxy.conf",
   "docker/nginx/proxy.tls.conf",
   "docker/worker.ts",
+  "docker/runtime-entrypoint.mjs",
   "apps/api/src/app.ts",
   "apps/api/src/application/diagnostic-service.ts",
   "apps/api/src/application/guardian-service.ts",
@@ -197,7 +204,9 @@ function inspectStaticContracts(): void {
     if (relative !== "scripts/verify-production.ts" && /:latest\b/.test(content)) failures.push(`${relative}: moving latest image/tag is forbidden`);
   }
 
-  for (const fragment of ["npm ci", "USER node", "HEALTHCHECK", "node:24.20.0-bookworm-slim"]) requireText("Dockerfile.api", fragment);
+  for (const fragment of ["npm ci", "USER 65532:65532", "HEALTHCHECK", "gcr.io/distroless/nodejs24-debian13:nonroot@sha256:9eeb7f5887d0e239e78264b06f7f11d2e14be534050481803a9e4728fcdd278e", "/nodejs/bin/node", "runtime-entrypoint.mjs"]) requireText("Dockerfile.api", fragment);
+  requireText("docker/runtime-entrypoint.mjs", "unsupported runtime entrypoint");
+  requireText("docker-compose.yml", "/nodejs/bin/node");
   requireText("Dockerfile.api", "org.opencontainers.image.revision");
   for (const fragment of ["npm ci", "RUN npm run build", "nginxinc/nginx-unprivileged:1.31.5-alpine3.24@sha256:2ddec616f1cb58bcac057aa388f28cb81e35137641ef4226d321714499329bd1", "USER 101", "HEALTHCHECK"]) requireText("Dockerfile.web", fragment);
   requireText("Dockerfile.web", "org.opencontainers.image.revision");
@@ -222,6 +231,10 @@ function inspectStaticContracts(): void {
   requireText("docker-compose.observability.yml", "CVG_ALERTMANAGER_CONFIG_FILE");
   requireText("docker/observability/otel-collector.yml", "attributes/redact");
   requireText("docker/observability/prometheus.yml", "rule_files:");
+  // CVG-AUD19-021: a rule file without an Alertmanager connection is inert.
+  requireText("docker/observability/prometheus.yml", "alerting:");
+  requireText("docker/observability/prometheus.yml", "alertmanagers:");
+  requireText("docker/observability/prometheus.yml", "alertmanager:9093");
   requireText("docker/observability/alerts.yml", "runbook:");
   requireText("docker/observability/alertmanager.yml", "CVG_ALERTMANAGER_WEBHOOK_URL");
   rejectText("docker/observability/alertmanager.yml", /cvg-null/, "Alertmanager must not silently discard alerts through a null receiver");
@@ -399,6 +412,7 @@ type ComposeService = {
   security_opt?: string[];
   cap_drop?: string[];
   secrets?: Array<{ source?: string; target?: string } | string>;
+  networks?: Record<string, unknown>;
   deploy?: { resources?: { limits?: { cpus?: string; memory?: string } } };
 };
 
@@ -539,6 +553,11 @@ function inspectProductionComposeConfig(config: ComposeConfig): void {
   const hasPort = (published: string, target: number): boolean => ports.some((port) => String(port.published) === published && port.target === target);
   if (!hasPort("80", 8080) || !hasPort("443", 8443)) failures.push("docker-compose.production.yml: proxy must publish HTTP redirect on 80 and TLS on 443");
   if (ports.some((port) => String(port.published) === "8080")) failures.push("docker-compose.production.yml: cleartext development port 8080 must not be published");
+  if (!proxy.networks || !("backend" in proxy.networks) || !("edge" in proxy.networks)) failures.push("docker-compose.production.yml: proxy must join both the internal backend and published edge networks");
+  if (config.networks?.backend?.internal !== true || !config.networks?.edge || config.networks.edge.internal === true) failures.push("docker-compose.production.yml: backend must remain internal and a non-internal edge network must permit host publication");
+  for (const name of ["postgres", "migrate", "api", "web", "worker"]) {
+    if (config.services?.[name]?.networks?.edge !== undefined) failures.push(`docker-compose.production.yml: ${name} must not join the published edge network`);
+  }
   const volumes = proxy.volumes ?? [];
   for (const target of ["/etc/nginx/conf.d/default.conf", "/etc/nginx/tls/fullchain.pem", "/etc/nginx/tls/privkey.pem"]) {
     const volume = volumes.find((entry) => typeof entry !== "string" && entry.target === target);
@@ -607,10 +626,16 @@ function inspectComposeConfig(config: ComposeConfig): void {
   if (postgresPorts.length !== 1 || postgresPorts[0]?.host_ip !== "127.0.0.1") failures.push("docker-compose.yml: PostgreSQL must be bound to loopback only");
   if (services.api?.build?.dockerfile !== "Dockerfile.api" || services.web?.build?.dockerfile !== "Dockerfile.web") failures.push("docker-compose.yml: API/web build sources are not pinned to the release Dockerfiles");
   if (!String(services.worker?.command ?? "").includes("docker/worker.ts")) failures.push("docker-compose.yml: worker entrypoint is not wired");
+  if (services.worker?.environment?.CVG_STORAGE !== "postgres") failures.push("docker-compose.yml: worker must opt into its required PostgreSQL runtime");
   if (services.api?.depends_on?.migrate?.condition !== "service_completed_successfully") failures.push("docker-compose.yml: API must wait for successful migrations");
   if (services.worker?.depends_on?.api?.condition !== "service_healthy") failures.push("docker-compose.yml: worker must wait for a healthy API bootstrap");
   if (services.proxy?.depends_on?.api?.condition !== "service_healthy" || services.proxy?.depends_on?.web?.condition !== "service_healthy") failures.push("docker-compose.yml: proxy must wait for healthy API and web services");
   if (config.networks?.backend?.internal !== true) failures.push("docker-compose.yml: backend network must be internal");
+  if (!config.networks?.edge || config.networks.edge.internal === true) failures.push("docker-compose.yml: published edge network must exist and must not be internal");
+  if (!services.proxy?.networks || !("backend" in services.proxy.networks) || !("edge" in services.proxy.networks)) failures.push("docker-compose.yml: proxy must join both backend and edge networks");
+  for (const name of ["postgres", "migrate", "api", "web", "worker"]) {
+    if (services[name]?.networks?.edge !== undefined) failures.push(`docker-compose.yml: ${name} must not join the published edge network`);
+  }
   for (const name of ["postgres", "proxy"]) {
     if (!services[name]?.image || /:latest\b/.test(services[name]?.image ?? "")) failures.push(`docker-compose.yml: ${name} image is not explicitly versioned`);
   }
@@ -619,7 +644,10 @@ function inspectComposeConfig(config: ComposeConfig): void {
 function inspectProductionEnvironment(): void {
   if (!productionMode) return;
   const environment = process.env;
-  const requiredNames = ["DATABASE_URL", "CVG_BOOTSTRAP_PASSWORD", "CVG_WEB_ORIGIN", "CVG_RELEASE_SHA", "CVG_RELEASE_ARTIFACT_DIGEST", "CVG_HOST", "CVG_TRUST_PROXY", "CVG_TRUSTED_PROXY_IPS", "CVG_TLS_DIR", "CVG_DEEPSEEK_BASE_URL", "CVG_DEEPSEEK_EXPECTED_ENGINE_COMMIT", "CVG_DEEPSEEK_EXPECTED_MANIFEST_VERSION", "CVG_DEEPSEEK_BEARER_TOKEN_REF", "CVG_DEEPSEEK_CONTEXT_SIGNING_SECRET_REF", "CVG_RECOVERY_ENCRYPTION_KEY_REF", "CVG_WORKER_ORGANIZATION_ID", "CVG_BACKUP_ENABLED", "CVG_BACKUP_ORGANIZATION_ID", "CVG_BACKUP_DIRECTORY", "CVG_BACKUP_INTERVAL_MS", "CVG_BACKUP_KEEP_LAST", "CVG_SECRET_PROVIDER", "CVG_MESSAGING_PROVIDER_ENDPOINT", "CVG_MESSAGING_PROVIDER_ALLOWED_HOSTS", "CVG_MESSAGING_CREDENTIAL_REF", "CVG_RUNTIME_DB_USER", "CVG_RUNTIME_DB_PASSWORD"];
+  // CVG_AGENT_RUNTIME=disabled is the no-AI contingency; it must not require model credentials.
+  const aiDisabled = environment.CVG_AGENT_RUNTIME === "disabled";
+  const deepseekNames = aiDisabled ? [] : ["CVG_DEEPSEEK_BASE_URL", "CVG_DEEPSEEK_EXPECTED_ENGINE_COMMIT", "CVG_DEEPSEEK_EXPECTED_MANIFEST_VERSION", "CVG_DEEPSEEK_BEARER_TOKEN_REF", "CVG_DEEPSEEK_CONTEXT_SIGNING_SECRET_REF"];
+  const requiredNames = ["DATABASE_URL", "CVG_BOOTSTRAP_PASSWORD", "CVG_WEB_ORIGIN", "CVG_RELEASE_SHA", "CVG_RELEASE_ARTIFACT_DIGEST", "CVG_HOST", "CVG_TRUST_PROXY", "CVG_TRUSTED_PROXY_IPS", "CVG_TLS_DIR", ...deepseekNames, "CVG_RECOVERY_ENCRYPTION_KEY_REF", "CVG_WORKER_ORGANIZATION_ID", "CVG_BACKUP_ENABLED", "CVG_BACKUP_ORGANIZATION_ID", "CVG_BACKUP_DIRECTORY", "CVG_BACKUP_INTERVAL_MS", "CVG_BACKUP_KEEP_LAST", "CVG_SECRET_PROVIDER", "CVG_MESSAGING_PROVIDER_ENDPOINT", "CVG_MESSAGING_PROVIDER_ALLOWED_HOSTS", "CVG_MESSAGING_CREDENTIAL_REF", "CVG_RUNTIME_DB_USER", "CVG_RUNTIME_DB_PASSWORD"];
   for (const name of requiredNames) if (!environment[name]?.trim()) failures.push(`production configuration: ${name} is required`);
   if (!environment.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT?.trim() && !environment.OTEL_EXPORTER_OTLP_ENDPOINT?.trim()) failures.push("production configuration: OTEL_EXPORTER_OTLP_ENDPOINT or OTEL_EXPORTER_OTLP_TRACES_ENDPOINT is required");
   if (environment.NODE_ENV !== "production") failures.push("production configuration: NODE_ENV must be production");
@@ -633,7 +661,7 @@ function inspectProductionEnvironment(): void {
   if (environment.CVG_RATE_LIMIT_BACKEND !== "distributed") failures.push("production configuration: CVG_RATE_LIMIT_BACKEND must be distributed");
   if (environment.CVG_SECRET_PROVIDER === undefined || environment.CVG_SECRET_PROVIDER === "none") failures.push("production configuration: an explicit secret provider is required");
   else if (!(CVG_SECRET_PROVIDER_KINDS as readonly string[]).includes(environment.CVG_SECRET_PROVIDER)) failures.push(`production configuration: CVG_SECRET_PROVIDER must be one of ${CVG_SECRET_PROVIDER_KINDS.filter((kind) => kind !== "none").join(", ")}`);
-  if (environment.CVG_DEEPSEEK_RUNTIME_ENABLED !== "true") failures.push("production configuration: the mock runtime must be disabled");
+  if (!aiDisabled && environment.CVG_DEEPSEEK_RUNTIME_ENABLED !== "true") failures.push("production configuration: the mock runtime must be disabled");
   if (environment.CVG_WORKER_SINK_MODE !== "enabled") failures.push("production configuration: the worker sink must be enabled; quarantine is not a production provider");
   if (environment.CVG_WEB_ORIGIN && !environment.CVG_WEB_ORIGIN.startsWith("https://")) failures.push("production configuration: CVG_WEB_ORIGIN must use HTTPS");
   if (environment.CVG_DEEPSEEK_BASE_URL && !environment.CVG_DEEPSEEK_BASE_URL.startsWith("https://")) failures.push("production configuration: DeepSeek bridge must use HTTPS");
@@ -666,6 +694,18 @@ function inspectProductionEnvironment(): void {
 
 function runLocalGate(label: string, command: string, args: string[]): void {
   const result = spawnSync(command, args, { cwd: root, env: { ...process.env, FORCE_COLOR: "0" }, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+  mkdirSync(localGateDiagnosticsDir, { recursive: true });
+  const diagnosticName = label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "gate";
+  writeFileSync(resolve(localGateDiagnosticsDir, `${diagnosticName}.json`), `${JSON.stringify({
+    schemaVersion: 1,
+    label,
+    command: [command, ...args],
+    capturedAt: new Date().toISOString(),
+    exitStatus: result.status,
+    signal: result.signal,
+    stdout: result.stdout ?? "",
+    stderr: result.stderr ?? ""
+  }, null, 2)}\n`, { mode: 0o600 });
   if (commandNotFound(result.error)) {
     failures.push(`${label}: command is unavailable`);
     return;
@@ -701,9 +741,10 @@ function runLocalGates(): void {
 await inspectArtifacts();
 inspectStaticContracts();
 inspectProductionEnvironment();
-if (!productionMode && !structuralMode) failures.push("verification mode is required: pass --production with real environment or --structural for synthetic Compose contracts");
+if (!productionMode && !structuralMode) failures.push("verification mode is required: pass --production with real environment or --structural for synthetic Compose contracts (optionally --skip-local-gates to skip the local gate matrix)");
 
-if (failures.length === 0 && structuralMode && !productionMode) runLocalGates();
+if (structuralMode && !productionMode && skipLocalGates) observations.push("local gates were skipped because the documented --skip-local-gates flag was passed (operator override for structural-only runs); the default and CI path runs them without the flag and CI never passes it: repository lint, typecheck, contract/security/database/fault/unit/integration tests, web build, PDP coverage, static verification, browser E2E, audits, SBOM, benchmark and diff whitespace were not executed");
+if (failures.length === 0 && structuralMode && !productionMode && !skipLocalGates) runLocalGates();
 
 if (failures.length === 0) {
   const rendered = runComposeConfig();

@@ -264,7 +264,7 @@ async function main(): Promise<void> {
     if (base.protocol !== "https:" || base.username || base.password || base.search || base.hash) block("container smoke requires a credential-free HTTPS origin without query or fragment");
     if (rawHttpUrl) await verifyHttpRedirect(cleartextSmokeUrl(rawHttpUrl, "HTTP redirect URL"), base);
     const prefix = base.pathname.endsWith("/") ? base.pathname : `${base.pathname}/`;
-    const health = await response(new URL(`${base.origin}${prefix}healthz`));
+    await response(new URL(`${base.origin}${prefix}healthz`));
     const ready = await response(new URL(`${base.origin}${prefix}api/v1/ready`));
     const readyBody = jsonRecord(await ready.clone().json().catch(() => ({})));
     if (jsonRecord(readyBody.data).ready !== true) block("readiness did not report ready=true");

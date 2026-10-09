@@ -1,0 +1,288 @@
+{
+  "schemaVersion": 2,
+  "reportId": "MEL23-015-016-039-LOCAL-2026-09-23",
+  "capturedAtUtc": "2026-09-23T14:55:07Z",
+  "melIds": [
+    "MEL23-015",
+    "MEL23-016",
+    "MEL23-039"
+  ],
+  "source": {
+    "head": "c990914148a8f375082cd12bbdb2ad20cfe1900f",
+    "workingTreeClean": false,
+    "candidateFrozen": false,
+    "candidateFingerprint": null,
+    "buildRevisionLabel": "unbound",
+    "promotion": "PROMOTION_BLOCKED",
+    "assurance": "AAA_NOT_PROVEN",
+    "matrixSummary": {
+      "requirements": 50,
+      "mapped": 50,
+      "qualified": 0,
+      "blocked": 50,
+      "fingerprintStatus": "UNFROZEN_UNTIL_AUD27-004"
+    }
+  },
+  "environment": {
+    "dockerEngineVersion": "29.1.3",
+    "platform": "linux/amd64",
+    "dataAndCredentials": "synthetic test identity and records only; no real veterinary data, credentials, or providers",
+    "historicalR3R1Report": "report-api-r3-web-r1-historical.json",
+    "database": {
+      "image": "postgres:18.0-bookworm@sha256:3f55f8895c4ed50603e2fbdfc72fffeeaba3173321fee5cb825bbbeb30d9d854",
+      "migrationsApplied": 48,
+      "storage": "disposable named volume; removed after run",
+      "containerUser": "999:999",
+      "readOnlyRootFilesystem": true,
+      "capabilitiesDropped": [
+        "ALL"
+      ],
+      "noNewPrivileges": true
+    },
+    "network": {
+      "name": "cvg-mel23-015-20260923-r4-net",
+      "id": "5f898a790ad6c716d85010b3fc3791d364f9755f431212235286b7fe3f7c24a5",
+      "internal": true,
+      "publishedHostPorts": false
+    }
+  },
+  "api": {
+    "tag": "cvg-mel23-api:mel23-015-20260923-r4",
+    "indexDigest": "sha256:795eb35d1d4eedca9b15b345ceceee790020a3553224a159382f3245a1d3fc42",
+    "platformManifestDigest": "sha256:74691497fe8ac98533e423df0f907d1d12b5dc5027ff837709eeb411d9366485",
+    "imageConfigDigest": "sha256:f5c276225d7c8c5773178cc6714917f5aeafae7ba7b80ea5c7b8ac69c9decd74",
+    "build": {
+      "dockerfile": "Dockerfile.api",
+      "testedImageBuildxRecordId": "zczx9mc6to1ppdnag84ymxdik",
+      "attestationExportBuildxRecordId": "b02qano380g7uz94cbxadf5gw",
+      "attestationExportIndexDigest": "sha256:625712039617ebf4a00eeb843f0999cfd4337acb21f4e34bc986d7d1bf9d76c7",
+      "vcsRevision": "c990914148a8f375082cd12bbdb2ad20cfe1900f",
+      "sourceTreeDirty": true,
+      "sourceRevisionLabel": "unbound",
+      "baseImageDigest": "sha256:bb6b03d81066993293a10feda7250e8e1cc034035fe9b61cfceededa7c8bf04d",
+      "provenanceEnabled": true,
+      "sbomEnabled": true
+    },
+    "container": {
+      "id": "e9b985a15bc76e22fe19f6fc4741f2e79b1585699af2c365e2b614ba3e6fc9d7",
+      "health": "healthy",
+      "user": "65532:65532",
+      "readOnlyRootFilesystem": true,
+      "capabilitiesDropped": [
+        "ALL"
+      ],
+      "noNewPrivileges": true,
+      "memoryBytes": 805306368,
+      "nanoCpus": 1000000000,
+      "publishedPorts": [],
+      "networkInternal": true
+    },
+    "smoke": {
+      "migrateCommand": "container command: migrate",
+      "migrationRows": 48,
+      "initialContainerHealth": "healthy",
+      "syntheticLogin": 200,
+      "controlledWrite": 201,
+      "controlledRead": 200,
+      "writtenRecordId": "98a64826-f7c3-4755-8a1a-981c94809f1e",
+      "gracefulStopExitCode": 0,
+      "healthAfterRestart": 200,
+      "readinessAfterRestart": 200,
+      "loginAfterRestart": 200,
+      "recordReadAfterRestart": true,
+      "releaseShaOrArtifactDigestProvided": false,
+      "releaseBinding": "UNBOUND_LOCAL"
+    },
+    "sbom": {
+      "predicateType": "https://spdx.dev/Document",
+      "format": "SPDX-2.3",
+      "subjectDigest": "sha256:74691497fe8ac98533e423df0f907d1d12b5dc5027ff837709eeb411d9366485",
+      "packageCount": 16,
+      "attestationManifestDigest": "sha256:f73101858e5d9d8ed39ced63c4662d24fe22ba5917975ad71c2289a68dfbd2c8",
+      "attestationExportIndexDigest": "sha256:625712039617ebf4a00eeb843f0999cfd4337acb21f4e34bc986d7d1bf9d76c7",
+      "file": "api-image-r4-sbom.intoto.json",
+      "sha256": "b75acec9fc66cb409ad6805461c675e16498758915b7b97bb0e1e8b6b1ee79c4"
+    },
+    "provenance": {
+      "predicateType": "https://slsa.dev/provenance/v0.2",
+      "subjectDigest": "sha256:74691497fe8ac98533e423df0f907d1d12b5dc5027ff837709eeb411d9366485",
+      "attestationManifestDigest": "sha256:f73101858e5d9d8ed39ced63c4662d24fe22ba5917975ad71c2289a68dfbd2c8",
+      "attestationExportIndexDigest": "sha256:625712039617ebf4a00eeb843f0999cfd4337acb21f4e34bc986d7d1bf9d76c7",
+      "file": "api-image-r4-provenance.intoto.json",
+      "sha256": "30aecca274c8b9daaa6c29b26307835f13d1c9ed01d0530c3c1be11f5398e21f"
+    },
+    "scan": {
+      "scanner": "Trivy 0.74.0",
+      "scannerImageDigest": "sha256:62b1e65e8869bc4b4c6aa4fa2b21595256c7c2f6018a9d9ad61caf87187c1969",
+      "scanners": [
+        "vuln",
+        "secret",
+        "misconfig"
+      ],
+      "databaseUpdatedAtUtc": "2026-09-23T12:53:55.964849051Z",
+      "databaseDownloadedAtUtc": "2026-09-23T14:07:58.113214769Z",
+      "networkDuringScan": "none",
+      "targetImageConfigDigest": "sha256:f5c276225d7c8c5773178cc6714917f5aeafae7ba7b80ea5c7b8ac69c9decd74",
+      "os": "debian 13.7",
+      "vulnerabilities": {
+        "CRITICAL": 0,
+        "HIGH": 0,
+        "MEDIUM": 15,
+        "LOW": 7,
+        "UNKNOWN": 0
+      },
+      "secretFindings": 0,
+      "misconfigurationFindings": 0,
+      "allVulnerabilityEntriesHadNoFixedVersion": true,
+      "file": "api-image-r4-trivy.json",
+      "sha256": "1476c1ed4e65acb1534cad66b1e6db06b075e547a14ba4e153069b251b2b405b"
+    }
+  },
+  "web": {
+    "tag": "cvg-mel23-web:mel23-016-20260923-r2",
+    "indexDigest": "sha256:83936d5150baad4d98ffaa60a7ba7d9ca551a25469706e451069b232336bf11f",
+    "platformManifestDigest": "sha256:9a4bb0b20a6ca8f2fe310cc7f39ce83e9b27cdb9945dd80fe2ba3bba4b8256aa",
+    "imageConfigDigest": "sha256:232ed49a05a433627b1164d18952838d546b20e608cf1ec2a9deab836592f512",
+    "build": {
+      "dockerfile": "Dockerfile.web",
+      "testedImageBuildxRecordId": "m51ik7x0yzi2qr149lzivllrd",
+      "attestationExportBuildxRecordId": "p2fixjibzjsns6h46iegmwt50",
+      "attestationExportIndexDigest": "sha256:351b90ceab095bc9531d450a76c26dcdd50caf85083477025efc52cc26498a13",
+      "vcsRevision": "c990914148a8f375082cd12bbdb2ad20cfe1900f",
+      "sourceTreeDirty": true,
+      "sourceRevisionLabel": "unbound",
+      "baseImageDigest": "sha256:2ddec616f1cb58bcac057aa388f28cb81e35137641ef4226d321714499329bd1",
+      "provenanceEnabled": true,
+      "sbomEnabled": true
+    },
+    "container": {
+      "id": "1597adaa03a9e854f0814a2b69f6c47dba8413ae4143407380a2a34831cebb2a",
+      "health": "healthy",
+      "user": "101:101",
+      "readOnlyRootFilesystem": true,
+      "capabilitiesDropped": [
+        "ALL"
+      ],
+      "noNewPrivileges": true,
+      "memoryBytes": 134217728,
+      "nanoCpus": 500000000,
+      "publishedPorts": [],
+      "networkInternal": true
+    },
+    "smoke": {
+      "healthz": 200,
+      "rootPage": 200,
+      "staticAssetsChecked": [
+        {
+          "path": "/assets/index-Dc9e_tir.js",
+          "status": 200
+        },
+        {
+          "path": "/assets/index-BASt-aIt.css",
+          "status": 200
+        }
+      ],
+      "headersChecked": [
+        "Content-Security-Policy",
+        "X-Frame-Options",
+        "X-Content-Type-Options",
+        "Referrer-Policy",
+        "Permissions-Policy",
+        "Cross-Origin-Opener-Policy",
+        "Cross-Origin-Resource-Policy"
+      ]
+    },
+    "sbom": {
+      "predicateType": "https://spdx.dev/Document",
+      "format": "SPDX-2.3",
+      "subjectDigest": "sha256:9a4bb0b20a6ca8f2fe310cc7f39ce83e9b27cdb9945dd80fe2ba3bba4b8256aa",
+      "packageCount": 71,
+      "attestationManifestDigest": "sha256:bca0ab3ae4297a3c17adc53e000d365f54ba627cefb0c78e0145f824ce145ac6",
+      "attestationExportIndexDigest": "sha256:351b90ceab095bc9531d450a76c26dcdd50caf85083477025efc52cc26498a13",
+      "file": "web-image-r2-sbom.intoto.json",
+      "sha256": "dd38391a3c68bd5e7b5a01de27f8f7fef7a9469d4b47badc1e230153204ab791"
+    },
+    "provenance": {
+      "predicateType": "https://slsa.dev/provenance/v0.2",
+      "subjectDigest": "sha256:9a4bb0b20a6ca8f2fe310cc7f39ce83e9b27cdb9945dd80fe2ba3bba4b8256aa",
+      "attestationManifestDigest": "sha256:bca0ab3ae4297a3c17adc53e000d365f54ba627cefb0c78e0145f824ce145ac6",
+      "attestationExportIndexDigest": "sha256:351b90ceab095bc9531d450a76c26dcdd50caf85083477025efc52cc26498a13",
+      "file": "web-image-r2-provenance.intoto.json",
+      "sha256": "c312dbdf1022377703f5e5d0e5e939a115fd82397a4d33dad1e954e765960d5d"
+    },
+    "scan": {
+      "scanner": "Trivy 0.74.0",
+      "scannerImageDigest": "sha256:62b1e65e8869bc4b4c6aa4fa2b21595256c7c2f6018a9d9ad61caf87187c1969",
+      "scanners": [
+        "vuln",
+        "secret",
+        "misconfig"
+      ],
+      "databaseUpdatedAtUtc": "2026-09-23T12:53:55.964849051Z",
+      "databaseDownloadedAtUtc": "2026-09-23T14:07:58.113214769Z",
+      "networkDuringScan": "none",
+      "targetImageConfigDigest": "sha256:232ed49a05a433627b1164d18952838d546b20e608cf1ec2a9deab836592f512",
+      "os": "alpine 3.24.1",
+      "vulnerabilities": {
+        "CRITICAL": 0,
+        "HIGH": 0,
+        "MEDIUM": 0,
+        "LOW": 0,
+        "UNKNOWN": 0
+      },
+      "secretFindings": 0,
+      "misconfigurationFindings": 0,
+      "allVulnerabilityEntriesHadNoFixedVersion": null,
+      "file": "web-image-r2-trivy.json",
+      "sha256": "c6393a9e40849e08145ec6a98063cc0a751062e59870609f2d9299ed3d54e6af"
+    }
+  },
+  "compose": {
+    "summaryFile": "compose-production-static-summary.json",
+    "configurationParse": "PASS with synthetic env file",
+    "servicesStarted": false,
+    "backupVolumeInitializerProbe": "PASS; pre-existing marker owner, mode, and bytes unchanged",
+    "proxyEdgeEgressPolicy": "pending",
+    "externalTlsAndSecrets": "referenced structurally only; not exercised"
+  },
+  "interpretation": {
+    "attestationSubjects": "BuildKit SPDX and SLSA subjects equal the platform manifest digests; Trivy Metadata.ImageID equals the corresponding image config digest.",
+    "apiVulnerabilityReview": "22 Debian 13.7 OS findings (15 medium, 7 low), all with FixedVersion empty; no approved threshold or risk decision supplied.",
+    "provenanceScope": "BuildKit SLSA v0.2 and SPDX attestations are local OCI build outputs, unsigned, unpublished, and not verified by an external issuer.",
+    "candidateScope": "Both test images came from a dirty/unfrozen tree; attestation-export OCI indexes differ from the tested image indexes, while their platform-manifest subjects match.",
+    "evidenceMatrix": "0/50 mapped MEL23 requirements qualified; focal receipts do not match the observed subject fingerprint.",
+    "gauntletRound10": "not recorded: the evidence verifier overwrote the R9-registered immutable matrix path; the previous bytes have not been recovered. No .gauntlet file was manually edited; round mutations remain suspended."
+  },
+  "cleanup": {
+    "verifiedAtUtc": "2026-09-23T14:53:22Z",
+    "disposableContainersRemoved": true,
+    "disposableVolumesRemoved": true,
+    "disposableNetworksRemoved": true,
+    "removedContainers": [
+      "cvg-mel23-015-20260923-r2-db",
+      "cvg-mel23-015-20260923-r3-db",
+      "cvg-mel23-015-20260923-r3-api",
+      "cvg-mel23-016-20260923-r1-web",
+      "cvg-mel23-015-20260923-r4-db",
+      "cvg-mel23-015-20260923-r4-api",
+      "cvg-mel23-016-20260923-r2-web",
+      "cvg-mel23-039-postgres-cap-probe-20260923",
+      "cvg-mel23-039-postgres-nonroot-probe-20260923"
+    ],
+    "removedVolumes": [
+      "cvg-mel23-015-20260923-r4-pgdata",
+      "cvg-mel23-039-backup-permission-probe-20260923",
+      "cvg-mel23-039-backup-permission-probe-r2-20260923",
+      "cvg-mel23-039-postgres-cap-probe-20260923",
+      "cvg-mel23-039-postgres-nonroot-probe-20260923"
+    ],
+    "removedNetworks": [
+      "cvg-mel23-015-20260923-r2-net",
+      "cvg-mel23-015-20260923-r3-net",
+      "cvg-mel23-015-20260923-r4-net"
+    ],
+    "imagesRetainedLocally": true,
+    "preexistingContainersOrVolumesChanged": false,
+    "unrelatedNetworkPreserved": "cvg-mel23-playwright-20260923-internal-r1"
+  }
+}

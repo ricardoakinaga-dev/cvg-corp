@@ -1,0 +1,2 @@
+api user=65532:65532 exposed={"4310/tcp":{}} entrypoint=["/nodejs/bin/node","/app/runtime/entrypoint.mjs"]
+web user=101 exposed={"8080/tcp":{}}

@@ -1,0 +1,111 @@
+[
+  {
+    "name": "typecheck",
+    "command": [
+      "npm",
+      "run",
+      "typecheck"
+    ],
+    "exit_status": 2,
+    "observed_at": "2026-10-04T11:01:53.227133+00:00",
+    "finished_at": "2026-10-04T11:02:13.875392+00:00",
+    "log": "artifacts/production-hardening-2026-10-04/verification/typecheck.log",
+    "log_sha256": "fa99f3ac5396d6d15ed590bc24db02f2717c2574ccebbaeb605a24d141b32112"
+  },
+  {
+    "name": "lint",
+    "command": [
+      "npm",
+      "run",
+      "lint"
+    ],
+    "exit_status": 0,
+    "observed_at": "2026-10-04T11:02:13.875907+00:00",
+    "finished_at": "2026-10-04T11:02:14.774493+00:00",
+    "log": "artifacts/production-hardening-2026-10-04/verification/lint.log",
+    "log_sha256": "2628b365fab85f7b21ad41e87e22aef8077a8fa62fbc22edfa0f345739da51ac"
+  },
+  {
+    "name": "architecture",
+    "command": [
+      "npm",
+      "run",
+      "verify:architecture"
+    ],
+    "exit_status": 0,
+    "observed_at": "2026-10-04T11:02:14.775073+00:00",
+    "finished_at": "2026-10-04T11:02:15.041492+00:00",
+    "log": "artifacts/production-hardening-2026-10-04/verification/architecture.log",
+    "log_sha256": "fb1b1996bc31cfb350a1d4d982956ea8ef984b22ba3f4a0fe045023fd2efc7e2"
+  },
+  {
+    "name": "static",
+    "command": [
+      "npm",
+      "run",
+      "verify:static"
+    ],
+    "exit_status": 0,
+    "observed_at": "2026-10-04T11:02:15.041913+00:00",
+    "finished_at": "2026-10-04T11:02:16.491274+00:00",
+    "log": "artifacts/production-hardening-2026-10-04/verification/static.log",
+    "log_sha256": "52693c2d504d75f20c65af4437ea2ab203f2deae6b4f09e865396eb9fb42866a"
+  },
+  {
+    "name": "docs-integrity",
+    "command": [
+      "npm",
+      "run",
+      "verify:docs-integrity"
+    ],
+    "exit_status": 0,
+    "observed_at": "2026-10-04T11:02:16.491895+00:00",
+    "finished_at": "2026-10-04T11:02:16.839904+00:00",
+    "log": "artifacts/production-hardening-2026-10-04/verification/docs-integrity.log",
+    "log_sha256": "39b46d1e1d58aa74fee8faed3bf46d05938da379c08b846c80b174dd8fa9a96f"
+  },
+  {
+    "name": "schema-manifest",
+    "command": [
+      "npm",
+      "run",
+      "verify:schema-manifest"
+    ],
+    "exit_status": 0,
+    "observed_at": "2026-10-04T11:02:16.840352+00:00",
+    "finished_at": "2026-10-04T11:02:17.288854+00:00",
+    "log": "artifacts/production-hardening-2026-10-04/verification/schema-manifest.log",
+    "log_sha256": "3f71d84e1208d12145289b8b60a89df78ba09f1065c6813cd4352b1149e7d12b"
+  },
+  {
+    "name": "production-structure",
+    "command": [
+      "node",
+      "--import",
+      "tsx",
+      "scripts/verify-production.ts",
+      "--structural",
+      "--skip-local-gates"
+    ],
+    "exit_status": 0,
+    "observed_at": "2026-10-04T11:02:17.289369+00:00",
+    "finished_at": "2026-10-04T11:02:18.316353+00:00",
+    "log": "artifacts/production-hardening-2026-10-04/verification/production-structure.log",
+    "log_sha256": "160cf4dd9fc1ca782c063115c89a4c4bb66b684f098b324529ede14ed5cc0cf4"
+  },
+  {
+    "name": "cleanup-tests",
+    "command": [
+      "node",
+      "--import",
+      "tsx",
+      "--test",
+      "tests/unit/ops-observability.test.ts"
+    ],
+    "exit_status": 0,
+    "observed_at": "2026-10-04T11:02:18.316830+00:00",
+    "finished_at": "2026-10-04T11:02:18.939770+00:00",
+    "log": "artifacts/production-hardening-2026-10-04/verification/cleanup-tests.log",
+    "log_sha256": "858ec1bf70441ec71128fc579da748ff5d541d36ee15431fc394de2b8113c8e9"
+  }
+]

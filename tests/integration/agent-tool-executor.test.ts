@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { CvgStore } from "@cvg/domain";
 import { TOOL_REGISTRY } from "@cvg/harness";
-import { AgentToolExecutorNotBoundError, AgentToolScopeError, createAgentToolExecutor } from "../../apps/api/src/agent-tool-executor.ts";
+import { AgentToolExecutorNotBoundError, AgentToolIdentityDivergenceError, AgentToolScopeError, createAgentToolExecutor } from "../../apps/api/src/agent-tool-executor.ts";
 import type { AiSession, CvgContext, OpaqueId } from "@cvg/contracts";
 
 function context(store: CvgStore, userId = store.bootstrapCredentials.userId): CvgContext {
@@ -114,6 +114,19 @@ test("model-provided arguments cannot redirect the authoritative resource", asyn
   const result = await executor({ tool: tool("cvg.patient.read"), parsedInput: { resourceId: inScopeId, toolInput: { id: outsiderId } }, context: ctx, session, signal: new AbortController().signal });
   const parsed = JSON.parse(result.resultPreview!) as { id: string };
   assert.equal(parsed.id, inScopeId);
+});
+
+test("patient executor rejects a patient resource combined with an encounter identity", async () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const ctx = veterinarian(store);
+  const patient = [...store.patients.values()].find((candidate) => candidate.organizationId === ctx.organizationId && candidate.unitId === ctx.unitId && candidate.workspaceId === ctx.workspaceId);
+  assert.ok(patient);
+  const encounter = store.createEncounter(ctx, { patientId: patient.id, appointmentId: null, chiefComplaint: "identidade divergente", urgency: "ROUTINE" });
+  const executor = createAgentToolExecutor({ store });
+  await assert.rejects(
+    executor({ tool: tool("cvg.patient.read"), parsedInput: { resourceId: patient.id, patientId: patient.id, encounterId: encounter.id }, context: ctx, session, signal: new AbortController().signal }),
+    (error: unknown) => error instanceof AgentToolIdentityDivergenceError && error.code === "DIVERGENT"
+  );
 });
 
 test("effect tools without an application binding fail closed instead of faking success", async () => {

@@ -1,0 +1,16 @@
+{
+  "name": "migration-cli-baseline",
+  "command": [
+    "npm",
+    "run",
+    "verify:db-migration-cli"
+  ],
+  "exit_status": 1,
+  "started_at": "2026-10-04T11:43:02.679584+00:00",
+  "finished_at": "2026-10-04T11:43:15.983816+00:00",
+  "source_fingerprint_before": "sha256:eb1c5e542ee359bdb4e496d455f161143d80c826ca9db19505335e56006f9f30",
+  "source_fingerprint_after": "sha256:eb1c5e542ee359bdb4e496d455f161143d80c826ca9db19505335e56006f9f30",
+  "source_unchanged": true,
+  "log": "artifacts/production-hardening-2026-10-04/verification/after-review/migration-cli-baseline.log",
+  "log_sha256": "60a7a892c4ff47857244069f8aec1cf138e7f7d84e7f2753258ff54a6f0e1571"
+}

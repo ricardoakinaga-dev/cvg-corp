@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "created_at": "2026-09-24T10:27:26.327Z",
+  "source_sha": "c990914148a8f375082cd12bbdb2ad20cfe1900f",
+  "observed_subject_fingerprint": "sha256:dac0e6cd6eaa3bc335569ffaee11d9f2d5c8e2fc7d7fbb6adc392f91c876f744",
+  "candidate_fingerprint": null,
+  "fingerprint_status": "UNFROZEN_UNTIL_AUD27-004",
+  "command_results": [
+    {
+      "command": "node --import tsx --test tests/unit/control-plane-aud23.test.ts",
+      "exit_status": 0,
+      "observed": "3 tests passed; strict semantic known-bad rejection and AUD24 dependency/fingerprint mutants reject."
+    },
+    {
+      "command": "npm run verify:aud27-semantics",
+      "exit_status": 0,
+      "observed": "39 AUD27 semantic findings; 36 AUD26 tasks; 5/5 named known-bad fixtures rejected."
+    },
+    {
+      "command": "npm test",
+      "exit_status": 0,
+      "observed": "726 tests; 725 passed; 0 failed; 1 skipped."
+    }
+  ],
+  "artifact_hashes": [
+    {
+      "path": "artifacts/operational-proof/mel23-m0-current-revalidation-20260924-dac0e6/m0-semantic-tests.log",
+      "size": 334,
+      "sha256": "31d38ff0d95840313a93b2aa06378a97f85849898d21616cef83f62ad22f2d57"
+    },
+    {
+      "path": "artifacts/operational-proof/mel23-m0-current-revalidation-20260924-dac0e6/../mel23-aud27-migration-cleanup-20260924-dac0e6/full-suite.log",
+      "size": 67738,
+      "sha256": "5bde8e3c0366def6cd965a590174d9aaca1711673ea949883a4b9972b95028ae"
+    },
+    {
+      "path": "artifacts/operational-proof/mel23-m0-current-revalidation-20260924-dac0e6/../mel23-aud27-migration-cleanup-20260924-dac0e6/aud27-semantics.log",
+      "size": 157,
+      "sha256": "79be9e002a09d40436d3dd788902b324d3f9bbf42e3193a195e9cd72fe85d628"
+    }
+  ],
+  "criterion_results": {
+    "MEL23-002": "PASS",
+    "MEL23-003": "PASS"
+  },
+  "still_open": [
+    "MEL23-004 remains BLOCKED because the worktree is dirty; a clean independent candidate and freeze are absent.",
+    "Historical receipts for other MEL23 rows remain stale against this source fingerprint until individually revalidated.",
+    "Candidate fingerprint remains null; global verdict AAA_NOT_PROVEN and promotion BLOCKED."
+  ]
+}

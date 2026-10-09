@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "label": "static verification",
+  "command": [
+    "npm",
+    "run",
+    "verify:static"
+  ],
+  "capturedAt": "2026-09-25T02:30:05.617Z",
+  "exitStatus": 0,
+  "signal": null,
+  "stdout": "\n> cvg-corp@0.1.0 verify:static\n> tsx scripts/verify-static.ts\n\nstatic verification passed: 250 required artifacts, 297 source files\n",
+  "stderr": ""
+}

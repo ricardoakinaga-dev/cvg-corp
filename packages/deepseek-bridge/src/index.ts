@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { aiTurnInputSchema, aiTurnWireSchema, id, roles, type AiApproval, type AiDraft, type AiSession, type AiTurn, type AiTurnInput, type CvgContext, type OpaqueId } from "@cvg/contracts";
+import { aiTurnInputSchema, aiTurnWireSchema, id, roles, type AiApproval, type AiSession, type AiTurnInput, type CvgContext, type OpaqueId } from "@cvg/contracts";
 import { replayDigest, type AgentDraftPromotion, type AgentReplayResult, type AgentRuntime, type AgentRuntimeCapabilities, type AgentRuntimeHealth, type AgentTurnResult } from "@cvg/agent-runtime";
 
 export const DEEPSEEK_BRIDGE_SCHEMA_VERSION = 1 as const;

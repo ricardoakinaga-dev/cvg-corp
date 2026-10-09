@@ -1,0 +1,13 @@
+{
+  "name": "alertmanager",
+  "command": [
+    "npm",
+    "run",
+    "verify:alertmanager"
+  ],
+  "exit_status": 1,
+  "started_at": "2026-10-08T05:52:14.767731+00:00",
+  "duration_s": 0.2,
+  "log": "artifacts/production-readiness-2026-10-08/verification/alertmanager.log",
+  "log_sha256": "633827bae4a6044342366e0949752e3804d5e512c6003f9214731d9f3d8f2b76"
+}

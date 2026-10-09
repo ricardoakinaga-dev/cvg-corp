@@ -1,0 +1,13 @@
+{
+  "name": "provider-sandbox",
+  "command": [
+    "npm",
+    "run",
+    "verify:provider-sandbox"
+  ],
+  "exit_status": 0,
+  "started_at": "2026-10-08T05:52:12.659067+00:00",
+  "duration_s": 0.7,
+  "log": "artifacts/production-readiness-2026-10-08/verification/provider-sandbox.log",
+  "log_sha256": "e6d54950810c26bba5e40a392a2e76d222834afb9b99f6744f696c85f1f383e6"
+}

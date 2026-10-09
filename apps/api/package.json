@@ -7,6 +7,7 @@
     ".": "./src/server.ts"
   },
   "dependencies": {
+    "@cvg/agent-context": "*",
     "@cvg/auth": "*",
     "@cvg/agent-runtime": "*",
     "@cvg/config": "*",

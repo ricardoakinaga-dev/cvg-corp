@@ -1,0 +1,6 @@
+dfb8290702c516213bfe92c1cdb1adae4aec779c232db72adcd117b722949626  packages/agent-context/src/index.ts
+35014618ecc069e339e496b5e0de734965f10199006ccd3e9de205e3f98eefbc  packages/domain/src/index.ts
+9b473582d63756fffaf1ff68a07a316dbebd623bd19f5f467dfba76c2b55ff28  tests/fixtures/secret-material.ts
+9a7ef93c3e076adf152239e8a6733023e58c555218a78bc0e983a3e0bde456cb  tests/unit/agent-context.test.ts
+8af9a9ac1306d7df3d0cc866129405fc542e7e28491e97947ddd71262a67b22d  tests/integration/ai-secret-boundary.test.ts
+3dd0f526fc0285da7ac3295e79d95265522ce13b994059cc3d0614cb7e6e545d  tests/integration/auth-challenge-race.test.ts

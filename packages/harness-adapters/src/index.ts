@@ -45,12 +45,47 @@ export interface DeepSeekHarnessConfig {
   resolveBearerToken?: () => Promise<string | null>;
   /** HMAC key for binding the serialized CVG context to the authenticated bridge call. */
   resolveContextSigningSecret?: () => Promise<string | null>;
+  /** Upper bound for one bridge response body; a peer cannot make the API buffer more. */
+  maxResponseBodyBytes?: number;
 }
 
 export interface DeepSeekFetchResponse {
   ok: boolean;
   status: number;
+  /** Present on real fetch responses: read incrementally under the body budget. */
+  body?: ReadableStream<Uint8Array> | null;
+  headers?: { get(name: string): string | null };
   json(): Promise<unknown>;
+}
+
+const DEFAULT_BRIDGE_RESPONSE_BODY_BYTES = 2 * 1024 * 1024;
+
+async function readBoundedJson(response: DeepSeekFetchResponse, maxBodyBytes: number): Promise<unknown> {
+  const tooLarge = () => new AgentRuntimeUnavailableError("DeepSeek Harness respondeu acima do limite de tamanho; a resposta foi descartada.");
+  const declaredLength = Number(response.headers?.get("content-length") ?? Number.NaN);
+  if (Number.isSafeInteger(declaredLength) && declaredLength > maxBodyBytes) {
+    await response.body?.cancel("response body limit exceeded").catch(() => undefined);
+    throw tooLarge();
+  }
+  if (!response.body) return response.json();
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    for (;;) {
+      const next = await reader.read();
+      if (next.done) break;
+      total += next.value.byteLength;
+      if (total > maxBodyBytes) {
+        await reader.cancel("response body limit exceeded").catch(() => undefined);
+        throw tooLarge();
+      }
+      chunks.push(next.value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  return JSON.parse(Buffer.concat(chunks).toString("utf8")) as unknown;
 }
 
 type FetchLike = (input: string | URL, init?: RequestInit) => Promise<DeepSeekFetchResponse>;
@@ -291,7 +326,7 @@ export class DeepSeekHarnessAdapter implements AgentRuntime {
         headers["x-cvg-context-signature"] = `sha256=${bridgeRequestSignature(signingSecret.trim(), method, path, issuedAt, body, nonce)}`;
       }
       const response = await this.fetchImpl(`${this.config.baseUrl.replace(/\/$/, "")}${path}`, { method, headers, redirect: "error", ...(body === undefined || method === "GET" ? {} : { body: JSON.stringify(body) }), signal: controller.signal });
-      const payload = await response.json();
+      const payload = await readBoundedJson(response, this.config.maxResponseBodyBytes ?? DEFAULT_BRIDGE_RESPONSE_BODY_BYTES);
       if (!response.ok) throw new AgentRuntimeUnavailableError(`DeepSeek Harness respondeu HTTP ${response.status}.`);
       return payload;
     } catch (error) {

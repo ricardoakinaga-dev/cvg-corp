@@ -1,0 +1,13 @@
+{
+  "name": "build",
+  "command": [
+    "npm",
+    "run",
+    "build"
+  ],
+  "exit_status": 0,
+  "started_at": "2026-10-08T05:51:47.088546+00:00",
+  "duration_s": 13.3,
+  "log": "artifacts/production-readiness-2026-10-08/verification/build.log",
+  "log_sha256": "fa44de018bc0b88e72e9f0f0bde4083c19f89f5eb9a2808e77c087815e899ac8"
+}

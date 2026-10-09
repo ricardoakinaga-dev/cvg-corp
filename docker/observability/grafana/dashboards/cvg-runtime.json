@@ -11,6 +11,8 @@
     {"id": 3, "type": "timeseries", "title": "Outbox depth", "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}, "targets": [{"expr": "cvg_outbox_depth", "refId": "A"}]},
     {"id": 4, "type": "timeseries", "title": "Worker heartbeat age", "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8}, "targets": [{"expr": "cvg_worker_heartbeat_age_seconds", "refId": "A"}]},
     {"id": 5, "type": "timeseries", "title": "Provider unknown outcomes", "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16}, "targets": [{"expr": "cvg_outcome_unknown_total", "refId": "A"}]},
-    {"id": 6, "type": "timeseries", "title": "DeepSeek availability", "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16}, "targets": [{"expr": "cvg_agent_runtime_ready", "refId": "A"}]}
+    {"id": 6, "type": "timeseries", "title": "DeepSeek availability", "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16}, "targets": [{"expr": "cvg_agent_runtime_ready", "refId": "A"}]},
+    {"id": 7, "type": "timeseries", "title": "Telemetry drops", "gridPos": {"h": 8, "w": 12, "x": 0, "y": 24}, "targets": [{"expr": "cvg_telemetry_dropped", "refId": "A"}]},
+    {"id": 8, "type": "stat", "title": "Restore RTO/RPO evidence", "gridPos": {"h": 8, "w": 12, "x": 12, "y": 24}, "targets": [{"expr": "cvg_restore_rto_rpo_known", "refId": "A"}], "fieldConfig": {"defaults": {"unit": "short", "mappings": [{"type": "value", "value": "0", "text": "UNKNOWN / NOT RUN"}, {"type": "value", "value": "1", "text": "MEASURED"}]}, "overrides": []}}
   ]
 }

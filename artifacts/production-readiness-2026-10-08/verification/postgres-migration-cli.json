@@ -1,0 +1,13 @@
+{
+  "name": "postgres-migration-cli",
+  "command": [
+    "npm",
+    "run",
+    "verify:db-migration-cli"
+  ],
+  "exit_status": 0,
+  "started_at": "2026-10-08T05:59:48.090008+00:00",
+  "duration_s": 34.4,
+  "log": "artifacts/production-readiness-2026-10-08/verification/postgres-migration-cli.log",
+  "log_sha256": "7c49756b4a9c2b73f3d494002182719caae467cafd15ed8b219ef4ce354b5fd4"
+}

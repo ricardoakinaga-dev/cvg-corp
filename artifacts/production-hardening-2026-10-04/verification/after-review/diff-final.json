@@ -1,0 +1,16 @@
+{
+  "name": "diff-final",
+  "command": [
+    "git",
+    "diff",
+    "--check"
+  ],
+  "exit_status": 0,
+  "started_at": "2026-10-04T12:14:00.837124+00:00",
+  "finished_at": "2026-10-04T12:14:01.217188+00:00",
+  "source_fingerprint_before": "sha256:15ece6ef83fb9e9918dddcde7757e337fb81b42b07b6b04474c68580fcb794b2",
+  "source_fingerprint_after": "sha256:15ece6ef83fb9e9918dddcde7757e337fb81b42b07b6b04474c68580fcb794b2",
+  "source_unchanged": true,
+  "log": "artifacts/production-hardening-2026-10-04/verification/after-review/diff-final.log",
+  "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "requirement_id": "MEL23-001",
+  "command": "npm run verify:control-plane",
+  "exit_status": 0,
+  "result": "PASS",
+  "executed_at": "2026-09-23T10:13:14.610Z",
+  "environment": "local workspace; linux; Node v24.20.0; npm subprocess; no production resources",
+  "source_sha": "c990914148a8f375082cd12bbdb2ad20cfe1900f",
+  "observed_subject_fingerprint": "sha256:a78a4ecd6f6c4c68e02c136ae7765db08a69d14f2d27a0a532de19ae11b5d3ae",
+  "last_gate_record": "VER-CVG-AUD27-001-109",
+  "verification_tail": "VER-CVG-AUD27-001-109",
+  "last_event_id": "EVT-CVG-AUD27-001-109",
+  "event_tail": "EVT-CVG-AUD27-001-109",
+  "output": "> cvg-corp@0.1.0 verify:control-plane\n> tsx scripts/verify-control-plane.ts\n\nCONTROL_PLANE_VERIFIED items=334 active=AUD27-001:SEMANTIC-RECONCILIATION"
+}

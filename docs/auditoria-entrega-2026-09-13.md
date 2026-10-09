@@ -29,15 +29,15 @@ Avanços confirmados no recorte executado: logout online/offline e erro explíci
 
 | Verificação | Resultado | Evidência e limite |
 |---|---|---|
-| npm test | PASS: 385 testes, 384 pass, 1 skip | [Log](../artifacts/audit-entrega-2026-09-13/tests.log); não substitui PostgreSQL real ou provider |
-| npm run build | PASS | [Log](../artifacts/audit-entrega-2026-09-13/build.log); aviso de chunk JS 514 kB, sem medição de impacto no usuário |
-| npm run lint | PASS | [Log](../artifacts/audit-entrega-2026-09-13/lint.log) |
-| npm run verify:static | FAIL | [Log](../artifacts/audit-entrega-2026-09-13/static.log): source SHA do snapshot não corresponde a HEAD |
-| Playwright app.spec.ts / Chromium 1440 e 375 | PASS: 76 pass, 4 skip, 80 casos | [Log](../artifacts/audit-entrega-2026-09-13/browser-origin-corrected.log); não inclui Firefox/WebKit/AT humano |
-| verify:authoritative-writes | PASS do inventário local | [Log](../artifacts/audit-entrega-2026-09-13/authoritative.log): 32 domínios, 8 comandos, 24 snapshotPrimary |
-| Probes adversariais backend | REPRODUZEM E01–E04 | [Log](../artifacts/audit-entrega-2026-09-13/backend/probe.log); domínio/governance sintéticos |
+| npm test | PASS: 385 testes, 384 pass, 1 skip | Log (`artifacts/audit-entrega-2026-09-13/tests.log`, local, não versionado); não substitui PostgreSQL real ou provider |
+| npm run build | PASS | Log (`artifacts/audit-entrega-2026-09-13/build.log`, local, não versionado); aviso de chunk JS 514 kB, sem medição de impacto no usuário |
+| npm run lint | PASS | Log (`artifacts/audit-entrega-2026-09-13/lint.log`, local, não versionado) |
+| npm run verify:static | FAIL | Log (`artifacts/audit-entrega-2026-09-13/static.log`, local, não versionado): source SHA do snapshot não corresponde a HEAD |
+| Playwright app.spec.ts / Chromium 1440 e 375 | PASS: 76 pass, 4 skip, 80 casos | Log (`artifacts/audit-entrega-2026-09-13/browser-origin-corrected.log`, local, não versionado); não inclui Firefox/WebKit/AT humano |
+| verify:authoritative-writes | PASS do inventário local | Log (`artifacts/audit-entrega-2026-09-13/authoritative.log`, local, não versionado): 32 domínios, 8 comandos, 24 snapshotPrimary |
+| Probes adversariais backend | REPRODUZEM E01–E04 | Log (`artifacts/audit-entrega-2026-09-13/backend/probe.log`, local, não versionado); domínio/governance sintéticos |
 | Probes frontend | REPRODUZEM E05/E06/E09 | [JSON](../artifacts/audit-entrega-2026-09-13/frontend/probe-results.json) e [imagem](../artifacts/audit-entrega-2026-09-13/frontend/wrong-patient-addendum.png); componente real, API mockada |
-| Probes operação | REPRODUZEM E12/E13 | [Log](../artifacts/audit-entrega-2026-09-13/ops/probe.log); dependências controladas |
+| Probes operação | REPRODUZEM E12/E13 | Log (`artifacts/audit-entrega-2026-09-13/ops/probe.log`, local, não versionado); dependências controladas |
 
 As primeiras tentativas de browser não são evidência contra o produto: portas 4310/15173 ocupadas impediram startup; na primeira adaptação a portas livres faltou alinhar CVG_WEB_ORIGIN, provocando 403 de CSRF. Essa execução foi interrompida e classificada INVALID por configuração de auditoria. Após alinhar origem/API/proxy, os 80 casos terminaram sem falhas. Logs anteriores foram preservados com essa interpretação; não houve correção de produto entre tentativas.
 
@@ -55,7 +55,7 @@ O probe completou a prescrição, dispensou com redução de estoque e fez COMPL
 
 **Encerramento:** satisfazer todos os aceites de AAA2-02 no [backlog](plano-triplo-aaa-pos-entrega-2026-09-13/backlog.md), incluindo regressão e revisão independente.
 
-[Artefato de reprodução](../artifacts/audit-entrega-2026-09-13/backend/probe.log).
+Artefato de reprodução (`artifacts/audit-entrega-2026-09-13/backend/probe.log`, local, não versionado).
 
 ### E02 — HIGH — Uso acima da reserva não entra integralmente no teto
 
@@ -67,7 +67,7 @@ Reserva 100, uso real 900: consumedUnits fica 100; outra reserva 900 é aceita s
 
 **Encerramento:** satisfazer todos os aceites de AAA2-03 no [backlog](plano-triplo-aaa-pos-entrega-2026-09-13/backlog.md), incluindo regressão e revisão independente.
 
-[Artefato de reprodução](../artifacts/audit-entrega-2026-09-13/backend/probe.log).
+Artefato de reprodução (`artifacts/audit-entrega-2026-09-13/backend/probe.log`, local, não versionado).
 
 ### E03 — HIGH — ACP admite sem budget e perde vínculo de reserva após recriação
 
@@ -79,7 +79,7 @@ Governance com store e sem budget retorna ALLOW/zero reservas. Recriar governanc
 
 **Encerramento:** satisfazer todos os aceites de AAA2-04 no [backlog](plano-triplo-aaa-pos-entrega-2026-09-13/backlog.md), incluindo regressão e revisão independente.
 
-[Artefato de reprodução](../artifacts/audit-entrega-2026-09-13/backend/probe.log).
+Artefato de reprodução (`artifacts/audit-entrega-2026-09-13/backend/probe.log`, local, não versionado).
 
 ### E04 — HIGH — Conclusão ACP aceita autoridade revogada durante a execução
 
@@ -91,7 +91,7 @@ Após revokeAllSessions, validateContext rejeita o contexto, mas recordTurn acei
 
 **Encerramento:** satisfazer todos os aceites de AAA2-05 no [backlog](plano-triplo-aaa-pos-entrega-2026-09-13/backlog.md), incluindo regressão e revisão independente.
 
-[Artefato de reprodução](../artifacts/audit-entrega-2026-09-13/backend/probe.log).
+Artefato de reprodução (`artifacts/audit-entrega-2026-09-13/backend/probe.log`, local, não versionado).
 
 ### E05 — HIGH — Adendo de outro paciente permanece na linha do tempo
 
@@ -123,7 +123,7 @@ Dispensação fica em Internação; carregamento exige endpoints clínicos negad
 
 **Evidência:** Inspeção conectada + probe de permissões do domínio; jornada autenticada completa de estoque não executada. Confiança: HIGH.
 
-[Probe local de permissões](../artifacts/audit-entrega-2026-09-13/frontend/role-probe.log).
+Probe local de permissões (`artifacts/audit-entrega-2026-09-13/frontend/role-probe.log`, local, não versionado).
 
 **Local:** [`apps/web/src/features/hospital/Internacao.tsx:106`](../apps/web/src/features/hospital/Internacao.tsx), [`apps/web/src/features/hospital/Internacao.tsx:299`](../apps/web/src/features/hospital/Internacao.tsx), [`apps/web/src/features/clinical/Clinical.tsx:82`](../apps/web/src/features/clinical/Clinical.tsx).
 
@@ -161,7 +161,7 @@ verify:static falha por source SHA diferente. Gates 13/21 têm critic_artifact:n
 
 **Encerramento:** satisfazer todos os aceites de AAA2-01, AAA2-10, AAA2-31 no [backlog](plano-triplo-aaa-pos-entrega-2026-09-13/backlog.md), incluindo regressão e revisão independente.
 
-[Artefato de reprodução](../artifacts/audit-entrega-2026-09-13/static.log).
+Artefato de reprodução (`artifacts/audit-entrega-2026-09-13/static.log`, local, não versionado).
 
 ### E11 — HIGH — Cobertura autoritativa continua com 24 coleções primárias em snapshot
 
@@ -173,7 +173,7 @@ Verificador retorna domains=32 commands=8 snapshotPrimary=24. Validação de inv
 
 **Encerramento:** satisfazer todos os aceites de AAA2-11, AAA2-12 no [backlog](plano-triplo-aaa-pos-entrega-2026-09-13/backlog.md), incluindo regressão e revisão independente.
 
-[Artefato de reprodução](../artifacts/audit-entrega-2026-09-13/authoritative.log).
+Artefato de reprodução (`artifacts/audit-entrega-2026-09-13/authoritative.log`, local, não versionado).
 
 ### E12 — HIGH — Readiness não discrimina capacidades e usa estados fixos
 
@@ -185,7 +185,7 @@ Probe retorna ready=true/HTTP200 com outbox NOT_CONFIGURED. Ao retirar IA, retor
 
 **Encerramento:** satisfazer todos os aceites de AAA2-19 no [backlog](plano-triplo-aaa-pos-entrega-2026-09-13/backlog.md), incluindo regressão e revisão independente.
 
-[Artefato de reprodução](../artifacts/audit-entrega-2026-09-13/ops/probe.log).
+Artefato de reprodução (`artifacts/audit-entrega-2026-09-13/ops/probe.log`, local, não versionado).
 
 ### E13 — MEDIUM — Runbook marca EXECUTED_LOCAL a partir de texto
 
@@ -197,7 +197,7 @@ executeScenarioFixtures deriva estados com split da descrição e retorna sete E
 
 **Encerramento:** satisfazer todos os aceites de AAA2-22 no [backlog](plano-triplo-aaa-pos-entrega-2026-09-13/backlog.md), incluindo regressão e revisão independente.
 
-[Artefato de reprodução](../artifacts/audit-entrega-2026-09-13/ops/probe.log).
+Artefato de reprodução (`artifacts/audit-entrega-2026-09-13/ops/probe.log`, local, não versionado).
 
 ### E14 — HIGH — Workload de carga não exercita as escritas exigidas
 

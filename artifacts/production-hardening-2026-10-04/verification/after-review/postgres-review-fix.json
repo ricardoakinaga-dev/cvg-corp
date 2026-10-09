@@ -1,0 +1,19 @@
+{
+  "name": "postgres-review-fix",
+  "command": [
+    "npm",
+    "run",
+    "verify:ephemeral-postgres",
+    "--",
+    "--rounds=1",
+    "--run-restore"
+  ],
+  "exit_status": 0,
+  "started_at": "2026-10-04T11:39:18.395164+00:00",
+  "finished_at": "2026-10-04T11:39:36.397950+00:00",
+  "source_fingerprint_before": "sha256:3757f6ae3269cbdad3e44c983c40859a6fa0a728165242c8ce286e379e1ca5ff",
+  "source_fingerprint_after": "sha256:3757f6ae3269cbdad3e44c983c40859a6fa0a728165242c8ce286e379e1ca5ff",
+  "source_unchanged": true,
+  "log": "artifacts/production-hardening-2026-10-04/verification/after-review/postgres-review-fix.log",
+  "log_sha256": "b60ca0651c76fc464305efa76d3e20fedc0076a5ae3b6d4263d37e75bf076fca"
+}

@@ -1,0 +1,16 @@
+{
+  "name": "postgres-24-slices",
+  "command": [
+    "npm",
+    "run",
+    "verify:ephemeral-postgres",
+    "--",
+    "--rounds=1",
+    "--run-aud27-24-slices"
+  ],
+  "exit_status": 0,
+  "started_at": "2026-10-08T06:00:42.143408+00:00",
+  "duration_s": 4.4,
+  "log": "artifacts/production-readiness-2026-10-08/verification/postgres-24-slices.log",
+  "log_sha256": "73d608f662c5772886d4adabac08b0210f5831582b1887a89b511b3eebc7d9f7"
+}

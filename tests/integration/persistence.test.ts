@@ -9,32 +9,48 @@ import { id } from "@cvg/contracts";
 import { CvgStore, digest, idempotent, makeId, serializeSnapshot } from "@cvg/domain";
 import { GovernedHarness } from "@cvg/harness";
 import { MockHarnessAdapter } from "@cvg/harness-adapters";
+import { checkpointDigest } from "@cvg/agent-session";
 import { createRuntime } from "@cvg/api";
 import { AgentApplicationService } from "../../apps/api/src/application/agent-service.ts";
+import { PersistenceProductSkuConflictError } from "@cvg/persistence";
 import { createReadApplicationService } from "../../apps/api/src/application/read-services.ts";
 import { ExportApplicationService } from "../../apps/api/src/application/export-service.ts";
-import { AUTHORITATIVE_DOMAIN_REGISTRY, createRecoveryBundleManifest, decryptRecoveryBundle, encryptRecoveryBundle, OperationalBackupJob, OutboxLeaseLostError, PersistenceConflictError, PersistenceCorruptionError, PersistenceStateError, PersistenceUnavailableError, PostgresPersistence, validateAuthoritativeSnapshot, validateRecoveryBundle, verifyOperationalBackupDirectory, verifyOperationalBackupFile, writeOperationalBackup, type DurableOutboxRecord, type DurableRecoveryBundle } from "@cvg/persistence";
+import { assertRestorableRecoveryBundle, AUD27_SNAPSHOT_PRIMARY_KEYS, AUTHORITATIVE_DOMAIN_REGISTRY, buildAud27NormalizedWritePlan, createRecoveryBundleManifest, decryptRecoveryBundle, encryptRecoveryBundle, OperationalBackupJob, OutboxLeaseLostError, PersistenceConflictError, PersistenceCorruptionError, PersistenceStateError, PersistenceUnavailableError, PostgresPersistence, rotateOperationalBackups, validateAuthoritativeSnapshot, validateRecoveryBundle, verifyOperationalBackupDirectory, verifyOperationalBackupFile, writeOperationalBackup, type Aud27NormalizedDomainWrite, type DurableAgentCheckpointRecord, type DurableAgentLeaseRecord, type DurableAgentSessionRecord, type DurableAgentTurnRecord, type DurableExternalEffectRecord, type DurableInboxInput, type DurableInboxRecord, type DurableOutboxRecord, type DurableRecoveryBundle, type DurableRestoreInput, type DurableUsageRecord, type DurableWorkerJobRecord } from "@cvg/persistence";
 
 type QueryResult = { rows: Array<Record<string, unknown>> };
 
-function fakePool(options: { revision?: string; failSnapshotInsert?: boolean; failSnapshotInsertAfter?: number; auditLedgerConflict?: boolean; clinicalSignUpdateRows?: boolean; guardianWriteRows?: boolean; diagnosticRequestWriteRows?: boolean; specimenWriteRows?: boolean; diagnosticResultWriteRows?: boolean } = {}): { pool: Pool; statements: string[]; durableReceipts: Map<string, Record<string, unknown>> } {
+function fakePool(options: { revision?: string; failSnapshotInsert?: boolean; failSnapshotInsertAfter?: number; failOnSecondConnectionBegin?: boolean; auditLedgerConflict?: boolean; clinicalSignUpdateRows?: boolean; guardianWriteRows?: boolean; diagnosticRequestWriteRows?: boolean; specimenWriteRows?: boolean; diagnosticResultWriteRows?: boolean; productWriteRows?: boolean; productSkuConflict?: boolean; recoveredProjectionRows?: boolean; migrationRows?: Array<{ version: string; checksum: string }>; sessionUser?: string; currentUser?: string; tableOwner?: string | null; restoreRoleExists?: boolean; restoreRoleLogin?: boolean; restoreRoleSuperuser?: boolean; restoreRoleBypassRls?: boolean; restoreRoleInherit?: boolean; restoreRoleCreatedb?: boolean; restoreRoleCreateRole?: boolean; restoreRoleReplication?: boolean; schemaOwnerCanAssumeRestore?: boolean; runtimeCanAssumeRestore?: boolean } = {}): { pool: Pool; statements: string[]; productStatements: Array<{ sql: string; params: unknown[] }>; durableReceipts: Map<string, Record<string, unknown>>; connectCount: number; releaseCount: number } {
   let revision = options.revision ?? "0";
   let snapshotInsertCount = 0;
+  let latestSnapshot: { revision: string; snapshot: unknown; snapshot_digest: string } | null = null;
+  let currentOrganizationId: string | null = null;
+  let transactionProductCount: number | null = null;
   let auditTail: string | null = null;
   const durableReceipts = new Map<string, Record<string, unknown>>();
   let transactionReceiptBackup: Map<string, Record<string, unknown>> | null = null;
   let transactionRevisionBackup: string | null = null;
+  let transactionOrganizationBackup: string | null = null;
+  let connectCount = 0;
+  let releaseCount = 0;
   const statements: string[] = [];
+  const productStatements: Array<{ sql: string; params: unknown[] }> = [];
   const client = {
     async query(sql: string, params: unknown[] = []): Promise<QueryResult> {
       statements.push(sql.trim().replace(/\s+/g, " "));
+      if (sql.includes("set_config('cvg.organization_id'")) currentOrganizationId = String(params[0]);
+      if (sql.trim().startsWith("insert into products")) productStatements.push({ sql: sql.trim().replace(/\s+/g, " "), params: [...params] });
       if (sql.trim() === "BEGIN") {
         transactionReceiptBackup = new Map([...durableReceipts.entries()].map(([key, value]) => [key, { ...value }]));
         transactionRevisionBackup = revision;
+        transactionOrganizationBackup = currentOrganizationId;
+        transactionProductCount = productStatements.length;
       }
       if (sql.trim() === "COMMIT") {
+        currentOrganizationId = transactionOrganizationBackup;
         transactionReceiptBackup = null;
         transactionRevisionBackup = null;
+        transactionOrganizationBackup = null;
+        transactionProductCount = null;
       }
       if (sql.trim() === "ROLLBACK") {
         if (transactionReceiptBackup) {
@@ -42,16 +58,46 @@ function fakePool(options: { revision?: string; failSnapshotInsert?: boolean; fa
           for (const [key, value] of transactionReceiptBackup) durableReceipts.set(key, { ...value });
         }
         if (transactionRevisionBackup !== null) revision = transactionRevisionBackup;
+        if (latestSnapshot && transactionRevisionBackup !== null && latestSnapshot.revision !== transactionRevisionBackup) latestSnapshot = null;
+        if (transactionProductCount !== null) productStatements.length = transactionProductCount;
+        currentOrganizationId = transactionOrganizationBackup;
         transactionReceiptBackup = null;
         transactionRevisionBackup = null;
+        transactionOrganizationBackup = null;
+        transactionProductCount = null;
       }
-      if (sql.includes("select revision::text")) return { rows: revision === "0" ? [] : [{ revision }] };
+      if (options.productSkuConflict && sql.startsWith("insert into products") && sql.includes("returning id::text")) {
+        throw Object.assign(new Error("duplicate key value violates unique constraint products_organization_id_sku_key"), { code: "23505", constraint: "products_organization_id_sku_key" });
+      }
+      if (sql.includes("schema_owner_can_assume_restore")) return { rows: [{ session_user: options.sessionUser ?? "cvg_schema_owner", current_user: options.currentUser ?? "cvg_schema_owner", table_owner: options.tableOwner === undefined ? "cvg_schema_owner" : options.tableOwner, restore_role_exists: options.restoreRoleExists ?? true, restore_role_login: options.restoreRoleLogin ?? false, restore_role_superuser: options.restoreRoleSuperuser ?? false, restore_role_bypassrls: options.restoreRoleBypassRls ?? false, restore_role_inherit: options.restoreRoleInherit ?? false, restore_role_createdb: options.restoreRoleCreatedb ?? false, restore_role_createrole: options.restoreRoleCreateRole ?? false, restore_role_replication: options.restoreRoleReplication ?? false, schema_owner_can_assume_restore: options.schemaOwnerCanAssumeRestore ?? true, runtime_can_assume_restore: options.runtimeCanAssumeRestore ?? false }] };
+      if (sql.startsWith("select version, checksum from schema_migrations")) return { rows: options.migrationRows ?? [] };
+      if (sql.includes("select revision::text")) return { rows: revision === "0" ? [] : [latestSnapshot && latestSnapshot.revision === revision ? { revision, snapshot: latestSnapshot.snapshot, snapshot_digest: latestSnapshot.snapshot_digest } : { revision }] };
+      if (options.recoveredProjectionRows && sql.startsWith("insert into outbox_records")) return { rows: [{ id: String(params[0]) }] };
+      if (options.recoveredProjectionRows && sql.startsWith("insert into cvg_worker_jobs")) return { rows: [{ id: String(params[0]) }] };
+      if (options.recoveredProjectionRows && sql.startsWith("insert into integration_inbox_records")) return { rows: [{ id: String(params[0]) }] };
+      if (options.recoveredProjectionRows && sql.startsWith("insert into external_effects")) return { rows: [{ id: String(params[0]) }] };
+      if (options.recoveredProjectionRows && sql.startsWith("insert into agent_sessions")) return { rows: [{ session_id: String(params[0]) }] };
+      if (options.recoveredProjectionRows && sql.startsWith("insert into agent_turns")) return { rows: [{ turn_id: String(params[0]) }] };
+      if (options.recoveredProjectionRows && sql.startsWith("insert into agent_checkpoints")) return { rows: [{ checkpoint_id: "synthetic-checkpoint" }] };
       if (sql.startsWith("insert into ai_usage_ledger")) return { rows: [{ id: String(params[0]) }] };
       if (sql.startsWith("insert into guardians") && sql.includes("returning id::text")) return options.guardianWriteRows === false ? { rows: [] } : { rows: [{ id: String(params[0]) }] };
       if (sql.startsWith("insert into diagnostic_requests") && sql.includes("returning id::text")) return options.diagnosticRequestWriteRows === false ? { rows: [] } : { rows: [{ id: String(params[0]) }] };
       if (sql.startsWith("insert into specimens") && sql.includes("returning id::text")) return options.specimenWriteRows === false ? { rows: [] } : { rows: [{ id: String(params[0]) }] };
       if (sql.startsWith("insert into diagnostic_results") && sql.includes("returning id::text")) return options.diagnosticResultWriteRows === false ? { rows: [] } : { rows: [{ id: String(params[0]) }] };
       if (sql.startsWith("insert into patients") && sql.includes("returning id::text")) return { rows: [{ id: String(params[0]) }] };
+      if (sql.startsWith("insert into products") && sql.includes("returning id::text")) return options.productWriteRows === false ? { rows: [] } : { rows: [{ id: String(params[0]) }] };
+      if (sql.includes('organization_id::text as "organizationId"') && sql.startsWith("select id::text as id")) {
+        const latest = new Map<string, Record<string, unknown>>();
+        for (const { params: productParams } of productStatements) {
+          if (currentOrganizationId && String(productParams[1]) !== currentOrganizationId) continue;
+          latest.set(String(productParams[0]), { id: String(productParams[0]), organizationId: String(productParams[1]), sku: String(productParams[2]), name: String(productParams[3]), category: String(productParams[4]), unit: String(productParams[5]), reorderPoint: Number(productParams[6]), status: String(productParams[7]) });
+        }
+        return { rows: [...latest.values()].sort((left, right) => String(left.id).localeCompare(String(right.id))) };
+      }
+      if (sql.startsWith("select id::text as id, organization_id::text as organization_id, sku, name, category, unit, reorder_point, status from products")) {
+        const write = [...productStatements].reverse().find(({ params: productParams }) => productParams[0] === params[0] && productParams[1] === params[1]);
+        return write ? { rows: [{ id: String(write.params[0]), organization_id: String(write.params[1]), sku: String(write.params[2]), name: String(write.params[3]), category: String(write.params[4]), unit: String(write.params[5]), reorder_point: Number(write.params[6]), status: String(write.params[7]) }] } : { rows: [] };
+      }
       if (sql.startsWith("insert into appointments") && sql.includes("returning id::text")) return { rows: [{ id: String(params[0]) }] };
       if (sql.startsWith("insert into encounters") && sql.includes("returning id::text")) return { rows: [{ id: String(params[0]) }] };
       if (sql.startsWith("update clinical_documents") && sql.includes("returning id::text")) return options.clinicalSignUpdateRows === false ? { rows: [] } : { rows: [{ id: String(params[4]) }] };
@@ -132,10 +178,11 @@ function fakePool(options: { revision?: string; failSnapshotInsert?: boolean; fa
         snapshotInsertCount += 1;
         if (options.failSnapshotInsert || (options.failSnapshotInsertAfter !== undefined && snapshotInsertCount >= options.failSnapshotInsertAfter)) throw new Error("synthetic snapshot write failure");
         revision = String(params[0]);
+        latestSnapshot = { revision: String(params[0]), snapshot: JSON.parse(String(params[4])), snapshot_digest: String(params[5]) };
       }
       return { rows: [] };
     },
-    release(): void { /* no-op fake */ }
+    release(): void { releaseCount += 1; }
   } as unknown as PoolClient;
   const pool = {
     async query(sql: string): Promise<QueryResult> {
@@ -144,14 +191,27 @@ function fakePool(options: { revision?: string; failSnapshotInsert?: boolean; fa
       if (sql.includes("current_database()")) return { rows: [{ database: "cvg_synthetic", server_version: "16.0" }] };
       if (sql.includes("to_regclass('public.cvg_state_snapshots')")) return { rows: [{ snapshots: true, journal: true, audit: true, receipts: true, communications: true, outbox: true, usage_ledger: true, inbox: true, external_effects: true, rate_limit_buckets: true, break_glass_grants: true, break_glass_lifecycle: true, break_glass_scope_schema: true, runtime_role: true, runtime_migration_metadata: true, runtime_scope_guards: true, auth_security: true, ai_turn_scope: true, ai_draft_scope: true, ai_turn_provenance_usage: true, audit_tamper_evident_chain: true, append_only_audit_guard: true, append_only_lock_privileges: true, worker_jobs: true, worker_heartbeats: true, worker_lane_schema: true, command_receipt_claim_fence: true }] };
       if (sql.includes("034_diagnostic_child_integrity_backstop")) return { rows: [{ diagnostic_child_scope: true }] };
+      if (sql.includes("as agent_runtime_schema")) return { rows: [{ agent_runtime_schema: true }] };
       if (sql.includes("as snapshot_scope_revision")) return { rows: [{ snapshot_scope_revision: true }] };
       if (sql.includes("from cvg_state_snapshots s")) return { rows: [] };
-      if (sql.includes("select revision::text as revision")) return { rows: revision === "0" ? [] : [{ revision }] };
+      if (sql.includes("select revision::text as revision")) return { rows: revision === "0" ? [] : [latestSnapshot && latestSnapshot.revision === revision ? { revision, snapshot: latestSnapshot.snapshot, snapshot_digest: latestSnapshot.snapshot_digest } : { revision }] };
       return { rows: [] };
     },
-    connect: async (): Promise<PoolClient> => client
+    connect: async (): Promise<PoolClient> => {
+      connectCount += 1;
+      if (options.failOnSecondConnectionBegin && connectCount > 1) {
+        return {
+          ...client,
+          async query(sql: string, params: unknown[] = []): Promise<QueryResult> {
+            if (sql.trim() === "BEGIN") throw new Error("synthetic split-client transaction boundary");
+            return client.query(sql, params);
+          }
+        } as unknown as PoolClient;
+      }
+      return client;
+    }
   } as unknown as Pool;
-  return { pool, statements, durableReceipts };
+  return { pool, statements, productStatements, durableReceipts, get connectCount() { return connectCount; }, get releaseCount() { return releaseCount; } };
 }
 
 function commitInput(store: CvgStore) {
@@ -241,6 +301,180 @@ test("Postgres persistence commits journal and snapshot atomically", async () =>
   assert.ok(fake.statements.some((statement) => statement === "COMMIT"));
 });
 
+test("snapshot projector exercises seeded residual rows without command-owned overrides", async () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const fake = fakePool();
+  const persistence = new PostgresPersistence({ connectionString: "postgres://synthetic.invalid", pool: fake.pool });
+
+  await persistence.commit({ ...commitInput(store), snapshot: store.snapshot() });
+
+  assert.ok(fake.statements.some((statement) => statement.startsWith("insert into products")));
+  assert.ok(fake.statements.some((statement) => statement.startsWith("insert into providers")));
+  assert.ok(fake.statements.some((statement) => statement.startsWith("insert into knowledge_documents")));
+});
+
+test("AUD27 normalized projection writes every residual collection through its owner", async () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const baseline = store.snapshot();
+  const veterinarian = [...store.users.values()].find((user) => user.login.startsWith("ana."));
+  assert.ok(veterinarian);
+  const option = store.contextOptions(veterinarian.id)[0];
+  assert.ok(option);
+  const context = store.resolveContext(veterinarian.id, { unitId: option.unit.id, workspaceId: option.workspace.id }, "aud27.normalized-writes", "aud27-normalized-writes");
+  const patient = [...store.patients.values()].find((candidate) => candidate.unitId === context.unitId && candidate.workspaceId === context.workspaceId);
+  const bed = [...store.beds.values()].find((candidate) => candidate.unitId === context.unitId);
+  assert.ok(patient);
+  assert.ok(bed);
+
+  const encounter = store.createEncounter(context, { patientId: patient.id, appointmentId: null, chiefComplaint: "AUD27 cobertura", urgency: "ROUTINE" });
+  const document = store.createClinicalDocument(context, { encounterId: encounter.id, documentType: "EVOLUTION", title: "AUD27 cobertura", content: "conteúdo sintético", dataClass: "D3" });
+  store.reviewClinicalDocument(context, document.id, null);
+  store.signClinicalDocument(context, document.id, null);
+  store.addClinicalAddendum(context, document.id, "qualificação", "adendo sintético");
+  store.createHospitalEpisode(context, { patientId: patient.id, encounterId: encounter.id, bedId: bed.id });
+  const productBefore = [...store.products.values()][0];
+  assert.ok(productBefore);
+  const medicationOrder = store.createMedicationOrder(context, { patientId: patient.id, encounterId: encounter.id, productId: productBefore.id, dose: "1 unidade", route: "oral", frequency: "12/12h" });
+
+  const after = store.snapshot();
+  const product = after.products.find((candidate) => candidate.id === productBefore.id)!;
+  const lot = after.lots.find((candidate) => candidate.productId === product.id)!;
+  const location = after.stockLocations.find((candidate) => candidate.id === lot.locationId)!;
+  const charge = after.charges[0]!;
+  const aiSession = {
+    id: makeId(), organizationId: context.organizationId, actorId: veterinarian.id, unitId: context.unitId, workspaceId: context.workspaceId,
+    patientId: patient.id, encounterId: encounter.id, purpose: "SUMMARY" as const, engineCommit: "aud27-test", profileDigest: digest("aud27-profile"), status: "ACTIVE" as const, createdAt: "2026-09-22T00:00:00.000Z"
+  };
+  const aiTurn = {
+    id: makeId(), sessionId: aiSession.id, prompt: "resumo", response: "resposta", status: "COMPLETED" as const, model: "synthetic", inputTokens: 1, outputTokens: 1, references: [], createdAt: "2026-09-22T00:00:01.000Z"
+  };
+  const aiDraft = {
+    id: makeId(), sessionId: aiSession.id, encounterId: encounter.id, draftType: "SUMMARY" as const, content: "rascunho", sourceTurnId: aiTurn.id, status: "DRAFT" as const, createdAt: "2026-09-22T00:00:02.000Z"
+  };
+  const aiApproval = {
+    id: makeId(), organizationId: context.organizationId, actorId: veterinarian.id, sessionId: aiSession.id, turnId: aiTurn.id, toolName: "patients.read", resourceId: patient.id,
+    patientId: patient.id, encounterId: encounter.id, unitId: context.unitId, workspaceId: context.workspaceId, purpose: "SUMMARY" as const, requestDigest: digest("aud27-request"), policyRevision: "1",
+    expiresAt: "2099-01-01T00:00:00.000Z", decision: "rejected" as const, decidedBy: null, reason: null, createdAt: "2026-09-22T00:00:03.000Z"
+  };
+  const budgetReservation = {
+    id: makeId(), organizationId: context.organizationId, sessionId: aiSession.id, category: "TOKENS" as const, reservedUnits: 10, consumedUnits: 0, status: "RESERVED" as const, createdAt: "2026-09-22T00:00:04.000Z"
+  };
+  after.aiSessions.push(aiSession);
+  after.aiTurns.push(aiTurn);
+  after.aiDrafts.push(aiDraft);
+  after.aiApprovals.push(aiApproval);
+  after.budgetReservations.push(budgetReservation);
+  after.stockMovements.push({ id: makeId(), organizationId: context.organizationId, productId: product.id, lotId: lot.id, locationId: location.id, quantity: 1, movementType: "RECEIPT", reason: "AUD27 cobertura", referenceId: null, createdBy: veterinarian.id, createdAt: "2026-09-22T00:00:05.000Z" });
+  after.dispensations.push({ id: makeId(), organizationId: context.organizationId, medicationOrderId: medicationOrder.id, lotId: lot.id, quantity: 1, dispensedBy: veterinarian.id, createdAt: "2026-09-22T00:00:06.000Z" });
+  after.administrationOccurrences.push({ id: makeId(), organizationId: context.organizationId, medicationOrderId: medicationOrder.id, administeredBy: veterinarian.id, administeredAt: "2026-09-22T00:00:07.000Z", status: "OMITTED", note: "AUD27 cobertura" });
+  after.payments.push({ id: makeId(), organizationId: context.organizationId, chargeId: charge.id, amountCents: 1, method: "PIX", externalReference: "aud27", status: "SETTLED", createdAt: "2026-09-22T00:00:08.000Z" });
+  after.ledgerEntries.push({ id: makeId(), organizationId: context.organizationId, kind: "CHARGE", referenceId: charge.id, amountCents: charge.amountCents, currency: charge.currency, description: "AUD27 cobertura", createdAt: "2026-09-22T00:00:09.000Z" });
+  after.messages.push({ id: makeId(), organizationId: context.organizationId, unitId: context.unitId, workspaceId: context.workspaceId, patientId: patient.id, channel: "SMS", recipient: "+5511999999999", template: "aud27", body: "mensagem sintética", status: "APPROVAL_REQUIRED", createdBy: veterinarian.id, decisionReason: null, createdAt: "2026-09-22T00:00:10.000Z" });
+
+  const provider = after.providers[0]!;
+  after.providers[0] = { ...provider, displayName: `${provider.displayName} AUD27` };
+  const service = after.services[0]!;
+  after.services[0] = { ...service, name: `${service.name} AUD27` };
+  const resource = after.resources[0]!;
+  after.resources[0] = { ...resource, name: `${resource.name} AUD27` };
+  const queueEntry = after.queueEntries[0]!;
+  after.queueEntries[0] = { ...queueEntry, priority: queueEntry.priority === "URGENT" ? "ROUTINE" : "URGENT" };
+  const bedAfter = after.beds.find((candidate) => candidate.id === bed.id)!;
+  after.beds[after.beds.findIndex((candidate) => candidate.id === bed.id)] = { ...bedAfter, name: `${bedAfter.name} AUD27` };
+  after.products[after.products.findIndex((candidate) => candidate.id === product.id)] = { ...product, name: `${product.name} AUD27` };
+  after.stockLocations[after.stockLocations.findIndex((candidate) => candidate.id === location.id)] = { ...location, name: `${location.name} AUD27` };
+  after.lots[after.lots.findIndex((candidate) => candidate.id === lot.id)] = { ...lot, lotNumber: `${lot.lotNumber}-AUD27` };
+  after.charges[after.charges.findIndex((candidate) => candidate.id === charge.id)] = { ...charge, description: `${charge.description} AUD27`, status: "PARTIALLY_PAID" };
+  const knowledge = after.knowledgeDocuments[0]!;
+  after.knowledgeDocuments[0] = { ...knowledge, title: `${knowledge.title} AUD27` };
+
+  const plan = buildAud27NormalizedWritePlan(baseline, after);
+  assert.deepEqual(plan.removed, []);
+  assert.deepEqual(plan.writes.map((write) => write.snapshotKey), [...AUD27_SNAPSHOT_PRIMARY_KEYS]);
+  const fake = fakePool();
+  const persistence = new PostgresPersistence({ connectionString: "postgres://synthetic.invalid", pool: fake.pool });
+  await persistence.commit({
+    ...commitInput(store), snapshot: after, eventType: "SYSTEM", operation: "aud27.normalized-writes.all", actorId: veterinarian.id, aggregateType: "AUD27", aggregateId: null,
+    auditRecords: after.auditRecords, commandReceipts: after.commandReceipts, normalizedDomainWrites: plan.writes as readonly Aud27NormalizedDomainWrite[]
+  });
+  assert.ok(fake.statements.some((statement) => statement.includes("insert into providers")));
+  assert.ok(fake.statements.some((statement) => statement.includes("insert into clinical_addenda")));
+  assert.ok(fake.statements.some((statement) => statement.includes("insert into ai_approvals")));
+  assert.ok(fake.statements.some((statement) => statement.includes("insert into budget_reservations")));
+});
+
+test("projectDomain rejects ambiguous authoritative inputs and duplicate or divergent normalized writes", async () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const fixture = diagnosticFixture(store, "ambiguous-authoritative");
+  const specimenRecord = store.createSpecimen(fixture.context, fixture.request.id, "Tubo ambíguo");
+  store.createResult(fixture.context, { requestId: fixture.request.id, specimenId: specimenRecord.id, value: "resultado ambíguo", source: "synthetic-lab", externalOrderId: null, sourceVersion: "v1" });
+  const snapshot = store.snapshot();
+  const guardian = snapshot.guardians[0];
+  const diagnosticRequest = snapshot.diagnosticRequests[0];
+  const specimen = snapshot.specimens[0];
+  const diagnosticResult = snapshot.diagnosticResults[0];
+  assert.ok(guardian && diagnosticRequest && specimen && diagnosticResult);
+
+  const mutuallyExclusive = [
+    { writeField: "normalizedGuardianWrite", replayField: "normalizedGuardianReplayId", write: guardian, replay: guardian.id, message: "authoritative guardian write and replay" },
+    { writeField: "normalizedDiagnosticRequestWrite", replayField: "normalizedDiagnosticRequestReplayId", write: diagnosticRequest, replay: diagnosticRequest.id, message: "authoritative diagnostic request write and replay" },
+    { writeField: "normalizedSpecimenWrite", replayField: "normalizedSpecimenReplayId", write: specimen, replay: specimen.id, message: "authoritative specimen write and replay" },
+    { writeField: "normalizedDiagnosticResultWrite", replayField: "normalizedDiagnosticResultReplayId", write: diagnosticResult, replay: diagnosticResult.id, message: "authoritative diagnostic result write and replay" }
+  ] as const;
+  for (const entry of mutuallyExclusive) {
+    const fake = fakePool();
+    const persistence = new PostgresPersistence({ connectionString: "postgres://synthetic.invalid", pool: fake.pool });
+    await assert.rejects(
+      () => persistence.commit({ ...commitInput(store), snapshot, [entry.writeField]: entry.write, [entry.replayField]: entry.replay }),
+      (error: unknown) => error instanceof PersistenceCorruptionError && error.message.includes(entry.message)
+    );
+    assert.ok(fake.statements.includes("ROLLBACK"));
+  }
+
+  const after = structuredClone(snapshot) as typeof snapshot;
+  const service = after.services[0];
+  assert.ok(service);
+  after.services[0] = { ...service, name: `${service.name} duplicate-check` };
+  const plan = buildAud27NormalizedWritePlan(snapshot, after);
+  const serviceWrite = plan.writes.find((write) => write.snapshotKey === "services") as Extract<Aud27NormalizedDomainWrite, { snapshotKey: "services" }> | undefined;
+  assert.ok(serviceWrite);
+
+  const duplicateFake = fakePool();
+  const duplicatePersistence = new PostgresPersistence({ connectionString: "postgres://synthetic.invalid", pool: duplicateFake.pool });
+  await assert.rejects(
+    () => duplicatePersistence.commit({ ...commitInput(store), snapshot: after, normalizedDomainWrites: [serviceWrite, serviceWrite] }),
+    (error: unknown) => error instanceof PersistenceCorruptionError && error.message.includes("duplicate AUD27 normalized write services")
+  );
+
+  const divergentFake = fakePool();
+  const divergentPersistence = new PostgresPersistence({ connectionString: "postgres://synthetic.invalid", pool: divergentFake.pool });
+  const divergentWrite: Aud27NormalizedDomainWrite = { ...serviceWrite, record: { ...serviceWrite.record, name: `${serviceWrite.record.name} divergent` } };
+  await assert.rejects(
+    () => divergentPersistence.commit({ ...commitInput(store), snapshot: after, normalizedDomainWrites: [divergentWrite] }),
+    (error: unknown) => error instanceof PersistenceCorruptionError && error.message.includes("AUD27 normalized write services") && error.message.includes("not identical")
+  );
+});
+
+test("AUD27 normalized removals execute tenant-scoped relational deletes in dependency-safe order", async () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const before = store.snapshot();
+  const after = structuredClone(before) as typeof before;
+  const knowledge = after.knowledgeDocuments[0];
+  assert.ok(knowledge);
+  after.knowledgeDocuments = after.knowledgeDocuments.filter((row) => row.id !== knowledge.id);
+  const plan = buildAud27NormalizedWritePlan(before, after);
+  assert.deepEqual(plan.writes, []);
+  assert.deepEqual(plan.removed, [{ snapshotKey: "knowledgeDocuments", id: knowledge.id, organizationId: knowledge.organizationId, unitId: knowledge.unitId, workspaceId: knowledge.workspaceId }]);
+  const fake = fakePool();
+  const persistence = new PostgresPersistence({ connectionString: "postgres://synthetic.invalid", pool: fake.pool });
+  await persistence.commit({
+    ...commitInput(store), snapshot: after, eventType: "SYSTEM", operation: "aud27.normalized-removals.knowledge", aggregateType: "AUD27", aggregateId: null,
+    auditRecords: after.auditRecords, commandReceipts: after.commandReceipts, normalizedDomainRemovals: plan.removed
+  });
+  assert.ok(fake.statements.some((statement) => statement.startsWith("delete from knowledge_documents where id = $1")));
+  assert.ok(fake.statements.indexOf("select set_config('cvg.unit_id', $1, true)") < fake.statements.findIndex((statement) => statement.startsWith("delete from knowledge_documents")));
+});
+
 test("durable command receipt claim is serialized and body-digest bound", async () => {
   const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
   const persistence = new PostgresPersistence({ connectionString: "postgres://synthetic.invalid", pool: fakePool().pool });
@@ -275,6 +509,79 @@ test("patient creation can own one authoritative normalized write inside the dur
   assert.ok(fake.statements.some((statement) => statement.startsWith("insert into patients") && statement.includes("on conflict (id) do update") && statement.includes("returning id::text")));
   assert.ok(fake.statements.some((statement) => statement === "select set_config('cvg.unit_id', $1, true)"));
   assert.ok(fake.statements.some((statement) => statement === "select set_config('cvg.workspace_id', $1, true)"));
+});
+
+test("stock product creation uses its owner path once and a durable replay skips product DML", async () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const before = store.snapshot();
+  const actorId = store.bootstrapCredentials.userId;
+  const option = store.contextOptions(actorId)[0];
+  assert.ok(option);
+  const context = store.resolveContext(actorId, { unitId: option.unit.id, workspaceId: option.workspace.id }, "stock.write", "product-source-write");
+  const product = store.createProduct(context, { sku: "SKU-AUD27-PRODUCT-OWNER-001", name: "Produto sintético", category: "INSUMO", unit: "unidade", reorderPoint: 1 });
+  const snapshot = store.snapshot();
+  const plan = buildAud27NormalizedWritePlan(before, snapshot);
+  assert.deepEqual(plan.writes.map((write) => write.snapshotKey), ["products"]);
+  const fake = fakePool();
+  const persistence = new PostgresPersistence({ connectionString: "postgres://synthetic.invalid", pool: fake.pool });
+
+  await persistence.commit({ ...commitInput(store), snapshot, normalizedProductWrite: product, normalizedDomainWrites: plan.writes });
+
+  const productDml = fake.productStatements.filter(({ params }) => params[0] === product.id);
+  assert.equal(productDml.length, 1);
+  assert.match(productDml[0]!.sql, /returning id::text/);
+  assert.equal(productDml[0]!.params[1], product.organizationId);
+  assert.ok(fake.statements.includes("select set_config('cvg.organization_id', $1, true)"));
+
+  await persistence.commit({ ...commitInput(store), expectedRevision: 1n, snapshot, normalizedProductReplayId: product.id });
+
+  assert.equal(fake.productStatements.filter(({ params }) => params[0] === product.id).length, 1, "replay must not issue another product insert or projection");
+  const divergentSnapshot = structuredClone(snapshot);
+  const divergent = divergentSnapshot.products.find((candidate) => candidate.id === product.id);
+  assert.ok(divergent);
+  divergent.name = "snapshot divergiu depois do commit";
+  await assert.rejects(
+    () => persistence.commit({ ...commitInput(store), expectedRevision: 2n, snapshot: divergentSnapshot, normalizedProductReplayId: product.id }),
+    (error: unknown) => error instanceof PersistenceCorruptionError && error.message.includes("does not match its normalized row")
+  );
+  assert.equal(fake.productStatements.filter(({ params }) => params[0] === product.id).length, 1, "a divergent replay must fail without issuing product DML");
+});
+
+test("stock product SKU uniqueness remains a typed conflict and rolls back the durable commit", async () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const option = store.contextOptions(store.bootstrapCredentials.userId)[0];
+  assert.ok(option);
+  const context = store.resolveContext(store.bootstrapCredentials.userId, { unitId: option.unit.id, workspaceId: option.workspace.id }, "stock.write", "product-sku-conflict");
+  const product = store.createProduct(context, { sku: "SKU-AUD27-PRODUCT-CONFLICT-001", name: "Produto sintético", category: "INSUMO", unit: "unidade", reorderPoint: 1 });
+  const fake = fakePool({ productSkuConflict: true });
+  const persistence = new PostgresPersistence({ connectionString: "postgres://synthetic.invalid", pool: fake.pool });
+
+  await assert.rejects(
+    () => persistence.commit({ ...commitInput(store), snapshot: store.snapshot(), normalizedProductWrite: product }),
+    (error: unknown) => error instanceof PersistenceProductSkuConflictError
+  );
+  assert.ok(fake.statements.includes("ROLLBACK"));
+  assert.equal(fake.statements.some((statement) => statement.startsWith("insert into cvg_state_snapshots")), false);
+});
+
+test("stock product command rejects snapshot divergence before product DML", async () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const before = store.snapshot();
+  const actorId = store.bootstrapCredentials.userId;
+  const option = store.contextOptions(actorId)[0];
+  assert.ok(option);
+  const context = store.resolveContext(actorId, { unitId: option.unit.id, workspaceId: option.workspace.id }, "stock.write", "product-source-divergence");
+  const product = store.createProduct(context, { sku: "SKU-AUD27-PRODUCT-OWNER-002", name: "Produto sintético", category: "INSUMO", unit: "unidade", reorderPoint: 1 });
+  const snapshot = store.snapshot();
+  const plan = buildAud27NormalizedWritePlan(before, snapshot);
+  const fake = fakePool();
+  const persistence = new PostgresPersistence({ connectionString: "postgres://synthetic.invalid", pool: fake.pool });
+
+  await assert.rejects(
+    () => persistence.commit({ ...commitInput(store), snapshot, normalizedProductWrite: { ...product, name: "registro divergente" }, normalizedDomainWrites: plan.writes }),
+    (error: unknown) => error instanceof PersistenceCorruptionError && error.message.includes("not identical to the canonical snapshot")
+  );
+  assert.equal(fake.productStatements.filter(({ params }) => params[0] === product.id).length, 0);
 });
 
 test("guardian creation can own one authoritative normalized write inside the durable commit", async () => {
@@ -649,6 +956,52 @@ test("AI projections derive mandatory tenant scope from the persisted session", 
   assert.ok(fake.statements.some((statement) => statement.startsWith("insert into ai_usage_ledger")));
 });
 
+test("inbox divergent duplicate is quarantined inside the durable transaction", async () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const organizationId = store.bootstrapCredentials.organizationId;
+  const eventId = makeId();
+  const input: DurableInboxInput = {
+    id: eventId,
+    organizationId,
+    consumer: "diagnostic-consumer",
+    provider: "synthetic-lab",
+    externalEventId: "external-divergent-001",
+    eventType: "diagnostic.result.received",
+    schemaVersion: 1,
+    signatureAlgorithm: "HMAC-SHA256",
+    signatureKeyRef: "synthetic-inbox-key",
+    signature: "a".repeat(64),
+    payload: { resultId: "result-1", value: "original" }
+  };
+  const existingId = makeId();
+  const baseRow = {
+    id: String(existingId), organization_id: String(organizationId), consumer: input.consumer, provider: input.provider, external_event_id: input.externalEventId,
+    event_type: input.eventType, schema_version: 1, signature_algorithm: "HMAC-SHA256", signature_key_ref: input.signatureKeyRef, signature: input.signature,
+    payload: input.payload, record_digest: "0".repeat(64), status: "RECEIVED", conflict_digest: null, last_error: null,
+    received_at: "2026-09-22T00:00:00.000Z", processed_at: null, last_seen_at: "2026-09-22T00:00:00.000Z"
+  };
+  const statements: string[] = [];
+  const client = {
+    async query(sql: string): Promise<QueryResult> {
+      statements.push(sql.trim().replace(/\s+/g, " "));
+      if (sql.trim() === "BEGIN" || sql.trim() === "COMMIT" || sql.trim() === "ROLLBACK" || sql.includes("set_config('cvg.organization_id'")) return { rows: [] };
+      if (sql.startsWith("insert into integration_inbox_records")) return { rows: [] };
+      if (sql.startsWith("select id::text as id") && sql.includes("from integration_inbox_records")) return { rows: [baseRow] };
+      if (sql.startsWith("update integration_inbox_records set status = 'QUARANTINED'")) return { rows: [{ ...baseRow, status: "QUARANTINED", conflict_digest: "f".repeat(64), last_error: "DIVERGENT_DUPLICATE_EVENT", last_seen_at: "2026-09-22T00:00:01.000Z" }] };
+      return { rows: [] };
+    },
+    release(): void { /* no-op fake */ }
+  } as unknown as PoolClient;
+  const persistence = new PostgresPersistence({ connectionString: "postgres://synthetic.invalid", pool: { connect: async (): Promise<PoolClient> => client } as unknown as Pool, inboxSignatureVerifier: async () => true });
+
+  const receipt = await persistence.recordInboxEvent(input);
+
+  assert.equal(receipt.duplicate, false);
+  assert.equal(receipt.status, "QUARANTINED");
+  assert.ok(statements.some((statement) => statement.includes("DIVERGENT_DUPLICATE_EVENT")));
+  assert.ok(statements.includes("COMMIT"));
+});
+
 test("appointment range parity keeps exact bounds and tenant scope through memory and Postgres repositories", async () => {
   const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
   const option = store.contextOptions(store.bootstrapCredentials.userId)[0]!;
@@ -911,6 +1264,17 @@ test("durable break-glass lifecycle keeps evidence immutable behind the transact
   assert.ok(statements.some((statement) => statement.includes("update break_glass_grants as grant_row")));
 });
 
+test("Postgres persistence exposes readiness, revision and empty-snapshot boundaries", async () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const fake = fakePool();
+  const persistence = new PostgresPersistence({ connectionString: "postgres://synthetic.invalid", pool: fake.pool });
+
+  assert.deepEqual(await persistence.check(), { database: "cvg_synthetic", serverVersion: "16.0" });
+  await assert.doesNotReject(() => persistence.assertSchema());
+  assert.equal(await persistence.currentRevision(store.bootstrapCredentials.organizationId), 0n);
+  assert.equal(await persistence.loadLatest(store.bootstrapCredentials.organizationId), null);
+});
+
 test("Postgres persistence rolls back a failed projection and rejects stale writers", async () => {
   const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
   const failing = fakePool({ failSnapshotInsert: true });
@@ -922,6 +1286,29 @@ test("Postgres persistence rolls back a failed projection and rejects stale writ
   const stalePersistence = new PostgresPersistence({ connectionString: "postgres://synthetic.invalid", pool: stale.pool });
   await assert.rejects(() => stalePersistence.commit({ ...commitInput(store), expectedRevision: 3n }), (error: unknown) => error instanceof PersistenceConflictError && error.actualRevision === 4n);
   assert.ok(stale.statements.some((statement) => statement === "ROLLBACK"));
+});
+
+test("normal commit rejects recovered runtime projection before opening a connection", async () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const fake = fakePool();
+  const persistence = new PostgresPersistence({ connectionString: "postgres://synthetic.invalid", pool: fake.pool });
+  const recoveredCommit = {
+    ...commitInput(store),
+    recoveredAgentSessions: [],
+    recoveredAgentTurns: [],
+    recoveredAgentCheckpoints: [],
+    recoveredAgentLeases: []
+  } as never;
+
+  await assert.rejects(
+    () => persistence.commit(recoveredCommit),
+    (error: unknown) => error instanceof PersistenceStateError && error.message.includes("use restore")
+  );
+  await assert.rejects(
+    () => persistence.commit({ ...commitInput(store), eventType: "RESTORE_QUARANTINED" } as never),
+    (error: unknown) => error instanceof PersistenceStateError && error.message.includes("restore event type")
+  );
+  assert.deepEqual(fake.statements, []);
 });
 
 test("Postgres persistence preserves corruption signals instead of downgrading them to outage", async () => {
@@ -1016,6 +1403,166 @@ test("recovery validation rejects a rehashed snapshot with a tampered audit chai
   assert.throws(() => encryptRecoveryBundle(bundle, randomBytes(32), "synthetic-kms-key"), (error: unknown) => error instanceof PersistenceCorruptionError && error.message.includes("audit chain"));
 });
 
+test("sealed restore rejects invalid recovered agent state before connection", async () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const organizationId = store.bootstrapCredentials.organizationId;
+  const invalidSessionWithoutDigest = {
+    sessionId: randomUUID(),
+    organizationId,
+    actorId: randomUUID(),
+    unitId: null,
+    workspaceId: null,
+    purpose: "SUMMARY",
+    taskObjective: "invalid recovered actor",
+    status: "ACTIVE",
+    runState: "RUNNING",
+    fence: 0,
+    checkpointDigest: null,
+    createdAt: "2026-09-20T00:00:00.000Z",
+    updatedAt: "2026-09-20T00:00:01.000Z",
+    expiresAt: "2026-09-20T01:00:00.000Z"
+  };
+  const { recordDigest: _ignored, ...sessionContent } = invalidSessionWithoutDigest as Record<string, unknown>;
+  const invalidSession = { ...invalidSessionWithoutDigest, recordDigest: digest(sessionContent) } as unknown as DurableAgentSessionRecord;
+  const snapshot = store.snapshot();
+  const recoveryData = {
+    revision: 0n,
+    snapshot,
+    snapshotDigest: digest(JSON.parse(serializeSnapshot(snapshot))),
+    eventId: randomUUID(),
+    outboxRecords: [],
+    usageRecords: [],
+    inboxRecords: [],
+    externalEffects: [],
+    agentSessions: [invalidSession],
+    agentTurns: [],
+    agentCheckpoints: [],
+    agentLeases: []
+  };
+  const bundle = {
+    ...recoveryData,
+    manifest: createRecoveryBundleManifest({
+      organizationId,
+      ...recoveryData,
+      migrationFingerprint: "a".repeat(64)
+    })
+  } as unknown as DurableRecoveryBundle;
+  const migrationRows = [{ version: "synthetic-restore-schema", checksum: "synthetic-restore-checksum" }];
+  const migrationFingerprint = digest(migrationRows);
+   const fake = fakePool({ migrationRows, failOnSecondConnectionBegin: true });
+  const persistence = new PostgresPersistence({ connectionString: "postgres://synthetic.invalid", pool: fake.pool });
+
+  await assert.rejects(
+    () => persistence.restore({
+      expectedRevision: null,
+      bundle,
+      migrationFingerprint: "a".repeat(64),
+      authority: { role: "cvg_restore_authority", reference: "persistence-test" },
+      operation: "test.sealed-restore",
+      actorId: null,
+      correlationId: "sealed-restore-test",
+      aggregateType: "Restore",
+      aggregateId: null,
+      payload: { synthetic: true }
+    }),
+    (error: unknown) => error instanceof PersistenceCorruptionError && error.message.includes("actorId")
+  );
+  assert.deepEqual(fake.statements, []);
+
+  const validRecoveryData = {
+    revision: 0n,
+    snapshot,
+    snapshotDigest: digest(JSON.parse(serializeSnapshot(snapshot))),
+    eventId: randomUUID(),
+    outboxRecords: [],
+    usageRecords: [],
+    inboxRecords: [],
+    externalEffects: [],
+    agentSessions: [],
+    agentTurns: [],
+    agentCheckpoints: [],
+    agentLeases: []
+  };
+  const validBundle = {
+    ...validRecoveryData,
+    manifest: createRecoveryBundleManifest({ organizationId, ...validRecoveryData, migrationFingerprint })
+  } as unknown as DurableRecoveryBundle;
+
+  await assert.rejects(
+    () => persistence.restore({
+      expectedRevision: null,
+      bundle: validBundle,
+      migrationFingerprint,
+      authority: undefined as never,
+      operation: "test.sealed-restore-authority",
+      actorId: null,
+      correlationId: "sealed-restore-authority-test",
+      aggregateType: "Restore",
+      aggregateId: null,
+      payload: { synthetic: true }
+    }),
+    (error: unknown) => error instanceof PersistenceStateError && error.message.includes("dedicated restore authority")
+  );
+
+  await assert.rejects(
+    () => persistence.restore({
+      expectedRevision: null,
+      bundle: validBundle,
+      migrationFingerprint: "c".repeat(64),
+      authority: { role: "cvg_restore_authority", reference: "persistence-test" },
+      operation: "test.sealed-restore-fingerprint",
+      actorId: null,
+      correlationId: "sealed-restore-fingerprint-test",
+      aggregateType: "Restore",
+      aggregateId: null,
+      payload: { synthetic: true }
+    }),
+    (error: unknown) => error instanceof PersistenceStateError && error.message.includes("migration fingerprint")
+  );
+  assert.deepEqual(fake.statements, []);
+
+  const baseRestoreInput: DurableRestoreInput = {
+    expectedRevision: null,
+    bundle: validBundle,
+    migrationFingerprint,
+    authority: { role: "cvg_restore_authority", reference: "persistence-test" },
+    operation: "test.sealed-restore-destination-authority",
+    actorId: null,
+    correlationId: "sealed-restore-destination-authority-test",
+    aggregateType: "Restore",
+    aggregateId: null,
+    payload: { synthetic: true }
+  };
+  const assertDestinationRejects = async (options: Parameters<typeof fakePool>[0], message: string): Promise<void> => {
+    const destination = fakePool({ migrationRows, ...options });
+    const destinationPersistence = new PostgresPersistence({ connectionString: "postgres://synthetic.invalid", pool: destination.pool });
+    await assert.rejects(
+      () => destinationPersistence.restore(baseRestoreInput),
+      (error: unknown) => error instanceof PersistenceStateError && error.message.includes(message)
+    );
+    assert.equal(destination.statements.some((statement) => statement === "BEGIN"), false);
+  };
+  await assertDestinationRejects({ sessionUser: "cvg_maintenance" }, "schema-owner executor connection");
+  await assertDestinationRejects({ restoreRoleLogin: true }, "authority role contract");
+  await assertDestinationRejects({ restoreRoleCreatedb: true }, "authority role contract");
+  await assertDestinationRejects({ restoreRoleCreateRole: true }, "authority role contract");
+  await assertDestinationRejects({ restoreRoleReplication: true }, "authority role contract");
+  await assertDestinationRejects({ schemaOwnerCanAssumeRestore: false }, "not a member of the dedicated restore authority");
+  await assertDestinationRejects({ runtimeCanAssumeRestore: true }, "runtime role must not be a member");
+  await assertDestinationRejects({ migrationRows: [{ version: "synthetic-restore-schema", checksum: "destination-drift" }] }, "migration fingerprint");
+
+  const restored = await persistence.restore({
+    ...baseRestoreInput,
+    operation: "test.sealed-restore-known-good",
+    correlationId: "sealed-restore-known-good-test"
+  });
+  assert.equal(restored.revision, 1n);
+  assert.equal(fake.connectCount, 1, "restore must use one PoolClient from authority preflight through commit");
+  assert.equal(fake.releaseCount, 1, "restore must release the shared PoolClient exactly once");
+  assert.ok(fake.statements.some((statement) => statement === 'set local role "cvg_restore_authority"'));
+  assert.ok(fake.statements.some((statement) => statement === "reset role"));
+});
+
 test("recovery validation binds durable ledger digests to immutable record content", () => {
   const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
   const snapshot = store.snapshot();
@@ -1075,6 +1622,69 @@ test("recovery validation binds durable ledger digests to immutable record conte
   assert.throws(() => encryptRecoveryBundle(tamperedBundle, randomBytes(32), "synthetic-kms-key"), (error: unknown) => error instanceof PersistenceCorruptionError && error.message.includes("outboxRecords[0].recordDigest"));
 });
 
+test("sealed restore projects non-empty recovery ledgers under the restore authority", async () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const organizationId = store.bootstrapCredentials.organizationId;
+  const actorId = store.bootstrapCredentials.userId;
+  const timestamp = "2026-09-20T00:00:00.000Z";
+  const sessionId = randomUUID();
+  const outboxId = id(randomUUID());
+  const usageId = id(randomUUID());
+  const checkpointPayload = { step: 1 };
+  const contentDigest = (record: Record<string, unknown>): string => {
+    const { recordDigest: _recordDigest, checkpointId: _checkpointId, ...content } = record;
+    return digest(content);
+  };
+  const session = { sessionId, organizationId, actorId, unitId: null, workspaceId: null, purpose: "SUMMARY", taskObjective: "restore ledgers", status: "ACTIVE", runState: "RUNNING", fence: 2, checkpointDigest: checkpointDigest(checkpointPayload, 1), createdAt: timestamp, updatedAt: "2026-09-20T00:00:10.000Z", expiresAt: "2026-09-20T01:00:00.000Z" };
+  const turn = { turnId: randomUUID(), sessionId, organizationId, sequence: 1, status: "COMPLETED", inputDigest: "a".repeat(64), contextDigest: null, modelRequestDigest: null, modelResponseDigest: null, toolRequestIds: [], usageRecordId: null, provenance: { provider: "synthetic" }, startedAt: "2026-09-20T00:00:02.000Z", completedAt: "2026-09-20T00:00:03.000Z", fence: 1 };
+  const checkpoint = { checkpointId: "1", sessionId, organizationId, sequence: 1, schemaVersion: 1, digest: checkpointDigest(checkpointPayload, 1), payload: checkpointPayload, fence: 1, createdAt: "2026-09-20T00:00:04.000Z" };
+  const lease = { sessionId, organizationId, ownerId: "restore-owner", fence: 2, acquiredAt: "2026-09-20T00:00:05.000Z", expiresAt: "2026-09-20T00:10:05.000Z" };
+  const agentSessions = [{ ...session, recordDigest: contentDigest(session) }] as unknown as DurableAgentSessionRecord[];
+  const agentTurns = [{ ...turn, recordDigest: contentDigest(turn) }] as unknown as DurableAgentTurnRecord[];
+  const agentCheckpoints = [{ ...checkpoint, recordDigest: contentDigest(checkpoint) }] as unknown as DurableAgentCheckpointRecord[];
+  const agentLeases = [{ ...lease, recordDigest: contentDigest(lease) }] as unknown as DurableAgentLeaseRecord[];
+  const usage = {
+    id: usageId, organizationId, reservationId: null, providerRequestId: null, idempotencyKey: "restore-usage-1", usageKind: "TOKENS", reservedUnits: 4, consumedUnits: 4, status: "SETTLED" as const, record: { synthetic: true }, createdAt: timestamp,
+    recordDigest: digest({ organizationId, reservationId: null, providerRequestId: null, idempotencyKey: "restore-usage-1", usageKind: "TOKENS", reservedUnits: 4, consumedUnits: 4, status: "SETTLED", record: { synthetic: true } })
+  } as DurableUsageRecord;
+  const outbox = {
+    id: outboxId, organizationId, eventType: "restore.synthetic", aggregateId: organizationId, payload: { synthetic: true }, status: "PENDING" as const, attempts: 0, availableAt: timestamp, claimedBy: null, leaseUntil: null, fenceToken: 0n, lastError: null, createdAt: timestamp, processedAt: null,
+    recordDigest: digest({ organizationId, eventType: "restore.synthetic", aggregateId: organizationId, payload: { synthetic: true } })
+  } as DurableOutboxRecord;
+  const inbox = {
+    id: id(randomUUID()), organizationId, consumer: "restore-consumer", provider: "synthetic", externalEventId: "restore-event-1", eventType: "restore.event", schemaVersion: 1, signatureAlgorithm: "HMAC-SHA256" as const, signatureKeyRef: "restore-key", signature: "a".repeat(64), payload: { synthetic: true }, status: "RECEIVED" as const, conflictDigest: null, lastError: null, receivedAt: timestamp, processedAt: null, lastSeenAt: timestamp,
+    recordDigest: digest({ organizationId, consumer: "restore-consumer", provider: "synthetic", externalEventId: "restore-event-1", eventType: "restore.event", schemaVersion: 1, signatureAlgorithm: "HMAC-SHA256", signatureKeyRef: "restore-key", payload: { synthetic: true } })
+  } as DurableInboxRecord;
+  const externalEffect = {
+    id: id(randomUUID()), organizationId, outboxId, integrationId: "restore-integration", idempotencyKey: "restore-effect-1", request: { synthetic: true }, status: "ADMISSION_PENDING" as const, attempts: 0, claimedBy: null, leaseUntil: null, fenceToken: 0n, providerRequestId: null, response: null, lastError: null, outcomeDigest: null, reconciliationSource: null, reconciledAt: null, createdAt: timestamp, updatedAt: timestamp,
+    requestDigest: digest({ organizationId, outboxId, integrationId: "restore-integration", idempotencyKey: "restore-effect-1", request: { synthetic: true } })
+  } as DurableExternalEffectRecord;
+  const workerJob = {
+    id: id(randomUUID()), organizationId, lane: "jobs" as const, jobType: "restore.synthetic", idempotencyKey: "restore-job-1", payload: { synthetic: true }, status: "PENDING" as const, attempts: 0, maxAttempts: 2, availableAt: timestamp, claimedBy: null, leaseUntil: null, fenceToken: 0n, lastError: null, createdAt: timestamp, processedAt: null,
+    recordDigest: digest({ organizationId, lane: "jobs", jobType: "restore.synthetic", idempotencyKey: "restore-job-1", payload: { synthetic: true }, maxAttempts: 2, availableAt: timestamp })
+  } as DurableWorkerJobRecord;
+  const snapshot = store.snapshot();
+  const recoveryData = { revision: 7n, snapshot, snapshotDigest: digest(JSON.parse(serializeSnapshot(snapshot))), eventId: randomUUID(), outboxRecords: [outbox], usageRecords: [usage], inboxRecords: [inbox], externalEffects: [externalEffect], workerJobs: [workerJob], agentSessions, agentTurns, agentCheckpoints, agentLeases };
+  const migrationRows = [{ version: "synthetic-restore-runtime", checksum: "synthetic-restore-runtime-checksum" }];
+  const migrationFingerprint = digest(migrationRows);
+  const bundle: DurableRecoveryBundle = { ...recoveryData, manifest: createRecoveryBundleManifest({ organizationId, ...recoveryData, migrationFingerprint }) };
+  const fake = fakePool({ migrationRows, recoveredProjectionRows: true });
+  const persistence = new PostgresPersistence({ connectionString: "postgres://synthetic.invalid", pool: fake.pool });
+
+  const restored = await persistence.restore({ expectedRevision: null, bundle, migrationFingerprint, authority: { role: "cvg_restore_authority", reference: "non-empty-ledger-restore" }, operation: "test.restore-non-empty-ledgers", actorId: null, correlationId: "restore-non-empty-ledgers", aggregateType: "Restore", aggregateId: null, payload: { synthetic: true } });
+  assert.equal(restored.revision, 1n);
+  assert.ok(fake.statements.some((statement) => statement.startsWith("insert into outbox_records")));
+  assert.ok(fake.statements.some((statement) => statement.startsWith("insert into ai_usage_ledger")));
+  assert.ok(fake.statements.some((statement) => statement.startsWith("insert into integration_inbox_records")));
+  assert.ok(fake.statements.some((statement) => statement.startsWith("insert into external_effects")));
+  assert.ok(fake.statements.some((statement) => statement.startsWith("insert into cvg_worker_jobs")));
+  assert.ok(fake.statements.some((statement) => statement.startsWith("insert into agent_sessions")));
+  assert.ok(fake.statements.some((statement) => statement.startsWith("insert into agent_turns")));
+  assert.ok(fake.statements.some((statement) => statement.startsWith("insert into agent_checkpoints")));
+  assert.ok(fake.statements.includes('set local role "cvg_restore_authority"'));
+  assert.ok(fake.statements.includes("reset role"));
+});
+
 test("recovery validation rejects authentication records with missing temporal fields", () => {
   const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
   store.createSession(store.bootstrapCredentials.userId, digest("recovery-auth-session"), "synthetic-csrf", 60);
@@ -1118,6 +1728,57 @@ test("recovery validation rejects authentication records with missing temporal f
   assert.throws(() => validateRecoveryBundle(missingSecurityBundle), (error: unknown) => error instanceof PersistenceCorruptionError && error.message.includes("snapshot.users[0].security"));
 });
 
+test("CVG-AUD19-010: recovery bundle validates, binds and rejects agent runtime state", () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const organizationId = store.bootstrapCredentials.organizationId;
+  const snapshot = store.snapshot();
+  const snapshotDigest = digest(JSON.parse(serializeSnapshot(snapshot)));
+  const migrationFingerprint = digest([{ version: "041_agent_restore_fence_guard", checksum: "synthetic-checksum" }]);
+  const sessionId = randomUUID();
+  const actorId = store.bootstrapCredentials.userId;
+  const agentContentDigest = (record: Record<string, unknown>): string => {
+    const { recordDigest: _recordDigest, checkpointId: _checkpointId, ...content } = record;
+    return digest(content);
+  };
+   const checkpointPayload = { step: 1 };
+   const session = { sessionId, organizationId, actorId, unitId: null, workspaceId: null, purpose: "SUMMARY", taskObjective: "bundle", status: "ACTIVE", runState: "CREATED", fence: 2, checkpointDigest: checkpointDigest(checkpointPayload, 1), createdAt: "2026-09-20T00:00:00.000Z", updatedAt: "2026-09-20T00:01:00.000Z", expiresAt: "2026-09-20T01:00:00.000Z" };
+  const turnOne = { turnId: randomUUID(), sessionId, organizationId, sequence: 1, status: "COMPLETED", inputDigest: "a".repeat(64), contextDigest: null, modelRequestDigest: null, modelResponseDigest: null, toolRequestIds: [], usageRecordId: null, provenance: { provider: "fixture" }, startedAt: "2026-09-20T00:00:10.000Z", completedAt: "2026-09-20T00:00:11.000Z", fence: 1 };
+  const turnTwo = { ...turnOne, turnId: randomUUID(), sequence: 2, fence: 2, startedAt: "2026-09-20T00:00:20.000Z", completedAt: "2026-09-20T00:00:21.000Z" };
+   const checkpoint = { checkpointId: "1", sessionId, organizationId, sequence: 1, schemaVersion: 1, digest: checkpointDigest(checkpointPayload, 1), payload: checkpointPayload, fence: 1, createdAt: "2026-09-20T00:00:12.000Z" };
+  const lease = { sessionId, organizationId, ownerId: "fixture-owner", fence: 2, acquiredAt: "2026-09-20T00:00:30.000Z", expiresAt: "2026-09-20T00:10:30.000Z" };
+  const withDigests = <T extends Record<string, unknown>>(record: T): T & { recordDigest: string } => ({ ...record, recordDigest: agentContentDigest(record) });
+  const agentSessions = [withDigests(session)];
+  const agentTurns = [withDigests(turnOne), withDigests(turnTwo)];
+  const agentCheckpoints = [withDigests(checkpoint)];
+  const agentLeases = [withDigests(lease)];
+  const recoveryData = { revision: 7n, snapshot, snapshotDigest, eventId: randomUUID(), outboxRecords: [], usageRecords: [], inboxRecords: [], externalEffects: [] };
+  const bundle: DurableRecoveryBundle = {
+    ...recoveryData,
+    agentSessions,
+    agentTurns,
+    agentCheckpoints,
+    agentLeases,
+    manifest: createRecoveryBundleManifest({ organizationId, ...recoveryData, migrationFingerprint, agentSessions, agentTurns, agentCheckpoints, agentLeases })
+  };
+  assert.doesNotThrow(() => validateRecoveryBundle(bundle));
+  assert.doesNotThrow(() => assertRestorableRecoveryBundle(bundle));
+
+  // A legacy bundle still validates but restore rejects it explicitly.
+  const legacy: DurableRecoveryBundle = { ...recoveryData, manifest: createRecoveryBundleManifest({ organizationId, ...recoveryData, migrationFingerprint }) };
+  assert.doesNotThrow(() => validateRecoveryBundle(legacy));
+  assert.throws(() => assertRestorableRecoveryBundle(legacy), (error: unknown) => error instanceof PersistenceStateError && error.message.includes("predates agent runtime state"));
+
+  // Tampered content, cross-tenant record and non-deterministic ordering fail closed.
+  const tamperedTurn = { ...agentTurns[1]!, status: "FAILED" };
+  const tampered: DurableRecoveryBundle = { ...bundle, agentTurns: [agentTurns[0]!, tamperedTurn] };
+  assert.throws(() => validateRecoveryBundle(tampered), (error: unknown) => error instanceof PersistenceCorruptionError && error.message.includes("agentTurns[1].recordDigest"));
+  const foreignSession = withDigests({ ...session, organizationId: randomUUID() });
+  const crossTenant: DurableRecoveryBundle = { ...bundle, agentSessions: [foreignSession] };
+  assert.throws(() => validateRecoveryBundle(crossTenant), (error: unknown) => error instanceof PersistenceCorruptionError && error.message.includes("different organization scope"));
+  const outOfOrder: DurableRecoveryBundle = { ...bundle, agentTurns: [agentTurns[1]!, agentTurns[0]!] };
+  assert.throws(() => validateRecoveryBundle(outOfOrder), (error: unknown) => error instanceof PersistenceCorruptionError && error.message.includes("not ordered deterministically"));
+});
+
 test("operational backup writes an atomic manifest, verifies before rotation and rejects tampering", async () => {
   const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
   const snapshot = store.snapshot();
@@ -1128,12 +1789,18 @@ test("operational backup writes an atomic manifest, verifies before rotation and
   const directory = await mkdtemp(join(tmpdir(), "cvg-operational-backup-"));
   try {
     const first = await writeOperationalBackup({ directory, bundle, key, keyRef: "synthetic-backup-key", backupId: "backup-1", createdAt: "2026-09-10T00:00:00.000Z", retention: { keepLast: 2 } });
+    assert.deepEqual(await rotateOperationalBackups(join(directory, "not-created-yet")), []);
+    await assert.rejects(() => writeOperationalBackup({ directory, bundle, key, keyRef: "synthetic-backup-key", backupId: "invalid id" }), /backup id is invalid/);
+    await assert.rejects(() => writeOperationalBackup({ directory, bundle, key, keyRef: "synthetic-backup-key", createdAt: "invalid" }), /createdAt must be a valid timestamp/);
+    await assert.rejects(() => writeOperationalBackup({ directory, bundle, key, keyRef: "synthetic-backup-key", expiresAt: "invalid" }), /expiresAt must be a valid timestamp/);
+    await assert.rejects(() => rotateOperationalBackups(directory, { keepLast: 0 }), /keepLast must be between/);
     const secondDirectory = await mkdtemp(join(tmpdir(), "cvg-operational-backup-existing-"));
     try {
       await chmod(secondDirectory, 0o755);
       const secured = await writeOperationalBackup({ directory: secondDirectory, bundle, key, keyRef: "synthetic-backup-key", backupId: "backup-existing-dir", createdAt: "2026-09-10T00:30:00.000Z", retention: { keepLast: 2 } });
       assert.equal((await stat(secondDirectory)).mode & 0o777, 0o700);
       assert.equal((await stat(secured.path)).mode & 0o777, 0o600);
+      assert.deepEqual(await rotateOperationalBackups(secondDirectory, { keepLast: 10, maxAgeMs: 0, now: "2026-09-11T00:00:00.000Z" }), [secured.path]);
     } finally {
       await rm(secondDirectory, { recursive: true, force: true });
     }
@@ -1277,6 +1944,11 @@ test("recovery manifest rejects partial, stale, and migration-incompatible resto
     manifest: createRecoveryBundleManifest({ organizationId: store.bootstrapCredentials.organizationId, ...recoveryData, migrationFingerprint, createdAt: "2026-09-09T00:00:00.000Z" })
   };
   assert.doesNotThrow(() => validateRecoveryBundle(bundle, { expectedMigrationFingerprint: migrationFingerprint, minimumRevision: 7n, maxAgeMs: 86_400_000, now: "2026-09-09T12:00:00.000Z" }));
+  assert.throws(() => validateRecoveryBundle(bundle, { expectedMigrationFingerprint: "invalid" }), (error: unknown) => error instanceof PersistenceStateError && error.message.includes("expected recovery migration fingerprint"));
+  assert.throws(() => validateRecoveryBundle(bundle, { minimumRevision: -1n }), (error: unknown) => error instanceof PersistenceStateError && error.message.includes("minimum recovery revision"));
+  assert.throws(() => validateRecoveryBundle(bundle, { maxAgeMs: -1 }), (error: unknown) => error instanceof PersistenceStateError && error.message.includes("maximum recovery bundle age"));
+  assert.throws(() => validateRecoveryBundle(bundle, { maxAgeMs: 60_000, now: "invalid" }), (error: unknown) => error instanceof PersistenceStateError && error.message.includes("reference time"));
+  assert.throws(() => validateRecoveryBundle(bundle, { maxAgeMs: 60_000, now: "2026-09-08T12:00:00.000Z" }), (error: unknown) => error instanceof PersistenceStateError && error.message.includes("future"));
 
   const partial = { ...bundle, inboxRecords: undefined } as unknown as DurableRecoveryBundle;
   assert.throws(() => validateRecoveryBundle(partial), (error: unknown) => error instanceof PersistenceCorruptionError);
@@ -1406,6 +2078,74 @@ test("PostgreSQL guardian creation commits one normalized row and replays withou
     assert.equal(replay.statusCode, 201, replay.body);
     assert.equal(fake.statements.filter((statement) => statement.startsWith("insert into guardians") && statement.includes("returning id::text")).length, 1);
     assert.equal(fake.statements.filter((statement) => statement.startsWith("insert into command_receipts") && statement.includes("on conflict (idempotency_lookup)")).length, 1);
+  } finally {
+    await runtime.app.close();
+  }
+});
+
+test("PostgreSQL stock product creation commits once and replays without a second product DML", async () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const fake = fakePool();
+  const persistence = new PostgresPersistence({ connectionString: "postgres://synthetic.invalid", pool: fake.pool });
+  const runtime = await createRuntime({ store, persistence, config: { storageMode: "postgres", demoMode: true } });
+  try {
+    const login = await runtime.app.inject({ method: "POST", url: "/api/v1/auth/login", headers: { "content-type": "application/json" }, payload: JSON.stringify({ login: "admin@cvg.local", password: "synthetic-password-123" }) });
+    assert.equal(login.statusCode, 200, login.body);
+    const cookieValues = (Array.isArray(login.headers["set-cookie"]) ? login.headers["set-cookie"] : [login.headers["set-cookie"]]).filter((value): value is string => typeof value === "string");
+    const cookiePairs = cookieValues.map((value) => value.split(";")[0]).filter((value): value is string => Boolean(value));
+    const cookie = cookiePairs.join("; ");
+    const csrfCookie = cookiePairs.find((pair) => pair.startsWith("cvg_csrf="));
+    assert.ok(csrfCookie);
+    const csrf = decodeURIComponent(csrfCookie.slice("cvg_csrf=".length));
+    const unit = [...runtime.store.units.values()][0];
+    const workspace = [...runtime.store.workspaces.values()][0];
+    assert.ok(unit && workspace);
+    const headers = { cookie, "x-csrf-token": csrf, "x-cvg-unit-id": unit.id, "x-cvg-workspace-id": workspace.id, "idempotency-key": "product-http-source-001", "content-type": "application/json" };
+    const payload = JSON.stringify({ sku: "SKU-HTTP-PRODUCT-001", name: "Produto HTTP sintético", category: "INSUMO", unit: "unidade", reorderPoint: 2 });
+    const created = await runtime.app.inject({ method: "POST", url: "/api/v1/stock/products", headers, payload });
+    assert.equal(created.statusCode, 201, created.body);
+    const productId = (created.json() as { data: { product: { id: string } } }).data.product.id;
+    const replay = await runtime.app.inject({ method: "POST", url: "/api/v1/stock/products", headers, payload });
+    assert.equal(replay.statusCode, 201, replay.body);
+    assert.equal((replay.json() as { data: { product: { id: string } } }).data.product.id, productId);
+    assert.equal(fake.productStatements.filter(({ params }) => params[0] === productId).length, 1);
+    assert.ok(fake.productStatements.some(({ params, sql }) => params[0] === productId && sql.includes("returning id::text")));
+    assert.equal(fake.statements.filter((statement) => statement.startsWith("insert into command_receipts") && statement.includes("on conflict (idempotency_lookup)")).length, 1);
+  } finally {
+    await runtime.app.close();
+  }
+});
+
+test("PostgreSQL stock product SKU collision returns 409 and settles its receipt as failed", async () => {
+  const store = new CvgStore({ bootstrapPassword: "synthetic-password-123" });
+  const fake = fakePool({ productSkuConflict: true });
+  const persistence = new PostgresPersistence({ connectionString: "postgres://synthetic.invalid", pool: fake.pool });
+  const runtime = await createRuntime({ store, persistence, config: { storageMode: "postgres", demoMode: true } });
+  try {
+    const login = await runtime.app.inject({ method: "POST", url: "/api/v1/auth/login", headers: { "content-type": "application/json" }, payload: JSON.stringify({ login: "admin@cvg.local", password: "synthetic-password-123" }) });
+    assert.equal(login.statusCode, 200, login.body);
+    const cookieValues = (Array.isArray(login.headers["set-cookie"]) ? login.headers["set-cookie"] : [login.headers["set-cookie"]]).filter((value): value is string => typeof value === "string");
+    const cookiePairs = cookieValues.map((value) => value.split(";")[0]).filter((value): value is string => Boolean(value));
+    const cookie = cookiePairs.join("; ");
+    const csrfCookie = cookiePairs.find((pair) => pair.startsWith("cvg_csrf="));
+    assert.ok(csrfCookie);
+    const csrf = decodeURIComponent(csrfCookie.slice("cvg_csrf=".length));
+    const unit = [...runtime.store.units.values()][0];
+    const workspace = [...runtime.store.workspaces.values()][0];
+    assert.ok(unit && workspace);
+    const created = await runtime.app.inject({
+      method: "POST",
+      url: "/api/v1/stock/products",
+      headers: { cookie, "x-csrf-token": csrf, "x-cvg-unit-id": unit.id, "x-cvg-workspace-id": workspace.id, "idempotency-key": "product-sku-conflict-http-001", "content-type": "application/json" },
+      payload: JSON.stringify({ sku: "SKU-HTTP-PRODUCT-CONFLICT-001", name: "Produto duplicado sintético", category: "INSUMO", unit: "unidade", reorderPoint: 0 })
+    });
+    assert.equal(created.statusCode, 409, created.body);
+    assert.equal((created.json() as { error: { code: string } }).error.code, "CONFLICT");
+    const receipt = [...fake.durableReceipts.values()].find((candidate) => candidate.operation === "stock.write");
+    assert.ok(receipt);
+    assert.equal(receipt.status, "FAILED");
+    assert.equal(receipt.failure_phase, "PRE_DISPATCH");
+    assert.equal([...runtime.store.products.values()].some((product) => product.sku === "SKU-HTTP-PRODUCT-CONFLICT-001"), false);
   } finally {
     await runtime.app.close();
   }
@@ -1591,7 +2331,6 @@ test("PostgreSQL clinical signing commits one authoritative update and replays i
     const document = await runtime.app.inject({ method: "POST", url: "/api/v1/clinical/documents", headers: { ...scopeHeaders, "idempotency-key": "clinical-sign-document-001" }, payload: JSON.stringify({ encounterId, documentType: "EVOLUTION", title: "Evolução assinável", content: "observação para assinatura", dataClass: "D3" }) });
     assert.equal(document.statusCode, 201, document.body);
     const documentId = (document.json() as { data: { document: { id: string } } }).data.document.id;
-    const clinicalInsertsBeforeSign = fake.statements.filter((statement) => statement.startsWith("insert into clinical_documents")).length;
     const review = await runtime.app.inject({ method: "POST", url: `/api/v1/clinical/documents/${documentId}/review`, headers: { ...scopeHeaders, "idempotency-key": "clinical-review-001" }, payload: JSON.stringify({ expectedVersion: "1" }) });
     assert.equal(review.statusCode, 200, review.body);
     const signHeaders = { ...scopeHeaders, "idempotency-key": "clinical-sign-001" };
@@ -1729,7 +2468,7 @@ test("durable claim fence reconciles expired NOT_STARTED as safe failure and DIS
   const dispatchedInput = { ...baseInput, key: "fence-key-dispatched" };
   const dispatchedClaim = await persistence.claimCommandReceipt(dispatchedInput);
   assert.equal(dispatchedClaim.status, "CLAIMED");
-  const fenced = await persistence.markCommandReceiptDispatched(organizationId, dispatchedClaim.receipt.id, dispatchedClaim.receipt.claimEpoch ?? 1);
+  const fenced = await persistence.markCommandReceiptDispatched(organizationId, dispatchedClaim.receipt.id, dispatchedClaim.receipt.claimEpoch ?? 1, { unitId: dispatchedClaim.receipt.unitId, workspaceId: dispatchedClaim.receipt.workspaceId });
   assert.equal(fenced?.dispatchState, "DISPATCHED");
   const redispatched = await persistence.claimCommandReceipt(dispatchedInput);
   assert.equal(redispatched.status, "IN_FLIGHT");

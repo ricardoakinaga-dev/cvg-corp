@@ -1,0 +1,76 @@
+{
+  "buildx.build.provenance": {
+    "builder": {
+      "id": ""
+    },
+    "buildType": "https://mobyproject.org/buildkit@v1",
+    "materials": [
+      {
+        "uri": "pkg:docker/docker/buildkit-syft-scanner@stable-1",
+        "digest": {
+          "sha256": "ae4f3b554449e7e25548e7d8ccc029d17357348e30c6e3df01b92bc93654d6a9"
+        }
+      },
+      {
+        "uri": "pkg:docker/docker/dockerfile@1.10?digest=sha256:865e5dd094beca432e8c0a1d5e1c465db5f998dca4e439981029b3b81fb39ed5\u0026platform=linux%2Famd64",
+        "digest": {
+          "sha256": "865e5dd094beca432e8c0a1d5e1c465db5f998dca4e439981029b3b81fb39ed5"
+        }
+      },
+      {
+        "uri": "pkg:docker/docker/dockerfile@1.10?digest=sha256:865e5dd094beca432e8c0a1d5e1c465db5f998dca4e439981029b3b81fb39ed5",
+        "digest": {
+          "sha256": "865e5dd094beca432e8c0a1d5e1c465db5f998dca4e439981029b3b81fb39ed5"
+        }
+      },
+      {
+        "uri": "pkg:docker/node@24.21.0-trixie-slim?digest=sha256:8ec5d7557396cfe32d21c3f9c13072355ceab22b584578ca4bb28af31120cffe\u0026platform=linux%2Famd64",
+        "digest": {
+          "sha256": "8ec5d7557396cfe32d21c3f9c13072355ceab22b584578ca4bb28af31120cffe"
+        }
+      },
+      {
+        "uri": "pkg:docker/gcr.io/distroless/nodejs24-debian13@nonroot?digest=sha256:bb6b03d81066993293a10feda7250e8e1cc034035fe9b61cfceededa7c8bf04d\u0026platform=linux%2Famd64",
+        "digest": {
+          "sha256": "bb6b03d81066993293a10feda7250e8e1cc034035fe9b61cfceededa7c8bf04d"
+        }
+      }
+    ],
+    "invocation": {
+      "configSource": {
+        "entryPoint": "Dockerfile.api"
+      },
+      "parameters": {
+        "frontend": "gateway.v0",
+        "args": {
+          "build-arg:CVG_SOURCE_REVISION": "unbound",
+          "cmdline": "docker/dockerfile:1.10@sha256:865e5dd094beca432e8c0a1d5e1c465db5f998dca4e439981029b3b81fb39ed5",
+          "source": "docker/dockerfile:1.10@sha256:865e5dd094beca432e8c0a1d5e1c465db5f998dca4e439981029b3b81fb39ed5"
+        },
+        "locals": [
+          {
+            "name": "context"
+          },
+          {
+            "name": "dockerfile"
+          }
+        ]
+      },
+      "environment": {
+        "platform": "linux/amd64",
+        "ProvenanceCustomEnv": null
+      }
+    }
+  },
+  "buildx.build.ref": "default/default/b02qano380g7uz94cbxadf5gw",
+  "containerimage.descriptor": {
+    "mediaType": "application/vnd.oci.image.index.v1+json",
+    "digest": "sha256:625712039617ebf4a00eeb843f0999cfd4337acb21f4e34bc986d7d1bf9d76c7",
+    "size": 856,
+    "annotations": {
+      "org.opencontainers.image.created": "2026-09-23T14:40:38Z"
+    }
+  },
+  "containerimage.digest": "sha256:625712039617ebf4a00eeb843f0999cfd4337acb21f4e34bc986d7d1bf9d76c7",
+  "image.name": "docker.io/library/cvg-mel23-api:mel23-015-20260923-r4-oci-export"
+}

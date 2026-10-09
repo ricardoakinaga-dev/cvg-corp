@@ -40,6 +40,7 @@ test("API failure codes are translated to operator distinctions", () => {
   assert.match(failureMessageForError(build("OUTCOME_UNKNOWN", 503)), /reconciliação/);
   assert.match(failureMessageForError(build("DEPENDENCY_UNAVAILABLE", 503)), /temporariamente indisponível/);
   assert.match(failureMessageForError(build("POLICY_DENIED")), /não permitida/);
+  assert.match(failureMessageForError(build("DIVERGENT")), /identificadores/);
   assert.match(failureMessageForError(new TypeError("fetch failed")), /Falha de rede/);
 });
 
@@ -85,4 +86,32 @@ test("unknown tools are presented as unknown risk, never as safe", () => {
   assert.equal(preview.risk, "UNKNOWN");
   assert.match(preview.effect, /desconhecido/);
   assert.match(preview.preview, /sem conteúdo/);
+});
+
+test("availability presentations distinguish ready, disabled and unknown", () => {
+  assert.match(availabilityPresentation("READY").label, /disponível/);
+  assert.match(availabilityPresentation("DISABLED").message, /desabilitada/);
+  assert.match(availabilityPresentation("UNKNOWN").label, /desconhecido/);
+});
+
+test("remaining API failure codes keep operator-facing distinctions", () => {
+  const build = (code: string) => new ApiError("interno", { status: 409, code, correlationId: "c", details: null });
+  assert.match(failureMessageForError(build("APPROVAL_REPLAY")), /já foi consumida/);
+  assert.match(failureMessageForError(build("DENIED_STALE_FENCE")), /outra instância/);
+  assert.match(failureMessageForError(build("ADMISSION_IN_PROGRESS")), /turno em execução/);
+  assert.match(failureMessageForError(build("QUARANTINED")), /retido por segurança/);
+  assert.match(failureMessageForError(build("UNMAPPED_CODE")), /interno/);
+  assert.match(failureMessageForError(new Error("erro genérico")), /erro genérico/);
+  assert.match(failureMessageForError("texto"), /indisponível/);
+});
+
+test("remaining turn outcomes present actionable guidance", () => {
+  assert.equal(outcomeFromTurn({ status: "RUNNING", approval: false, quarantined: false }), "DEPENDENCY_UNAVAILABLE");
+  assert.match(outcomePresentation("READY").label, /pronto/);
+  assert.match(outcomePresentation("NEEDS_REVIEW").message, /revise/);
+  assert.match(outcomePresentation("MISSING_INFORMATION").message, /não adivinhou/);
+  assert.equal(outcomePresentation("POLICY_BLOCKED").tone, "coral");
+  assert.match(outcomePresentation("LIMIT_REACHED").message, /limite/);
+  assert.match(outcomePresentation("DEPENDENCY_UNAVAILABLE").label, /indisponível/);
+  assert.match(outcomePresentation("QUARANTINED").message, /não confiável/);
 });

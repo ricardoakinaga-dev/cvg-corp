@@ -91,6 +91,18 @@ async function main(): Promise<void> {
 
 await main().catch((error: unknown) => {
   const name = error instanceof Error ? error.name : "UnknownError";
-  process.stderr.write(`worker failed closed: ${name}\n`);
+  let message = error instanceof Error ? error.message : "Unknown failure";
+  if (process.env.NODE_ENV !== "production" && error instanceof Error) {
+    const frames = error.stack?.split("\n").slice(1, 7).join(" <- ");
+    if (frames) message = `${message} (${frames})`;
+  }
+  for (const [key, value] of Object.entries(process.env)) {
+    if (value && /(?:PASSWORD|TOKEN|SECRET|API_KEY)/i.test(key)) message = message.replaceAll(value, "[redacted]");
+  }
+  message = message
+    .replace(/\b(?:postgres(?:ql)?|https?):\/\/[^\s"'<>]+/gi, "[redacted-url]")
+    .replace(/[\r\n\t]+/g, " ")
+    .slice(0, 1_000);
+  process.stderr.write(`worker failed closed: ${name}: ${message}\n`);
   process.exitCode = 1;
 });

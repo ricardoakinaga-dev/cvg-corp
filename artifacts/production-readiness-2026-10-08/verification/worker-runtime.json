@@ -1,0 +1,13 @@
+{
+  "name": "worker-runtime",
+  "command": [
+    "npm",
+    "run",
+    "verify:worker-runtime"
+  ],
+  "exit_status": 0,
+  "started_at": "2026-10-08T05:52:13.971613+00:00",
+  "duration_s": 0.8,
+  "log": "artifacts/production-readiness-2026-10-08/verification/worker-runtime.log",
+  "log_sha256": "e75bb2c5bac027cb80aa14fb4d584366f3ab414bb5d7be0c00cfe4c244fa264f"
+}

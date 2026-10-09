@@ -160,5 +160,5 @@ test("local provider declares on-prem data policy and works without credentials"
 
 test("local provider rejects insecure configuration unless explicitly allowed", () => {
   assert.throws(() => createLocalModelProvider({ baseUrl: "http://localhost:1234", model: "m", allowInsecureHttp: false }));
-  assert.throws(() => new MockModelProvider({}) && createDeepSeekModelProvider({ apiKeyResolver: () => "k", baseUrl: "ftp://api.deepseek.com" }));
+  assert.throws(() => createDeepSeekModelProvider({ apiKeyResolver: () => "k", baseUrl: "ftp://api.deepseek.com" }));
 });

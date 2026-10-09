@@ -9,7 +9,7 @@ import { DeepSeekHarnessAdapter, MockHarnessAdapter } from "@cvg/harness-adapter
 import { ConfigError, WorkerConfigError, loadCvgConfig, loadWorkerConfig } from "@cvg/config";
 import { assertProductionRuntimeOverrides, createRuntime, MemoryRateLimiter } from "@cvg/api";
 import { EnvironmentSecretProvider } from "@cvg/integrations";
-import { ApiError, createApiClient, isContextRevalidationError, isPermissionDeniedError, isStaleDataError } from "../../apps/web/src/api/client.ts";
+import { ApiError, ClientWriteBlockedError, createApiClient, isContextRevalidationError, isPermissionDeniedError, isStaleDataError } from "../../apps/web/src/api/client.ts";
 import { canRenderContextData, isWriteAllowed, RUNTIME_STATES, runtimeStateReducer, type RuntimeSnapshot } from "../../apps/web/src/state/runtime-state.ts";
 
 function contextFor(store: CvgStore, purpose: string) {
@@ -193,6 +193,27 @@ test("DeepSeek adapter fails closed when the harness omits mandatory capabilitie
   await assert.rejects(() => adapter.createSession(contextFor(new CvgStore({ bootstrapPassword: "synthetic-password-123" }), "OPERATIONS"), { purpose: "OPERATIONS", patientId: null, encounterId: null }));
 });
 
+test("DeepSeek adapter bounds the bridge response body instead of buffering it whole", async () => {
+  const health = { status: "READY", engineCommit: "approved-commit", manifestVersion: "approved-manifest", tools: [], supports: { cancellation: true, approvals: true, replay: true, provenance: true } };
+  const config = { baseUrl: "http://127.0.0.1:9996", expectedEngineCommit: "approved-commit", expectedManifestVersion: "approved-manifest", expectedToolNames: [], requestTimeoutMs: 500, allowInsecureHttp: true, maxResponseBodyBytes: 4_096 };
+  let pulled = 0;
+  const oversized = new ReadableStream<Uint8Array>({
+    pull(controller) {
+      pulled += 1;
+      if (pulled > 1_000) controller.close();
+      else controller.enqueue(new TextEncoder().encode(" ".repeat(1_024)));
+    }
+  });
+  const streamed = await new DeepSeekHarnessAdapter(config, async () => new Response(oversized, { status: 200 })).health();
+  assert.equal(streamed.status, "UNAVAILABLE");
+  assert.match(streamed.reason ?? "", /acima do limite/);
+  assert.ok(pulled < 20, `reader stopped near the budget, pulled=${pulled}`);
+  const declared = await new DeepSeekHarnessAdapter(config, async () => new Response("{}", { status: 200, headers: { "content-length": "999999" } })).health();
+  assert.match(declared.reason ?? "", /acima do limite/);
+  const withinBudget = await new DeepSeekHarnessAdapter(config, async () => new Response(JSON.stringify(health), { status: 200 })).health();
+  assert.equal(withinBudget.status, "READY");
+});
+
 test("DeepSeek adapter never sends a request without a resolved credential", async () => {
   let calls = 0;
   const adapter = new DeepSeekHarnessAdapter({ baseUrl: "http://127.0.0.1:9998", expectedEngineCommit: "approved-commit", expectedManifestVersion: "approved-manifest", expectedToolNames: [], requestTimeoutMs: 500, allowInsecureHttp: true, resolveBearerToken: async () => null }, async () => {
@@ -218,10 +239,21 @@ test("typed configuration rejects unknown CVG keys and insecure production", () 
     NODE_ENV: "production", CVG_HOST: "0.0.0.0", CVG_DEMO_MODE: "false", CVG_WEB_ORIGIN: "https://example.test", CVG_RELEASE_SHA: "0123456789abcdef0123456789abcdef01234567", CVG_RELEASE_ARTIFACT_DIGEST: "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef", CVG_STORAGE: "postgres", DATABASE_URL: "postgresql://cvg_runtime:password@db.example.test/cvg", CVG_SECRET_PROVIDER: "file", CVG_AUTH_MFA_MODE: "required", CVG_DEEPSEEK_RUNTIME_ENABLED: "true", CVG_DEEPSEEK_BASE_URL: "https://harness.example.test", CVG_DEEPSEEK_EXPECTED_ENGINE_COMMIT: "abcdefabcdefabcdefabcdefabcdefabcdefabcd", CVG_DEEPSEEK_EXPECTED_MANIFEST_VERSION: "approved", CVG_DEEPSEEK_BEARER_TOKEN_REF: "harness.token", CVG_DEEPSEEK_CONTEXT_SIGNING_SECRET_REF: "harness.context", CVG_RATE_LIMIT_BACKEND: "distributed", CVG_TRUST_PROXY: "true", CVG_TRUSTED_PROXY_IPS: "loopback"
   };
   assert.doesNotThrow(() => loadCvgConfig(production));
+  assert.deepEqual(loadCvgConfig({ ...production, CVG_MESSAGING_BLOCKED_IPV6_PREFIXES: "2001:4860:100::/48, 64:ff9b::/96" }).messagingBlockedIpv6Prefixes, ["2001:4860:100::/48", "64:ff9b::/96"]);
+  assert.throws(() => loadCvgConfig({ ...production, CVG_MESSAGING_BLOCKED_IPV6_PREFIXES: "not-a-cidr" }), (error: unknown) => error instanceof ConfigError);
   assert.deepEqual(loadCvgConfig({ ...production, CVG_TRUSTED_PROXY_IPS: "10.0.0.0/8,loopback" }).trustedProxyIps, ["10.0.0.0/8", "loopback"]);
   assert.throws(() => loadCvgConfig({ ...production, CVG_TRUSTED_PROXY_IPS: "" }), (error: unknown) => error instanceof ConfigError);
   assert.throws(() => loadCvgConfig({ ...production, CVG_DEEPSEEK_EXPECTED_ENGINE_COMMIT: "0000000000000000000000000000000000000000" }), (error: unknown) => error instanceof ConfigError);
   assert.throws(() => loadCvgConfig({ ...production, CVG_RELEASE_ARTIFACT_DIGEST: "sha256:not-a-digest" }), (error: unknown) => error instanceof ConfigError);
+  // SEC-AI-04: production with AI explicitly disabled needs no DeepSeek integration;
+  // every other runtime mode still refuses the local mock.
+  const withoutAi = Object.fromEntries(Object.entries(production).filter(([key]) => !key.startsWith("CVG_DEEPSEEK_")));
+  const disabled = loadCvgConfig({ ...withoutAi, CVG_AGENT_RUNTIME: "disabled", CVG_DEEPSEEK_RUNTIME_ENABLED: "false" });
+  assert.equal(disabled.agentRuntimeMode, "disabled");
+  assert.equal(disabled.deepseekRuntimeEnabled, false);
+  for (const mode of ["auto", "external", "embedded"]) {
+    assert.throws(() => loadCvgConfig({ ...withoutAi, CVG_AGENT_RUNTIME: mode, CVG_DEEPSEEK_RUNTIME_ENABLED: "false" }), (error: unknown) => error instanceof ConfigError, mode);
+  }
 });
 
 test("worker configuration has a role-specific production contract", () => {
@@ -240,11 +272,13 @@ test("worker configuration has a role-specific production contract", () => {
     CVG_SECRET_PROVIDER: "file",
     CVG_MESSAGING_PROVIDER_ENDPOINT: "https://provider.example.test",
     CVG_MESSAGING_PROVIDER_ALLOWED_HOSTS: "provider.example.test",
+    CVG_MESSAGING_BLOCKED_IPV6_PREFIXES: "2001:4860:100::/48",
     CVG_MESSAGING_CREDENTIAL_REF: "provider.credential"
   });
   assert.equal(worker.nodeEnv, "production");
   assert.equal(worker.storageMode, "postgres");
   assert.equal(worker.workerSinkMode, "enabled");
+  assert.deepEqual(worker.messagingBlockedIpv6Prefixes, ["2001:4860:100::/48"]);
   assert.throws(() => loadWorkerConfig({
     NODE_ENV: "production",
     CVG_STORAGE: "postgres",
@@ -397,6 +431,27 @@ test("permission and stale states remain stable until an explicit retry", () => 
   assert.equal(retry.state, RUNTIME_STATES.REVALIDATING);
   assert.equal(retry.reconnectVersion, 3);
   assert.equal(runtimeStateReducer(stale, { type: "NETWORK_ONLINE" }).state, RUNTIME_STATES.REVALIDATING);
+});
+
+test("revalidating runtime blocks business writes but still lets logout revoke the server session", async () => {
+  const originalFetch = globalThis.fetch;
+  const requested: string[] = [];
+  globalThis.fetch = async (input) => {
+    requested.push(String(input));
+    const data = { sessionId: "00000000-0000-4000-8000-0000000000aa", localState: "SIGNED_OUT", serverRevocation: "CONFIRMED", serverAttempted: true, serverObservation: { status: "REVOKED", observedAt: "2026-10-08T12:00:00.000Z" }, retryable: false, correlationId: "logout-revalidating" };
+    return new Response(JSON.stringify({ schemaVersion: 1, data, correlationId: "logout-revalidating" }), { status: 200, headers: { "content-type": "application/json" } });
+  };
+  try {
+    for (const state of [RUNTIME_STATES.REVALIDATING, RUNTIME_STATES.CONTEXT_INVALID]) {
+      const client = createApiClient(() => state);
+      await assert.rejects(() => client.request("/patients", { method: "POST", body: "{}" }), ClientWriteBlockedError);
+      const result = await client.request<{ serverRevocation?: string }>("/auth/logout", { method: "POST" });
+      assert.equal(result.serverRevocation, "CONFIRMED");
+    }
+    assert.deepEqual(requested.map((url) => new URL(url, "http://local").pathname), ["/api/v1/auth/logout", "/api/v1/auth/logout"]);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
 
 test("initial authentication failure remains a login state instead of a session-expired state", async () => {

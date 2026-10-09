@@ -88,4 +88,13 @@ test("production verification rejects insecure, placeholder and disabled product
     assert.match(output, expected, name);
     assert.equal(output.includes("PASS release artifacts"), false, name);
   }
+
+  // SEC-AI-04: the explicit no-AI contingency drops only the model prerequisites.
+  const aiDisabled: NodeJS.ProcessEnv = { ...base, CVG_AGENT_RUNTIME: "disabled", CVG_DEEPSEEK_RUNTIME_ENABLED: "false" };
+  for (const key of Object.keys(aiDisabled)) if (key.startsWith("CVG_DEEPSEEK_") && key !== "CVG_DEEPSEEK_RUNTIME_ENABLED") delete aiDisabled[key];
+  const disabledOutput = (() => { const result = runProductionVerification(aiDisabled); return `${result.stdout}\n${result.stderr}`; })();
+  assert.doesNotMatch(disabledOutput, /production configuration: CVG_DEEPSEEK_|mock runtime must be disabled/);
+  const autoOutput = (() => { const result = runProductionVerification({ ...aiDisabled, CVG_AGENT_RUNTIME: "auto" }); return `${result.stdout}\n${result.stderr}`; })();
+  assert.match(autoOutput, /CVG_DEEPSEEK_BASE_URL is required/);
+  assert.match(autoOutput, /mock runtime must be disabled/);
 });

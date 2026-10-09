@@ -1,0 +1,339 @@
+{
+  "schema": "cvg-mel24-aud27-reconciliation/v1",
+  "as_of": "2026-09-24",
+  "generated_for": "docs/auditoria-repositorio-2026-09-24.md",
+  "authority": ".agent/backlog.json#items",
+  "source_backlog": "docs/backlog-2026-09-24.md",
+  "source_sha256": "d1bbe9bba7730ae58adaddfe612bf7d812f7263230558c97063c4c36eac507ed",
+  "aud27_reference": "docs/backlog-melhorias-cvg-aud27-2026-09-21.md",
+  "aud27_reference_sha256": "ae36a0235e6a15d968b964496c6563d24f84e802ae41905f62d7616a545e279a",
+  "mel23_reference": "docs/backlog-2026-09-23.md",
+  "mel23_reference_sha256": "af8ea7b2e112c174f36d815b0e75690644f855ddfa819102a29b08b2a724bb5a",
+  "execution_status_in_this_file": "NONE",
+  "status_note": "Status de execução pertence exclusivamente a .agent/backlog.json#items. Este arquivo é apenas o crosswalk MEL24→AUD27/MEL23: não importa, não reclassifica e não marca nenhum item como DONE, PARTIAL, BLOCKED ou equivalente. Todo MEL24 permanece PROPOSTO até importação append-only pelo fluxo de .agent.",
+  "dependency_note": "depends_on usa IDs MEL24 completos para dependências de item e rótulos M0–M6 para dependência de marco (todos os gates obrigatórios do marco, conforme regra 2 de docs/backlog-2026-09-24.md). O marco de cada item é informativo e reproduz docs/backlog-2026-09-24.md.",
+  "reconciliation_method": "Cada MEL24 é anexado a uma tarefa AUD27 existente (aud27_task) e, quando havia equivalente na rodada anterior, ao requisito MEL23 correspondente (mel23_id). Nenhuma nova tarefa AUD27 é criada. relation=DIRECT quando a tarefa cobre o requisito; SUBSCOPE quando o MEL24 é um recorte verificável de escopo maior; ACCEPTANCE_ADDITION quando o requisito vira critério/evidência adicional da tarefa-pai. A importação para .agent só pode ocorrer depois deste crosswalk (MEL24-030).",
+  "requirements": [
+    {
+      "mel24_id": "MEL24-001",
+      "priority": "P0",
+      "marco": "M0",
+      "depends_on": [],
+      "aud27_task": "AUD27-004",
+      "mel23_id": "MEL23-003",
+      "relation": "DIRECT"
+    },
+    {
+      "mel24_id": "MEL24-002",
+      "priority": "P0",
+      "marco": "M0",
+      "depends_on": [
+        "MEL24-001"
+      ],
+      "aud27_task": "AUD27-018",
+      "mel23_id": "MEL23-025",
+      "relation": "DIRECT"
+    },
+    {
+      "mel24_id": "MEL24-003",
+      "priority": "P0",
+      "marco": "M0",
+      "depends_on": [],
+      "aud27_task": "AUD27-020",
+      "mel23_id": "MEL23-032",
+      "relation": "SUBSCOPE"
+    },
+    {
+      "mel24_id": "MEL24-004",
+      "priority": "P0",
+      "marco": "M0",
+      "depends_on": [],
+      "aud27_task": "AUD27-014",
+      "mel23_id": "MEL23-010",
+      "relation": "SUBSCOPE"
+    },
+    {
+      "mel24_id": "MEL24-005",
+      "priority": "P0",
+      "marco": "M0",
+      "depends_on": [],
+      "aud27_task": "AUD27-004",
+      "mel23_id": null,
+      "relation": "ACCEPTANCE_ADDITION"
+    },
+    {
+      "mel24_id": "MEL24-006",
+      "priority": "P0",
+      "marco": "M0",
+      "depends_on": [
+        "MEL24-001"
+      ],
+      "aud27_task": "AUD27-015",
+      "mel23_id": null,
+      "relation": "SUBSCOPE"
+    },
+    {
+      "mel24_id": "MEL24-007",
+      "priority": "P0",
+      "marco": "M1",
+      "depends_on": [
+        "M0"
+      ],
+      "aud27_task": "AUD27-004",
+      "mel23_id": "MEL23-004",
+      "relation": "DIRECT"
+    },
+    {
+      "mel24_id": "MEL24-008",
+      "priority": "P0",
+      "marco": "M1",
+      "depends_on": [
+        "MEL24-007"
+      ],
+      "aud27_task": "AUD27-005",
+      "mel23_id": "MEL23-005",
+      "relation": "SUBSCOPE"
+    },
+    {
+      "mel24_id": "MEL24-009",
+      "priority": "P0",
+      "marco": "M1",
+      "depends_on": [
+        "MEL24-007"
+      ],
+      "aud27_task": "AUD27-003",
+      "mel23_id": "MEL23-042",
+      "relation": "SUBSCOPE"
+    },
+    {
+      "mel24_id": "MEL24-010",
+      "priority": "P0",
+      "marco": "M2",
+      "depends_on": [
+        "M0"
+      ],
+      "aud27_task": "AUD27-011",
+      "mel23_id": "MEL23-008",
+      "relation": "SUBSCOPE"
+    },
+    {
+      "mel24_id": "MEL24-011",
+      "priority": "P0",
+      "marco": "M2",
+      "depends_on": [
+        "MEL24-010"
+      ],
+      "aud27_task": "AUD27-011",
+      "mel23_id": "MEL23-011",
+      "relation": "SUBSCOPE"
+    },
+    {
+      "mel24_id": "MEL24-012",
+      "priority": "P0",
+      "marco": "M2",
+      "depends_on": [
+        "MEL24-010"
+      ],
+      "aud27_task": "AUD27-011",
+      "mel23_id": "MEL23-012",
+      "relation": "SUBSCOPE"
+    },
+    {
+      "mel24_id": "MEL24-013",
+      "priority": "P0",
+      "marco": "M3",
+      "depends_on": [
+        "M0"
+      ],
+      "aud27_task": "AUD27-016",
+      "mel23_id": "MEL23-014",
+      "relation": "SUBSCOPE"
+    },
+    {
+      "mel24_id": "MEL24-014",
+      "priority": "P0",
+      "marco": "M3",
+      "depends_on": [
+        "MEL24-013"
+      ],
+      "aud27_task": "AUD27-016",
+      "mel23_id": "MEL23-013",
+      "relation": "DIRECT"
+    },
+    {
+      "mel24_id": "MEL24-015",
+      "priority": "P0",
+      "marco": "M3",
+      "depends_on": [
+        "MEL24-007"
+      ],
+      "aud27_task": "AUD27-015",
+      "mel23_id": "MEL23-015",
+      "relation": "SUBSCOPE"
+    },
+    {
+      "mel24_id": "MEL24-016",
+      "priority": "P0",
+      "marco": "M3",
+      "depends_on": [
+        "MEL24-015"
+      ],
+      "aud27_task": "AUD27-017",
+      "mel23_id": "MEL23-016",
+      "relation": "SUBSCOPE"
+    },
+    {
+      "mel24_id": "MEL24-017",
+      "priority": "P1",
+      "marco": "M4",
+      "depends_on": [
+        "M0"
+      ],
+      "aud27_task": "AUD27-019",
+      "mel23_id": "MEL23-027",
+      "relation": "SUBSCOPE"
+    },
+    {
+      "mel24_id": "MEL24-018",
+      "priority": "P1",
+      "marco": "M4",
+      "depends_on": [
+        "MEL24-017"
+      ],
+      "aud27_task": "AUD27-019",
+      "mel23_id": "MEL23-029",
+      "relation": "DIRECT"
+    },
+    {
+      "mel24_id": "MEL24-019",
+      "priority": "P1",
+      "marco": "M4",
+      "depends_on": [
+        "MEL24-002"
+      ],
+      "aud27_task": "AUD27-018",
+      "mel23_id": "MEL23-025",
+      "relation": "DIRECT"
+    },
+    {
+      "mel24_id": "MEL24-020",
+      "priority": "P1",
+      "marco": "M5",
+      "depends_on": [
+        "MEL24-007"
+      ],
+      "aud27_task": "AUD27-022",
+      "mel23_id": "MEL23-017",
+      "relation": "ACCEPTANCE_ADDITION"
+    },
+    {
+      "mel24_id": "MEL24-021",
+      "priority": "P1",
+      "marco": "M2",
+      "depends_on": [
+        "MEL24-009"
+      ],
+      "aud27_task": "AUD27-003",
+      "mel23_id": "MEL23-041",
+      "relation": "SUBSCOPE"
+    },
+    {
+      "mel24_id": "MEL24-022",
+      "priority": "P1",
+      "marco": "M5",
+      "depends_on": [
+        "MEL24-020"
+      ],
+      "aud27_task": "AUD27-022",
+      "mel23_id": "MEL23-018",
+      "relation": "ACCEPTANCE_ADDITION"
+    },
+    {
+      "mel24_id": "MEL24-023",
+      "priority": "P1",
+      "marco": "M4",
+      "depends_on": [
+        "MEL24-001"
+      ],
+      "aud27_task": "AUD27-022",
+      "mel23_id": "MEL23-035",
+      "relation": "ACCEPTANCE_ADDITION"
+    },
+    {
+      "mel24_id": "MEL24-024",
+      "priority": "P1",
+      "marco": "M3",
+      "depends_on": [
+        "MEL24-009"
+      ],
+      "aud27_task": "AUD27-002",
+      "mel23_id": "MEL23-050",
+      "relation": "ACCEPTANCE_ADDITION"
+    },
+    {
+      "mel24_id": "MEL24-025",
+      "priority": "P1",
+      "marco": "M5",
+      "depends_on": [
+        "MEL24-020"
+      ],
+      "aud27_task": "AUD27-021",
+      "mel23_id": "MEL23-036",
+      "relation": "DIRECT"
+    },
+    {
+      "mel24_id": "MEL24-026",
+      "priority": "P1",
+      "marco": "M5",
+      "depends_on": [
+        "MEL24-011",
+        "MEL24-020"
+      ],
+      "aud27_task": "AUD27-022",
+      "mel23_id": "MEL23-038",
+      "relation": "DIRECT"
+    },
+    {
+      "mel24_id": "MEL24-027",
+      "priority": "P1",
+      "marco": "M5",
+      "depends_on": [
+        "MEL24-020"
+      ],
+      "aud27_task": "AUD27-021",
+      "mel23_id": null,
+      "relation": "ACCEPTANCE_ADDITION"
+    },
+    {
+      "mel24_id": "MEL24-028",
+      "priority": "P2",
+      "marco": "M6",
+      "depends_on": [
+        "M0–M5"
+      ],
+      "aud27_task": "AUD27-025",
+      "mel23_id": "MEL23-020",
+      "relation": "DIRECT"
+    },
+    {
+      "mel24_id": "MEL24-029",
+      "priority": "P2",
+      "marco": "M6",
+      "depends_on": [
+        "MEL24-028"
+      ],
+      "aud27_task": "AUD27-027",
+      "mel23_id": "MEL23-020",
+      "relation": "SUBSCOPE"
+    },
+    {
+      "mel24_id": "MEL24-030",
+      "priority": "P2",
+      "marco": "M0",
+      "depends_on": [],
+      "aud27_task": "AUD27-001",
+      "mel23_id": null,
+      "relation": "ACCEPTANCE_ADDITION"
+    }
+  ]
+}

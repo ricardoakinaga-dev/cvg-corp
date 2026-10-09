@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "captured_at": "2026-09-24T09:51:12.292Z",
+  "source_sha": "c990914148a8f375082cd12bbdb2ad20cfe1900f",
+  "observed_subject_fingerprint": "sha256:ff3c001b92c0b834e06e407f91943037e91940442abe37c57a988e90e8520eab",
+  "candidate_fingerprint": null,
+  "fingerprint_status": "UNFROZEN_UNTIL_AUD27-004",
+  "frozen_candidate_claimed": false,
+  "command_results": [
+    {
+      "command": "npm run test:e2e:smoke",
+      "exit_status": 0,
+      "expected_exit_status": 0,
+      "observed": "332 passed, 22 skipped, 0 failed; 354 total across Chromium/Firefox viewports and Chromium accessibility stress.",
+      "evidence_artifact": "e2e-smoke-current.log",
+      "evidence_sha256": "01e58ac95db3a098bbdd88c9e2ea8c494434c29899ebc758f770d44d3b6895ba"
+    },
+    {
+      "command": "npm run audit:contrast",
+      "exit_status": 0,
+      "expected_exit_status": 0,
+      "observed": "12 static WCAG 2.x token pairs checked; 0 failed. Rendered gradients/images/user content remain outside scope.",
+      "evidence_artifact": "contrast-current.log",
+      "evidence_sha256": "0d1f7e7ad46d85d3c96e4a5965cfece4b5b51be644c5734c7a108cddd60395ef"
+    }
+  ],
+  "limitations": [
+    "Local dirty-subject Playwright smoke uses synthetic in-memory API/web servers on ephemeral loopback ports.",
+    "WebKit and CI reproduction were not included.",
+    "Automated axe/focus/reflow tests are not human assistive-technology acceptance.",
+    "Static token-pair contrast does not replace comprehensive rendered-state review."
+  ]
+}

@@ -1,0 +1,230 @@
+{
+  "schema_version": 2,
+  "project": "CVG-Corp",
+  "goal": "Preparação local para produção: correções, rotas, integrações, banco, migrations e limpeza comprovada",
+  "project_profile": "BROWNFIELD",
+  "work_mode": "EVOLUTION",
+  "work_mode_overlays": [
+    "SECURITY",
+    "MIGRATION",
+    "INTEGRATION",
+    "AUDIT"
+  ],
+  "lifecycle_stage": "BUILD",
+  "active_activity": "BUILD",
+  "engineering_tier": "T4_CONTROLS",
+  "risk_level": "CRITICAL",
+  "blast_radius": "SYSTEM",
+  "status": "IN_PROGRESS",
+  "active_execplan": ".agent/plans/2026-10-04-production-hardening.md",
+  "active_task": "AUD27-001",
+  "verification_state": "PRODUCTION_HARDENING_IN_PROGRESS_PROMOTION_BLOCKED",
+  "candidate_fingerprint": null,
+  "fingerprint_status": "UNFROZEN_UNTIL_AUD27-004",
+  "repository_state": "Modified local source; prior frozen-candidate qualification is historical.",
+  "instruction_scope_refs": [
+    "docs/prompt-state-of-the-art-triplo-aaa.md",
+    "docs/prompt-state-of-the-art-triplo-aaa-2026-09-09-v2.txt",
+    "docs/final-closure-audit.md",
+    "docs/architecture-audit-vNext.md",
+    "docs/00-quality-bar-v1.md",
+    "docs/01-prd-cvg.md",
+    "docs/02-arquitetura-alvo.md",
+    "docs/03-dominio-dados-contratos.md",
+    "docs/04-motor-deepseek-e-plugins.md",
+    "docs/05-seguranca-privacidade.md",
+    "docs/06-operacao-qualidade-e-recuperacao.md",
+    "docs/07-plano-execucao.md",
+    "docs/08-rastreabilidade-e-decisoes.md",
+    "docs/10-preparacao-m1.md",
+    "docs/11-transicao-para-producao.md",
+    "docs/12-estado-da-implementacao.md",
+    ".gauntlet/bar-v3.json",
+    "/home/ricardo/deepseek-harness/AGENTS.md",
+    "/home/ricardo/deepseek-harness/docs/architecture.md",
+    "docs/prompt-final-operational-proof-2026-09-10.txt",
+    "docs/final-operational-proof-audit.md",
+    ".gauntlet/bar-v4.json",
+    "docs/plano-triplo-aaa-pos-entrega-2026-09-13/backlog.json",
+    "docs/plano-triplo-aaa-pos-entrega-2026-09-13/rastreabilidade.md",
+    "docs/plano-triplo-aaa-pos-entrega-2026-09-13/qualidade-e-execucao.md",
+    ".agent/plans/2026-09-13-aaa2.md",
+    "docs/auditoria-resultado-cvg-aud21-013-2026-09-20.md",
+    "docs/roadmap-melhorias-cvg-aud22-2026-09-20.md",
+    "docs/backlog-melhorias-cvg-aud22-2026-09-20.md"
+  ],
+  "last_gate_record": "VER-CVG-AUD27-001-RECOVERY-20261004",
+  "last_event_id": "EVT-CVG-AUD27-001-RECOVERY-20261004",
+  "state_revision": 624,
+  "latest_evidence_note": "Baseline reproduced and append-only recovery recorded; current validation pending.",
+  "historical_checkpoint": {
+    "commit": "e43b3b0032aafb9d17563b1fce00fbae88ee0d51",
+    "worktree": "modified",
+    "scope": "recovery-boundary raw authentication-shape, temporal and durable-ledger digest validation with final local regression and fresh 15-category gauntlet",
+    "result": "PASS_WITH_LIMITATIONS",
+    "evidence": "VER-CVG-268",
+    "priorRecord": "VER-CVG-267",
+    "snapshotRunId": "76518144d894beed7821e79789531bbe101c80db1ada5883303d161647c71ea4",
+    "critic": ".gauntlet/critique-final-gauntlet-20260911-VER268.md",
+    "globalVerdict": "AAA_NOT_PROVEN",
+    "remote": "NOT_RUN for current worktree",
+    "promotion": "BLOCKED",
+    "snapshotSha256": "23c302c622488335e2152212d81e26862854a4b5f1ca5ee807e53ce501ffcd50",
+    "localArtifactSha256": "bc0807b388a59ab906e35a1a66a7acec208433451a81d03cadad18d599748034",
+    "tripleArtifactSha256": "a20b88c3ca8a827ba0210b792a807072fe1d5f49e1f952167b85827a0cb35818"
+  },
+  "current_checkpoint": {
+    "task": "AUD27-001",
+    "action": "AUD27-001:SEMANTIC-RECONCILIATION",
+    "plan": ".agent/plans/2026-10-04-production-hardening.md",
+    "fingerprint": null,
+    "fingerprint_status": "UNFROZEN_UNTIL_AUD27-004",
+    "sourceSha": "9aab406b164497978b05dd3aa431db49ad11677a",
+    "worktree": "modified",
+    "evidence": "VER-CVG-AUD27-001-RECOVERY-20261004",
+    "result": "IN_PROGRESS",
+    "globalVerdict": "AAA_NOT_PROVEN",
+    "limitations": [
+      "Local mutable working tree; no clean candidate freeze or production deployment.",
+      "Historical receipts remain intact and do not qualify changed source.",
+      "Actual providers, target TLS/secret authority, managed backup and release authority require environment-specific validation."
+    ]
+  },
+  "current_evidence_note": "Baseline reproduced and append-only recovery recorded; current validation pending.",
+  "post_observation_checkpoint": {
+    "commit": "5d09f25a224faecdd75631fdd7070e3fc8b14fda",
+    "scope": "durable-command-idempotency-post-ci-observation",
+    "remote_ci": {
+      "run": "34487688940",
+      "conclusion": "success",
+      "main_job": "102906073863",
+      "image_job": "102909026577"
+    },
+    "local_regression": "VER-CVG-139 PASS_WITH_LIMITATIONS",
+    "critic": "VER-CVG-140 NOT_COMPLETED; no approval",
+    "next_gate": "CVG-FULL-STATE-OF-THE-ART:EXTERNAL-EVIDENCE-AND-HUMAN-ACCEPTANCE"
+  },
+  "blocked_by": [
+    "external DeepSeek/model execution not authorized (BLOCKED_EXTERNAL)",
+    "no authorized staging, real provider, secret authority, TLS, telemetry collector, load/chaos/recovery environment",
+    "CVG-AUD19-030 requires human release authority",
+    "staging PostgreSQL multi-instance, managed backup/restore and RTO/RPO remain external (local real PostgreSQL 16 proof is LOCAL_REAL)",
+    "no signed evidence bundle or human approval at this state",
+    "AUD27-004 clean candidate freeze remains unauthorized while the worktree is dirty.",
+    "AUD27-005 external root exists with a LOCAL_SYNTHETIC_ONLY package; independent anchor, authority and recovery are unavailable",
+    "AUD27-026 external gates and AUD27-027 human decision are not available"
+  ],
+  "human_approval_required": [
+    "production release, real data, real provider, credential handling, break-glass, retention/residency, RTO/RPO/SLO and residual high/critical risk"
+  ],
+  "updated_at": "2026-10-04T10:55:09.479Z",
+  "latest_remote_observation": {
+    "run": "34503647191",
+    "sha": "539d34e48e4b94d83d161797219bbc95fb43fec4",
+    "status": "completed",
+    "conclusion": "success",
+    "jobs": "102960325660 Typecheck, tests and release artifacts success; 102962889899 Build API and web images success; public run page status Success",
+    "artifacts": [
+      "cvg-verification-539d34e48e4b94d83d161797219bbc95fb43fec4",
+      "cvg-browser-e2e-539d34e48e4b94d83d161797219bbc95fb43fec4"
+    ],
+    "url": "https://github.com/ricardoakinaga-dev/cvg-corp/actions/runs/34503647191",
+    "limitations": "Remote CI is not staging or external provider/DeepSeek/secret authority. Operational Collector/SLO, production-like load/chaos/recovery, staging browser/assistive-tech/real-zoom matrix and human acceptance remain absent",
+    "observed_at": "2026-09-10T13:50:43-03:00"
+  },
+  "next_gate": "AUD27-001:SEMANTIC-RECONCILIATION",
+  "active_action_id": "AUD27-001:SEMANTIC-RECONCILIATION",
+  "active_checkpoint": {
+    "task": "AUD27-001",
+    "action": "AUD27-001:SEMANTIC-RECONCILIATION",
+    "plan": ".agent/plans/2026-10-04-production-hardening.md",
+    "fingerprint": null,
+    "fingerprint_status": "UNFROZEN_UNTIL_AUD27-004",
+    "sourceSha": "9aab406b164497978b05dd3aa431db49ad11677a",
+    "worktree": "modified",
+    "evidence": "VER-CVG-AUD27-001-RECOVERY-20261004",
+    "result": "IN_PROGRESS",
+    "globalVerdict": "AAA_NOT_PROVEN",
+    "limitations": [
+      "Local mutable working tree; no clean candidate freeze or production deployment.",
+      "Historical receipts remain intact and do not qualify changed source.",
+      "Actual providers, target TLS/secret authority, managed backup and release authority require environment-specific validation."
+    ]
+  },
+  "previous_audit_addendum": {
+    "record": "VER-CVG-AUD21-013-001",
+    "observedAt": "2026-09-20T15:38:38-03:00",
+    "priorRecord": "VER-CVG-AUD21-012-002",
+    "critic": null,
+    "status": "DONE_WITH_LIMITATIONS_AUD21_013",
+    "evidenceAdmission": "LOCAL_REAL_POSTGRES16+SEMANTIC_RECOVERY+ATOMIC_RESTORE+KNOWN_BADS+FULL_REGRESSION",
+    "scope": "AUD21-013: semantic recovery validation and atomic restore",
+    "sourceSha": "c990914148a8f375082cd12bbdb2ad20cfe1900f",
+    "criticId": null,
+    "verificationRefs": [
+      "VER-CVG-AUD21-001-001",
+      "VER-CVG-AUD21-021-001",
+      "VER-CVG-AUD21-021-002",
+      "VER-CVG-AUD21-002-001",
+      "VER-CVG-AUD21-002-002",
+      "VER-CVG-AUD21-003-001",
+      "VER-CVG-AUD21-004-001",
+      "VER-CVG-AUD21-004-002",
+      "VER-CVG-AUD21-005-001",
+      "VER-CVG-AUD21-005-002",
+      "VER-CVG-AUD21-006-001",
+      "VER-CVG-AUD21-007-001",
+      "VER-CVG-AUD21-008-001",
+      "VER-CVG-AUD21-009-001",
+      "VER-CVG-AUD21-010-001",
+      "VER-CVG-AUD21-010-002",
+      "VER-CVG-AUD21-010-003",
+      "VER-CVG-AUD21-011-001",
+      "VER-CVG-AUD21-011-002",
+      "VER-CVG-AUD21-012-001",
+      "VER-CVG-AUD21-012-002",
+      "VER-CVG-AUD21-013-001",
+      "VER-CVG-AUD21-013-002"
+    ],
+    "result": "AUD21-013 concluido no escopo local real com limitacoes; staging/production-like, evidencia historica stale, WebKit ambiental, provider externo, fingerprint exact-subject e aceite humano permanecem pendentes",
+    "globalVerdict": "AAA_NOT_PROVEN"
+  },
+  "latest_audit_addendum": {
+    "record": "VER-CVG-AUD22-001-001",
+    "observedAt": "2026-09-20T17:04:09-03:00",
+    "priorRecord": "VER-CVG-AUD21-013-002",
+    "critic": null,
+    "status": "PARTIAL_CONTROL_PLANE_RECONCILIATED",
+    "evidenceAdmission": "LOCAL_CONTROL_PLANE_KNOWN_BAD_REPRODUCED_AND_REJECTED",
+    "scope": "AUD22-001: control-plane reconciliation",
+    "sourceSha": "c990914148a8f375082cd12bbdb2ad20cfe1900f",
+    "verificationRefs": [
+      "VER-CVG-AUD22-001-001"
+    ],
+    "result": "AUD21 statuses reclassified; state/backlog/ExecPlan/checkpoint/event/evidence aligned append-only; AUD22-001 remains in progress",
+    "globalVerdict": "AAA_NOT_PROVEN"
+  },
+  "current_audit_addendum": {
+    "record": "VER-CVG-AUD27-001-RECOVERY-20261004",
+    "observedAt": "2026-10-04T10:55:09.479Z",
+    "priorRecord": "VER-CVG-AUD27-015-014",
+    "critic": null,
+    "criticStatus": "NOT_RUN_FOR_CURRENT_HARDENING",
+    "status": "IN_PROGRESS",
+    "sourceSha": "9aab406b164497978b05dd3aa431db49ad11677a",
+    "verificationRefs": [
+      "VER-CVG-AUD27-001-RECOVERY-20261004"
+    ],
+    "current_receipt_refs": [
+      "VER-CVG-AUD27-001-RECOVERY-20261004"
+    ],
+    "scope": "Local production hardening and control recovery",
+    "result": "IN_PROGRESS",
+    "globalVerdict": "AAA_NOT_PROVEN",
+    "promotion": "BLOCKED"
+  },
+  "active_plan": ".agent/plans/2026-10-04-production-hardening.md",
+  "current_receipt_refs": [
+    "VER-CVG-AUD27-001-RECOVERY-20261004"
+  ]
+}

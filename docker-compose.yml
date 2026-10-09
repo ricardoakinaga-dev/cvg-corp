@@ -2,8 +2,9 @@ name: cvg-corp-local
 
 services:
   postgres:
-    image: postgres:18.0-bookworm
+    image: postgres:18.0-bookworm@sha256:3f55f8895c4ed50603e2fbdfc72fffeeaba3173321fee5cb825bbbeb30d9d854
     restart: unless-stopped
+    user: "999:999"
     environment:
       POSTGRES_DB: cvg_local
       POSTGRES_USER: ${CVG_MIGRATION_DB_USER:-cvg_migration}
@@ -14,10 +15,12 @@ services:
       - cvg_corp_pgdata:/var/lib/postgresql
     read_only: true
     tmpfs:
-      - /tmp
-      - /run/postgresql
+      - /tmp:rw,nosuid,noexec,size=64m,mode=1777
+      - /run/postgresql:rw,nosuid,noexec,size=16m,uid=999,gid=999,mode=0700
     security_opt:
       - no-new-privileges:true
+    cap_drop:
+      - ALL
     ulimits:
       nofile:
         soft: 4096
@@ -69,6 +72,34 @@ services:
           cpus: "1.00"
           memory: 512M
 
+  backup-init:
+    image: ${CVG_API_IMAGE:-cvg-corp/api:local}
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    command: ["backup-volume-init"]
+    user: "0:0"
+    restart: "no"
+    read_only: true
+    tmpfs:
+      - /tmp:rw,nosuid,noexec,size=16m
+    network_mode: none
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+    volumes:
+      - cvg_corp_backups:/var/lib/cvg/backups
+    healthcheck:
+      disable: true
+    deploy:
+      resources:
+        limits:
+          cpus: "0.10"
+          memory: 64M
+
   api:
     image: ${CVG_API_IMAGE:-cvg-corp/api:local}
     build:
@@ -96,6 +127,7 @@ services:
       CVG_RATE_LIMIT_BACKEND: ${CVG_RATE_LIMIT_BACKEND:-local}
       CVG_RATE_LIMIT_REQUESTS_PER_WINDOW: ${CVG_RATE_LIMIT_REQUESTS_PER_WINDOW:-120}
       CVG_RATE_LIMIT_WINDOW_SECONDS: ${CVG_RATE_LIMIT_WINDOW_SECONDS:-60}
+      CVG_INTEGRATION_CALLBACK_KEYS: ${CVG_INTEGRATION_CALLBACK_KEYS:-}
       CVG_DEEPSEEK_BASE_URL: ${CVG_DEEPSEEK_BASE_URL:-https://deepseek.invalid}
       CVG_DEEPSEEK_RUNTIME_ENABLED: ${CVG_DEEPSEEK_RUNTIME_ENABLED:-false}
       CVG_DEEPSEEK_EXPECTED_ENGINE_COMMIT: ${CVG_DEEPSEEK_EXPECTED_ENGINE_COMMIT:-0000000000000000000000000000000000000000}
@@ -130,9 +162,11 @@ services:
           memory: 768M
     healthcheck:
       test:
-        - CMD-SHELL
-        - >-
-          node --input-type=module -e "fetch('http://127.0.0.1:4310/api/v1/ready').then(async (response) => { const body = await response.json(); if (!response.ok || body?.data?.ready !== true) process.exit(1); }).catch(() => process.exit(1))"
+        - CMD
+        - /nodejs/bin/node
+        - --input-type=module
+        - -e
+        - "fetch('http://127.0.0.1:4310/api/v1/ready').then(async (response) => { const body = await response.json(); if (!response.ok || body?.data?.ready !== true) process.exit(1); }).catch(() => process.exit(1))"
       interval: 10s
       timeout: 4s
       retries: 6
@@ -174,6 +208,7 @@ services:
     command: ["node", "--import", "tsx", "docker/worker.ts"]
     environment:
       NODE_ENV: ${NODE_ENV:-development}
+      CVG_STORAGE: postgres
       DATABASE_URL: ${DATABASE_URL:?DATABASE_URL must be supplied with an URL-encoded password}
       CVG_WORKER_ORGANIZATION_ID: ${CVG_WORKER_ORGANIZATION_ID:?CVG_WORKER_ORGANIZATION_ID must be supplied through an external env file}
       CVG_WORKER_ID: ${CVG_WORKER_ID:-cvg-worker-local}
@@ -191,6 +226,7 @@ services:
       CVG_SECRET_DIR: ${CVG_SECRET_DIR:-/run/secrets/cvg}
       CVG_MESSAGING_PROVIDER_ENDPOINT: ${CVG_MESSAGING_PROVIDER_ENDPOINT:-}
       CVG_MESSAGING_PROVIDER_ALLOWED_HOSTS: ${CVG_MESSAGING_PROVIDER_ALLOWED_HOSTS:-}
+      CVG_MESSAGING_BLOCKED_IPV6_PREFIXES: ${CVG_MESSAGING_BLOCKED_IPV6_PREFIXES:-}
       CVG_MESSAGING_CREDENTIAL_REF: ${CVG_MESSAGING_CREDENTIAL_REF:-}
       CVG_MESSAGING_SEND_PATH: ${CVG_MESSAGING_SEND_PATH:-/messages}
       CVG_MESSAGING_QUERY_PATH: ${CVG_MESSAGING_QUERY_PATH:-}
@@ -199,6 +235,8 @@ services:
     depends_on:
       api:
         condition: service_healthy
+      backup-init:
+        condition: service_completed_successfully
     restart: unless-stopped
     read_only: true
     tmpfs:
@@ -223,9 +261,11 @@ services:
           memory: 384M
     healthcheck:
       test:
-        - CMD-SHELL
-        - >-
-          test -s /tmp/cvg-worker/heartbeat && test $$(( $$(date +%s) - $$(stat -c %Y /tmp/cvg-worker/heartbeat) )) -lt 60
+        - CMD
+        - /nodejs/bin/node
+        - --input-type=module
+        - -e
+        - "import('node:fs/promises').then(async ({stat}) => { const heartbeat = await stat('/tmp/cvg-worker/heartbeat'); if (Date.now() - heartbeat.mtimeMs >= 60000) process.exit(1); }).catch(() => process.exit(1))"
       interval: 15s
       timeout: 3s
       retries: 4
@@ -257,6 +297,7 @@ services:
         hard: 4096
     networks:
       - backend
+      - edge
     deploy:
       resources:
         limits:
@@ -276,6 +317,7 @@ volumes:
 networks:
   backend:
     internal: true
+  edge: {}
   observability:
     name: ${CVG_OBSERVABILITY_NETWORK:-cvg-corp-observability}
     internal: true

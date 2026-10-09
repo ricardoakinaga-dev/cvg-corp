@@ -106,6 +106,31 @@ export class DurableIdempotencyService {
     return unknown;
   }
 
+  /** Records a deterministic local commit rejection after its transaction rolled back. */
+  async markCommitFailure(receipt: CommandReceipt): Promise<CommandReceipt> {
+    const dispatched = (receipt.dispatchState ?? "NOT_STARTED") === "DISPATCHED";
+    const settled: CommandReceipt = {
+      ...receipt,
+      status: dispatched ? "OUTCOME_UNKNOWN" : "FAILED",
+      result: null,
+      completedAt: receipt.completedAt ?? now(),
+      claimExpiresAt: null,
+      failurePhase: dispatched ? "POST_DISPATCH" : "PRE_DISPATCH"
+    };
+    await this.coordinator.run(this.scopeKey(receipt.organizationId), () => {
+      this.store.setCommandReceipt(settled);
+    });
+    if (this.persistence) {
+      try {
+        await this.persistence.settleCommandReceipt(settled);
+      } catch (settlementError) {
+        this.observeSettlementFailure?.({ receiptId: receipt.id, error: settlementError });
+        throw new DomainError("DEPENDENCY_UNAVAILABLE", "A falha da operação não pôde ser registrada duravelmente; nenhum sucesso deve ser inferido.", 503);
+      }
+    }
+    return settled;
+  }
+
   private scopeKey(organizationId: string): string {
     return `organization:${organizationId}`;
   }
@@ -140,7 +165,7 @@ export class DurableIdempotencyService {
     // Fence the claim before crossing the provider boundary so an expired lease
     // is reconciled as OUTCOME_UNKNOWN instead of a safe PRE_DISPATCH failure.
     if (this.persistence) {
-      const dispatched = await this.persistence.markCommandReceiptDispatched(input.organizationId, effectiveClaim.receipt.id, effectiveClaim.receipt.claimEpoch ?? 1);
+      const dispatched = await this.persistence.markCommandReceiptDispatched(input.organizationId, effectiveClaim.receipt.id, effectiveClaim.receipt.claimEpoch ?? 1, { unitId: effectiveClaim.receipt.unitId, workspaceId: effectiveClaim.receipt.workspaceId });
       if (!dispatched) {
         throw new DomainError("OUTCOME_UNKNOWN", "A admissão perdeu a cerca durável antes do dispatch; o efeito externo não foi iniciado por este processo e exige reconciliação.", 409, { receiptId: effectiveClaim.receipt.id, failurePhase: "PRE_DISPATCH" });
       }

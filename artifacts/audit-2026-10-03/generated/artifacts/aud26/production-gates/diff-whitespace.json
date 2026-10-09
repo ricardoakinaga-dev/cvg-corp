@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "label": "diff whitespace",
+  "command": [
+    "git",
+    "diff",
+    "--check"
+  ],
+  "capturedAt": "2026-10-03T05:37:14.562Z",
+  "exitStatus": 2,
+  "signal": null,
+  "stdout": "artifacts/coverage-output.txt:980: trailing whitespace.\n+ℹ all files                                  |  88.45 |    76.69 |   88.20 | \nartifacts/coverage-output.txt:990: trailing whitespace.\n+  \nartifacts/coverage-output.txt:995: trailing whitespace.\n+  \n",
+  "stderr": ""
+}

@@ -1,0 +1,15 @@
+{
+  "command": [
+    "node",
+    "--import",
+    "tsx",
+    "--test",
+    "--test-reporter=tap",
+    "tests/integration/provider-sandbox.test.ts"
+  ],
+  "exit_status": 0,
+  "started_at": "2026-10-04T02:25:13.826393+00:00",
+  "finished_at": "2026-10-04T02:25:14.642973+00:00",
+  "log": "artifacts/remediation-2026-10-03/prose-policy/provider-recheck.log",
+  "sha256": "6e0f4c69c032e7e21cf467b08418a9e4040c47c45639f2d1a4fb94a56fd4bfcf"
+}

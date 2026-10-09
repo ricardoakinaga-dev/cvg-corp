@@ -1,0 +1,2 @@
+{"probe":"SECRET_TASK_CONTEXT","sanitized":true,"quarantined":[{"itemId":"conversation:0:user","reason":"SECRET_MATERIAL"}],"markerItems":[{"kind":"task.state","trust":"CVG_TRUSTED","dataClass":"D0"}]}
+{"probe":"SECRET_HTTP_TO_MODEL_AND_STORE","httpStatus":201,"turnStatus":"COMPLETED","providerCalls":1,"providerReceivedMarker":true,"storedPromptContainsMarker":true,"scope":"real authenticated HTTP and embedded runtime; synthetic in-memory model observer; no network or real credentials"}

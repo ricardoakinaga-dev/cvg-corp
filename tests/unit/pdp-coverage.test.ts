@@ -81,6 +81,76 @@ test("PDP boundary guard accepts only an enumerated DomainCommandService delegat
   assert.deepEqual(inspection.operations, ["patients.create"]);
 });
 
+test("PDP boundary guard accepts a verified pure resource resolver and rejects an effectful one", () => {
+  const accepted = inspectApplicationPdpBoundaries([{
+    path: "fixture/resolver-service.ts",
+    source: `import { enforceApplicationPolicy } from "@cvg/agent-policy";
+      import { isInContext } from "@cvg/domain";
+      export class ResolverApplicationService {
+        create(context: unknown, input: { resourceId: string | null }) { enforceApplicationPolicy(context, "ai.turn.SUMMARY", this.authorizedTurnResource(context, input)); }
+        private authorizedTurnResource(context: unknown, input: { resourceId: string | null }) {
+          const resolution = this.store.resolveAgentResource({ resourceId: input.resourceId });
+          if (resolution.status !== "RESOLVED") throw new Error("denied");
+          if (!isInContext(resolution.resource, context)) throw new Error("out of scope");
+          return { resourceId: resolution.resource.resourceId };
+        }
+      }`
+  }]);
+  assert.deepEqual(accepted.findings, []);
+
+  const rejected = inspectApplicationPdpBoundaries([{
+    path: "fixture/effectful-resolver-service.ts",
+    source: `import { enforceApplicationPolicy } from "@cvg/agent-policy";
+      export class EffectfulResolverApplicationService {
+        create(context: unknown, input: { resourceId: string | null }) { enforceApplicationPolicy(context, "ai.turn.SUMMARY", this.authorizedTurnResource(context, input)); }
+        private authorizedTurnResource(context: unknown, input: { resourceId: string | null }) {
+          const resolution = this.store.resolveAgentResource({ resourceId: input.resourceId });
+          this.repository.write(resolution);
+          return { resourceId: resolution.resource.resourceId };
+        }
+      }`
+  }]);
+  assert.ok(rejected.findings.some((finding) => finding.code === "METHOD_BYPASS" && finding.method === "create"));
+
+  const bypassAttempts = {
+    effectfulThrow: `private authorizedTurnResource(context: unknown) {
+      const resolution = this.store.resolveAgentResource({});
+      throw this.repository.fail(resolution);
+    }`,
+    multiDeclarator: `private authorizedTurnResource(context: unknown) {
+      const resolution = this.store.resolveAgentResource({}), written = this.repository.write();
+      return { resourceId: resolution.resource.resourceId, written };
+    }`,
+    effectfulArgument: `private authorizedTurnResource(context: unknown) {
+      const resolution = this.store.resolveAgentResource(this.repository.read());
+      return { resourceId: resolution.resource.resourceId };
+    }`,
+    effectfulConstructor: `private authorizedTurnResource(context: unknown) {
+      const resolution = this.store.resolveAgentResource({});
+      throw new (this.repository.errorType())(resolution);
+    }`,
+    effectfulParameterDefault: `private authorizedTurnResource(context: unknown, input: unknown = this.repository.read()) {
+      const resolution = this.store.resolveAgentResource({});
+      return { resourceId: resolution.resource.resourceId };
+    }`,
+    effectfulBindingPattern: `private authorizedTurnResource(context: unknown) {
+      const { resource = this.repository.read() } = this.store.resolveAgentResource({});
+      return { resourceId: resource };
+    }`
+  };
+  for (const [name, resolver] of Object.entries(bypassAttempts)) {
+    const inspection = inspectApplicationPdpBoundaries([{
+      path: `fixture/${name}-service.ts`,
+      source: `import { enforceApplicationPolicy } from "@cvg/agent-policy";
+        export class AttemptApplicationService {
+          create(context: unknown) { enforceApplicationPolicy(context, "ai.turn.SUMMARY", this.authorizedTurnResource(context)); }
+          ${resolver}
+        }`
+    }]);
+    assert.ok(inspection.findings.some((finding) => finding.code === "METHOD_BYPASS" && finding.method === "create"), name);
+  }
+});
+
 test("PDP boundary guard rejects syntactic enforcement that does not guard execution", () => {
   const cases = {
     unusedCallback: 'read(context: unknown) { const unused = () => enforceApplicationPolicy(context, "patients.read"); return this.repository.list(); }',

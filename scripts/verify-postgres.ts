@@ -1,4 +1,5 @@
 import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
+import assert from "node:assert/strict";
 import pg from "pg";
 import { createRuntime, type CvgServerRuntime } from "@cvg/api";
 import { id } from "@cvg/contracts";
@@ -6,10 +7,72 @@ import { digest } from "@cvg/domain";
 import { OutboxWorker, type ExternalEffectQueryAdapter } from "@cvg/integrations";
 import { OutboxLeaseLostError, PersistenceConflictError, PersistenceStateError, PostgresPersistence, type DurableInboxInput } from "@cvg/persistence";
 import { AgentSessionError, PostgresAgentSessionStore, createScopedSqlExecutor } from "@cvg/agent-session";
+import { verifyAgentSessionTtlContract } from "./lib/agent-session-contract.ts";
+
+const AGENT_SESSION_TTL_VERIFICATION_MS = 120_000;
+
+type AgentSessionTtlPhase = "AT_LIMIT" | "AFTER_LIMIT";
+
+async function expireAgentSession(pool: pg.Pool, organizationId: string, sessionId: string, phase: AgentSessionTtlPhase): Promise<void> {
+  const client = await pool.connect();
+  try {
+    await client.query("begin");
+    await client.query("select set_config('cvg.organization_id', $1, true)", [organizationId]);
+    const offsetMs = phase === "AT_LIMIT" ? "0" : "1";
+    const result = await client.query(
+      "update agent_sessions set expires_at = now() - ($3 || ' milliseconds')::interval, updated_at = now() where session_id = $1 and organization_id = $2",
+      [sessionId, organizationId, offsetMs]
+    );
+    if (result.rowCount !== 1) throw new Error(`agent session expiry probe updated ${result.rowCount ?? 0} rows for ${phase}`);
+    await client.query("commit");
+  } catch (error) {
+    await client.query("rollback").catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+async function verifyAgentSessionTtlMatrix(input: {
+  primary: PostgresAgentSessionStore;
+  secondary: PostgresAgentSessionStore;
+  expiryPool: pg.Pool;
+  organizationId: string;
+  actorId: string;
+  unitId: string;
+  workspaceId: string;
+}): Promise<string[]> {
+  const failures: string[] = [];
+  for (let iteration = 1; iteration <= 20; iteration += 1) {
+    const sessionId = randomUUID();
+    await input.primary.create({ sessionId, organizationId: input.organizationId, actorId: input.actorId, unitId: input.unitId, workspaceId: input.workspaceId, purpose: "SUMMARY", taskObjective: `ttl-matrix-${iteration}`, ttlMs: AGENT_SESSION_TTL_VERIFICATION_MS });
+    if (!(await input.primary.load(sessionId, { organizationId: input.organizationId, actorId: input.actorId }))) failures.push(`iteration ${iteration}: session must load before expiry`);
+    const lease = await input.primary.acquireLease({ sessionId, organizationId: input.organizationId, ownerId: `ttl-owner-a-${iteration}`, ttlMs: AGENT_SESSION_TTL_VERIFICATION_MS });
+    if (!lease) {
+      failures.push(`iteration ${iteration}: primary pool must acquire the lease before expiry`);
+      continue;
+    }
+    if (await input.secondary.acquireLease({ sessionId, organizationId: input.organizationId, ownerId: `ttl-owner-b-${iteration}`, ttlMs: AGENT_SESSION_TTL_VERIFICATION_MS })) failures.push(`iteration ${iteration}: secondary pool bypassed the live owner fence`);
+    if (!(await input.primary.renewLease({ sessionId, organizationId: input.organizationId, ownerId: lease.ownerId, ttlMs: AGENT_SESSION_TTL_VERIFICATION_MS, fence: lease.fence }))) failures.push(`iteration ${iteration}: primary pool could not renew before expiry`);
+
+    await expireAgentSession(input.expiryPool, input.organizationId, sessionId, "AT_LIMIT");
+    if (await input.secondary.load(sessionId, { organizationId: input.organizationId, actorId: input.actorId })) failures.push(`iteration ${iteration}: session loaded at the expiry boundary`);
+    if (await input.secondary.acquireLease({ sessionId, organizationId: input.organizationId, ownerId: `ttl-owner-b-at-${iteration}`, ttlMs: AGENT_SESSION_TTL_VERIFICATION_MS })) failures.push(`iteration ${iteration}: secondary pool acquired at the expiry boundary`);
+    if (await input.primary.renewLease({ sessionId, organizationId: input.organizationId, ownerId: lease.ownerId, ttlMs: AGENT_SESSION_TTL_VERIFICATION_MS, fence: lease.fence })) failures.push(`iteration ${iteration}: primary pool renewed at the expiry boundary`);
+
+    await expireAgentSession(input.expiryPool, input.organizationId, sessionId, "AFTER_LIMIT");
+    if (await input.primary.load(sessionId, { organizationId: input.organizationId, actorId: input.actorId })) failures.push(`iteration ${iteration}: session loaded after expiry`);
+    if (await input.secondary.acquireLease({ sessionId, organizationId: input.organizationId, ownerId: `ttl-owner-b-after-${iteration}`, ttlMs: AGENT_SESSION_TTL_VERIFICATION_MS })) failures.push(`iteration ${iteration}: secondary pool acquired after expiry`);
+    if (await input.primary.renewLease({ sessionId, organizationId: input.organizationId, ownerId: lease.ownerId, ttlMs: AGENT_SESSION_TTL_VERIFICATION_MS, fence: lease.fence })) failures.push(`iteration ${iteration}: primary pool renewed after expiry`);
+    await input.primary.releaseLease({ sessionId, organizationId: input.organizationId, ownerId: lease.ownerId, fence: lease.fence });
+  }
+  return failures;
+}
 
 const databaseUrl = process.env.DATABASE_URL;
-if (!databaseUrl) {
-  process.stderr.write("POSTGRES_BLOCKED_EXTERNAL DATABASE_URL is required; use an explicitly identified synthetic or staging database\n");
+const migrationDatabaseUrl = process.env.MIGRATION_DATABASE_URL;
+if (!databaseUrl || !migrationDatabaseUrl) {
+  process.stderr.write("POSTGRES_BLOCKED_EXTERNAL DATABASE_URL and MIGRATION_DATABASE_URL are required; use explicitly identified runtime and schema-owner databases\n");
   process.exit(2);
 }
 const configuredDatabaseUrl = databaseUrl;
@@ -53,6 +116,142 @@ async function expectSqlRejected(client: { query: (text: string, values?: unknow
     return;
   }
   throw new Error(`${label} unexpectedly succeeded`);
+}
+
+async function expectRlsDenied(client: { query: (text: string, values?: unknown[]) => Promise<unknown> }, label: string, text: string, values: unknown[]): Promise<void> {
+  try {
+    await client.query(text, values);
+  } catch (error) {
+    const code = typeof error === "object" && error !== null && "code" in error ? (error as { code?: unknown }).code : undefined;
+    if (code === "42501") return;
+    throw new Error(`${label} failed with SQLSTATE ${String(code ?? "UNKNOWN")} instead of row-level security denial`);
+  }
+  throw new Error(`${label} crossed the requested PostgreSQL row-level security scope`);
+}
+
+async function expectRlsInsertDenied(input: {
+  client: pg.Client;
+  label: string;
+  sql: string;
+  values: unknown[];
+  organizationId: string;
+  unitId: string;
+  workspaceId: string;
+}): Promise<void> {
+  await input.client.query("begin");
+  try {
+    await input.client.query(
+      "select set_config('cvg.organization_id', $1, true), set_config('cvg.unit_id', $2, true), set_config('cvg.workspace_id', $3, true)",
+      [input.organizationId, input.unitId, input.workspaceId]
+    );
+    await expectRlsDenied(input.client, input.label, input.sql, input.values);
+  } finally {
+    await input.client.query("rollback");
+  }
+}
+
+type ScopedProbeFixture = {
+  sql: string;
+  values: unknown[];
+  organizationId: string;
+  unitId: string;
+  workspaceId: string;
+};
+
+// Raw RLS probes have no domain snapshot/ledger counterpart. Keep their
+// positive fixtures inside the assertion's rollback transaction so a later
+// backup/restore verifies only durable application state, without filtering
+// any audit rows out of the independent restore oracle.
+async function seedScopedProbe(client: pg.Client, fixture: ScopedProbeFixture): Promise<void> {
+  await client.query(
+    "select set_config('cvg.organization_id', $1, true), set_config('cvg.unit_id', $2, true), set_config('cvg.workspace_id', $3, true)",
+    [fixture.organizationId, fixture.unitId, fixture.workspaceId]
+  );
+  const inserted = await client.query(fixture.sql, fixture.values);
+  if (inserted.rowCount !== 1) throw new Error("same-scope RLS probe fixture was not inserted");
+}
+
+async function expectRlsRowCount(input: {
+  client: pg.Client;
+  fixture: ScopedProbeFixture;
+  label: string;
+  table: "audit_records" | "command_receipts" | "role_assignments";
+  rowId: string;
+  expectedCount: 0 | 1;
+  organizationId: string;
+  unitId: string;
+  workspaceId: string;
+}): Promise<void> {
+  await input.client.query("begin");
+  try {
+    await seedScopedProbe(input.client, input.fixture);
+    await input.client.query(
+      "select set_config('cvg.organization_id', $1, true), set_config('cvg.unit_id', $2, true), set_config('cvg.workspace_id', $3, true)",
+      [input.organizationId, input.unitId, input.workspaceId]
+    );
+    const result = await input.client.query<{ count: number }>(`select count(*)::int as count from ${input.table} where id = $1`, [input.rowId]);
+    const count = result.rows[0]?.count ?? -1;
+    if (count !== input.expectedCount) throw new Error(`${input.label} returned ${count} rows; expected ${input.expectedCount}`);
+  } finally {
+    await input.client.query("rollback");
+  }
+}
+
+async function expectRlsDmlRowCount(input: {
+  client: pg.Client;
+  fixture: ScopedProbeFixture;
+  label: string;
+  sql: string;
+  values: unknown[];
+  expectedCount: 0 | 1;
+  organizationId: string;
+  unitId: string;
+  workspaceId: string;
+}): Promise<void> {
+  await input.client.query("begin");
+  try {
+    await seedScopedProbe(input.client, input.fixture);
+    await input.client.query(
+      "select set_config('cvg.organization_id', $1, true), set_config('cvg.unit_id', $2, true), set_config('cvg.workspace_id', $3, true)",
+      [input.organizationId, input.unitId, input.workspaceId]
+    );
+    const result = await input.client.query(input.sql, input.values);
+    const count = result.rowCount ?? result.rows.length;
+    if (count !== input.expectedCount) throw new Error(`${input.label} affected ${count} rows; expected ${input.expectedCount}`);
+  } finally {
+    await input.client.query("rollback");
+  }
+}
+
+async function expectScopedDmlSqlState(input: {
+  client: pg.Client;
+  fixture: ScopedProbeFixture;
+  label: string;
+  sql: string;
+  values: unknown[];
+  expectedSqlState: string;
+  organizationId: string;
+  unitId: string;
+  workspaceId: string;
+}): Promise<void> {
+  await input.client.query("begin");
+  try {
+    await seedScopedProbe(input.client, input.fixture);
+    await input.client.query(
+      "select set_config('cvg.organization_id', $1, true), set_config('cvg.unit_id', $2, true), set_config('cvg.workspace_id', $3, true)",
+      [input.organizationId, input.unitId, input.workspaceId]
+    );
+    try {
+      await input.client.query(input.sql, input.values);
+    } catch (error) {
+      const code = typeof error === "object" && error !== null && "code" in error ? (error as { code?: unknown }).code : undefined;
+      if (code === input.expectedSqlState) return;
+      throw new Error(`${input.label} failed with SQLSTATE ${String(code ?? "UNKNOWN")} instead of ${input.expectedSqlState}`);
+    }
+    throw new Error(`${input.label} unexpectedly succeeded`);
+  } finally {
+    await input.client.query("rollback");
+  }
 }
 
 type AuthenticatedContext = {
@@ -188,6 +387,7 @@ try {
 const second = await createRuntime({ config: runtimeConfig, persistence: newDurablePersistence(), providerQueryAdapter: syntheticProviderQueryAdapter });
 let counts: Record<string, number> | undefined;
 let catalogProtection = { domainTables: 0, protectedTables: 0, organizationForeignKeys: 0 };
+let usageForAgent: { id: string } | null = null;
 const runtimeRole = (process.env.CVG_RUNTIME_DB_USER ?? "cvg_runtime").trim();
 let migrationPrivileges: { can_select: boolean; can_insert: boolean; can_update: boolean; can_delete: boolean } | undefined;
 try {
@@ -413,6 +613,7 @@ try {
 
   const usageInput = { id: id(randomUUID()), organizationId, reservationId: null, providerRequestId: "synthetic-provider-request-1", idempotencyKey: "verify-usage-v1", usageKind: "TOKENS", reservedUnits: 100, consumedUnits: 42, status: "RECEIVED" as const, record: { synthetic: true, model: "local-stub" } };
   const usage = await second.persistence!.recordUsage(usageInput);
+  usageForAgent = usage;
   const usageReplay = await second.persistence!.recordUsage(usageInput);
   if (usage.id !== usageReplay.id || usage.recordDigest !== usageReplay.recordDigest) throw new Error("usage ledger replay was not idempotent");
 
@@ -423,6 +624,12 @@ try {
   const breakGlassExpiresAt = new Date(Date.now() + 60_000).toISOString();
   const durableBreakGlass = await second.persistence!.createBreakGlassGrant({ grantId: id(randomUUID()), organizationId, actorId: second.store.bootstrapCredentials.userId, approverId: vetId, reason: "synthetic incident review", target: "patient:synthetic", mfaMethod: "WEBAUTHN", issuedAt: breakGlassIssuedAt, expiresAt: breakGlassExpiresAt });
   if (durableBreakGlass.status !== "ACTIVE" || durableBreakGlass.mfaMethod !== "WEBAUTHN") throw new Error("durable break-glass grant was not created as active WebAuthn evidence");
+  const scopedBreakGlassGrantId = id(randomUUID());
+  const scopedBreakGlassActivation = await second.persistence!.createBreakGlassGrantWithAudit(
+    { grantId: scopedBreakGlassGrantId, organizationId, actorId: second.store.bootstrapCredentials.userId, approverId: vetId, reason: "synthetic scoped activation review", target: "patient:synthetic-scoped", scope: "WORKSPACE", mfaMethod: "WEBAUTHN", issuedAt: breakGlassIssuedAt, expiresAt: breakGlassExpiresAt },
+    { organizationId, actorId: second.store.bootstrapCredentials.userId, unitId: id(auth.unitId), workspaceId: id(auth.workspaceId), action: "verify.break_glass.scoped_activation", resourceType: "BreakGlassGrant", resourceId: scopedBreakGlassGrantId, result: "ALLOWED", reason: "synthetic scoped activation audit", correlationId: `verify-postgres-break-glass-${randomUUID()}`, metadata: { synthetic: true, scope: "WORKSPACE" } }
+  );
+  if (scopedBreakGlassActivation.grant.scope !== "WORKSPACE" || scopedBreakGlassActivation.audit.unitId !== id(auth.unitId) || scopedBreakGlassActivation.audit.workspaceId !== id(auth.workspaceId)) throw new Error("scoped durable break-glass activation did not persist its workspace scope and audit");
   const activeBreakGlass = await second.persistence!.assertActiveBreakGlassGrant(organizationId, durableBreakGlass.grantId);
   if (activeBreakGlass.grantId !== durableBreakGlass.grantId) throw new Error("durable break-glass active assertion returned a different grant");
   const revokedBreakGlass = await second.persistence!.revokeBreakGlassGrant(organizationId, durableBreakGlass.grantId);
@@ -469,17 +676,24 @@ try {
     "select (select count(*)::int from cvg_state_snapshots) as snapshots, (select count(*)::int from cvg_event_journal) as journal, (select count(*)::int from audit_records) as audits, (select count(*)::int from cvg_audit_ledger) as \"auditLedger\", (select count(*)::int from command_receipts) as receipts, (select count(*)::int from cvg_command_receipt_ledger) as \"receiptLedger\", (select count(*)::int from guardians) as guardians, (select count(*)::int from diagnostic_requests) as \"diagnosticRequests\", (select count(*)::int from specimens) as specimens, (select count(*)::int from diagnostic_results) as \"diagnosticResults\", (select count(*)::int from outbox_records) as outbox, (select count(*)::int from ai_usage_ledger) as \"usageLedger\", (select count(*)::int from integration_inbox_records) as inbox, (select count(*)::int from external_effects) as \"externalEffects\", (select count(*)::int from break_glass_grants) as \"breakGlass\""
   )).rows[0];
   const rlsRole = `cvg_rls_verify_${randomUUID().replaceAll("-", "")}`;
+  // The RLS probe asserts exact scope isolation, not emptiness: AI turns that
+  // legitimately exist in the probed scope (for example from the isolation
+  // gate) must be visible, while other scopes stay hidden.
+  const sameScopeAiTurns = (await client.query<{ count: number }>(
+    "select count(*)::int as count from ai_turns where organization_id = $1 and unit_id is not distinct from $2::uuid and workspace_id is not distinct from $3::uuid",
+    [latestOrganization, auth.unitId, auth.workspaceId]
+  )).rows[0]?.count ?? -1;
   const invalidSpecimenId = randomUUID();
   const invalidResultId = randomUUID();
-  const currentRole = (await client.query<{ rolsuper: boolean; rolbypassrls: boolean; rolcreaterole: boolean; rolcreatedb: boolean }>(
-    "select rolsuper, rolbypassrls, rolcreaterole, rolcreatedb from pg_roles where rolname = current_user"
+  const currentRole = (await client.query<{ rolsuper: boolean; rolbypassrls: boolean; rolcreaterole: boolean; rolcreatedb: boolean; rolreplication: boolean }>(
+    "select rolsuper, rolbypassrls, rolcreaterole, rolcreatedb, rolreplication from pg_roles where rolname = current_user"
   )).rows[0];
-  const needsTemporaryRole = !currentRole || currentRole.rolsuper || currentRole.rolbypassrls || currentRole.rolcreaterole || currentRole.rolcreatedb;
-  if (needsTemporaryRole) await client.query(`create role "${rlsRole}" noinherit nosuperuser nobypassrls nocreatedb nocreaterole`);
+  const needsTemporaryRole = !currentRole || currentRole.rolsuper || currentRole.rolbypassrls || currentRole.rolcreaterole || currentRole.rolcreatedb || currentRole.rolreplication;
+  if (needsTemporaryRole) await client.query(`create role "${rlsRole}" noinherit nosuperuser nobypassrls nocreatedb nocreaterole noreplication`);
   try {
     if (needsTemporaryRole) {
       await client.query(`grant usage on schema public to "${rlsRole}"`);
-      await client.query(`grant select, update on organizations, patients, guardians, diagnostic_requests, specimens, diagnostic_results, outbox_records, ai_usage_ledger, integration_inbox_records, external_effects, break_glass_grants, ai_turns, ai_drafts, lifecycle_decisions, lifecycle_transition_events, inbox_records, appointments, encounters, clinical_documents, clinical_addenda, knowledge_documents, communication_messages, ai_sessions, ai_approvals, audit_records, command_receipts, role_assignments, providers, resources, queue_entries, beds, hospital_episodes, stock_locations, charges to "${rlsRole}"`);
+      await client.query(`grant select, insert, update on organizations, patients, guardians, diagnostic_requests, specimens, diagnostic_results, outbox_records, ai_usage_ledger, integration_inbox_records, external_effects, break_glass_grants, ai_turns, ai_drafts, lifecycle_decisions, lifecycle_transition_events, inbox_records, appointments, encounters, clinical_documents, clinical_addenda, knowledge_documents, communication_messages, ai_sessions, ai_approvals, audit_records, command_receipts, role_assignments, providers, resources, queue_entries, beds, hospital_episodes, stock_locations, charges to "${rlsRole}"`);
       await client.query(`grant select on cvg_state_snapshots, cvg_event_journal to "${rlsRole}"`);
       await client.query(`set role "${rlsRole}"`);
     }
@@ -494,6 +708,7 @@ try {
     const visibleInboxCount = (await client.query<{ count: number }>("select count(*)::int as count from integration_inbox_records")).rows[0]?.count;
     const visibleExternalEffectsCount = (await client.query<{ count: number }>("select count(*)::int as count from external_effects")).rows[0]?.count;
     const visibleBreakGlassCount = (await client.query<{ count: number }>("select count(*)::int as count from break_glass_grants")).rows[0]?.count;
+    const visibleScopedBreakGlassAuditCount = (await client.query<{ count: number }>("select count(*)::int as count from audit_records where id = $1", [scopedBreakGlassActivation.audit.id])).rows[0]?.count;
     const visiblePatientCount = (await client.query<{ count: number }>("select count(*)::int as count from patients")).rows[0]?.count;
     const visibleGuardianCount = (await client.query<{ count: number }>("select count(*)::int as count from guardians")).rows[0]?.count;
     const visibleDiagnosticRequestCount = (await client.query<{ count: number }>("select count(*)::int as count from diagnostic_requests")).rows[0]?.count;
@@ -564,6 +779,95 @@ try {
     const forbiddenUnitDiagnosticUpdate = await client.query("update diagnostic_requests set test_name = test_name where id = $1", [diagnosticVerification.requestId]);
     const forbiddenUnitSpecimenUpdate = await client.query("update specimens set label = label where id = $1", [diagnosticVerification.specimenId]);
     const forbiddenUnitDiagnosticResultUpdate = await client.query("update diagnostic_results set value = value where id = $1", [diagnosticVerification.resultId]);
+    const scopeProbeRole = ["workspace_manager", "operador", "estoque", "financeiro", "recepcao", "veterinario", "admin"].find((role) => !second.store.snapshot().roleAssignments.some((assignment) => assignment.organizationId === latestOrganization && assignment.userId === second.store.bootstrapCredentials.userId && assignment.role === role && assignment.scopeType === "WORKSPACE" && assignment.unitId === auth.unitId && assignment.workspaceId === auth.workspaceId && assignment.revokedAt === null));
+    if (!scopeProbeRole) throw new Error("RLS scope verifier could not find an unused workspace role fixture");
+    const crossWorkspace = randomUUID();
+    const crossTenant = randomUUID();
+    const auditInsertSql = "insert into audit_records (id, organization_id, actor_id, unit_id, workspace_id, action, resource_type, result, correlation_id, metadata) values ($1, $2, $3, $4, $5, 'verify.rls.scope', 'verification', 'ALLOWED', $6, '{}'::jsonb)";
+    const receiptInsertSql = "insert into command_receipts (id, organization_id, actor_id, unit_id, workspace_id, operation, idempotency_lookup, body_digest, status) values ($1, $2, $3, $4, $5, 'verify.rls.scope', $6, $7, 'IN_FLIGHT')";
+    const roleInsertSql = "insert into role_assignments (id, organization_id, user_id, role, scope_type, unit_id, workspace_id) values ($1, $2, $3, $4, 'WORKSPACE', $5, $6)";
+    const actorId = second.store.bootstrapCredentials.userId;
+    const workspaceAuditValues = [randomUUID(), latestOrganization, actorId, auth.unitId, auth.workspaceId, `rls-workspace-${randomUUID()}`];
+    const workspaceReceiptValues = [randomUUID(), latestOrganization, actorId, auth.unitId, auth.workspaceId, `rls-workspace-${randomUUID()}`, "a".repeat(64)];
+    const workspaceRoleValues = [randomUUID(), latestOrganization, actorId, scopeProbeRole, auth.unitId, auth.workspaceId];
+    const fixtureScope = { organizationId: latestOrganization, unitId: auth.unitId, workspaceId: auth.workspaceId };
+    const scopedReadFixtures = [
+      { ...fixtureScope, table: "audit_records", values: workspaceAuditValues, sql: auditInsertSql },
+      { ...fixtureScope, table: "command_receipts", values: workspaceReceiptValues, sql: receiptInsertSql },
+      { ...fixtureScope, table: "role_assignments", values: workspaceRoleValues, sql: roleInsertSql }
+    ] as const;
+    for (const fixture of scopedReadFixtures) {
+      const rowId = String(fixture.values[0]);
+      await expectRlsRowCount({ client, fixture, label: `${fixture.table} same-scope read`, table: fixture.table, rowId, expectedCount: 1, organizationId: latestOrganization, unitId: auth.unitId, workspaceId: auth.workspaceId });
+      await expectRlsRowCount({ client, fixture, label: `${fixture.table} cross-workspace read`, table: fixture.table, rowId, expectedCount: 0, organizationId: latestOrganization, unitId: auth.unitId, workspaceId: crossWorkspace });
+      await expectRlsRowCount({ client, fixture, label: `${fixture.table} cross-unit read`, table: fixture.table, rowId, expectedCount: 0, organizationId: latestOrganization, unitId: randomUUID(), workspaceId: auth.workspaceId });
+      await expectRlsRowCount({ client, fixture, label: `${fixture.table} cross-tenant read`, table: fixture.table, rowId, expectedCount: 0, organizationId: crossTenant, unitId: auth.unitId, workspaceId: auth.workspaceId });
+    }
+    const dmlProbeClient = new pg.Client({ connectionString: migrationDatabaseUrl });
+    await dmlProbeClient.connect();
+    const dmlProbeRole = `${rlsRole}_dml`;
+    let dmlProbeRoleCreated = false;
+    try {
+      const dmlProbeAuthority = (await dmlProbeClient.query<{ rolsuper: boolean; rolcreaterole: boolean }>(
+        "select rolsuper, rolcreaterole from pg_roles where rolname = current_user"
+      )).rows[0];
+      if (!dmlProbeAuthority || (!dmlProbeAuthority.rolsuper && !dmlProbeAuthority.rolcreaterole)) throw new Error("migration connection cannot create the restricted DML RLS verifier role");
+      await dmlProbeClient.query(`create role "${dmlProbeRole}" noinherit nosuperuser nobypassrls nocreatedb nocreaterole noreplication`);
+      dmlProbeRoleCreated = true;
+      await dmlProbeClient.query(`grant usage on schema public to "${dmlProbeRole}"`);
+      await dmlProbeClient.query(`grant select, insert, update, delete on audit_records, command_receipts, role_assignments to "${dmlProbeRole}"`);
+      await dmlProbeClient.query(`set role "${dmlProbeRole}"`);
+      const dmlOperations = [
+        { table: "audit_records", rowId: String(workspaceAuditValues[0]), updateSql: "update audit_records set result = result where id = $1 returning id", updateValues: (rowId: string) => [rowId], deleteSql: "delete from audit_records where id = $1 returning id", appendOnlySql: "update audit_records set result = 'DENIED' where id = $1", appendOnlyValues: (rowId: string) => [rowId], appendOnlyDeleteSql: "delete from audit_records where id = $1" },
+        { table: "command_receipts", rowId: String(workspaceReceiptValues[0]), updateSql: "update command_receipts set status = status where id = $1 returning id", updateValues: (rowId: string) => [rowId], deleteSql: "delete from command_receipts where id = $1 returning id", scopeChangeSql: "update command_receipts set workspace_id = $2 where id = $1 returning id", scopeChangeValues: (rowId: string) => [rowId, crossWorkspace] },
+        { table: "role_assignments", rowId: String(workspaceRoleValues[0]), updateSql: "update role_assignments set role = role where id = $1 returning id", updateValues: (rowId: string) => [rowId], deleteSql: "delete from role_assignments where id = $1 returning id", scopeChangeSql: "update role_assignments set workspace_id = $2 where id = $1 returning id", scopeChangeValues: (rowId: string) => [rowId, crossWorkspace] }
+      ] as const;
+      for (const operation of dmlOperations) {
+        const fixture = scopedReadFixtures.find((candidate) => candidate.table === operation.table);
+        if (!fixture) throw new Error(`missing RLS probe fixture for ${operation.table}`);
+        await expectRlsDmlRowCount({ client: dmlProbeClient, fixture, label: `${operation.table} same-scope update`, sql: operation.updateSql, values: operation.updateValues(operation.rowId), expectedCount: 1, organizationId: latestOrganization, unitId: auth.unitId, workspaceId: auth.workspaceId });
+        if ("scopeChangeSql" in operation) {
+          await expectScopedDmlSqlState({ client: dmlProbeClient, fixture, label: `${operation.table} same-scope update cannot move row to another workspace`, sql: operation.scopeChangeSql, values: operation.scopeChangeValues(operation.rowId), expectedSqlState: "42501", organizationId: latestOrganization, unitId: auth.unitId, workspaceId: auth.workspaceId });
+          await expectRlsDmlRowCount({ client: dmlProbeClient, fixture, label: `${operation.table} same-scope delete`, sql: operation.deleteSql, values: [operation.rowId], expectedCount: 1, organizationId: latestOrganization, unitId: auth.unitId, workspaceId: auth.workspaceId });
+        } else {
+          await expectScopedDmlSqlState({ client: dmlProbeClient, fixture, label: `${operation.table} same-scope mutation remains append-only`, sql: operation.appendOnlySql, values: operation.appendOnlyValues(operation.rowId), expectedSqlState: "55000", organizationId: latestOrganization, unitId: auth.unitId, workspaceId: auth.workspaceId });
+          await expectScopedDmlSqlState({ client: dmlProbeClient, fixture, label: `${operation.table} same-scope delete remains append-only`, sql: operation.appendOnlyDeleteSql, values: [operation.rowId], expectedSqlState: "55000", organizationId: latestOrganization, unitId: auth.unitId, workspaceId: auth.workspaceId });
+        }
+        for (const wrongScope of [
+          { label: "cross-workspace", organizationId: latestOrganization, unitId: auth.unitId, workspaceId: crossWorkspace },
+          { label: "cross-unit", organizationId: latestOrganization, unitId: randomUUID(), workspaceId: auth.workspaceId },
+          { label: "cross-tenant", organizationId: crossTenant, unitId: auth.unitId, workspaceId: auth.workspaceId }
+        ]) {
+          await expectRlsDmlRowCount({ client: dmlProbeClient, fixture, label: `${operation.table} ${wrongScope.label} update`, sql: operation.updateSql, values: operation.updateValues(operation.rowId), expectedCount: 0, organizationId: wrongScope.organizationId, unitId: wrongScope.unitId, workspaceId: wrongScope.workspaceId });
+          await expectRlsDmlRowCount({ client: dmlProbeClient, fixture, label: `${operation.table} ${wrongScope.label} delete`, sql: operation.deleteSql, values: [operation.rowId], expectedCount: 0, organizationId: wrongScope.organizationId, unitId: wrongScope.unitId, workspaceId: wrongScope.workspaceId });
+        }
+      }
+    } finally {
+      await dmlProbeClient.query("reset role").catch(() => undefined);
+      if (dmlProbeRoleCreated) {
+        await dmlProbeClient.query(`revoke all privileges on audit_records, command_receipts, role_assignments from "${dmlProbeRole}"`).catch(() => undefined);
+        await dmlProbeClient.query(`revoke usage on schema public from "${dmlProbeRole}"`).catch(() => undefined);
+        await dmlProbeClient.query(`drop role "${dmlProbeRole}"`);
+      }
+      await dmlProbeClient.end();
+    }
+    for (const [label, sql, values] of [
+      ["audit_records cross-workspace insert", auditInsertSql, workspaceAuditValues],
+      ["command_receipts cross-workspace insert", receiptInsertSql, workspaceReceiptValues],
+      ["role_assignments cross-workspace insert", roleInsertSql, workspaceRoleValues]
+    ] as const) {
+      await expectRlsInsertDenied({ client, label, sql, values: [...values], organizationId: latestOrganization, unitId: auth.unitId, workspaceId: crossWorkspace });
+    }
+    const tenantAuditValues = [randomUUID(), crossTenant, actorId, auth.unitId, auth.workspaceId, `rls-tenant-${randomUUID()}`];
+    const tenantReceiptValues = [randomUUID(), crossTenant, actorId, auth.unitId, auth.workspaceId, `rls-tenant-${randomUUID()}`, "b".repeat(64)];
+    const tenantRoleValues = [randomUUID(), crossTenant, actorId, scopeProbeRole, auth.unitId, auth.workspaceId];
+    for (const [label, sql, values] of [
+      ["audit_records cross-tenant insert", auditInsertSql, tenantAuditValues],
+      ["command_receipts cross-tenant insert", receiptInsertSql, tenantReceiptValues],
+      ["role_assignments cross-tenant insert", roleInsertSql, tenantRoleValues]
+    ] as const) {
+      await expectRlsInsertDenied({ client, label, sql, values: [...values], organizationId: latestOrganization, unitId: auth.unitId, workspaceId: auth.workspaceId });
+    }
     await client.query("select set_config('cvg.organization_id', $1, false)", [randomUUID()]);
     const hiddenOrganizationCount = (await client.query<{ count: number }>("select count(*)::int as count from organizations")).rows[0]?.count;
     const hiddenSnapshotCount = (await client.query<{ count: number }>("select count(*)::int as count from cvg_state_snapshots")).rows[0]?.count;
@@ -574,8 +878,29 @@ try {
     const hiddenExternalEffectsCount = (await client.query<{ count: number }>("select count(*)::int as count from external_effects")).rows[0]?.count;
     const hiddenBreakGlassCount = (await client.query<{ count: number }>("select count(*)::int as count from break_glass_grants")).rows[0]?.count;
     const unprotectedTables = (await client.query<{ table_name: string }>("select c.relname as table_name from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' and c.relkind = 'r' and c.relname <> 'schema_migrations' and (not c.relrowsecurity or not c.relforcerowsecurity) order by c.relname")).rows;
-    if (visibleOrganizationCount !== 1 || (visibleSnapshotCount ?? 0) < 1 || (visibleJournalCount ?? 0) < 1 || (visibleOutboxCount ?? 0) < 1 || (visibleUsageCount ?? 0) < 1 || (visibleInboxCount ?? 0) < 1 || (visibleExternalEffectsCount ?? 0) < 1 || (visibleBreakGlassCount ?? 0) < 2 || (visiblePatientCount ?? 0) < 1 || (visibleGuardianCount ?? 0) < 1 || (visibleDiagnosticRequestCount ?? 0) < 1 || (visibleSpecimenCount ?? 0) < 1 || (visibleDiagnosticResultCount ?? 0) < 1 || (visibleAppointmentCount ?? 0) < 1 || (visibleClinicalDocumentCount ?? 0) < 1 || (visibleClinicalAddendumCount ?? 0) < 1 || (visibleKnowledgeCount ?? 0) < 1 || (visibleProviderCount ?? 0) < 1 || (visibleRoleCount ?? 0) < 1 || (visibleAiTurnCount ?? 0) !== 0 || (visibleAiDraftCount ?? 0) !== 0 || (visibleLifecycleDecisionCount ?? 0) !== 0 || (visibleLifecycleEventCount ?? 0) !== 0 || (visibleLegacyInboxCount ?? 0) !== 0 || missingScopeClinicalDocumentCount !== 0 || missingScopeClinicalAddendumCount !== 0 || missingContextPatientCount !== 0 || missingContextGuardianCount !== 0 || missingContextDiagnosticRequestCount !== 0 || missingContextSpecimenCount !== 0 || missingContextDiagnosticResultCount !== 0 || hiddenWorkspacePatientCount !== 0 || hiddenWorkspaceGuardianCount !== 0 || hiddenWorkspaceDiagnosticRequestCount !== 0 || hiddenWorkspaceSpecimenCount !== 0 || hiddenWorkspaceDiagnosticResultCount !== 0 || hiddenWorkspaceAppointmentCount !== 0 || hiddenWorkspaceClinicalDocumentCount !== 0 || hiddenWorkspaceClinicalAddendumCount !== 0 || hiddenWorkspaceKnowledgeCount !== 0 || hiddenUnitPatientCount !== 0 || hiddenUnitGuardianCount !== 0 || hiddenUnitDiagnosticRequestCount !== 0 || hiddenUnitSpecimenCount !== 0 || hiddenUnitDiagnosticResultCount !== 0 || hiddenUnitAppointmentCount !== 0 || hiddenUnitClinicalDocumentCount !== 0 || hiddenUnitClinicalAddendumCount !== 0 || hiddenUnitKnowledgeCount !== 0 || hiddenUnitProviderCount !== 0 || hiddenOrganizationCount !== 0 || hiddenSnapshotCount !== 0 || hiddenJournalCount !== 0 || hiddenOutboxCount !== 0 || hiddenUsageCount !== 0 || hiddenInboxCount !== 0 || hiddenExternalEffectsCount !== 0 || hiddenBreakGlassCount !== 0 || forbiddenWorkspaceClinicalUpdate.rowCount !== 0 || forbiddenWorkspaceDiagnosticUpdate.rowCount !== 0 || forbiddenWorkspaceSpecimenUpdate.rowCount !== 0 || forbiddenWorkspaceDiagnosticResultUpdate.rowCount !== 0 || forbiddenUnitClinicalUpdate.rowCount !== 0 || forbiddenUnitDiagnosticUpdate.rowCount !== 0 || forbiddenUnitSpecimenUpdate.rowCount !== 0 || forbiddenUnitDiagnosticResultUpdate.rowCount !== 0 || unprotectedTables.length !== 0) throw new Error(`RLS did not isolate the complete domain catalog: ${JSON.stringify(unprotectedTables)}`);
+    if (visibleOrganizationCount !== 1 || (visibleSnapshotCount ?? 0) < 1 || (visibleJournalCount ?? 0) < 1 || (visibleOutboxCount ?? 0) < 1 || (visibleUsageCount ?? 0) < 1 || (visibleInboxCount ?? 0) < 1 || (visibleExternalEffectsCount ?? 0) < 1 || (visibleBreakGlassCount ?? 0) < 2 || (visibleScopedBreakGlassAuditCount ?? 0) !== 1 || (visiblePatientCount ?? 0) < 1 || (visibleGuardianCount ?? 0) < 1 || (visibleDiagnosticRequestCount ?? 0) < 1 || (visibleSpecimenCount ?? 0) < 1 || (visibleDiagnosticResultCount ?? 0) < 1 || (visibleAppointmentCount ?? 0) < 1 || (visibleClinicalDocumentCount ?? 0) < 1 || (visibleClinicalAddendumCount ?? 0) < 1 || (visibleKnowledgeCount ?? 0) < 1 || (visibleProviderCount ?? 0) < 1 || (visibleRoleCount ?? 0) < 1 || (visibleAiTurnCount ?? 0) !== sameScopeAiTurns || (visibleAiDraftCount ?? 0) !== 0 || (visibleLifecycleDecisionCount ?? 0) !== 0 || (visibleLifecycleEventCount ?? 0) !== 0 || (visibleLegacyInboxCount ?? 0) !== 0 || missingScopeClinicalDocumentCount !== 0 || missingScopeClinicalAddendumCount !== 0 || missingContextPatientCount !== 0 || missingContextGuardianCount !== 0 || missingContextDiagnosticRequestCount !== 0 || missingContextSpecimenCount !== 0 || missingContextDiagnosticResultCount !== 0 || hiddenWorkspacePatientCount !== 0 || hiddenWorkspaceGuardianCount !== 0 || hiddenWorkspaceDiagnosticRequestCount !== 0 || hiddenWorkspaceSpecimenCount !== 0 || hiddenWorkspaceDiagnosticResultCount !== 0 || hiddenWorkspaceAppointmentCount !== 0 || hiddenWorkspaceClinicalDocumentCount !== 0 || hiddenWorkspaceClinicalAddendumCount !== 0 || hiddenWorkspaceKnowledgeCount !== 0 || hiddenUnitPatientCount !== 0 || hiddenUnitGuardianCount !== 0 || hiddenUnitDiagnosticRequestCount !== 0 || hiddenUnitSpecimenCount !== 0 || hiddenUnitDiagnosticResultCount !== 0 || hiddenUnitAppointmentCount !== 0 || hiddenUnitClinicalDocumentCount !== 0 || hiddenUnitClinicalAddendumCount !== 0 || hiddenUnitKnowledgeCount !== 0 || hiddenUnitProviderCount !== 0 || hiddenOrganizationCount !== 0 || hiddenSnapshotCount !== 0 || hiddenJournalCount !== 0 || hiddenOutboxCount !== 0 || hiddenUsageCount !== 0 || hiddenInboxCount !== 0 || hiddenExternalEffectsCount !== 0 || hiddenBreakGlassCount !== 0 || forbiddenWorkspaceClinicalUpdate.rowCount !== 0 || forbiddenWorkspaceDiagnosticUpdate.rowCount !== 0 || forbiddenWorkspaceSpecimenUpdate.rowCount !== 0 || forbiddenWorkspaceDiagnosticResultUpdate.rowCount !== 0 || forbiddenUnitClinicalUpdate.rowCount !== 0 || forbiddenUnitDiagnosticUpdate.rowCount !== 0 || forbiddenUnitSpecimenUpdate.rowCount !== 0 || forbiddenUnitDiagnosticResultUpdate.rowCount !== 0 || unprotectedTables.length !== 0) throw new Error(`RLS did not isolate the complete domain catalog: ${JSON.stringify(unprotectedTables)}`);
     await client.query("reset role");
+    for (const fixture of scopedReadFixtures) {
+      // RESET ROLE does not reset tenant GUCs. Restore every visibility field
+      // before deciding that a fixture is absent under the runtime's RLS.
+      await client.query("select set_config('cvg.organization_id', $1, false), set_config('cvg.unit_id', $2, false), set_config('cvg.workspace_id', $3, false)", [fixture.organizationId, fixture.unitId, fixture.workspaceId]);
+      const assertAbsent = async (): Promise<void> => {
+        const residue = (await client.query<{ count: number }>(`select count(*)::int as count from ${fixture.table} where id = $1`, [fixture.values[0]])).rows[0]?.count;
+        if (residue !== 0) throw new Error(`${fixture.table} RLS probe escaped its rollback transaction`);
+      };
+      // The same oracle must reject a known-present row before accepting an
+      // empty result. This catches false absence caused by RLS invisibility.
+      await client.query("begin");
+      try {
+        await seedScopedProbe(client, fixture);
+        await assert.rejects(assertAbsent, /RLS probe escaped its rollback transaction/);
+      } finally {
+        await client.query("rollback");
+      }
+      await assertAbsent();
+    }
+    process.stdout.write("POSTGRES_RLS_ZERO_RESIDUE_ORACLE_VERIFIED present_controls_rejected=3 empty_controls_accepted=3\n");
+    process.stdout.write("POSTGRES_RLS_FIXTURE_ROLLBACK_VERIFIED tables=3 rows_remaining=0\n");
     const rejectedDiagnosticChildren = (await client.query<{ count: number }>("select count(*)::int as count from specimens where id = $1 union all select count(*)::int as count from diagnostic_results where id = $2", [invalidSpecimenId, invalidResultId])).rows;
     if (rejectedDiagnosticChildren.some((row) => row.count !== 0)) throw new Error("negative diagnostic child writes left rows behind");
     const protection = (await client.query<{ domain_tables: number; protected_tables: number; organization_foreign_keys: number }>("select count(*) filter (where c.relkind = 'r' and c.relname <> 'schema_migrations')::int as domain_tables, count(*) filter (where c.relkind = 'r' and c.relname <> 'schema_migrations' and c.relrowsecurity and c.relforcerowsecurity)::int as protected_tables, (select count(*)::int from pg_constraint where contype = 'f' and pg_get_constraintdef(oid) like 'FOREIGN KEY (organization_id,%') as organization_foreign_keys from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public'")).rows[0];
@@ -629,12 +954,20 @@ try {
 // Agent runtime session state against real PostgreSQL: tenant-scoped RLS,
 // monotonic leases/fences, append-only ledger and tamper-evident checkpoints.
 let agentSessionProof: Record<string, unknown> = { status: "NOT_RUN" };
+let usageGuardProof: Record<string, unknown> = { status: "NOT_RUN" };
 {
-  const agentPool = new pg.Pool({ connectionString: databaseUrl, max: 3, application_name: "cvg-agent-runtime-verify" });
+  const agentPool = new pg.Pool({ connectionString: databaseUrl, max: 2, application_name: "cvg-agent-runtime-verify-a" });
+  const agentPoolB = new pg.Pool({ connectionString: databaseUrl, max: 2, application_name: "cvg-agent-runtime-verify-b" });
   try {
     const store = new PostgresAgentSessionStore(createScopedSqlExecutor({
       connect: async () => {
         const client = await agentPool.connect();
+        return { query: async (text: string, params: readonly unknown[]) => ({ rows: (await client.query(text, params as unknown[])).rows as Record<string, unknown>[] }), release: () => client.release() };
+      }
+    }));
+    const storeB = new PostgresAgentSessionStore(createScopedSqlExecutor({
+      connect: async () => {
+        const client = await agentPoolB.connect();
         return { query: async (text: string, params: readonly unknown[]) => ({ rows: (await client.query(text, params as unknown[])).rows as Record<string, unknown>[] }), release: () => client.release() };
       }
     }));
@@ -646,7 +979,7 @@ let agentSessionProof: Record<string, unknown> = { status: "NOT_RUN" };
     await store.create({ sessionId, organizationId, actorId, unitId: String(option.unit.id), workspaceId: String(option.workspace.id), purpose: "SUMMARY", taskObjective: "verify-postgres agent session", ttlMs: 120_000 });
     const leaseA = await store.acquireLease({ sessionId, organizationId, ownerId: "verify-instance-a", ttlMs: 120_000 });
     if (!leaseA || leaseA.fence !== 1) throw new Error(`agent lease A expected fence 1, observed ${JSON.stringify(leaseA)}`);
-    const leaseB = await store.acquireLease({ sessionId, organizationId, ownerId: "verify-instance-b", ttlMs: 120_000 });
+    const leaseB = await storeB.acquireLease({ sessionId, organizationId, ownerId: "verify-instance-b", ttlMs: 120_000 });
     if (leaseB !== null) throw new Error("a live agent lease must block a second owner");
     const checkpoint = await store.checkpoint({ sessionId, organizationId, fence: leaseA.fence, payload: { turn: 1, state: "WAITING_APPROVAL" } });
     if (checkpoint.sequence !== 1) throw new Error(`checkpoint sequence expected 1, observed ${checkpoint.sequence}`);
@@ -679,6 +1012,55 @@ let agentSessionProof: Record<string, unknown> = { status: "NOT_RUN" };
     const firstTurn = await store.appendTurn({ turnId: randomUUID(), sessionId, organizationId, sequence: 0, status: "COMPLETED", inputDigest: digest({ turn: 1 }), contextDigest: null, modelRequestDigest: null, modelResponseDigest: null, toolRequestIds: [], usageRecordId: null, provenance: { provider: "verify" }, startedAt: new Date().toISOString(), completedAt: new Date().toISOString(), fence: leaseA.fence });
     const secondTurn = await store.appendTurn({ turnId: randomUUID(), sessionId, organizationId, sequence: 0, status: "COMPLETED", inputDigest: digest({ turn: 2 }), contextDigest: null, modelRequestDigest: null, modelResponseDigest: null, toolRequestIds: [], usageRecordId: null, provenance: { provider: "verify" }, startedAt: new Date().toISOString(), completedAt: new Date().toISOString(), fence: leaseA.fence });
     if (firstTurn.sequence !== 1 || secondTurn.sequence !== 2) throw new Error(`agent turn sequence expected 1,2 observed ${firstTurn.sequence},${secondTurn.sequence}`);
+    if (!usageForAgent) throw new Error("usage guard probe has no valid usage fixture");
+    const validUsageTurn = await store.appendTurn({ turnId: randomUUID(), sessionId, organizationId, sequence: 0, status: "COMPLETED", inputDigest: digest({ turn: "valid-usage" }), contextDigest: null, modelRequestDigest: null, modelResponseDigest: null, toolRequestIds: [], usageRecordId: usageForAgent.id, provenance: { provider: "verify", usage: "valid" }, startedAt: new Date().toISOString(), completedAt: new Date().toISOString(), fence: leaseA.fence });
+    if (validUsageTurn.usageRecordId !== usageForAgent.id || validUsageTurn.sequence !== 3) throw new Error("valid usage reference was not persisted on the next agent turn");
+
+    const sideEffectCounts = async (): Promise<{ turns: number; audits: number; usage: number }> => {
+      const client = await agentPool.connect();
+      try {
+        await client.query("begin");
+        await client.query("select set_config('cvg.organization_id', $1, true)", [organizationId]);
+        const result = await client.query<{ turns: number; audits: number; usage: number }>(
+          "select (select count(*)::int from agent_turns where session_id = $1) as turns, (select count(*)::int from cvg_audit_ledger) as audits, (select count(*)::int from ai_usage_ledger) as usage",
+          [sessionId]
+        );
+        await client.query("rollback");
+        return result.rows[0] ?? { turns: -1, audits: -1, usage: -1 };
+      } finally {
+        client.release();
+      }
+    };
+    const beforeInvalidUsage = await sideEffectCounts();
+    const expectInvalidUsage = async (usageRecordId: string, label: string): Promise<string> => {
+      try {
+        await store.appendTurn({ turnId: randomUUID(), sessionId, organizationId, sequence: 0, status: "COMPLETED", inputDigest: digest({ turn: label }), contextDigest: null, modelRequestDigest: null, modelResponseDigest: null, toolRequestIds: [], usageRecordId, provenance: { provider: "verify", usage: label }, startedAt: new Date().toISOString(), completedAt: null, fence: leaseA.fence });
+      } catch (error) {
+        if (error instanceof AgentSessionError && error.code === "SESSION_INVALID" && error.message.includes("usage reference is invalid")) return error.code;
+        throw error;
+      }
+      throw new Error(`${label} usage reference was accepted`);
+    };
+    const danglingUsageCode = await expectInvalidUsage(randomUUID(), "dangling");
+    const crossTenantOrganizationId = id(randomUUID());
+    const ownerClient = new pg.Client({ connectionString: migrationDatabaseUrl });
+    await ownerClient.connect();
+    try {
+      await ownerClient.query("insert into organizations(id, name, slug, status) values ($1, $2, $3, 'ACTIVE')", [crossTenantOrganizationId, "AUD23 cross-tenant fixture", `aud23-cross-${crossTenantOrganizationId}`]);
+    } finally {
+      await ownerClient.end().catch(() => undefined);
+    }
+    const crossTenantPersistence = new PostgresPersistence({ connectionString: databaseUrl });
+    let crossTenantUsage: { id: string };
+    try {
+      crossTenantUsage = await crossTenantPersistence.recordUsage({ id: id(randomUUID()), organizationId: crossTenantOrganizationId, reservationId: null, providerRequestId: "aud23-cross-tenant-provider", idempotencyKey: "aud23-cross-tenant-usage", usageKind: "TOKENS", reservedUnits: 1, consumedUnits: 1, status: "RECEIVED", record: { synthetic: true, scope: "cross-tenant" } });
+    } finally {
+      await crossTenantPersistence.close();
+    }
+    const crossTenantCode = await expectInvalidUsage(crossTenantUsage.id, "cross-tenant");
+    const afterInvalidUsage = await sideEffectCounts();
+    if (JSON.stringify(beforeInvalidUsage) !== JSON.stringify(afterInvalidUsage)) throw new Error(`invalid usage references changed durable side effects: before=${JSON.stringify(beforeInvalidUsage)} after=${JSON.stringify(afterInvalidUsage)}`);
+    usageGuardProof = { status: "PASS", validUsage: "PASS", danglingUsage: { status: "REJECTED", code: danglingUsageCode }, crossTenantUsage: { status: "REJECTED", code: crossTenantCode }, invalidSideEffects: { before: beforeInvalidUsage, after: afterInvalidUsage, unchanged: true }, crossTenantDisclosure: "generic SESSION_INVALID; no existence disclosure", staleFenceTaxonomy: "DENIED_STALE_FENCE remains reserved for invalid session/fence", sqlUsageParameter: "$10" };
     // Tenant-scoped append-only probe: with the GUC set, RLS admits the row and
     // the 038 trigger (or the missing UPDATE grant) must reject the mutation.
     {
@@ -709,15 +1091,204 @@ let agentSessionProof: Record<string, unknown> = { status: "NOT_RUN" };
     if (!staleCompletionRejected) throw new Error("stale completion must be rejected");
     const completed = await store.complete({ sessionId, organizationId, fence: leaseA.fence, runState: "COMPLETED" });
     if (completed.runState !== "COMPLETED") throw new Error("agent session completion did not persist");
+    // CVG-AUD19-003/008: the same TTL/lease/mutex contract as the memory store,
+    // executed against real PostgreSQL with expiry controlled by the database,
+    // not by a wall-clock sleep that can race connection roundtrips.
+    const ttlContractSessionId = randomUUID();
+    const ttlContractFailures = await verifyAgentSessionTtlContract({
+      store,
+      organizationId,
+      actorId,
+      unitId: String(option.unit.id),
+      workspaceId: String(option.workspace.id),
+      sessionId: ttlContractSessionId,
+      ttlMs: AGENT_SESSION_TTL_VERIFICATION_MS,
+      expireSession: async () => { await expireAgentSession(agentPool, organizationId, ttlContractSessionId, "AT_LIMIT"); }
+    });
+    if (ttlContractFailures.length > 0) throw new Error(`agent session TTL contract failed: ${ttlContractFailures.join("; ")}`);
+    const ttlMatrixFailures = await verifyAgentSessionTtlMatrix({ primary: store, secondary: storeB, expiryPool: agentPool, organizationId, actorId, unitId: String(option.unit.id), workspaceId: String(option.workspace.id) });
+    if (ttlMatrixFailures.length > 0) throw new Error(`agent session TTL matrix failed: ${ttlMatrixFailures.join("; ")}`);
     const unscoped = await agentPool.query<{ count: number }>("select count(*)::int as count from agent_sessions");
     if (Number(unscoped.rows[0]?.count ?? -1) !== 0) throw new Error("agent_sessions leaked rows without a tenant GUC (RLS failure)");
     await store.releaseLease({ sessionId, organizationId, ownerId: leaseA.ownerId, fence: leaseA.fence });
-    agentSessionProof = { status: "PASS", fence: leaseA.fence, checkpointSequence: checkpoint.sequence, turnSequences: [firstTurn.sequence, secondTurn.sequence], appendOnly: true, rlsUnscopedRows: 0 };
+    agentSessionProof = { status: "PASS", fence: leaseA.fence, checkpointSequence: checkpoint.sequence, turnSequences: [firstTurn.sequence, secondTurn.sequence], appendOnly: true, rlsUnscopedRows: 0, ttlContract: { status: "PASS", ttlMs: AGENT_SESSION_TTL_VERIFICATION_MS, repetitions: 20, phases: ["BEFORE", "AT_LIMIT", "AFTER_LIMIT"], pools: 2, clock: "DATABASE_EXPIRY_WRITE_NO_SLEEP" } };
+
+    // CVG-AUD19-012: the runtime role holds only the granted matrix, and the
+    // revoked operations fail as cvg_runtime.
+    const matrix = await agentPool.query<Record<string, boolean>>(`select
+      has_table_privilege(current_user, 'public.agent_sessions', 'SELECT') as sessions_select,
+      has_table_privilege(current_user, 'public.agent_sessions', 'INSERT') as sessions_insert,
+      has_table_privilege(current_user, 'public.agent_sessions', 'UPDATE') as sessions_update,
+      has_table_privilege(current_user, 'public.agent_sessions', 'DELETE') as sessions_delete,
+      has_table_privilege(current_user, 'public.agent_turns', 'SELECT') as turns_select,
+      has_table_privilege(current_user, 'public.agent_turns', 'INSERT') as turns_insert,
+      has_table_privilege(current_user, 'public.agent_turns', 'UPDATE') as turns_update,
+      has_table_privilege(current_user, 'public.agent_turns', 'DELETE') as turns_delete,
+      has_table_privilege(current_user, 'public.agent_checkpoints', 'UPDATE') as checkpoints_update,
+      has_table_privilege(current_user, 'public.agent_checkpoints', 'DELETE') as checkpoints_delete,
+      has_table_privilege(current_user, 'public.agent_leases', 'DELETE') as leases_delete,
+      has_table_privilege(current_user, 'public.cvg_audit_ledger', 'UPDATE') as audit_update,
+      has_table_privilege(current_user, 'public.cvg_audit_ledger', 'DELETE') as audit_delete,
+      has_table_privilege(current_user, 'public.audit_records', 'UPDATE') as audit_records_update,
+      has_table_privilege(current_user, 'public.cvg_event_journal', 'UPDATE') as journal_update,
+      has_table_privilege(current_user, 'public.cvg_command_receipt_ledger', 'DELETE') as receipt_ledger_delete,
+      has_table_privilege(current_user, 'public.ai_usage_ledger', 'UPDATE') as usage_update,
+      has_table_privilege(current_user, 'public.ai_usage_ledger', 'DELETE') as usage_delete,
+      has_table_privilege(current_user, 'public.command_receipts', 'DELETE') as receipts_delete,
+      has_table_privilege(current_user, 'public.break_glass_grants', 'DELETE') as break_glass_delete
+    `);
+    const expectedMatrix: Record<string, boolean> = {
+      sessions_select: true, sessions_insert: true, sessions_update: true, sessions_delete: false,
+      turns_select: true, turns_insert: true, turns_update: false, turns_delete: false,
+      checkpoints_update: false, checkpoints_delete: false, leases_delete: true,
+      audit_update: true, audit_delete: false, audit_records_update: false, journal_update: false, receipt_ledger_delete: false,
+      usage_update: true, usage_delete: false, receipts_delete: false, break_glass_delete: false
+    };
+    for (const [privilege, expected] of Object.entries(expectedMatrix)) {
+      if (matrix.rows[0]?.[privilege] !== expected) throw new Error(`runtime privilege matrix diverged for ${privilege}: expected ${expected}, observed ${matrix.rows[0]?.[privilege]}`);
+    }
+    const negativeAttempts: Array<[string, string]> = [
+      ["delete agent_sessions", "delete from agent_sessions where session_id = $1"],
+      ["update agent_turns", "update agent_turns set status = 'FAILED' where session_id = $1"],
+      ["delete agent_turns", "delete from agent_turns where session_id = $1"],
+      ["update agent_checkpoints", "update agent_checkpoints set digest = digest where session_id = $1"],
+      ["update audit_records", "update audit_records set result = 'DENIED' where organization_id = $1"],
+      ["delete cvg_audit_ledger", "delete from cvg_audit_ledger where organization_id = $1"],
+      ["mutate cvg_audit_ledger", "update cvg_audit_ledger set record = record || '{\"tamper\": true}'::jsonb where organization_id = $1"],
+      ["delete cvg_command_receipt_ledger", "delete from cvg_command_receipt_ledger where organization_id = $1"],
+      ["delete command_receipts", "delete from command_receipts where organization_id = $1"],
+      ["delete break_glass_grants", "delete from break_glass_grants where organization_id = $1"]
+    ];
+    const auditRowsClient = await agentPool.connect();
+    let auditRows = 0;
+    try {
+      await auditRowsClient.query("begin");
+      await auditRowsClient.query("select set_config('cvg.organization_id', $1, true)", [organizationId]);
+      const counted = await auditRowsClient.query<{ count: number }>("select count(*)::int as count from cvg_audit_ledger");
+      auditRows = Number(counted.rows[0]?.count ?? 0);
+      await auditRowsClient.query("rollback");
+    } finally {
+      auditRowsClient.release();
+    }
+    if (auditRows < 1) throw new Error("privilege matrix requires at least one audit ledger row to prove the append-only guard");
+    const negativeResults: Record<string, string> = {};
+    for (const [name, statement] of negativeAttempts) {
+      const client = await agentPool.connect();
+      try {
+        await client.query("begin");
+        await client.query("select set_config('cvg.organization_id', $1, true)", [organizationId]);
+        let rejected = false;
+        try {
+          await client.query(statement, [name.includes("agent_") ? sessionId : organizationId]);
+        } catch {
+          rejected = true;
+        }
+        await client.query("rollback");
+        if (!rejected) throw new Error(`runtime role must not be able to ${name}`);
+        negativeResults[name] = "REJECTED";
+      } finally {
+        client.release();
+      }
+    }
+    // CVG-AUD20-002: terminal sessions are immutable and the runtime cannot
+    // create the restore state or use a historical fence.
+    const terminalSessionId = randomUUID();
+    await store.create({ sessionId: terminalSessionId, organizationId, actorId, unitId: String(option.unit.id), workspaceId: String(option.workspace.id), purpose: "SUMMARY", taskObjective: "terminal-guard", ttlMs: 120_000 });
+    const terminalLease = await store.acquireLease({ sessionId: terminalSessionId, organizationId, ownerId: "terminal-owner", ttlMs: 120_000 });
+    if (!terminalLease) throw new Error("terminal guard could not acquire a lease");
+    await store.complete({ sessionId: terminalSessionId, organizationId, fence: terminalLease.fence, runState: "COMPLETED" });
+    const terminalProof: Record<string, string> = {};
+    try {
+      await store.appendTurn({ turnId: randomUUID(), sessionId: terminalSessionId, organizationId, sequence: 0, status: "COMPLETED", inputDigest: "a".repeat(64), contextDigest: null, modelRequestDigest: null, modelResponseDigest: null, toolRequestIds: [], usageRecordId: null, provenance: {}, startedAt: new Date().toISOString(), completedAt: null, fence: terminalLease.fence });
+      throw new Error("terminal session accepted a new turn");
+    } catch (error) {
+      if (error instanceof Error && error.message === "terminal session accepted a new turn") throw error;
+      terminalProof["turnAfterComplete"] = "REJECTED";
+    }
+    try {
+      await store.checkpoint({ sessionId: terminalSessionId, organizationId, fence: terminalLease.fence, payload: { after: "terminal" } });
+      throw new Error("terminal session accepted a checkpoint");
+    } catch (error) {
+      if (error instanceof Error && error.message === "terminal session accepted a checkpoint") throw error;
+      terminalProof["checkpointAfterComplete"] = "REJECTED";
+    }
+    const renewedAfterComplete = await store.renewLease({ sessionId: terminalSessionId, organizationId, ownerId: terminalLease.ownerId, ttlMs: 120_000, fence: terminalLease.fence });
+    if (renewedAfterComplete) throw new Error("terminal session renewed a lease after completion");
+    terminalProof["renewAfterComplete"] = "REJECTED";
+    {
+      const client = await agentPool.connect();
+      try {
+        await client.query("begin");
+        await client.query("select set_config('cvg.organization_id', $1, true)", [organizationId]);
+        let restoreStateRejected = false;
+        try {
+          await client.query("update agent_sessions set run_state = 'QUARANTINED_RESTORE' where session_id = $1", [terminalSessionId]);
+        } catch { restoreStateRejected = true; }
+        let historicalFenceRejected = false;
+        try {
+          await client.query("insert into agent_turns(turn_id, session_id, organization_id, sequence, status, input_digest, context_digest, model_request_digest, model_response_digest, tool_request_ids, usage_record_id, provenance, started_at, completed_at, fence) values ($1,$2,$3,99,'COMPLETED',$4,null,null,null,'[]'::jsonb,null,'{}'::jsonb,now(),null,0)", [randomUUID(), terminalSessionId, organizationId, "a".repeat(64)]);
+        } catch { historicalFenceRejected = true; }
+        await client.query("rollback");
+        if (!restoreStateRejected) throw new Error("runtime role created QUARANTINED_RESTORE");
+        if (!historicalFenceRejected) throw new Error("runtime role appended history with a non-authoritative fence");
+        terminalProof["restoreState"] = "REJECTED";
+        terminalProof["historicalFence"] = "REJECTED";
+      } finally {
+        client.release();
+      }
+    }
+    {
+      const ownerClient = new pg.Client({ connectionString: migrationDatabaseUrl, connectionTimeoutMillis: 2_500 });
+      await ownerClient.connect();
+      try {
+        const runtimeIdentity = await agentPool.query<{ current_user: string }>("select current_user");
+        const ownerIdentity = await ownerClient.query<{ current_user: string; table_owner: string | null }>("select current_user, (select tableowner from pg_tables where schemaname = 'public' and tablename = 'agent_sessions') as table_owner");
+        const runtimeUser = runtimeIdentity.rows[0]?.current_user;
+        const ownerRow = ownerIdentity.rows[0];
+        if (!ownerRow || !ownerRow.table_owner || ownerRow.current_user !== ownerRow.table_owner || ownerRow.current_user === runtimeUser) throw new Error("MIGRATION_DATABASE_URL must identify a distinct owner of public.agent_sessions");
+        await ownerClient.query("begin");
+        await ownerClient.query("select set_config('cvg.organization_id', $1, true)", [organizationId]);
+        let genericOwnerRejected = false;
+        try {
+          await ownerClient.query("update agent_sessions set run_state = 'RUNNING' where session_id = $1", [terminalSessionId]);
+        } catch { genericOwnerRejected = true; }
+        await ownerClient.query("rollback");
+        if (!genericOwnerRejected) throw new Error("generic schema owner mutated a terminal agent session");
+        terminalProof["genericOwnerTerminalWrite"] = "REJECTED";
+      } finally {
+        await ownerClient.end().catch(() => undefined);
+      }
+    }
+    // CVG-AUD20-003: a table/sequence created after the migrations inherits no
+    // runtime DML because the broad defaults were revoked.
+    {
+      const client = await agentPool.connect();
+      const owner = new pg.Client({ connectionString: migrationDatabaseUrl });
+      try {
+        await owner.connect();
+        await owner.query("create table if not exists cvg_future_privilege_probe(id uuid primary key)");
+        await owner.query("create sequence if not exists cvg_future_sequence_probe");
+        const probe = await client.query<{ table_insert: boolean; table_select: boolean; sequence_usage: boolean }>(
+          "select has_table_privilege(current_user, 'public.cvg_future_privilege_probe', 'INSERT') as table_insert, has_table_privilege(current_user, 'public.cvg_future_privilege_probe', 'SELECT') as table_select, has_sequence_privilege(current_user, 'public.cvg_future_sequence_probe', 'USAGE') as sequence_usage"
+        );
+        if (probe.rows[0]?.table_insert !== false || probe.rows[0]?.table_select !== false || probe.rows[0]?.sequence_usage !== false) throw new Error(`future objects inherited runtime privileges: ${JSON.stringify(probe.rows[0])}`);
+        terminalProof["futureTablePrivileges"] = "DENIED";
+        terminalProof["futureSequencePrivileges"] = "DENIED";
+      } finally {
+        await owner.query("drop table if exists cvg_future_privilege_probe").catch(() => undefined);
+        await owner.query("drop sequence if exists cvg_future_sequence_probe").catch(() => undefined);
+        await owner.end().catch(() => undefined);
+        client.release();
+      }
+    }
+    agentSessionProof = { ...(agentSessionProof as Record<string, unknown>), privilegeMatrix: "PASS", negativeAttempts: negativeResults, terminalGuards: terminalProof };
   } catch (error) {
     await agentPool.end();
+    await agentPoolB.end();
     throw error;
   }
   await agentPool.end();
+  await agentPoolB.end();
 }
 
-console.log(JSON.stringify({ postgres: "PASS", restartRead: "PASS", normalizedReads: "PASS", diagnosticRequest: "PASS", diagnosticSpecimen: "PASS", diagnosticResult: "PASS", diagnosticChildIntegrity: "PASS", idempotency: "PASS", outbox: "PASS", externalEffects: "PASS", inbox: "PASS", usageLedger: "PASS", breakGlass: "PASS", cas: "PASS", rls: "PASS", agentSession: agentSessionProof, rlsDomainTables: catalogProtection.domainTables, rlsProtectedTables: catalogProtection.protectedTables, organizationForeignKeys: catalogProtection.organizationForeignKeys, runtimeRole, migrationPrivileges, receiptId: firstResult.receiptId, counts }, null, 2));
+console.log(JSON.stringify({ postgres: "PASS", restartRead: "PASS", normalizedReads: "PASS", diagnosticRequest: "PASS", diagnosticSpecimen: "PASS", diagnosticResult: "PASS", diagnosticChildIntegrity: "PASS", idempotency: "PASS", outbox: "PASS", externalEffects: "PASS", inbox: "PASS", usageLedger: "PASS", breakGlass: "PASS", cas: "PASS", rls: "PASS", agentSession: agentSessionProof, usageGuard: usageGuardProof, rlsDomainTables: catalogProtection.domainTables, rlsProtectedTables: catalogProtection.protectedTables, organizationForeignKeys: catalogProtection.organizationForeignKeys, runtimeRole, migrationPrivileges, receiptId: firstResult.receiptId, counts }, null, 2));

@@ -1,0 +1,18 @@
+# Local-only Prometheus profile. It scrapes the collector and keeps the
+# alerting path synthetic; no API, staging or external endpoint is assumed.
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+
+rule_files:
+  - /etc/prometheus/alerts.yml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ["alertmanager:9093"]
+
+scrape_configs:
+  - job_name: otel-collector
+    static_configs:
+      - targets: ["otel-collector:8889"]

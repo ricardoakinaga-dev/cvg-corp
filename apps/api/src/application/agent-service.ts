@@ -1,8 +1,9 @@
 import { aiUsageSettlementSchema, type AiApproval, type AiTurnInput, type AiTurnProvenance, type AiTurnUsage, type CvgContext, type OpaqueId } from "@cvg/contracts";
-import { digest, makeId, type CvgStore, type IdempotencyInput } from "@cvg/domain";
+import { digest, isInContext, makeId, type CvgStore, type IdempotencyInput } from "@cvg/domain";
 import type { AgentDraftPromotion, AgentReplayResult, AgentRuntime, AgentRuntimeHealth, AgentTurnResult } from "@cvg/agent-runtime";
 import { DomainError } from "@cvg/domain";
 import { enforceApplicationPolicy } from "@cvg/agent-policy";
+import { containsSecretMaterial } from "@cvg/agent-context";
 import { DurableIdempotencyService, type IdempotentCommandResult } from "./idempotency-service.ts";
 
 /** Application boundary for AI commands: context validation, idempotency and runtime delegation live here. */
@@ -20,7 +21,8 @@ export class AgentApplicationService {
 
   async executeTurn(context: CvgContext, input: AiTurnInput): Promise<IdempotentCommandResult<AgentTurnResult>> {
     this.store.validateContext(context);
-    enforceApplicationPolicy(context, `ai.turn.${input.purpose}`, { resourceId: input.resourceId ?? input.encounterId ?? input.patientId });
+    enforceApplicationPolicy(context, `ai.turn.${input.purpose}`, this.authorizedTurnResource(context, input));
+    this.validatePrompt(input.prompt);
     return this.commands.execute(this.command(context, "ai.turn", input.idempotencyKey, input.sessionId, input), async () => this.persistRuntimeResult(context, input, await this.runtime.executeTurn(context, input, input.approvalId)), { external: true });
   }
 
@@ -32,8 +34,29 @@ export class AgentApplicationService {
 
   async retryTurn(context: CvgContext, input: AiTurnInput, approvalId: OpaqueId): Promise<IdempotentCommandResult<AgentTurnResult>> {
     this.store.validateContext(context);
-    enforceApplicationPolicy(context, "ai.approval.retry", { resourceId: input.resourceId ?? input.encounterId ?? approvalId });
+    enforceApplicationPolicy(context, "ai.approval.retry", this.authorizedTurnResource(context, input, approvalId));
+    this.validatePrompt(input.prompt);
     return this.commands.execute(this.command(context, "ai.approval.retry", input.idempotencyKey, approvalId, input), async () => this.persistRuntimeResult(context, input, await this.runtime.executeTurn(context, input, approvalId)), { external: true });
+  }
+
+  private validatePrompt(prompt: string): void {
+    // Reject before a durable idempotency claim or any runtime can retain or
+    // dispatch the input. Retrying an edited, unadmitted prompt is safe.
+    if (containsSecretMaterial(prompt)) throw new DomainError("POLICY_DENIED", "Remova senhas, tokens ou chaves do texto antes de enviá-lo à IA.", 403, { reason: "SECRET_MATERIAL" });
+  }
+
+  /**
+   * CVG-AUD19-004/005: the turn's target resource is authorized from the
+   * repository identity and scope, never from the caller's declared facts.
+   * Approval/draft/session resources keep their own verified lookups.
+   */
+  private authorizedTurnResource(context: CvgContext, input: AiTurnInput, fallbackResourceId: OpaqueId | null = null): { resourceId: OpaqueId | null; resourceUnitId?: OpaqueId | null; resourceWorkspaceId?: OpaqueId | null } {
+    const resolution = this.store.resolveAgentResource({ resourceId: input.resourceId ?? null, encounterId: input.encounterId ?? null, patientId: input.patientId ?? null });
+    if (resolution.status !== "RESOLVED" && !(input.resourceId ?? input.encounterId ?? input.patientId)) return { resourceId: fallbackResourceId };
+    if (resolution.status === "DIVERGENT") throw new DomainError("DIVERGENT", "Os identificadores do recurso não correspondem entre si.", 409);
+    if (resolution.status !== "RESOLVED") throw new DomainError("NOT_FOUND", "Recurso não encontrado.", 404);
+    if (!isInContext(resolution.resource, context)) throw new DomainError("POLICY_DENIED", "O recurso não pertence ao contexto autenticado.", 403);
+    return { resourceId: resolution.resource.resourceId, resourceUnitId: resolution.resource.unitId, resourceWorkspaceId: resolution.resource.workspaceId };
   }
 
   async promoteDraft(context: CvgContext, draftId: OpaqueId, idempotencyKey: string): Promise<IdempotentCommandResult<AgentDraftPromotion>> {
@@ -63,10 +86,10 @@ export class AgentApplicationService {
       this.store.validateContext(context);
       const current = this.store.aiSessions.get(session.id);
       if (!current || current.id !== session.id || current.status !== "ACTIVE" || current.organizationId !== context.organizationId || current.actorId !== context.actorId || current.unitId !== context.unitId || current.workspaceId !== context.workspaceId || current.purpose !== input.purpose || current.patientId !== input.patientId || current.encounterId !== input.encounterId || (input.sessionId !== null && input.sessionId !== session.id)) return "AI_TURN_AUTHORITY_REVOKED";
-      const resourceId = input.resourceId ?? input.encounterId;
-      if (resourceId) {
-        const encounter = this.store.encounters.get(resourceId);
-        if (encounter && (encounter.organizationId !== context.organizationId || encounter.unitId !== context.unitId || encounter.workspaceId !== context.workspaceId || encounter.patientId !== (input.patientId ?? encounter.patientId))) return "AI_TURN_RESOURCE_SCOPE_CHANGED";
+      if (input.resourceId ?? input.encounterId ?? input.patientId) {
+        const resolution = this.store.resolveAgentResource({ resourceId: input.resourceId ?? null, encounterId: input.encounterId ?? null, patientId: input.patientId ?? null });
+        if (resolution.status === "DIVERGENT") return "AI_TURN_RESOURCE_DIVERGENT";
+        if (resolution.status !== "RESOLVED" || !isInContext(resolution.resource, context)) return "AI_TURN_RESOURCE_SCOPE_CHANGED";
       }
       return null;
     } catch {

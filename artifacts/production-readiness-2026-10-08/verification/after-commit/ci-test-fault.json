@@ -1,0 +1,13 @@
+{
+  "name": "ci-test-fault",
+  "command": [
+    "npm",
+    "run",
+    "test:fault"
+  ],
+  "exit_status": 0,
+  "started_at": "2026-10-08T10:45:08.695054+00:00",
+  "duration_s": 0.6,
+  "log": "artifacts/production-readiness-2026-10-08/verification/after-commit/ci-test-fault.log",
+  "log_sha256": "981ff3c61f5c4344f06f1b6300302c2c5b28856fcd063f57fe7ef94b41dfa74a"
+}

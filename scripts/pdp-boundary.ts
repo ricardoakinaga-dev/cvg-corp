@@ -221,8 +221,7 @@ function hasShadowedPolicyBinding(member: CallableMember, bindings: PolicyBindin
   return false;
 }
 
-function verifiedCommandDelegates(classNode: ts.ClassDeclaration, bindings: PolicyBindings): ReadonlySet<string> {
-  if (classNameOf(classNode) !== "DomainCommandService") return new Set();
+function verifiedCommandDelegates(classNode: ts.ClassDeclaration, bindings: PolicyBindings): ReadonlySet<string> {  if (classNameOf(classNode) !== "DomainCommandService") return new Set();
   const methods = classNode.members.filter(ts.isMethodDeclaration);
   const authorize = methods.find((method) => memberName(method) === "authorize");
   const run = methods.find((method) => memberName(method) === "run");
@@ -242,7 +241,80 @@ function verifiedCommandDelegates(classNode: ts.ClassDeclaration, bindings: Poli
   return verified;
 }
 
-function hasExecutedBoundary(member: CallableMember, path: string, className: string, bindings: PolicyBindings, delegates: ReadonlySet<string>): boolean {
+/**
+ * Verified pure resource resolvers: private synchronous methods whose first
+ * executed statement reads the authoritative repository and whose remaining
+ * statements only inspect the result, return it or throw a DomainError.  The
+ * PDP call may use such a resolver to build its options, because the
+ * resolution itself is a read with no effect.  Any other call, assignment or
+ * effect disqualifies the delegate.
+ */
+function verifiedResourceResolvers(classNode: ts.ClassDeclaration): ReadonlySet<string> {
+  const verified = new Set<string>();
+  for (const member of classNode.members.filter(ts.isMethodDeclaration)) {
+    const name = memberName(member);
+    if (!name || !hasModifier(member, ts.SyntaxKind.PrivateKeyword) || hasModifier(member, ts.SyntaxKind.AsyncKeyword) || hasModifier(member, ts.SyntaxKind.StaticKeyword) || member.asteriskToken) continue;
+    if (member.parameters.some(hasEagerEffect)) continue;
+    const statements = member.body?.statements ?? [];
+    const firstCall = statements[0] ? resolvedCallExpression(statements[0]) : null;
+    if (!firstCall || firstCall.expression.getText().replace(/\s+/g, "") !== "this.store.resolveAgentResource") continue;
+    if (firstCall.arguments.some(hasEagerEffect)) continue;
+    if (!statements.slice(1).every(isPureResolutionStatement)) continue;
+    verified.add(name);
+  }
+  return verified;
+}
+
+/** Only returns, throws and pure predicate reads are accepted after the resolve call. */
+function isPureResolutionStatement(statement: ts.Statement): boolean {
+  let pure = true;
+  const visit = (node: ts.Node): void => {
+    if (ts.isThrowStatement(node)) {
+      // Only `throw new <pure constructor>(<pure args>)` may be thrown.
+      if (!ts.isNewExpression(node.expression)) { pure = false; return; }
+      if (hasEagerEffect(node.expression.expression)) { pure = false; return; }
+      for (const argument of node.expression.arguments ?? []) {
+        if (hasEagerEffect(argument)) { pure = false; return; }
+      }
+      return;
+    }
+    if (ts.isCallExpression(node)) {
+      const callee = node.expression;
+      if (ts.isIdentifier(callee) && callee.text === "isInContext" && !node.arguments.some(hasEagerEffect)) return;
+      pure = false;
+      return;
+    }
+    if (ts.isNewExpression(node) || ts.isAwaitExpression(node) || ts.isDeleteExpression(node)
+      || ts.isPostfixUnaryExpression(node)
+      || (ts.isPrefixUnaryExpression(node) && (node.operator === ts.SyntaxKind.PlusPlusToken || node.operator === ts.SyntaxKind.MinusMinusToken))
+      || (ts.isBinaryExpression(node) && node.operatorToken.kind >= ts.SyntaxKind.FirstAssignment && node.operatorToken.kind <= ts.SyntaxKind.LastAssignment)) { pure = false; return; }
+    ts.forEachChild(node, visit);
+  };
+  visit(statement);
+  return pure;
+}
+
+function resolvedCallExpression(statement: ts.Statement): ts.CallExpression | null {
+  if (ts.isVariableStatement(statement)) {
+    const declarations = statement.declarationList.declarations;
+    if (declarations.length !== 1) return null;
+    const declaration = declarations[0];
+    // The binding must be a plain identifier: a binding pattern could evaluate
+    // defaults or computed keys before the resolver returns.
+    if (!declaration || !ts.isIdentifier(declaration.name)) return null;
+    const initializer = declaration.initializer;
+    return initializer && ts.isCallExpression(initializer) && !initializer.questionDotToken ? initializer : null;
+  }
+  return immediateCall(statement);
+}
+
+function isVerifiedResolverArgument(argument: ts.Expression, resolvers: ReadonlySet<string>): boolean {
+  if (!ts.isCallExpression(argument) || argument.questionDotToken) return false;
+  const name = thisMethodCallName(argument);
+  return name !== null && resolvers.has(name);
+}
+
+function hasExecutedBoundary(member: CallableMember, path: string, className: string, bindings: PolicyBindings, delegates: ReadonlySet<string>, resolvers: ReadonlySet<string>): boolean {
   const body = callableBody(member);
   if (!body || hasShadowedPolicyBinding(member, bindings)) return false;
   const callable = ts.isPropertyDeclaration(member) ? member.initializer : member;
@@ -258,7 +330,7 @@ function hasExecutedBoundary(member: CallableMember, path: string, className: st
     && statements[0]?.getText().replace(/\s+/g, "") === "this.store.validateContext(context);") index++;
   const statement = statements[index];
   const call = statement && immediateCall(statement);
-  if (!call || call.arguments.some(hasEagerEffect)) return false;
+  if (!call || call.arguments.some((argument) => hasEagerEffect(argument) && !isVerifiedResolverArgument(argument, resolvers))) return false;
   if (isPolicyCall(call.expression, bindings) || isSpecialPolicyCall(call.expression, bindings)) return true;
   const delegated = thisMethodCallName(call);
   return delegated !== null && delegates.has(delegated);
@@ -302,6 +374,7 @@ export function inspectApplicationPdpBoundaries(sources: readonly PdpBoundarySou
       const delegatedOperations = new Set<string>();
       const isDomainCommand = className === "DomainCommandService";
       const verifiedDelegates = verifiedCommandDelegates(classNode, bindings);
+      const verifiedResolvers = verifiedResourceResolvers(classNode);
 
       if (policyCalls.length === 0 && specialPolicyCalls.length === 0) {
         if (bindings.direct.size === 0 && bindings.namespaces.size === 0) findings.push(finding("MISSING_PDP_IMPORT", path, className, "boundary has no import of enforceApplicationPolicy"));
@@ -360,7 +433,7 @@ export function inspectApplicationPdpBoundaries(sources: readonly PdpBoundarySou
         if (!isPublicMethod(member)) continue;
         const method = memberName(member) ?? member.name?.getText() ?? "<computed>";
         if (hasPdpExemption(path, className, member)) continue;
-        if (!hasExecutedBoundary(member, path, className, bindings, verifiedDelegates)) findings.push(finding("METHOD_BYPASS", path, className, "public application entry must execute PDP enforcement or a verified synchronous delegate before effects; unsupported control flow fails closed", { method }));
+        if (!hasExecutedBoundary(member, path, className, bindings, verifiedDelegates, verifiedResolvers)) findings.push(finding("METHOD_BYPASS", path, className, "public application entry must execute PDP enforcement or a verified synchronous delegate before effects; unsupported control flow fails closed", { method }));
       }
     }
   }

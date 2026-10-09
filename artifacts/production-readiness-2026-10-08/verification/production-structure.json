@@ -1,0 +1,16 @@
+{
+  "name": "production-structure",
+  "command": [
+    "node",
+    "--import",
+    "tsx",
+    "scripts/verify-production.ts",
+    "--structural",
+    "--skip-local-gates"
+  ],
+  "exit_status": 0,
+  "started_at": "2026-10-08T05:55:03.452273+00:00",
+  "duration_s": 0.9,
+  "log": "artifacts/production-readiness-2026-10-08/verification/production-structure.log",
+  "log_sha256": "160cf4dd9fc1ca782c063115c89a4c4bb66b684f098b324529ede14ed5cc0cf4"
+}

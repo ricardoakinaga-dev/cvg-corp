@@ -29,16 +29,17 @@ async function provisionRuntimeRole(): Promise<void> {
   const identifier = quoteIdentifier(configured.user);
   const password = quoteLiteral(configured.password);
   const exists = await client.query<{ exists: boolean }>("select exists (select 1 from pg_roles where rolname = $1) as exists", [configured.user]);
-  if (!exists.rows[0]?.exists) await client.query(`create role ${identifier} login password ${password} noinherit nosuperuser nobypassrls nocreatedb nocreaterole`);
-  else await client.query(`alter role ${identifier} login password ${password} noinherit nosuperuser nobypassrls nocreatedb nocreaterole`);
+  if (!exists.rows[0]?.exists) await client.query(`create role ${identifier} login password ${password} noinherit nosuperuser nobypassrls nocreatedb nocreaterole noreplication`);
+  else await client.query(`alter role ${identifier} login password ${password} noinherit nosuperuser nobypassrls nocreatedb nocreaterole noreplication`);
   const database = (await client.query<{ database: string }>("select current_database() as database")).rows[0]?.database;
   if (!database) throw new Error("database name is unavailable while provisioning the runtime role");
   await client.query(`grant connect on database ${quoteIdentifier(database)} to ${identifier}`);
   await client.query(`grant usage on schema public to ${identifier}`);
-  await client.query(`grant select, insert, update, delete on all tables in schema public to ${identifier}`);
+  // Table/sequence grants are owned by the migrations themselves (022 grants
+  // the runtime DML; 040 revokes the excess).  Re-granting here would silently
+  // widen least privilege on every migrate run (CVG-AUD19-012).
   await client.query(`revoke insert, update, delete on table public.schema_migrations from ${identifier}`);
   await client.query(`grant select on table public.schema_migrations to ${identifier}`);
-  await client.query(`grant usage, select on all sequences in schema public to ${identifier}`);
   await client.query(`revoke create on schema public from ${identifier}`);
   process.stdout.write(`provisioned non-superuser runtime role ${configured.user}\n`);
 }
@@ -49,6 +50,13 @@ try {
     const result = await client.query<{ version: string; database: string }>("select version(), current_database() as database");
     process.stdout.write(JSON.stringify({ connected: true, database: result.rows[0]?.database, version: result.rows[0]?.version }, null, 2) + "\n");
   } else if (command === "migrate") {
+    // One session owns schema creation, role provisioning and the complete
+    // migration sequence. The lock survives each migration's COMMIT and is
+    // released by client.end() even after SQL failure or process termination.
+    // Bound competing startup attempts without changing their DDL timeouts.
+    await client.query("set lock_timeout = '30s'");
+    await client.query("select pg_advisory_lock(hashtext('cvg-corp.schema-migrations'))");
+    await client.query("reset lock_timeout");
     await client.query("create table if not exists schema_migrations (version text primary key, applied_at timestamptz not null default now(), checksum text not null)");
     await provisionRuntimeRole();
     const files = (await readdir("db/migrations")).filter((file) => file.endsWith(".sql")).sort();

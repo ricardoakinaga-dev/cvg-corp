@@ -110,12 +110,16 @@ export function Finance({ client, context, notify }: { client: ApiClient; contex
 
   useEffect(() => { void load(); }, [load]);
 
+  // Settled payments reduce what is still owed; the payment form suggests that
+  // open balance, which is also the most the backend will accept.
+  const openBalanceCents = (charge: Charge) => Math.max(0, charge.amountCents - payments.filter((payment) => payment.chargeId === charge.id && payment.status === "SETTLED").reduce((total, payment) => total + payment.amountCents, 0));
+
   const openDialog = (next: Exclude<DialogState, null>) => {
     submissionKey.current = null;
     setFormError("");
     setDialog(next);
     if (next.kind === "charge") { setPatientId(""); setDescription(""); setAmount(""); }
-    if (next.kind === "payment") { setPaymentAmount(String(next.charge.amountCents / 100)); setPaymentMethod("PIX"); setPaymentReference(""); }
+    if (next.kind === "payment") { setPaymentAmount((openBalanceCents(next.charge) / 100).toFixed(2).replace(".", ",")); setPaymentMethod("PIX"); setPaymentReference(""); }
     if (next.kind === "refund") {
       const settled = payments.filter((payment) => payment.chargeId === next.charge.id && payment.status === "SETTLED");
       setRefundPaymentId(settled[0]?.id ?? "");
@@ -253,7 +257,7 @@ export function Finance({ client, context, notify }: { client: ApiClient; contex
 
       {dialog?.kind === "payment" && <Dialog titleId="finance-payment-title" title={`Pagamento · ${dialog.charge.description}`} description="Pagamento acima do saldo é negado; repetir a mesma chave não duplica a liquidação." onClose={closeDialog} closeDisabled={submitting}>
         <form onSubmit={submitPayment} className="dialog-form">
-          <p className="table-sub">Cobrança {formatMoney(dialog.charge.amountCents)} · saldo em aberto {formatMoney(Math.max(0, dialog.charge.amountCents - chargePayments(dialog.charge.id).filter((payment) => payment.status === "SETTLED").reduce((total, payment) => total + payment.amountCents, 0)))}</p>
+          <p className="table-sub">Cobrança {formatMoney(dialog.charge.amountCents)} · saldo em aberto {formatMoney(openBalanceCents(dialog.charge))}</p>
           <label htmlFor="finance-payment-amount">Valor (R$)<input id="finance-payment-amount" value={paymentAmount} onChange={(event) => setPaymentAmount(event.target.value)} required inputMode="decimal" /></label>
           <label htmlFor="finance-payment-method">Método<select id="finance-payment-method" value={paymentMethod} onChange={(event) => setPaymentMethod(event.target.value as typeof paymentMethod)}><option value="PIX">PIX</option><option value="CARD">Cartão</option><option value="CASH">Dinheiro</option><option value="TRANSFER">Transferência</option></select></label>
           <label htmlFor="finance-payment-reference">Referência externa (opcional)<input id="finance-payment-reference" value={paymentReference} onChange={(event) => setPaymentReference(event.target.value)} maxLength={160} /></label>

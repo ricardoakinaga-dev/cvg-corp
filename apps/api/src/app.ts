@@ -1,5 +1,5 @@
-import { createHash, randomBytes, randomUUID } from "node:crypto";
-import { readFile } from "node:fs/promises";
+import { randomBytes, randomUUID } from "node:crypto";
+import { AsyncLocalStorage } from "node:async_hooks";
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from "fastify";
 import cookie from "@fastify/cookie";
 import cors from "@fastify/cors";
@@ -27,12 +27,10 @@ import {
   encounterInputSchema,
   failure,
   governedExportInputSchema,
-  guardianInputSchema,
   hospitalEpisodeInputSchema,
   id,
   idSchema,
   integrationInboxEventSchema,
-  isApiError,
   knowledgeDocumentInputSchema,
   loginInputSchema,
   mfaEnrollmentInputSchema,
@@ -54,7 +52,7 @@ import {
   type AnimalPatient,
   type Appointment,
   type ApprovalInput,
-  type ApiResponse,
+  type AiTurnInput,
   type CvgContext,
   type ClinicalDocument,
   type CommandReceipt,
@@ -65,7 +63,7 @@ import {
   type ErrorCode,
   type Guardian,
   type OpaqueId,
-  type Role,
+  type Product,
   type Specimen
 } from "@cvg/contracts";
 import {
@@ -76,7 +74,7 @@ import {
   publicUser,
   parseSnapshot,
   serializeSnapshot,
-  type PublicUser,
+  type ResolvedAgentResource,
   type StoreSnapshot
 } from "@cvg/domain";
 import { GovernedHarness, TOOL_REGISTRY } from "@cvg/harness";
@@ -86,13 +84,16 @@ import { DeepSeekHarnessAdapter, MockHarnessAdapter } from "@cvg/harness-adapter
 import { AgentRuntimeUnavailableError } from "@cvg/agent-runtime";
 import { EmbeddedAgentRuntime } from "@cvg/embedded-agent-runtime";
 import { createAgentToolExecutor } from "./agent-tool-executor.ts";
+import { createInboxSignatureVerifier } from "./integration-callback.ts";
+import { aiTurnAudit } from "./ai-turn-audit.ts";
 import { PostgresAgentSessionStore, createScopedSqlExecutor } from "@cvg/agent-session";
 import { createDeepSeekModelProvider, createLocalModelProvider, MockModelProvider } from "@cvg/model-adapters";
-import { configuredSecretProvider, IntegrationGateway, inboxEventToOutbox, integrationContracts, isSecretReferenceUsable, OutboxWorker, reconcileUnknownExternalEffect, verifyMessagingCallback, type ExternalEffectQueryAdapter, type OutboxSink, type OutboxWorkerResult, type SecretProvider, type SecretProviderStatus } from "@cvg/integrations";
+import { configuredSecretProvider, IntegrationGateway, inboxEventToOutbox, integrationContracts, isSecretReferenceUsable, OutboxWorker, reconcileUnknownExternalEffect, type ExternalEffectQueryAdapter, type OutboxSink, type OutboxWorkerResult, type SecretProvider, type SecretProviderStatus } from "@cvg/integrations";
 import { createOpenTelemetryRuntime, OpsTelemetry, renderPrometheusMetrics, type OpenTelemetryRuntime } from "@cvg/ops";
-import { PersistenceConflictError, PersistenceCorruptionError, PersistenceSignatureError, PersistenceStateError, PersistenceUnavailableError, PostgresPersistence, type DurableExternalEffectRecord, type InboxSignatureVerifier } from "@cvg/persistence";
+import { buildAud27NormalizedWritePlan, PersistenceConflictError, PersistenceCorruptionError, PersistenceProductSkuConflictError, PersistenceSignatureError, PersistenceStateError, PersistenceUnavailableError, PostgresPersistence, type DurableExternalEffectRecord, type InboxSignatureVerifier } from "@cvg/persistence";
 import { registerHealthRoutes } from "./routes/health.ts";
 import { installRuntimeRouteCatalog, type RuntimeRouteInventory } from "./route-catalog.ts";
+import { ApiResponseContractError, assertCatalogResponseContracts, validateApiResponseEgress } from "./response-contract.ts";
 import { AgentApplicationService } from "./application/agent-service.ts";
 import { AppointmentApplicationService, PostgresAppointmentRepository, StoreAppointmentRepository } from "./application/appointment-service.ts";
 import { ClinicalSignApplicationService, PostgresClinicalSignRepository, StoreClinicalSignRepository } from "./application/clinical-command-service.ts";
@@ -108,6 +109,10 @@ import { IntegrationInboxApplicationService } from "./application/integration-se
 import { OperationalMetricsApplicationService } from "./application/operational-metrics-service.ts";
 import { KeyedAsyncCoordinator } from "./application/keyed-coordinator.ts";
 import { BreakGlassApplicationService, type BreakGlassScopeAuthority, type BreakGlassWebAuthnAuthority } from "./application/break-glass-service.ts";
+import { MemoryRateLimiter, PostgresRateLimiter, type RateLimiter } from "./rate-limiter.ts";
+export * from "./rate-limiter.ts";
+import { tokenDigest } from "./sensitive-identifiers.ts";
+import { correlationId, header, parse, persistenceDiagnostic, publicContext, publicGuardian, publicPatient, publicPatientRecord, requireIdempotencyKey, response, safeId } from "./http-helpers.ts";
 
 /**
  * Embedded runtime selection.  `auto` preserves the historical behaviour
@@ -183,7 +188,7 @@ const CSRF_COOKIE = "cvg_csrf";
 const DEFAULT_PORT = 4310;
 
 function isLoopbackHost(host: string): boolean {
-  const normalized = host.trim().toLowerCase().replace(/[\[\]]/g, "");
+  const normalized = host.trim().toLowerCase().replaceAll("[", "").replaceAll("]", "");
   return normalized === "localhost" || normalized === "127.0.0.1" || normalized === "::1" || normalized.startsWith("127.");
 }
 
@@ -233,116 +238,10 @@ export interface ServerConfig {
   secretDir: string;
   workerOrganizationId: string | null;
   secretProvider: "none" | "env" | "file" | "docker" | "vault" | "aws" | "gcp" | "azure" | "kubernetes";
+  integrationCallbackKeyRefs: string[];
   rateLimitBackend: "local" | "distributed";
   rateLimitRequestsPerWindow: number;
   rateLimitWindowSeconds: number;
-}
-
-export interface RateLimiter {
-  readonly distributed: boolean;
-  consume(input: { key: string; limit: number; windowMs: number }): Promise<{ allowed: boolean; retryAfterSeconds: number }>;
-  peek?(input: { key: string; limit: number; windowMs: number }): Promise<{ allowed: boolean; retryAfterSeconds: number }>;
-  close?(): Promise<void>;
-}
-
-/** Bounded fallback for local/test use; production must inject a shared implementation. */
-export class MemoryRateLimiter implements RateLimiter {
-  readonly distributed = false;
-  private readonly buckets = new Map<string, { count: number; resetAt: number }>();
-
-  constructor(private readonly maxKeys = 10_000) {}
-
-  async consume(input: { key: string; limit: number; windowMs: number }): Promise<{ allowed: boolean; retryAfterSeconds: number }> {
-    const nowMs = Date.now();
-    const current = this.buckets.get(input.key);
-    if (!current || current.resetAt <= nowMs) {
-      if (this.buckets.size >= this.maxKeys) {
-        const oldest = [...this.buckets.entries()].sort((left, right) => left[1].resetAt - right[1].resetAt)[0]?.[0];
-        if (oldest) this.buckets.delete(oldest);
-      }
-      this.buckets.set(input.key, { count: 1, resetAt: nowMs + input.windowMs });
-      return { allowed: true, retryAfterSeconds: 0 };
-    }
-    if (current.count >= input.limit) return { allowed: false, retryAfterSeconds: Math.max(1, Math.ceil((current.resetAt - nowMs) / 1_000)) };
-    current.count += 1;
-    return { allowed: true, retryAfterSeconds: 0 };
-  }
-
-  async peek(input: { key: string; limit: number; windowMs: number }): Promise<{ allowed: boolean; retryAfterSeconds: number }> {
-    const nowMs = Date.now();
-    const current = this.buckets.get(input.key);
-    if (!current || current.resetAt <= nowMs) return { allowed: true, retryAfterSeconds: 0 };
-    if (current.count >= input.limit) return { allowed: false, retryAfterSeconds: Math.max(1, Math.ceil((current.resetAt - nowMs) / 1_000)) };
-    return { allowed: true, retryAfterSeconds: 0 };
-  }
-
-  async close(): Promise<void> {
-    this.buckets.clear();
-  }
-}
-
-/**
- * Atomic PostgreSQL fixed-window limiter. The bucket key is hashed before it
- * reaches the database so addresses and session identifiers never become
- * durable rate-limit metadata. The table is provisioned by migrations 023+.
- */
-export class PostgresRateLimiter implements RateLimiter {
-  readonly distributed = true;
-  private readonly pool: Pool;
-
-  constructor(databaseUrl: string) {
-    this.pool = new Pool({ connectionString: databaseUrl, max: 5, connectionTimeoutMillis: 2_500, idleTimeoutMillis: 30_000, application_name: "cvg-corp-rate-limit" });
-  }
-
-  async consume(input: { key: string; limit: number; windowMs: number }): Promise<{ allowed: boolean; retryAfterSeconds: number }> {
-    if (!Number.isSafeInteger(input.limit) || input.limit < 1 || !Number.isSafeInteger(input.windowMs) || input.windowMs < 1) throw new DomainError("INVALID_INPUT", "Os parâmetros de rate limit são inválidos.", 400);
-    try {
-      const result = await this.pool.query<{ request_count: number; retry_after_ms: number }>(
-        `insert into cvg_rate_limit_buckets(bucket_key, window_started_at, request_count, updated_at)
-         values ($1, now(), 1, now())
-         on conflict (bucket_key) do update set
-           request_count = case
-             when cvg_rate_limit_buckets.window_started_at <= now() - ($3::double precision * interval '1 millisecond') then 1
-             else cvg_rate_limit_buckets.request_count + 1
-           end,
-           window_started_at = case
-             when cvg_rate_limit_buckets.window_started_at <= now() - ($3::double precision * interval '1 millisecond') then now()
-             else cvg_rate_limit_buckets.window_started_at
-           end,
-           updated_at = now()
-         returning request_count, greatest(0, extract(epoch from ((window_started_at + ($3::double precision * interval '1 millisecond')) - now())) * 1000)::double precision as retry_after_ms`,
-        [tokenDigest(input.key), input.limit, input.windowMs]
-      );
-      const row = result.rows[0];
-      if (!row) throw new Error("rate-limit bucket write returned no row");
-      const retryAfterSeconds = Math.max(1, Math.ceil(Number(row.retry_after_ms ?? input.windowMs) / 1_000));
-      return { allowed: Number(row.request_count) <= input.limit, retryAfterSeconds: Number(row.request_count) <= input.limit ? 0 : retryAfterSeconds };
-    } catch (error) {
-      if (error instanceof DomainError) throw error;
-      throw new DomainError("DEPENDENCY_UNAVAILABLE", "O rate limit distribuído está indisponível; a solicitação foi bloqueada.", 503, { cause: error instanceof Error ? error.name : "unknown" });
-    }
-  }
-
-  async peek(input: { key: string; limit: number; windowMs: number }): Promise<{ allowed: boolean; retryAfterSeconds: number }> {
-    try {
-      const result = await this.pool.query<{ request_count: number; retry_after_ms: number }>(
-        `select request_count, greatest(0, extract(epoch from ((window_started_at + ($2::double precision * interval '1 millisecond')) - now())) * 1000)::double precision as retry_after_ms
-         from cvg_rate_limit_buckets
-         where bucket_key = $1 and window_started_at > now() - ($2::double precision * interval '1 millisecond')`,
-        [tokenDigest(input.key), input.windowMs]
-      );
-      const row = result.rows[0];
-      if (!row) return { allowed: true, retryAfterSeconds: 0 };
-      const retryAfterSeconds = Math.max(1, Math.ceil(Number(row.retry_after_ms ?? input.windowMs) / 1_000));
-      return { allowed: Number(row.request_count) <= input.limit, retryAfterSeconds: Number(row.request_count) <= input.limit ? 0 : retryAfterSeconds };
-    } catch {
-      return { allowed: true, retryAfterSeconds: 0 };
-    }
-  }
-
-  async close(): Promise<void> {
-    await this.pool.end();
-  }
 }
 
 export interface ServerOptions {
@@ -460,82 +359,12 @@ function getConfig(overrides: Partial<ServerConfig> = {}): ServerConfig {
     secretDir: overrides.secretDir ?? typed.secretDir,
     workerOrganizationId: overrides.workerOrganizationId ?? typed.workerOrganizationId,
     secretProvider: overrides.secretProvider ?? typed.secretProvider,
+    integrationCallbackKeyRefs: overrides.integrationCallbackKeyRefs ?? typed.integrationCallbackKeyRefs,
     rateLimitBackend: overrides.rateLimitBackend ?? typed.rateLimitBackend,
     rateLimitRequestsPerWindow: overrides.rateLimitRequestsPerWindow ?? typed.rateLimitRequestsPerWindow,
     rateLimitWindowSeconds: overrides.rateLimitWindowSeconds ?? typed.rateLimitWindowSeconds
   });
-  return { nodeEnv: validated.nodeEnv, host: validated.host, trustProxy: validated.trustProxy, trustedProxyIps: [...validated.trustedProxyIps], port: validated.apiPort, webOrigin: validated.webOrigin, releaseSha: validated.releaseSha, releaseArtifactDigest: validated.releaseArtifactDigest, storageMode: validated.storageMode, demoMode: validated.demoMode, sessionTtlMinutes: validated.sessionTtlMinutes, authMfaMode: validated.authMfaMode, passwordMinLength: validated.passwordMinLength, passwordMaxAgeDays: validated.passwordMaxAgeDays, authMaxFailedAttempts: validated.authMaxFailedAttempts, authIdentifierRateLimit: validated.authIdentifierRateLimit, authIpRateLimit: validated.authIpRateLimit, authLockoutMinutes: validated.authLockoutMinutes, authChallengeTtlSeconds: validated.authChallengeTtlSeconds, authMaxChallengeAttempts: validated.authMaxChallengeAttempts, databaseUrl: validated.databaseUrl, bootstrapPassword: validated.bootstrapPassword, deepseekBaseUrl: validated.deepseekBaseUrl, deepseekRuntimeEnabled: validated.deepseekRuntimeEnabled, deepseekExpectedEngineCommit: validated.deepseekExpectedEngineCommit, deepseekExpectedManifestVersion: validated.deepseekExpectedManifestVersion, deepseekBearerTokenRef: validated.deepseekBearerTokenRef, deepseekContextSigningSecretRef: validated.deepseekContextSigningSecretRef, recoveryEncryptionKeyRef: validated.recoveryEncryptionKeyRef, agentRuntimeMode: validated.agentRuntimeMode, aiSafeMode: validated.aiSafeMode, aiDisabledProviders: [...validated.aiDisabledProviders], aiDisabledTools: [...validated.aiDisabledTools], aiMaxConcurrentTurns: validated.aiMaxConcurrentTurns, embeddedModelProvider: validated.embeddedModelProvider, embeddedModelBaseUrl: validated.embeddedModelBaseUrl, embeddedModelName: validated.embeddedModelName, embeddedModelTimeoutMs: validated.embeddedModelTimeoutMs, embeddedModelAllowedDataClasses: [...validated.embeddedModelAllowedDataClasses], embeddedRuntimeCommit: validated.embeddedRuntimeCommit, embeddedModelPricingJson: validated.embeddedModelPricingJson, aiMaxCostMicros: validated.aiMaxCostMicros, secretDir: validated.secretDir, workerOrganizationId: validated.workerOrganizationId, secretProvider: validated.secretProvider, rateLimitBackend: validated.rateLimitBackend, rateLimitRequestsPerWindow: validated.rateLimitRequestsPerWindow, rateLimitWindowSeconds: validated.rateLimitWindowSeconds };
-}
-
-function tokenDigest(value: string): string {
-  return createHash("sha256").update(value).digest("hex");
-}
-
-function persistenceDiagnostic(error: unknown): Record<string, string | null> {
-  const cause = error instanceof PersistenceUnavailableError ? error.cause : error;
-  const record = cause && typeof cause === "object" ? cause as { code?: unknown; constraint?: unknown; table?: unknown } : {};
-  return {
-    errorName: error instanceof Error ? error.name : "UnknownError",
-    databaseCode: typeof record.code === "string" ? record.code : null,
-    constraint: typeof record.constraint === "string" ? record.constraint : null,
-    table: typeof record.table === "string" ? record.table : null
-  };
-}
-
-function correlationId(request: FastifyRequest): string {
-  const supplied = request.headers["x-correlation-id"];
-  if (typeof supplied === "string" && /^[A-Za-z0-9._-]{1,80}$/.test(supplied)) return supplied;
-  return randomUUID();
-}
-
-function header(request: FastifyRequest, name: string): string | null {
-  const value = request.headers[name];
-  return typeof value === "string" ? value : null;
-}
-
-function parse<T>(schema: z.ZodType<T>, value: unknown): T {
-  const parsed = schema.safeParse(value);
-  if (!parsed.success) throw new DomainError("INVALID_INPUT", "A entrada não atende ao contrato desta operação.", 400, { issues: parsed.error.issues.map((issue) => ({ path: issue.path, message: issue.message })) });
-  return parsed.data;
-}
-
-function safeId(value: string | null): OpaqueId | null {
-  if (!value) return null;
-  return id(parse(idSchema, value));
-}
-
-function requireIdempotencyKey(request: FastifyRequest): string {
-  const key = header(request, "idempotency-key");
-  if (!key || !/^[A-Za-z0-9._:-]{1,160}$/.test(key)) throw new DomainError("INVALID_INPUT", "Idempotency-Key é obrigatório e deve ser estável.", 400);
-  return key;
-}
-
-function response<T>(reply: FastifyReply, payload: ApiResponse<T>, statusCode = 200): FastifyReply {
-  return reply.code(statusCode).send(payload);
-}
-
-function publicContext(context: CvgContext, store: CvgStore): Record<string, unknown> {
-  const unit = context.unitId ? store.units.get(context.unitId) : null;
-  const workspace = context.workspaceId ? store.workspaces.get(context.workspaceId) : null;
-  return { organizationId: context.organizationId, organizationName: store.organizations.get(context.organizationId)?.name ?? "", unit: unit ? { id: unit.id, name: unit.name, code: unit.code } : null, workspace: workspace ? { id: workspace.id, name: workspace.name, purpose: workspace.purpose } : null, roles: context.actorRoleSnapshot, purpose: context.purpose, policyRevision: context.policyRevision, correlationId: context.correlationId };
-}
-
-function publicPatientRecord(patient: StoreSnapshot["patients"][number], guardian: Pick<StoreSnapshot["guardians"][number], "id" | "displayName" | "phone"> | null, roles: Role[]): Record<string, unknown> {
-  if (!guardian) throw new DomainError("NOT_FOUND", "Recurso não encontrado.", 404);
-  const minimum = { id: patient.id, name: patient.name, species: patient.species, breed: patient.breed, status: patient.status, guardian: { id: guardian.id, displayName: guardian.displayName, phone: guardian.phone } };
-  if (!roles.includes("veterinario")) return minimum;
-  return { ...minimum, sex: patient.sex, reproductiveStatus: patient.reproductiveStatus, birthDate: patient.birthDate, identifiers: [...patient.identifiers] };
-}
-
-function publicPatient(store: CvgStore, patientId: OpaqueId, roles: Role[]): Record<string, unknown> {
-  const patient = store.patients.get(patientId);
-  const guardian = patient ? store.guardians.get(patient.guardianId) : null;
-  if (!patient || !guardian) throw new DomainError("NOT_FOUND", "Recurso não encontrado.", 404);
-  return publicPatientRecord(patient, guardian, roles);
-}
-
-function publicGuardian(guardian: { id: OpaqueId; displayName: string; phone: string; email: string | null; status: string }): Record<string, unknown> {
-  return { id: guardian.id, displayName: guardian.displayName, phone: guardian.phone, email: guardian.email, status: guardian.status };
+  return { nodeEnv: validated.nodeEnv, host: validated.host, trustProxy: validated.trustProxy, trustedProxyIps: [...validated.trustedProxyIps], port: validated.apiPort, webOrigin: validated.webOrigin, releaseSha: validated.releaseSha, releaseArtifactDigest: validated.releaseArtifactDigest, storageMode: validated.storageMode, demoMode: validated.demoMode, sessionTtlMinutes: validated.sessionTtlMinutes, authMfaMode: validated.authMfaMode, passwordMinLength: validated.passwordMinLength, passwordMaxAgeDays: validated.passwordMaxAgeDays, authMaxFailedAttempts: validated.authMaxFailedAttempts, authIdentifierRateLimit: validated.authIdentifierRateLimit, authIpRateLimit: validated.authIpRateLimit, authLockoutMinutes: validated.authLockoutMinutes, authChallengeTtlSeconds: validated.authChallengeTtlSeconds, authMaxChallengeAttempts: validated.authMaxChallengeAttempts, databaseUrl: validated.databaseUrl, bootstrapPassword: validated.bootstrapPassword, deepseekBaseUrl: validated.deepseekBaseUrl, deepseekRuntimeEnabled: validated.deepseekRuntimeEnabled, deepseekExpectedEngineCommit: validated.deepseekExpectedEngineCommit, deepseekExpectedManifestVersion: validated.deepseekExpectedManifestVersion, deepseekBearerTokenRef: validated.deepseekBearerTokenRef, deepseekContextSigningSecretRef: validated.deepseekContextSigningSecretRef, recoveryEncryptionKeyRef: validated.recoveryEncryptionKeyRef, agentRuntimeMode: validated.agentRuntimeMode, aiSafeMode: validated.aiSafeMode, aiDisabledProviders: [...validated.aiDisabledProviders], aiDisabledTools: [...validated.aiDisabledTools], aiMaxConcurrentTurns: validated.aiMaxConcurrentTurns, embeddedModelProvider: validated.embeddedModelProvider, embeddedModelBaseUrl: validated.embeddedModelBaseUrl, embeddedModelName: validated.embeddedModelName, embeddedModelTimeoutMs: validated.embeddedModelTimeoutMs, embeddedModelAllowedDataClasses: [...validated.embeddedModelAllowedDataClasses], embeddedRuntimeCommit: validated.embeddedRuntimeCommit, embeddedModelPricingJson: validated.embeddedModelPricingJson, aiMaxCostMicros: validated.aiMaxCostMicros, secretDir: validated.secretDir, workerOrganizationId: validated.workerOrganizationId, secretProvider: validated.secretProvider, integrationCallbackKeyRefs: [...validated.integrationCallbackKeyRefs], rateLimitBackend: validated.rateLimitBackend, rateLimitRequestsPerWindow: validated.rateLimitRequestsPerWindow, rateLimitWindowSeconds: validated.rateLimitWindowSeconds };
 }
 
 export async function createRuntime(options: ServerOptions = {}): Promise<CvgServerRuntime> {
@@ -555,11 +384,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     if (ownsRateLimiter) await rateLimiter.close?.();
     throw new DomainError("CAPABILITY_DISABLED", "Produção exige uma autoridade de segredos pronta; o runtime foi mantido bloqueado.", 503);
   }
-  const inboxSignatureVerifier: InboxSignatureVerifier | undefined = options.inboxSignatureVerifier ?? (secretProvider?.resolve ? async (input) => {
-    if (!input.rawBody) return false;
-    const secret = await secretProvider.resolve!(input.signatureKeyRef);
-    return Boolean(secret && verifyMessagingCallback(input.rawBody, input.signature, secret));
-  } : undefined);
+  const inboxSignatureVerifier: InboxSignatureVerifier | undefined = options.inboxSignatureVerifier ?? (secretProvider?.resolve ? createInboxSignatureVerifier((reference) => secretProvider.resolve!(reference), config.integrationCallbackKeyRefs) : undefined);
   const persistence = config.storageMode === "postgres" ? options.persistence ?? new PostgresPersistence({ connectionString: config.databaseUrl, ...(inboxSignatureVerifier ? { inboxSignatureVerifier } : {}) }) : null;
   let store: CvgStore;
   try {
@@ -586,6 +411,23 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     throw new DomainError("CAPABILITY_DISABLED", `A persistência PostgreSQL não está pronta: ${error instanceof Error ? error.message : String(error)}`, 503);
   }
   store.setStorageMode(config.storageMode);
+  // CVG-AUD19-014: remote-boundary requests (AI turns/retries) run against an
+  // isolated fork hydrated from the durable baseline.  Every service built
+  // below receives this scope-aware proxy; outside a fork scope it resolves to
+  // the canonical store, so locked local requests are unchanged.
+  const canonicalStore = store;
+  const storeScope = new AsyncLocalStorage<CvgStore>();
+  store = new Proxy(canonicalStore, {
+    get(target, property) {
+      const active = storeScope.getStore() ?? target;
+      const value = Reflect.get(active, property, active);
+      return typeof value === "function" ? value.bind(active) : value;
+    },
+    set(target, property, value) {
+      const active = storeScope.getStore() ?? target;
+      return Reflect.set(active, property, value);
+    }
+  }) as CvgStore;
   let otelRuntime: OpenTelemetryRuntime | null = null;
   const closeBeforeRuntimeFailure = async (message: string): Promise<never> => {
     await persistence?.close();
@@ -676,6 +518,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
   if (persistence) app.addHook("onClose", async () => { await persistence.close(); });
 
   try {
+  assertCatalogResponseContracts();
   const routeCatalog = installRuntimeRouteCatalog(app);
 
   const rawRequestBodies = new WeakMap<object, string>();
@@ -685,8 +528,8 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     rawRequestBodies.set(request, rawBody);
     try {
       done(null, JSON.parse(rawBody) as unknown);
-    } catch (error) {
-      done(error instanceof Error ? error : new Error("invalid JSON body"));
+    } catch {
+      done(new DomainError("INVALID_INPUT", "O corpo da requisição deve conter JSON válido.", 400));
     }
   });
 
@@ -697,12 +540,16 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     committed: boolean;
     failed: boolean;
     coordinationRelease: (() => void) | null;
+    normalizedProductWrite?: Product;
+    normalizedProductReplayId?: OpaqueId;
   };
   const durableRequests = new WeakMap<FastifyRequest, DurableRequestTransaction>();
   const durableReleases = new WeakMap<FastifyRequest, () => void>();
   const durableOutboxes = new WeakMap<FastifyRequest, import("@cvg/persistence").DurableOutboxInput[]>();
+  const requestForks = new WeakMap<FastifyRequest, CvgStore>();
   const durableCoordinator = new KeyedAsyncCoordinator();
   let commitDurableRequest: ((request: FastifyRequest, reply: FastifyReply, normalizedPatientWrite?: AnimalPatient, normalizedAppointmentWrite?: Appointment, normalizedEncounterWrite?: Encounter, normalizedClinicalSignWrite?: ClinicalDocument, normalizedClinicalSignReplayId?: OpaqueId, normalizedGuardianWrite?: Guardian, normalizedGuardianReplayId?: OpaqueId, normalizedDiagnosticRequestWrite?: DiagnosticRequest, normalizedDiagnosticRequestReplayId?: OpaqueId, normalizedSpecimenWrite?: Specimen, normalizedSpecimenReplayId?: OpaqueId, normalizedDiagnosticResultWrite?: DiagnosticResult, normalizedDiagnosticResultReplayId?: OpaqueId, receiptId?: OpaqueId) => Promise<void>) | null = null;
+  let commitDurableProductRequest: ((request: FastifyRequest, reply: FastifyReply, normalizedProductWrite?: Product, normalizedProductReplayId?: OpaqueId, receiptId?: OpaqueId) => Promise<void>) | null = null;
   const snapshotFingerprint = (snapshot: StoreSnapshot): string => digest(JSON.parse(serializeSnapshot(snapshot)) as unknown);
 
   const durableRequestPath = (request: FastifyRequest): string => request.url.split("?")[0] ?? request.url;
@@ -732,8 +579,13 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
       try {
         const latest = await persistence.loadLatest(store.bootstrapCredentials.organizationId);
         const revision = latest?.revision ?? await persistence.currentRevision(store.bootstrapCredentials.organizationId);
-        if (latest) store.hydrate(latest.snapshot);
-        durableRequests.set(request, { baseline: store.snapshot(), revision, scopeKey, committed: false, failed: false, coordinationRelease: release });
+        // CVG-AUD19-014: a locked local request owns the canonical store and
+        // hydrates it.  A remote-boundary request never touches the canonical
+        // store here: it forks the durable baseline and adopts it only at the
+        // commit coordinator.
+        if (latest && coordinateRequest) canonicalStore.hydrate(latest.snapshot);
+        const baseline = latest ? latest.snapshot : canonicalStore.snapshot();
+        durableRequests.set(request, { baseline, revision, scopeKey, committed: false, failed: false, coordinationRelease: release });
         if (release) durableReleases.set(request, release);
       } catch (error) {
         release?.();
@@ -757,16 +609,23 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
         }
         return;
       }
-      const snapshot = store.snapshot();
-      if (!normalizedPatientWrite && !normalizedAppointmentWrite && !normalizedEncounterWrite && !normalizedClinicalSignWrite && !normalizedClinicalSignReplayId && !normalizedGuardianWrite && !normalizedGuardianReplayId && !normalizedDiagnosticRequestWrite && !normalizedDiagnosticRequestReplayId && !normalizedSpecimenWrite && !normalizedSpecimenReplayId && !normalizedDiagnosticResultWrite && !normalizedDiagnosticResultReplayId && snapshotFingerprint(snapshot) === snapshotFingerprint(transaction.baseline)) return;
-      const baselineAuditIds = new Set(transaction.baseline.auditRecords.map((record) => record.id));
-      const baselineReceiptDigests = new Map(transaction.baseline.commandReceipts.map((receipt) => [receipt.id, digest(receipt)]));
-      const auditRecords = snapshot.auditRecords.filter((record) => !baselineAuditIds.has(record.id));
-      const commandReceipts = snapshot.commandReceipts.filter((receipt) => baselineReceiptDigests.get(receipt.id) !== digest(receipt));
-      const latestAudit = auditRecords.at(-1);
-      const latestReceipt = commandReceipts.at(-1);
-      const outboxRecords = durableOutboxes.get(request);
+      // CVG-AUD19-014: a remote-boundary request commits its isolated fork.
+      // The canonical store is adopted only after the durable CAS succeeds, so
+      // a blocked or conflicting commit never exposes uncommitted state.
+      const fork = requestForks.get(request);
+      const snapshot = (fork ?? canonicalStore).snapshot();
+      let auditRecords: StoreSnapshot["auditRecords"] = [];
+      let commandReceipts: StoreSnapshot["commandReceipts"] = [];
       try {
+        const normalizedDomainPlan = buildAud27NormalizedWritePlan(transaction.baseline, snapshot);
+        if (!normalizedPatientWrite && !normalizedAppointmentWrite && !normalizedEncounterWrite && !normalizedClinicalSignWrite && !normalizedClinicalSignReplayId && !normalizedGuardianWrite && !normalizedGuardianReplayId && !normalizedDiagnosticRequestWrite && !normalizedDiagnosticRequestReplayId && !normalizedSpecimenWrite && !normalizedSpecimenReplayId && !normalizedDiagnosticResultWrite && !normalizedDiagnosticResultReplayId && !transaction.normalizedProductWrite && !transaction.normalizedProductReplayId && snapshotFingerprint(snapshot) === snapshotFingerprint(transaction.baseline)) return;
+        const baselineAuditIds = new Set(transaction.baseline.auditRecords.map((record) => record.id));
+        const baselineReceiptDigests = new Map(transaction.baseline.commandReceipts.map((receipt) => [receipt.id, digest(receipt)]));
+        auditRecords = snapshot.auditRecords.filter((record) => !baselineAuditIds.has(record.id));
+        commandReceipts = snapshot.commandReceipts.filter((receipt) => baselineReceiptDigests.get(receipt.id) !== digest(receipt));
+        const latestAudit = auditRecords.at(-1);
+        const latestReceipt = commandReceipts.at(-1);
+        const outboxRecords = durableOutboxes.get(request);
         await persistence.commit({
           expectedRevision: transaction.revision,
           snapshot,
@@ -793,22 +652,32 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
           ...(normalizedSpecimenWrite ? { normalizedSpecimenWrite } : {}),
           ...(normalizedSpecimenReplayId ? { normalizedSpecimenReplayId } : {}),
           ...(normalizedDiagnosticResultWrite ? { normalizedDiagnosticResultWrite } : {}),
-          ...(normalizedDiagnosticResultReplayId ? { normalizedDiagnosticResultReplayId } : {})
+          ...(normalizedDiagnosticResultReplayId ? { normalizedDiagnosticResultReplayId } : {}),
+          ...(transaction.normalizedProductWrite ? { normalizedProductWrite: transaction.normalizedProductWrite } : {}),
+          ...(transaction.normalizedProductReplayId ? { normalizedProductReplayId: transaction.normalizedProductReplayId } : {}),
+          ...(normalizedDomainPlan.writes.length > 0 ? { normalizedDomainWrites: normalizedDomainPlan.writes } : {}),
+          ...(normalizedDomainPlan.removed.length > 0 ? { normalizedDomainRemovals: normalizedDomainPlan.removed } : {})
         });
+        if (fork) {
+          canonicalStore.hydrate(snapshot);
+          requestForks.delete(request);
+        }
         transaction.committed = true;
       } catch (error) {
         transaction.failed = true;
         telemetry.log({ timestamp: now(), level: error instanceof PersistenceConflictError ? "warn" : "error", event: "persistence.commit.failed", correlationId: correlationId(request), actorId: null, metadata: persistenceDiagnostic(error) });
-        const unknownReceipts: CommandReceipt[] = [];
+        const settledReceipts: CommandReceipt[] = [];
         try {
           for (const receipt of commandReceipts) {
             if (receiptId && receipt.id !== receiptId) continue;
             if (receipt.status !== "SUCCEEDED" && receipt.status !== "IN_FLIGHT") continue;
-            unknownReceipts.push(await commandExecutor.markOutcomeUnknown(receipt));
+            settledReceipts.push(error instanceof PersistenceProductSkuConflictError
+              ? await commandExecutor.markCommitFailure(receipt)
+              : await commandExecutor.markOutcomeUnknown(receipt));
           }
         } catch (settlementError) {
           telemetry.log({ timestamp: now(), level: "error", event: "idempotency.receipt.unknown-settlement.failed", correlationId: correlationId(request), actorId: null, metadata: { error: settlementError instanceof Error ? settlementError.name : "unknown" } });
-          store.hydrate(transaction.baseline);
+          canonicalStore.hydrate(transaction.baseline);
           throw new DomainError("DEPENDENCY_UNAVAILABLE", "A operação não foi confirmada e seu resultado não pôde ser registrado para reconciliação.", 503);
         }
         if (error instanceof PersistenceConflictError) {
@@ -818,27 +687,42 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
           } catch (loadError) {
             if (loadError instanceof PersistenceCorruptionError) {
               store.hydrate(transaction.baseline);
-              store.quarantine("PERSISTENCE_CORRUPTION", "o estado concorrente falhou na validação durante a reconciliação");
+              canonicalStore.quarantine("PERSISTENCE_CORRUPTION", "o estado concorrente falhou na validação durante a reconciliação");
               throw new DomainError("QUARANTINED", "A persistência durável falhou na validação; o runtime foi colocado em quarentena.", 503);
             }
             latest = null;
           }
-          if (latest) store.hydrate(latest.snapshot);
-          for (const receipt of unknownReceipts) store.setCommandReceipt(receipt);
+          if (latest) canonicalStore.hydrate(latest.snapshot);
+          for (const receipt of settledReceipts) canonicalStore.setCommandReceipt(receipt);
           throw new DomainError("CONFLICT", "O estado persistido mudou durante a operação; a tentativa foi rejeitada e o contexto deve ser recarregado.", 409);
         }
+        if (error instanceof PersistenceProductSkuConflictError) {
+          canonicalStore.hydrate(transaction.baseline);
+          for (const receipt of settledReceipts) canonicalStore.setCommandReceipt(receipt);
+          throw new DomainError("CONFLICT", "SKU já cadastrado nesta organização.", 409);
+        }
         if (error instanceof PersistenceCorruptionError) {
-          store.hydrate(transaction.baseline);
-          for (const receipt of unknownReceipts) store.setCommandReceipt(receipt);
-          store.quarantine("PERSISTENCE_CORRUPTION", "a tentativa de commit encontrou um registro durável divergente");
+          canonicalStore.hydrate(transaction.baseline);
+          for (const receipt of settledReceipts) canonicalStore.setCommandReceipt(receipt);
+          canonicalStore.quarantine("PERSISTENCE_CORRUPTION", "a tentativa de commit encontrou um registro durável divergente");
           throw new DomainError("QUARANTINED", "A persistência durável falhou na validação; o runtime foi colocado em quarentena.", 503);
         }
-        store.hydrate(transaction.baseline);
-        for (const receipt of unknownReceipts) store.setCommandReceipt(receipt);
+        canonicalStore.hydrate(transaction.baseline);
+        for (const receipt of settledReceipts) canonicalStore.setCommandReceipt(receipt);
         throw new DomainError("DEPENDENCY_UNAVAILABLE", "A operação não foi confirmada porque a persistência durável falhou; nenhum sucesso deve ser inferido.", 503);
       }
     };
     commitDurableRequest = commitRequest;
+    commitDurableProductRequest = async (request, reply, normalizedProductWrite, normalizedProductReplayId, receiptId) => {
+      const transaction = durableRequests.get(request);
+      if (transaction) {
+        if (normalizedProductWrite) transaction.normalizedProductWrite = normalizedProductWrite;
+        else delete transaction.normalizedProductWrite;
+        if (normalizedProductReplayId) transaction.normalizedProductReplayId = normalizedProductReplayId;
+        else delete transaction.normalizedProductReplayId;
+      }
+      await commitRequest(request, reply, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, receiptId);
+    };
     app.addHook("onSend", async (request, reply, payload) => {
       let receiptId: OpaqueId | undefined;
       if (typeof payload === "string" || Buffer.isBuffer(payload)) {
@@ -874,7 +758,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const decision = await rateLimiter.consume({ key, limit: config.rateLimitRequestsPerWindow, windowMs: config.rateLimitWindowSeconds * 1_000 });
     if (!decision.allowed) throw new DomainError("RATE_LIMITED", "Muitas solicitações; aguarde antes de tentar novamente.", 429, { retryAfterSeconds: decision.retryAfterSeconds });
   });
-  app.addHook("onSend", async (request, reply) => {
+  app.addHook("onSend", async (request, reply, payload) => {
     reply.header("x-content-type-options", "nosniff");
     reply.header("x-frame-options", "DENY");
     reply.header("referrer-policy", "no-referrer");
@@ -886,6 +770,15 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     if (config.releaseArtifactDigest) reply.header("x-cvg-release-artifact-digest", config.releaseArtifactDigest);
     if (config.nodeEnv === "production") reply.header("strict-transport-security", "max-age=31536000; includeSubDomains");
     if (request.url.startsWith("/api/v1/")) reply.header("cache-control", "no-store");
+    const routePath = String((request.routeOptions as { url?: string }).url ?? request.url.split("?")[0]);
+    const contentType = reply.getHeader("content-type");
+    validateApiResponseEgress({
+      method: request.method,
+      path: routePath,
+      statusCode: reply.statusCode,
+      contentType: typeof contentType === "string" ? contentType : null,
+      payload
+    });
   });
 
   await registerHealthRoutes(app, {
@@ -899,6 +792,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     secretProviderRequired: config.nodeEnv === "production" || config.deepseekRuntimeEnabled,
     config,
     operationalMetrics: operationalMetricsApplication,
+    ...(persistence ? { verifySchema: () => persistence!.assertSchema() } : {}),
     probes: {
       secretProviderStatus: () => secretProvider?.status() ?? (config.demoMode ? "DEGRADED" : "UNAVAILABLE"),
       authMfaStatus: async () => {
@@ -947,10 +841,16 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     if (!csrf || csrf !== session.csrfToken || request.cookies[CSRF_COOKIE] !== session.csrfToken) throw new DomainError("CSRF_INVALID", "Token de proteção inválido.", 403);
   };
 
-  const enforceApplicationPolicy = (request: FastifyRequest, context: CvgContext, purpose: string, resourceId: OpaqueId | null = null, resourceFacts: { dataClass?: DataClass } = {}): void => {
+  const enforceApplicationPolicy = (request: FastifyRequest, context: CvgContext, purpose: string, resourceId: OpaqueId | null = null, resourceFacts: { dataClass?: DataClass; unitId?: OpaqueId | null; workspaceId?: OpaqueId | null } = {}): void => {
     const rule = applicationPolicyFor(purpose);
     if (!rule) throw new DomainError("CAPABILITY_DISABLED", "A operação não possui uma policy de aplicação registrada; o runtime falhou fechado.", 503);
-    const decision = authorizeApplicationRequest(context, purpose, { resourceId, dataClass: resourceFacts.dataClass ?? rule.acceptedDataClasses[0] ?? "D0", requestDigest: tokenDigest(`${request.method}:${request.url}:${context.correlationId}`) });
+    const decision = authorizeApplicationRequest(context, purpose, {
+      resourceId,
+      dataClass: resourceFacts.dataClass ?? rule.acceptedDataClasses[0] ?? "D0",
+      requestDigest: tokenDigest(`${request.method}:${request.url}:${context.correlationId}`),
+      ...(resourceFacts.unitId !== undefined ? { resourceUnitId: resourceFacts.unitId } : {}),
+      ...(resourceFacts.workspaceId !== undefined ? { resourceWorkspaceId: resourceFacts.workspaceId } : {})
+    });
     try {
       assertPolicyAllowed(decision);
     } catch (error) {
@@ -959,7 +859,20 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     }
   };
 
-  const requestContext = (request: FastifyRequest, purpose: string, patientId: OpaqueId | null = null, encounterId: OpaqueId | null = null, allowImplicitContext = false, validatePatient = true, policyResourceId: OpaqueId | null = null): { session: ReturnType<typeof requireSession>; context: CvgContext } => {
+  /**
+   * CVG-AUD19-004/005: the agent turn resource is resolved from the repository
+   * before the PDP.  The caller can never declare organization/unit/workspace
+   * facts for a resource it does not own, and divergence fails closed.
+   */
+  const resolveAgentTurnResource = (input: AiTurnInput): ResolvedAgentResource | null => {
+    if (!(input.resourceId ?? input.encounterId ?? input.patientId)) return null;
+    const resolution = store.resolveAgentResource({ resourceId: input.resourceId ?? null, encounterId: input.encounterId ?? null, patientId: input.patientId ?? null });
+    if (resolution.status === "DIVERGENT") throw new DomainError("DIVERGENT", "Os identificadores do recurso não correspondem entre si.", 409);
+    if (resolution.status !== "RESOLVED") throw new DomainError("NOT_FOUND", "Recurso não encontrado.", 404);
+    return resolution.resource;
+  };
+
+  const requestContext = (request: FastifyRequest, purpose: string, patientId: OpaqueId | null = null, encounterId: OpaqueId | null = null, allowImplicitContext = false, validatePatient = true, policyResourceId: OpaqueId | null = null, resourceFacts: { unitId: OpaqueId | null; workspaceId: OpaqueId | null } | null = null): { session: ReturnType<typeof requireSession>; context: CvgContext } => {
     const session = requireSession(request);
     const unitHeader = header(request, "x-cvg-unit-id");
     const workspaceHeader = header(request, "x-cvg-workspace-id");
@@ -976,7 +889,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
       }
     }
     const context = readApplication.resolveContext(session.userId, { unitId, workspaceId }, purpose, correlationId(request), patientId, encounterId, session.id);
-    enforceApplicationPolicy(request, context, purpose, policyResourceId ?? encounterId ?? patientId);
+    enforceApplicationPolicy(request, context, purpose, policyResourceId ?? encounterId ?? patientId, resourceFacts ? { unitId: resourceFacts.unitId, workspaceId: resourceFacts.workspaceId } : {});
     if (patientId && validatePatient) store.findPatient(context, patientId);
     if (encounterId) {
       const encounter = store.encounters.get(encounterId);
@@ -1078,7 +991,9 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     // A receipt is linked only by the exact receipt returned by the command
     // boundary. Reverse-searching by actor/operation is ambiguous under
     // concurrent requests and can attach an audit event to the wrong effect.
-    if (!linkCommandReceipt || result !== "ALLOWED" || !commandReceiptId) return record;
+    // An UNKNOWN record is still the audit of that receipt: leaving it unlinked
+    // would report a missing audit instead of an effect awaiting reconciliation.
+    if (!linkCommandReceipt || (result !== "ALLOWED" && result !== "UNKNOWN") || !commandReceiptId) return record;
     const receipt = [...store.commandReceipts.values()].find((candidate) => candidate.id === commandReceiptId
       && candidate.organizationId === context.organizationId
       && candidate.actorId === context.actorId
@@ -1349,7 +1264,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
   });
 
   app.get("/api/v1/contexts", async (request, reply) => {
-    const { session, context } = requestContext(request, "contexts.read", null, null, true);
+    const { context } = requestContext(request, "contexts.read", null, null, true);
     audit(context, "contexts.read", "Context", null, "ALLOWED");
     return response(reply, success(readApplication.listContextOptions(context), context.correlationId));
   });
@@ -1660,7 +1575,7 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
   });
 
   app.get("/api/v1/clinical/documents/:id", async (request, reply) => {
-    const session = requireSession(request);
+    requireSession(request);
     const documentId = id(parse(idSchema, (request.params as { id: string }).id));
     const { context } = requestContext(request, "clinical.read", null, null, true, false, documentId);
     const document = await readApplication.getClinicalDocument(context, documentId);
@@ -1803,6 +1718,13 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     return response(reply, success({ items }, context.correlationId));
   });
 
+  app.get("/api/v1/stock/products", async (request, reply) => {
+    const { context } = requestContext(request, "stock.read");
+    const items = await readApplication.listStockProducts(context);
+    audit(context, "stock.read", "Product", null, "ALLOWED", null, { count: items.length });
+    return response(reply, success({ items }, context.correlationId));
+  });
+
   app.post("/api/v1/stock/products", async (request, reply) => {
     const session = requireSession(request); requireCsrf(request, session);
     const input = parse(productInputSchema, request.body);
@@ -1810,6 +1732,13 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     const key = requireIdempotencyKey(request);
     const result = await commandExecutor.execute(commandInput(context, "stock.write", key, null, input), () => domainCommands.createProduct(context, input));
     audit(context, "stock.write", "Product", result.value.id, "ALLOWED", result.replayed ? "idempotency replay" : null, { replayed: result.replayed }, true, result.receipt.id);
+    if (persistence) {
+      if (result.replayed) await commitDurableProductRequest?.(request, reply, undefined, result.value.id, result.receipt.id);
+      else {
+        reply.code(201);
+        await commitDurableProductRequest?.(request, reply, result.value, undefined, result.receipt.id);
+      }
+    }
     return response(reply, success({ product: result.value, receiptId: result.receipt.id }, context.correlationId), 201);
   });
 
@@ -2073,15 +2002,32 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     return response(reply, success({ items }, context.correlationId));
   });
 
-  app.post("/api/v1/ai/turns", async (request, reply) => {
+  /**
+   * CVG-AUD19-014: a request that crosses the remote/provider boundary runs
+   * against its own fork of the durable baseline.  The canonical store is only
+   * touched when the commit coordinator adopts the fork after the external
+   * call, so concurrent requests can neither observe nor persist each other's
+   * uncommitted work.
+   */
+  const runWithRequestFork = async <T>(request: FastifyRequest, handler: () => Promise<T>): Promise<T> => {
+    const transaction = durableRequests.get(request);
+    if (!transaction) return handler();
+    const fork = canonicalStore.fork(transaction.baseline);
+    requestForks.set(request, fork);
+    return storeScope.run(fork, handler);
+  };
+
+  app.post("/api/v1/ai/turns", async (request, reply) => runWithRequestFork(request, async () => {
     const session = requireSession(request); requireCsrf(request, session);
     const input = parse(aiTurnInputSchema, request.body);
-    const { context } = requestContext(request, `ai.turn.${input.purpose}`, input.patientId, input.encounterId, false, true, input.resourceId ?? null);
+    const resource = resolveAgentTurnResource(input);
+    const { context } = requestContext(request, `ai.turn.${input.purpose}`, resource?.patientId ?? input.patientId, resource?.encounterId ?? input.encounterId, false, true, resource?.resourceId ?? input.resourceId ?? null, resource ? { unitId: resource.unitId, workspaceId: resource.workspaceId } : null);
     const result = await agentApplication.executeTurn(context, input);
     const turnResult = result.value;
-    audit(context, "ai.turn", "AiTurn", turnResult.turn.id, turnResult.turn.status === "DENIED" ? "DENIED" : "ALLOWED", turnResult.turn.status === "QUARANTINED" ? "untrusted content quarantined" : null, { inputTokens: turnResult.turn.inputTokens, outputTokens: turnResult.turn.outputTokens, provider: turnResult.provenance.provider, replay: result.replayed }, true, result.receipt.id);
+    const turnAudit = aiTurnAudit(turnResult.turn.status);
+    audit(context, "ai.turn", "AiTurn", turnResult.turn.id, turnAudit.result, turnAudit.reason, { turnStatus: turnResult.turn.status, inputTokens: turnResult.turn.inputTokens, outputTokens: turnResult.turn.outputTokens, provider: turnResult.provenance.provider, replay: result.replayed }, true, result.receipt.id);
     return response(reply, success({ ...turnResult, receiptId: result.receipt.id }, context.correlationId), turnResult.approval ? 202 : 201);
-  });
+  }));
 
   app.post("/api/v1/ai/approvals/:id", async (request, reply) => {
     const session = requireSession(request); requireCsrf(request, session);
@@ -2094,17 +2040,18 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
     return response(reply, success({ approval: result.value, receiptId: result.receipt.id }, context.correlationId));
   });
 
-  app.post("/api/v1/ai/approvals/:id/retry", async (request, reply) => {
+  app.post("/api/v1/ai/approvals/:id/retry", async (request, reply) => runWithRequestFork(request, async () => {
     const session = requireSession(request); requireCsrf(request, session);
     const approvalId = id(parse(idSchema, (request.params as { id: string }).id));
     const input = parse(aiTurnInputSchema, request.body);
     if (input.approvalId !== approvalId) throw new DomainError("INVALID_INPUT", "approvalId deve corresponder à aprovação da rota.", 400);
-    const { context } = requestContext(request, "ai.approval.retry", input.patientId, input.encounterId, false, true, input.resourceId ?? approvalId);
+    const resource = resolveAgentTurnResource(input);
+    const { context } = requestContext(request, "ai.approval.retry", resource?.patientId ?? input.patientId, resource?.encounterId ?? input.encounterId, false, true, resource?.resourceId ?? input.resourceId ?? approvalId, resource ? { unitId: resource.unitId, workspaceId: resource.workspaceId } : null);
     const result = await agentApplication.retryTurn(context, input, approvalId);
     const turnResult = result.value;
     audit(context, "ai.approval.retry", "AiTurn", turnResult.turn.id, "ALLOWED", "dispatch revalidado após approval", { provider: turnResult.provenance.provider, replay: result.replayed }, true, result.receipt.id);
     return response(reply, success({ ...turnResult, receiptId: result.receipt.id }, context.correlationId), turnResult.approval ? 202 : 201);
-  });
+  }));
 
   app.post("/api/v1/ai/drafts/:id/promote", async (request, reply) => {
     const session = requireSession(request); requireCsrf(request, session);
@@ -2457,14 +2404,23 @@ export async function createRuntime(options: ServerOptions = {}): Promise<CvgSer
       code = "DEPENDENCY_UNAVAILABLE";
       status = 503;
       message = "O Agent Runtime está indisponível; nenhum turno ou efeito externo foi confirmado.";
+    } else if (error instanceof ApiResponseContractError) {
+      code = "INTERNAL_ERROR";
+      status = 500;
+      message = "A resposta gerada não atende ao contrato de saída.";
     } else if (error instanceof z.ZodError) {
       code = "INVALID_INPUT";
       status = 400;
       message = "A entrada não atende ao contrato desta operação.";
       details = { issues: error.issues.map((issue) => ({ path: issue.path, message: issue.message })) };
     } else {
-      const maybe = error as { validation?: unknown; statusCode?: number; message?: string };
+      const maybe = error as { code?: string; validation?: unknown; statusCode?: number; message?: string };
       if (maybe.validation) { code = "INVALID_INPUT"; status = 400; message = "A entrada não atende ao contrato desta operação."; }
+      else if (maybe.code === "FST_ERR_CTP_BODY_TOO_LARGE" || maybe.code === "FST_ERR_CTP_INVALID_MEDIA_TYPE" || maybe.code === "FST_ERR_CTP_INVALID_CONTENT_LENGTH") {
+        code = "INVALID_INPUT";
+        status = maybe.code === "FST_ERR_CTP_BODY_TOO_LARGE" ? 413 : maybe.code === "FST_ERR_CTP_INVALID_MEDIA_TYPE" ? 415 : 400;
+        message = "O corpo da requisição não atende ao formato ou limite desta operação.";
+      }
     }
     const rawSession = request.cookies[SESSION_COOKIE];
     const session = rawSession ? store.findSession(tokenDigest(rawSession)) : undefined;

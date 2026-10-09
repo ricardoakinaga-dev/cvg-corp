@@ -1,0 +1,45 @@
+# Keep credentials, local state, and audit/control-plane material out of every
+# Docker build context. Dockerfiles copy only the source trees required for a
+# build; this file is a second boundary against accidental COPY additions.
+.git
+.git/**
+.agent
+.agent/**
+.gauntlet
+.gauntlet/**
+.opencode
+.opencode/**
+
+node_modules
+node_modules/**
+dist
+dist/**
+coverage
+coverage/**
+.local
+.local/**
+artifacts
+artifacts/**
+test-results
+test-results/**
+playwright-report
+playwright-report/**
+
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+*.p12
+*.log
+
+docs
+docs/**
+tests
+tests/**
+README*
+CHANGELOG*
+LICENSE*
+docker-compose*.yml
+docker-compose*.yaml

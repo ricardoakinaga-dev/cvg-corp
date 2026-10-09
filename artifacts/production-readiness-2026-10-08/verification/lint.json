@@ -1,0 +1,13 @@
+{
+  "name": "lint",
+  "command": [
+    "npm",
+    "run",
+    "lint"
+  ],
+  "exit_status": 0,
+  "started_at": "2026-10-08T10:32:16.811708+00:00",
+  "duration_s": 0.7,
+  "log": "artifacts/production-readiness-2026-10-08/verification/lint.log",
+  "log_sha256": "f713db1d0d24555933ecfc173a6fc1f5d64a0231287e16f702bdb0e3f6433e63"
+}

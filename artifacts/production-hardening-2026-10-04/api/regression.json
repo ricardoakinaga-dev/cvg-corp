@@ -1,0 +1,27 @@
+{
+  "command": [
+    "node",
+    "--import",
+    "tsx",
+    "--test",
+    "--test-concurrency=2",
+    "--test-timeout=30000",
+    "tests/integration/production-hardening-api.test.ts",
+    "tests/integration/production-hardening-integrations.test.ts",
+    "tests/integration/api.test.ts",
+    "tests/integration/api-response-routes.test.ts",
+    "tests/integration/route-catalog.test.ts",
+    "tests/integration/provider-sandbox.test.ts",
+    "tests/unit/integrations.test.ts",
+    "tests/unit/integration-service.test.ts",
+    "tests/unit/cvg-aud26-egress.test.ts",
+    "tests/unit/idempotency-service.test.ts",
+    "tests/unit/idempotency-lifecycle.test.ts",
+    "tests/unit/pdp-coverage.test.ts",
+    "tests/unit/pdp-route-inventory.test.ts"
+  ],
+  "startedAt": "2026-10-04T10:59:12.061051+00:00",
+  "finishedAt": "2026-10-04T10:59:37.607062+00:00",
+  "exitStatus": 0,
+  "log": "artifacts/production-hardening-2026-10-04/api/regression.log"
+}

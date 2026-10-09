@@ -1,0 +1,22 @@
+schemaVersion: 1
+profile: local-synthetic
+logs:
+  format: ndjson
+  collectorPath: /var/lib/cvg/observability/logs/cvg-operational.jsonl
+  applicationSink: CVG_DURABLE_LOG_FILE
+  maxMegabytes: 32
+  retentionDays: 7
+  maxBackups: 7
+  access: local-operator-only
+  redaction: packages/ops/src/index.ts
+  correlationFields: [requestId, traceId, correlationId, jobId, outboxId, providerRequestId, operation, outcome]
+  externalBackend: BLOCKED_EXTERNAL
+  externalTlsAndAuth: UNKNOWN
+traces:
+  backend: local-tempo-volume
+  retentionDays: 7
+  externalBackend: BLOCKED_EXTERNAL
+recoveryEvidence:
+  rto: UNKNOWN
+  rpo: UNKNOWN
+  reason: approved external backup, object storage and restore infrastructure are absent

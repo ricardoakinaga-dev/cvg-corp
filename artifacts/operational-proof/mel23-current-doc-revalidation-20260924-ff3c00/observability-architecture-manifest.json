@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "captured_at": "2026-09-24T09:33:36.895Z",
+  "source_sha": "c990914148a8f375082cd12bbdb2ad20cfe1900f",
+  "observed_subject_fingerprint": "sha256:ff3c001b92c0b834e06e407f91943037e91940442abe37c57a988e90e8520eab",
+  "candidate_fingerprint": null,
+  "fingerprint_status": "UNFROZEN_UNTIL_AUD27-004",
+  "frozen_candidate_claimed": false,
+  "command_results": [
+    {
+      "command": "npm run verify:observability-local",
+      "exit_status": 0,
+      "expected_exit_status": 0,
+      "observed": "Local observability harness verified; synthetic load/DR and local alerts pass; external gates blocked; RTO/RPO UNKNOWN.",
+      "evidence_artifact": "observability-local.log",
+      "evidence_sha256": "7ab900db80963da596b5b98d046ff63268f6fc69c19c507c8a2c23b272c6a772"
+    },
+    {
+      "command": "node --import tsx --test tests/unit/idempotency-lifecycle.test.ts tests/unit/idempotency-service.test.ts tests/unit/load-gate.test.ts tests/unit/worker.test.ts tests/unit/ops.test.ts",
+      "exit_status": 0,
+      "expected_exit_status": 0,
+      "observed": "63/63 tests pass; OUTCOME_UNKNOWN/reconciliation/idempotent receipt behavior included.",
+      "evidence_artifact": "observability-focused-tests.log",
+      "evidence_sha256": "64fddd904be4e02fded549328f045ef16635f176a749a9a8e0918d7c31e20794"
+    },
+    {
+      "command": "npm run verify:architecture",
+      "exit_status": 1,
+      "expected_exit_status": 1,
+      "observed": "Expected exit 1: apps/api/src/app.ts is 2515 lines against the 2500-line architecture budget.",
+      "evidence_artifact": "architecture-current.log",
+      "evidence_sha256": "178cbbb7c328e9d717937629c8a98ed2f618fa757235dbddf92d1557141a9ea1"
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/observability-local.log",
+      "sha256": "7ab900db80963da596b5b98d046ff63268f6fc69c19c507c8a2c23b272c6a772"
+    },
+    {
+      "path": "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/observability-focused-tests.log",
+      "sha256": "64fddd904be4e02fded549328f045ef16635f176a749a9a8e0918d7c31e20794"
+    },
+    {
+      "path": "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/architecture-current.log",
+      "sha256": "178cbbb7c328e9d717937629c8a98ed2f618fa757235dbddf92d1557141a9ea1"
+    }
+  ],
+  "interpretation": {
+    "MEL23_017": "PARTIAL_EXTERNAL_STAGING_AND_SECRET_AUTHORITY",
+    "MEL23_018": "PARTIAL_NO_REAL_PROVIDER",
+    "MEL23_019": "PARTIAL_RTO_RPO_UNKNOWN",
+    "MEL23_034": "PARTIAL_LOCAL_SYNTHETIC_LOAD_ONLY",
+    "MEL23_035": "PASS_OUTCOME_UNKNOWN_NO_BLIND_RETRY",
+    "MEL23_036_037": "PARTIAL_NO_APPROVED_SLI_OR_EXTERNAL_DELIVERY",
+    "MEL23_038": "PARTIAL_NO_STAGING_CHAOS",
+    "MEL23_031_033": "PARTIAL_ARCHITECTURE_BUDGET_FAILURE"
+  }
+}

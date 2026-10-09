@@ -99,6 +99,15 @@ export function databasePoolSaturated(capacity: DatabasePoolCapacity): boolean {
   return capacity.waiting > 0 || (capacity.total >= capacity.max && capacity.idle === 0);
 }
 
+/**
+ * CVG-AUD19-016: cooperative cancellation boundary.  Handlers and adapters call
+ * this immediately before starting a new effect so a cancelled cycle cannot
+ * begin more work after its deadline.
+ */
+export function assertNotAborted(signal: AbortSignal, message = "Worker cycle was cancelled; no new effect was started."): void {
+  if (signal.aborted) throw new DomainError("BUDGET_EXCEEDED", message, 503);
+}
+
 export async function withAbortableTimeout<T>(
   operation: (signal: AbortSignal) => Promise<T>,
   timeoutMs: number,

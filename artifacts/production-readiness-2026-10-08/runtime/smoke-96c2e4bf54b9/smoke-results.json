@@ -1,0 +1,49 @@
+{
+  "started_at": "2026-10-08T06:12:00.932074+00:00",
+  "scope": "local images, synthetic memory API, loopback HTTP; no deployment or real providers",
+  "containers": [
+    {
+      "kind": "api",
+      "name": "cvg-hardening-api-96c2e4bf54b9",
+      "image": "sha256:4c28fe574882f03581b0a8822c49dee97114a09cf2b5a502fbcda6be6a518d81",
+      "checks": [
+        "non_root",
+        "read_only_rootfs",
+        "loopback_only_publish",
+        "health_200",
+        "ready_200",
+        "anonymous_denied_401",
+        "malformed_json_redacted_400",
+        "password_login_200",
+        "session_and_contexts_200",
+        "sigterm_exit_0"
+      ],
+      "removed": true,
+      "container_id": "81ee9575745ce561aeb843e20d2103af991351846da15ef43076ff4fdb701a62",
+      "user": "65532:65532",
+      "status": "PASS"
+    },
+    {
+      "kind": "web",
+      "name": "cvg-hardening-web-96c2e4bf54b9",
+      "image": "sha256:e82a1fab1b3b95c8f762f9735caf07bbf50883b013e78f0bcbf48b40c74522a9",
+      "checks": [
+        "non_root",
+        "read_only_rootfs",
+        "loopback_only_publish",
+        "health_200",
+        "html_200",
+        "csp_present",
+        "entry_assets_200",
+        "spa_deep_link_200",
+        "missing_asset_404",
+        "sigterm_exit_0"
+      ],
+      "removed": true,
+      "container_id": "10ce524a94f8a231d1ea349faa7a7cec7ee6f1aa0093f4979a861005442df498",
+      "user": "101",
+      "status": "PASS"
+    }
+  ],
+  "finished_at": "2026-10-08T06:12:02.910807+00:00"
+}

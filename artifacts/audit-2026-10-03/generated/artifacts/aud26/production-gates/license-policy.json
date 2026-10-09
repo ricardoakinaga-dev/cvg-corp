@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "label": "license policy",
+  "command": [
+    "npm",
+    "run",
+    "audit:licenses"
+  ],
+  "capturedAt": "2026-10-03T05:37:12.944Z",
+  "exitStatus": 0,
+  "signal": null,
+  "stdout": "\n> cvg-corp@0.1.0 audit:licenses\n> tsx scripts/verify-licenses.ts\n\nPASS license policy verified for 183 third-party packages and root license UNLICENSED; approved SPDX identifiers: MIT, ISC, Apache-2.0, BSD-3-Clause, CC-BY-4.0, MPL-2.0\n",
+  "stderr": ""
+}

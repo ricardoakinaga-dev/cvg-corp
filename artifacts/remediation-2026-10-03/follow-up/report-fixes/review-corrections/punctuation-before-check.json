@@ -1,0 +1,17 @@
+{
+  "command": [
+    "node",
+    "--import",
+    "tsx",
+    "--test",
+    "--test-reporter=tap",
+    "--test-name-pattern=tempor\u00e1ria:|missing:|definida|descriptive punctuation",
+    "tests/unit/secret-detector-review.test.ts"
+  ],
+  "exit_status": 1,
+  "started_at": "2026-10-04T01:57:02.338083+00:00",
+  "finished_at": "2026-10-04T01:57:02.602789+00:00",
+  "source_sha256": "addd9b04c56dcd7e1434f895168e308748cb8c4d37e1f08206b4630ffb28e044",
+  "log": "artifacts/remediation-2026-10-03/follow-up/report-fixes/review-corrections/punctuation-before.log",
+  "sha256": "64a4015bbf81827e2317db3c409ab432df6c00be69d909ad583cd886151b7a6a"
+}

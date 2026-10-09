@@ -1,0 +1,196 @@
+{
+  "config": {
+    "argv": [
+      "/home/ricardo/.nvm/versions/node/v24.20.0/bin/node",
+      "/home/ricardo/Área de trabalho/cvg-corp/node_modules/.bin/playwright",
+      "test",
+      "--config=artifacts/audit-2026-10-03/logout-race.config.ts"
+    ],
+    "configFile": "/home/ricardo/Área de trabalho/cvg-corp/artifacts/audit-2026-10-03/logout-race.config.ts",
+    "rootDir": "/home/ricardo/Área de trabalho/cvg-corp/artifacts/audit-2026-10-03",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "/home/ricardo/Área de trabalho/cvg-corp/artifacts/audit-2026-10-03/logout-race-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "chromium-wide-1440",
+        "name": "chromium-wide-1440",
+        "testDir": "/home/ricardo/Área de trabalho/cvg-corp/artifacts/audit-2026-10-03",
+        "testIgnore": [
+          "/accessibility-stress\\.spec\\.ts/"
+        ],
+        "testMatch": [
+          "logout-race.spec.ts"
+        ],
+        "timeout": 30000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list",
+        null
+      ],
+      [
+        "json",
+        {
+          "outputFile": "/home/ricardo/Área de trabalho/cvg-corp/artifacts/audit-2026-10-03/logout-race-run.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.63.0",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "logout-race.spec.ts",
+      "file": "logout-race.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "baseline: ordinary online logout stays on the login screen",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium-wide-1440",
+              "projectName": "chromium-wide-1440",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1469,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-03T10:50:16.118Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0755723a4b2b66f4bd8f-13f50f2f573d28b7a53a",
+          "file": "logout-race.spec.ts",
+          "line": 4,
+          "column": 1
+        },
+        {
+          "title": "diagnostic probe: delayed real context response resurrects a locally signed-out session",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium-wide-1440",
+              "projectName": "chromium-wide-1440",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 6239,
+                  "error": {
+                    "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('region', { name: 'Estado do ambiente' }).getByText('ONLINE', { exact: true })\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" getByRole('region', { name: 'Estado do ambiente' }).getByText('ONLINE', { exact: true }) with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('region', { name: 'Estado do ambiente' }).getByText('ONLINE', { exact: true })\u001b[22m\n",
+                    "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('region', { name: 'Estado do ambiente' }).getByText('ONLINE', { exact: true })\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" getByRole('region', { name: 'Estado do ambiente' }).getByText('ONLINE', { exact: true }) with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('region', { name: 'Estado do ambiente' }).getByText('ONLINE', { exact: true })\u001b[22m\n\n    at /home/ricardo/Área de trabalho/cvg-corp/artifacts/audit-2026-10-03/logout-race.spec.ts:42:113",
+                    "location": {
+                      "file": "/home/ricardo/Área de trabalho/cvg-corp/artifacts/audit-2026-10-03/logout-race.spec.ts",
+                      "column": 113,
+                      "line": 42
+                    },
+                    "snippet": "  40 |     release();\n  41 |     await expect(page.getByRole(\"heading\", { name: \"Bom dia, Ricardo.\" })).toBeVisible();\n> 42 |     await expect(page.getByRole(\"region\", { name: \"Estado do ambiente\" }).getByText(\"ONLINE\", { exact: true })).toBeVisible();\n     |                                                                                                                 ^\n  43 |     const me = await page.request.get(\"/api/v1/me\");\n  44 |     const observation = {\n  45 |       probe: \"FQ06_LOGOUT_REVALIDATION_RACE\", observedAt: new Date().toISOString(),"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "/home/ricardo/Área de trabalho/cvg-corp/artifacts/audit-2026-10-03/logout-race.spec.ts",
+                        "column": 113,
+                        "line": 42
+                      },
+                      "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('region', { name: 'Estado do ambiente' }).getByText('ONLINE', { exact: true })\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" getByRole('region', { name: 'Estado do ambiente' }).getByText('ONLINE', { exact: true }) with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('region', { name: 'Estado do ambiente' }).getByText('ONLINE', { exact: true })\u001b[22m\n\n\n  40 |     release();\n  41 |     await expect(page.getByRole(\"heading\", { name: \"Bom dia, Ricardo.\" })).toBeVisible();\n> 42 |     await expect(page.getByRole(\"region\", { name: \"Estado do ambiente\" }).getByText(\"ONLINE\", { exact: true })).toBeVisible();\n     |                                                                                                                 ^\n  43 |     const me = await page.request.get(\"/api/v1/me\");\n  44 |     const observation = {\n  45 |       probe: \"FQ06_LOGOUT_REVALIDATION_RACE\", observedAt: new Date().toISOString(),\n    at /home/ricardo/Área de trabalho/cvg-corp/artifacts/audit-2026-10-03/logout-race.spec.ts:42:113"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-03T10:50:17.666Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "screenshot",
+                      "contentType": "image/png",
+                      "path": "/home/ricardo/Área de trabalho/cvg-corp/artifacts/audit-2026-10-03/logout-race-results/logout-race-diagnostic-pro-322be--locally-signed-out-session-chromium-wide-1440/test-failed-1.png"
+                    },
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/home/ricardo/Área de trabalho/cvg-corp/artifacts/audit-2026-10-03/logout-race-results/logout-race-diagnostic-pro-322be--locally-signed-out-session-chromium-wide-1440/error-context.md"
+                    },
+                    {
+                      "name": "trace",
+                      "contentType": "application/zip",
+                      "path": "/home/ricardo/Área de trabalho/cvg-corp/artifacts/audit-2026-10-03/logout-race-results/logout-race-diagnostic-pro-322be--locally-signed-out-session-chromium-wide-1440/trace.zip"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "/home/ricardo/Área de trabalho/cvg-corp/artifacts/audit-2026-10-03/logout-race.spec.ts",
+                    "column": 113,
+                    "line": 42
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "0755723a4b2b66f4bd8f-fbf2d9c2d8d8f7abcfdc",
+          "file": "logout-race.spec.ts",
+          "line": 14,
+          "column": 1
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-10-03T10:50:13.473Z",
+    "duration": 10601.262999999999,
+    "expected": 1,
+    "skipped": 0,
+    "unexpected": 1,
+    "flaky": 0
+  }
+}

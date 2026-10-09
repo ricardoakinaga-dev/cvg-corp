@@ -1,0 +1,13 @@
+{
+  "name": "licenses",
+  "command": [
+    "npm",
+    "run",
+    "audit:licenses"
+  ],
+  "exit_status": 0,
+  "started_at": "2026-10-08T05:52:09.114374+00:00",
+  "duration_s": 0.3,
+  "log": "artifacts/production-readiness-2026-10-08/verification/licenses.log",
+  "log_sha256": "896c4931df9e1fe8ecff38fc469cec585edb2c2d4e7c6f34ccd42949daa8140b"
+}

@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "program": "CVG-AUD26",
+  "sourceSha": "c990914148a8f375082cd12bbdb2ad20cfe1900f",
+  "candidateFingerprint": "sha256:585ac671407f924c272bf25d77b96faf29bd8d39f060ef84a558b14368695906",
+  "capturedAt": "2026-09-21T16:02:00-03:00",
+  "freshness": "HISTORICAL_PRE_FINAL_CONTROL_PLANE_RECONCILIATION",
+  "status": "DIAGNOSTIC_ONLY",
+  "supersededBy": "VER-CVG-AUD26-015-004",
+  "files": [
+    "repository-lint.json",
+    "typecheck.json",
+    "contract-tests.json",
+    "security-tests.json",
+    "database-recovery-tests.json",
+    "fault-worker-tests.json",
+    "unit-integration-tests.json",
+    "web-build.json",
+    "application-pdp-coverage.json",
+    "static-verification.json",
+    "browser-e2e.json",
+    "contrast-audit.json",
+    "design-token-audit.json",
+    "dependency-audit.json",
+    "license-policy.json",
+    "cyclonedx-sbom.json",
+    "synthetic-benchmark.json",
+    "provider-loopback-sandbox.json",
+    "diff-whitespace.json"
+  ],
+  "interpretation": "These files retain full stdout/stderr from the structural verifier. They are not current promotion receipts: unit/static failures were caused by the pre-rebind control-plane mismatch; browser E2E retains the explicit WebKit host block; license policy retains its 10-entry allowlist failure. Current claims are in artifacts/aud26/evidence-snapshot.json and VER-CVG-AUD26-015-004."
+}

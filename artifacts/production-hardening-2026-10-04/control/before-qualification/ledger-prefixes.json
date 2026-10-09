@@ -1,0 +1,12 @@
+[
+  {
+    "path": ".agent/verification.jsonl",
+    "length": 1950122,
+    "sha256": "cc919d6f055e6b97579f34d1788c1cb63987341989f8e7bbfa211893fb6c4b0f"
+  },
+  {
+    "path": ".agent/execution-log.jsonl",
+    "length": 918345,
+    "sha256": "e0a048685cdee3846654c64242574e10b0393493dddca3708d5365c7461fe8a0"
+  }
+]

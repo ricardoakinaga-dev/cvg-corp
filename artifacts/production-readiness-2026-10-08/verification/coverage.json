@@ -1,0 +1,13 @@
+{
+  "name": "coverage",
+  "command": [
+    "npm",
+    "run",
+    "verify:coverage"
+  ],
+  "exit_status": 0,
+  "started_at": "2026-10-08T05:56:05.349872+00:00",
+  "duration_s": 152.6,
+  "log": "artifacts/production-readiness-2026-10-08/verification/coverage.log",
+  "log_sha256": "9b6ae4f5059d9167802d44834896851dd3d617ee965e7113e2f16730ea94dc56"
+}

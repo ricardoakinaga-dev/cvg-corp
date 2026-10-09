@@ -1,0 +1,172 @@
+{
+  "schema_version": 1,
+  "manifest_id": "CVG-AUD27-SEMANTICS-V1",
+  "round": "CVG-AUD27",
+  "status": "CURRENT_RECONCILED",
+  "canonical_digest": "b77b00f2b3daf09993a7f1b885cf07d5eb0036f75320412dcbdea530fa4ed05d",
+  "authority_order": [
+    "docs/auditoria-resultado-cvg-aud27-2026-09-21.md",
+    "docs/roadmap-melhorias-cvg-aud27-2026-09-21.md",
+    "docs/backlog-melhorias-cvg-aud27-2026-09-21.md",
+    "docs/auditoria-profunda-repositorio-2026-09-21.md",
+    ".gauntlet/bar-aud27-v1.json",
+    ".agent/state.json",
+    ".agent/backlog.json"
+  ],
+  "source_documents": {
+    "prompt_attachment": {
+      "path": "docs/prompt-codex-aud27-attachment-2026-09-21.txt",
+      "sha256": "4907917624c0191c5b4db64644735b5d2d0c6caf78adb881864ca05a01167ae1"
+    },
+    "audit": {
+      "path": "docs/auditoria-resultado-cvg-aud27-2026-09-21.md",
+      "sha256": "6c46d47ed96457da07416b980ba788f01f0a7e1c13632b3f4ec359b7f0a58219"
+    },
+    "roadmap": {
+      "path": "docs/roadmap-melhorias-cvg-aud27-2026-09-21.md",
+      "sha256": "1844eadad1151e360bfe38e723b159b0c98fb4bce71159c031ff1574cb9ca070"
+    },
+    "backlog": {
+      "path": "docs/backlog-melhorias-cvg-aud27-2026-09-21.md",
+      "sha256": "ae36a0235e6a15d968b964496c6563d24f84e802ae41905f62d7616a545e279a"
+    },
+    "aud26_report": {
+      "path": "docs/auditoria-resultado-cvg-aud26-2026-09-21.md",
+      "sha256": "80301c506963d1e04e0bfe8dba24b109522ced51732e251bf1de983a7f35864b"
+    },
+    "aud26_backlog": {
+      "path": "docs/backlog-melhorias-auditoria-2026-09-21.md",
+      "sha256": "1def7860adfd3d97d2fc3970f7eecdfe6b5224a49cf314cd7ae33b25d9a8797d"
+    },
+    "aud26_quality_bar": {
+      "path": ".gauntlet/bar-aud26-v1.json",
+      "sha256": "fd908476c6bffc56cff1881fd0035d7915f99ddc14c2e609a78ab06895124f2d"
+    },
+    "aud27_quality_bar": {
+      "path": ".gauntlet/bar-aud27-v1.json",
+      "sha256": "f0e4cdcacd8c7f3903ab56003ca1c7643e823dabfc377f2591df111052d1345d"
+    }
+  },
+  "resolution_policy": {
+    "canonical_historical_mapping": "docs/backlog-melhorias-auditoria-2026-09-21.md#4-matriz-achado-tarefas",
+    "current_status_owner": ".agent/backlog.json#items",
+    "history_rule": "old backlog, receipts and events remain immutable; current meaning is corrected by append-only correction events",
+    "rebind_rule": "SUBJECT_REBIND identifies a subject but never proves the focal criterion",
+    "conflict_resolution": "the original F01-F39 task matrix owns historical semantics; current item fields are normalized to it and residual evidence remains PARTIAL or BLOCKED"
+  },
+  "finding_catalog": [
+    {"id":"F01","subject":"restore role lacks complete negative-attribute contract","canonical_tasks":["CVG-AUD26-002","CVG-AUD26-003"],"aud26_status":"PASS_LOCAL"},
+    {"id":"F02","subject":"restore role privilege boundary is incomplete","canonical_tasks":["CVG-AUD26-002"],"aud26_status":"PASS_LOCAL"},
+    {"id":"F03","subject":"PostgreSQL authority matrix is incomplete or fabricated","canonical_tasks":["CVG-AUD26-003"],"aud26_status":"PASS_LOCAL"},
+    {"id":"F04","subject":"AUD25 control-plane completion was falsely green","canonical_tasks":["CVG-AUD26-001"],"aud26_status":"PASS_LOCAL"},
+    {"id":"F05","subject":"restore verifier creates excessive authority","canonical_tasks":["CVG-AUD26-004"],"aud26_status":"PASS_LOCAL"},
+    {"id":"F06","subject":"public restore rollback was not proven","canonical_tasks":["CVG-AUD26-005"],"aud26_status":"PASS_LOCAL"},
+    {"id":"F07","subject":"restore replay and ambiguous outcome were not proven","canonical_tasks":["CVG-AUD26-006"],"aud26_status":"PASS_LOCAL"},
+    {"id":"F08","subject":"evidence freshness and diagnostic preservation were incomplete","canonical_tasks":["CVG-AUD26-007"],"aud26_status":"PASS_LOCAL"},
+    {"id":"F09","subject":"same-subject double qualification was not complete","canonical_tasks":["CVG-AUD26-008"],"aud26_status":"PARTIAL"},
+    {"id":"F10","subject":"telemetry cardinality and span lifecycle were unsafe","canonical_tasks":["CVG-AUD26-009","CVG-AUD26-010"],"aud26_status":"PASS_LOCAL"},
+    {"id":"F11","subject":"domain persistence depended on snapshots","canonical_tasks":["CVG-AUD26-016","CVG-AUD26-017","CVG-AUD26-018","CVG-AUD26-019","CVG-AUD26-020"],"aud26_status":"PARTIAL"},
+    {"id":"F12","subject":"logs were not proven durable and queryable","canonical_tasks":["CVG-AUD26-032"],"aud26_status":"PARTIAL"},
+    {"id":"F13","subject":"SLO, load, chaos and recovery evidence was incomplete","canonical_tasks":["CVG-AUD26-033","CVG-AUD26-034"],"aud26_status":"PARTIAL"},
+    {"id":"F14","subject":"staging and external operating authorities were absent","canonical_tasks":["CVG-AUD26-033","CVG-AUD26-035","CVG-AUD26-036"],"aud26_status":"BLOCKED_EXTERNAL"},
+    {"id":"F15","subject":"rate-limit bucket lifecycle was unbounded","canonical_tasks":["CVG-AUD26-011"],"aud26_status":"PASS_LOCAL"},
+    {"id":"F16","subject":"HTTP response contracts were generic or unchecked","canonical_tasks":["CVG-AUD26-015"],"aud26_status":"PARTIAL"},
+    {"id":"F17","subject":"model response streaming was unbounded","canonical_tasks":["CVG-AUD26-012"],"aud26_status":"PASS_LOCAL"},
+    {"id":"F18","subject":"messaging response buffering was unbounded","canonical_tasks":["CVG-AUD26-013"],"aud26_status":"PASS_LOCAL"},
+    {"id":"F19","subject":"egress DNS, redirect and SSRF policy was incomplete","canonical_tasks":["CVG-AUD26-014"],"aud26_status":"PASS_LOCAL"},
+    {"id":"F20","subject":"abort, timeout and disconnect spans could remain open","canonical_tasks":["CVG-AUD26-010"],"aud26_status":"PASS_LOCAL"},
+    {"id":"F21","subject":"browser E2E port and state isolation was unstable","canonical_tasks":["CVG-AUD26-023"],"aud26_status":"PASS_LOCAL"},
+    {"id":"F22","subject":"responsive browser matrix was incomplete","canonical_tasks":["CVG-AUD26-023"],"aud26_status":"PASS_LOCAL"},
+    {"id":"F23","subject":"WebKit qualification was unavailable","canonical_tasks":["CVG-AUD26-023"],"aud26_status":"BLOCKED_EXTERNAL"},
+    {"id":"F24","subject":"semantic lint and dedicated secret scanning were missing","canonical_tasks":["CVG-AUD26-021"],"aud26_status":"PARTIAL"},
+    {"id":"F25","subject":"coverage statements and risk thresholds were incomplete","canonical_tasks":["CVG-AUD26-022"],"aud26_status":"PARTIAL"},
+    {"id":"F26","subject":"bundle splitting and budgets were not enforced","canonical_tasks":["CVG-AUD26-024"],"aud26_status":"PASS_LOCAL"},
+    {"id":"F27","subject":"design token usage was not a real gate","canonical_tasks":["CVG-AUD26-025"],"aud26_status":"PASS_LOCAL"},
+    {"id":"F28","subject":"rendered/theme/state contrast coverage was incomplete","canonical_tasks":["CVG-AUD26-025"],"aud26_status":"PARTIAL"},
+    {"id":"F29","subject":"Docker context and runtime minimization were incomplete","canonical_tasks":["CVG-AUD26-026"],"aud26_status":"PASS_LOCAL"},
+    {"id":"F30","subject":"image inputs and OCI digests remained mutable","canonical_tasks":["CVG-AUD26-027"],"aud26_status":"PARTIAL"},
+    {"id":"F31","subject":"OCI attestation and signing authority were absent","canonical_tasks":["CVG-AUD26-028","CVG-AUD26-035"],"aud26_status":"BLOCKED_EXTERNAL"},
+    {"id":"F32","subject":"runtime compile path still needed proof","canonical_tasks":["CVG-AUD26-026"],"aud26_status":"PASS_LOCAL"},
+    {"id":"F33","subject":"documentation and derived state could drift","canonical_tasks":["CVG-AUD26-030"],"aud26_status":"PASS_LOCAL"},
+    {"id":"F34","subject":"central modules remained monolithic","canonical_tasks":["CVG-AUD26-029"],"aud26_status":"PARTIAL"},
+    {"id":"F35","subject":"diagnostic evidence was incomplete or stale","canonical_tasks":["CVG-AUD26-007"],"aud26_status":"PASS_LOCAL"},
+    {"id":"F36","subject":"secret scanner coverage and known-bad enforcement were incomplete","canonical_tasks":["CVG-AUD26-021"],"aud26_status":"PARTIAL"},
+    {"id":"F37","subject":"package manager and reproducible toolchain governance were incomplete","canonical_tasks":["CVG-AUD26-031"],"aud26_status":"PASS_LOCAL"},
+    {"id":"F38","subject":"root license artifact and governance were incomplete","canonical_tasks":["CVG-AUD26-031"],"aud26_status":"PARTIAL"},
+    {"id":"F39","subject":"strict TypeScript and CI integration were incomplete","canonical_tasks":["CVG-AUD26-031"],"aud26_status":"PASS_LOCAL"}
+  ],
+  "aud26_task_catalog": [
+    {"id":"CVG-AUD26-001","title":"Reconciliar o control plane e importar programa","findings":["F04"],"semantic_subject":"control-plane-reconciliation"},
+    {"id":"CVG-AUD26-002","title":"Fechar o contrato dos sete atributos de role de restore","findings":["F01","F02"],"semantic_subject":"restore-role-contract"},
+    {"id":"CVG-AUD26-003","title":"Completar a matriz real de autoridade PostgreSQL","findings":["F01","F03"],"semantic_subject":"postgres-authority-matrix"},
+    {"id":"CVG-AUD26-004","title":"Remover autoridade fabricada do verificador","findings":["F05"],"semantic_subject":"verifier-authority"},
+    {"id":"CVG-AUD26-005","title":"Provar rollback público em falha tardia","findings":["F06"],"semantic_subject":"restore-late-rollback"},
+    {"id":"CVG-AUD26-006","title":"Qualificar replay, concorrência e resultado ambíguo","findings":["F07"],"semantic_subject":"restore-replay-concurrency"},
+    {"id":"CVG-AUD26-007","title":"Renovar evidências e preservar diagnósticos completos","findings":["F08","F35"],"semantic_subject":"current-evidence-diagnostics"},
+    {"id":"CVG-AUD26-008","title":"Executar duas qualificações limpas do mesmo fingerprint","findings":["F09"],"semantic_subject":"double-qualification"},
+    {"id":"CVG-AUD26-009","title":"Normalizar e limitar cardinalidade de telemetria","findings":["F10"],"semantic_subject":"telemetry-cardinality"},
+    {"id":"CVG-AUD26-010","title":"Encerrar spans em todos os caminhos","findings":["F10","F20"],"semantic_subject":"span-lifecycle"},
+    {"id":"CVG-AUD26-011","title":"Aplicar lifecycle aos buckets de rate limit","findings":["F15"],"semantic_subject":"rate-limit-lifecycle"},
+    {"id":"CVG-AUD26-012","title":"Limitar respostas de modelos durante streaming","findings":["F17"],"semantic_subject":"model-stream-bounds"},
+    {"id":"CVG-AUD26-013","title":"Limitar respostas de mensageria durante streaming","findings":["F18"],"semantic_subject":"messaging-stream-bounds"},
+    {"id":"CVG-AUD26-014","title":"Endurecer resolução DNS, redirects e SSRF","findings":["F19"],"semantic_subject":"egress-ssrf-policy"},
+    {"id":"CVG-AUD26-015","title":"Validar respostas da API em runtime","findings":["F16"],"semantic_subject":"route-response-contracts"},
+    {"id":"CVG-AUD26-016","title":"Definir framework de migração snapshot → comando","findings":["F11"],"semantic_subject":"snapshot-command-framework"},
+    {"id":"CVG-AUD26-017","title":"Migrar clínica, agenda e addenda","findings":["F11"],"semantic_subject":"snapshot-cutover-clinical"},
+    {"id":"CVG-AUD26-018","title":"Migrar hospital, estoque e medicações","findings":["F11"],"semantic_subject":"snapshot-cutover-hospital"},
+    {"id":"CVG-AUD26-019","title":"Migrar finanças, comunicação e conhecimento","findings":["F11"],"semantic_subject":"snapshot-cutover-finance"},
+    {"id":"CVG-AUD26-020","title":"Migrar entidades de IA restantes","findings":["F11"],"semantic_subject":"snapshot-cutover-ai"},
+    {"id":"CVG-AUD26-021","title":"Adotar ESLint semântico e secret scanner dedicado","findings":["F24","F36"],"semantic_subject":"lint-secret-scanning"},
+    {"id":"CVG-AUD26-022","title":"Introduzir cobertura e thresholds","findings":["F25"],"semantic_subject":"coverage-thresholds"},
+    {"id":"CVG-AUD26-023","title":"Estabilizar E2E e habilitar WebKit real","findings":["F21","F22","F23"],"semantic_subject":"browser-matrix"},
+    {"id":"CVG-AUD26-024","title":"Dividir bundle e impor budget de frontend","findings":["F26"],"semantic_subject":"bundle-budget"},
+    {"id":"CVG-AUD26-025","title":"Tornar tokens e contraste gates efetivos","findings":["F27","F28"],"semantic_subject":"tokens-contrast"},
+    {"id":"CVG-AUD26-026","title":"Reduzir contexto Docker e compilar o runtime","findings":["F29","F32"],"semantic_subject":"container-runtime"},
+    {"id":"CVG-AUD26-027","title":"Pinar imagens base por digest","findings":["F30"],"semantic_subject":"image-digests"},
+    {"id":"CVG-AUD26-028","title":"Gerar, assinar e verificar atestações OCI","findings":["F31"],"semantic_subject":"oci-attestation"},
+    {"id":"CVG-AUD26-029","title":"Modularizar arquivos centrais por seams","findings":["F34"],"semantic_subject":"module-seams"},
+    {"id":"CVG-AUD26-030","title":"Sincronizar documentação e estado derivado","findings":["F33"],"semantic_subject":"documentation-state"},
+    {"id":"CVG-AUD26-031","title":"Fechar governança, toolchain e TypeScript","findings":["F37","F38","F39"],"semantic_subject":"toolchain-governance"},
+    {"id":"CVG-AUD26-032","title":"Implantar logs duráveis e pesquisáveis","findings":["F12"],"semantic_subject":"durable-logs"},
+    {"id":"CVG-AUD26-033","title":"Definir SLOs e provar alertas","findings":["F13","F14"],"semantic_subject":"slos-alerts"},
+    {"id":"CVG-AUD26-034","title":"Executar carga, caos e DR representativos","findings":["F13"],"semantic_subject":"load-chaos-dr"},
+    {"id":"CVG-AUD26-035","title":"Qualificar staging e dependências externas","findings":["F14","F31"],"semantic_subject":"external-gates"},
+    {"id":"CVG-AUD26-036","title":"Reauditar e submeter aprovação humana","findings":["F01","F02","F03","F04","F05","F06","F07","F08","F09","F10","F11","F12","F13","F14","F15","F16","F17","F18","F19","F20","F21","F22","F23","F24","F25","F26","F27","F28","F29","F30","F31","F32","F33","F34","F35","F36","F37","F38","F39"],"semantic_subject":"reaudit-human-decision","aggregate":true}
+  ],
+  "aud27_finding_catalog": [
+    {"id":"A27-F01","priority":"P0","subject":"semantic mapping between findings, tasks and bar","tasks":["AUD27-001","AUD27-002"],"historical_findings":["F04","F21","F22","F25","F26","F27","F28","F34"]},
+    {"id":"A27-F02","priority":"P0","subject":"root license artifact missing","tasks":["AUD27-001","AUD27-016"],"historical_findings":["F38"]},
+    {"id":"A27-F03","priority":"P0","subject":"contrast/token status overstated","tasks":["AUD27-001","AUD27-019"],"historical_findings":["F27","F28"]},
+    {"id":"A27-F04","priority":"P0","subject":"generic route response schemas","tasks":["AUD27-007","AUD27-008","AUD27-009","AUD27-010"],"historical_findings":["F16"]},
+    {"id":"A27-F05","priority":"P0","subject":"candidate is not clean reproducible Git subject","tasks":["AUD27-004","AUD27-025"],"historical_findings":["F08","F09"]},
+    {"id":"A27-F06","priority":"P0","subject":"external durable evidence root absent","tasks":["AUD27-005","AUD27-025"],"historical_findings":["F08","F35"]},
+    {"id":"A27-F07","priority":"P0","subject":"24 snapshot-primary cutovers not executed","tasks":["AUD27-011","AUD27-012","AUD27-013","AUD27-014"],"historical_findings":["F11"]},
+    {"id":"A27-F08","priority":"P0","subject":"real image smoke not proven","tasks":["AUD27-015"],"historical_findings":["F29"]},
+    {"id":"A27-F09","priority":"P0","subject":"external and human gates unavailable","tasks":["AUD27-021","AUD27-022","AUD27-026","AUD27-027"],"historical_findings":["F09","F14","F23","F31"]},
+    {"id":"A27-F10","priority":"P1","subject":"DONE evidence is mostly rebind-only","tasks":["AUD27-006","AUD27-025"],"historical_findings":["F08","F09"]},
+    {"id":"A27-F11","priority":"P1","subject":"PARTIAL work lacks typed evidence","tasks":["AUD27-003","AUD27-006"],"historical_findings":["F08","F11","F16"]},
+    {"id":"A27-F12","priority":"P1","subject":"critic independence is not durable","tasks":["AUD27-005","AUD27-023","AUD27-025"],"historical_findings":["F09"]},
+    {"id":"A27-F13","priority":"P1","subject":"license policy failure is misclassified","tasks":["AUD27-016"],"historical_findings":["F38"]},
+    {"id":"A27-F14","priority":"P1","subject":"OCI inputs mutable and provenance absent","tasks":["AUD27-017","AUD27-026"],"historical_findings":["F30","F31"]},
+    {"id":"A27-F15","priority":"P1","subject":"coverage lacks statements and mutation testing","tasks":["AUD27-018"],"historical_findings":["F25"]},
+    {"id":"A27-F16","priority":"P1","subject":"rendered accessibility and WebKit partial","tasks":["AUD27-019","AUD27-026"],"historical_findings":["F23","F28"]},
+    {"id":"A27-F17","priority":"P1","subject":"central modules remain monolithic","tasks":["AUD27-020"],"historical_findings":["F34"]},
+    {"id":"A27-F18","priority":"P1","subject":"formal state does not represent closure","tasks":["AUD27-001","AUD27-003","AUD27-024"],"historical_findings":["F04","F09"]},
+    {"id":"A27-F19","priority":"P2","subject":"evidence root default says AUD24","tasks":["AUD27-005"],"historical_findings":["F08","F35"]},
+    {"id":"A27-F20","priority":"P2","subject":"documentation language overstates proof","tasks":["AUD27-001","AUD27-003","AUD27-024"],"historical_findings":["F04","F08","F09"]}
+  ],
+  "known_bad_mappings": [
+    {"id":"NEG-001","task":"CVG-AUD26-022","observed_findings":["F25"],"expected_subject":"coverage-thresholds","reason":"browser title was bound to the original coverage finding"},
+    {"id":"NEG-002","task":"CVG-AUD26-023","observed_findings":["F21","F22","F23"],"expected_subject":"browser-matrix","reason":"bundle title was bound to the original browser findings"},
+    {"id":"NEG-003","task":"CVG-AUD26-024","observed_findings":["F26"],"expected_subject":"bundle-budget","reason":"token title was bound to the original bundle finding"},
+    {"id":"NEG-004","task":"CVG-AUD26-025","observed_findings":["F27","F28"],"expected_subject":"tokens-contrast","reason":"module title was bound to the original token findings"},
+    {"id":"NEG-005","task":"CVG-AUD26-029","observed_findings":["F34"],"expected_subject":"module-seams","reason":"visual-QA title was bound to the original modularity finding"}
+  ],
+  "aud27_exit_requirements": [
+    "39 findings are unique and each resolves to one canonical historical task relationship",
+    "all 27 AUD27 tasks have explicit observed/remaining/evidence_state fields",
+    "known-bad semantic shifts are rejected by the verifier",
+    "old history is preserved and current corrections are append-only",
+    "promotion remains PROMOTION_BLOCKED until external and human gates are real"
+  ]
+}

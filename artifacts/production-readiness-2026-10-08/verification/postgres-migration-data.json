@@ -1,0 +1,17 @@
+{
+  "name": "postgres-migration-data",
+  "command": [
+    "npm",
+    "run",
+    "verify:ephemeral-postgres",
+    "--",
+    "--rounds=1",
+    "--run-aud27-migration",
+    "--run-aud27-normalized-writes"
+  ],
+  "exit_status": 0,
+  "started_at": "2026-10-08T06:00:37.371136+00:00",
+  "duration_s": 4.8,
+  "log": "artifacts/production-readiness-2026-10-08/verification/postgres-migration-data.log",
+  "log_sha256": "4a9d485c2ece75f61191ca892565235f4cc9956b82eadefb82048ae632233fdc"
+}

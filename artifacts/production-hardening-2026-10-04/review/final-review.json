@@ -1,0 +1,33 @@
+{
+  "agent_id": "01a106ce-cb17-70f0-bbce-d68a1a0cf0ff",
+  "decision": "UNAVAILABLE",
+  "independence": "I1_REQUESTED_NOT_COMPLETED",
+  "fork_context": false,
+  "source_fingerprint_before": null,
+  "source_fingerprint_after": null,
+  "mutation_sentinel_clean": null,
+  "requested_subject": "sha256:15ece6ef83fb9e9918dddcde7757e337fb81b42b07b6b04474c68580fcb794b2",
+  "report_path": "artifacts/production-hardening-2026-10-04/review/final-review.md",
+  "counts_as_independent_approval": false,
+  "attempts": [
+    {
+      "agent_id": "01a106cb-700d-7351-93d1-3027dc0eefc5",
+      "status": "ERRORED",
+      "error": "stream disconnected before completion: ChatGPT browser stage timed out: send",
+      "closed": true
+    },
+    {
+      "agent_id": "01a106ce-cb17-70f0-bbce-d68a1a0cf0ff",
+      "status": "CLOSED_WITHOUT_VERDICT",
+      "last_observed_status": "running",
+      "observations": "Lifecycle waits returned timed_out=true without a report. A progress request and a later interrupt requesting a bounded final report produced no verdict before closure.",
+      "closed": true,
+      "cause_of_noncompletion": "Unconfirmed; no transport error was returned for this second attempt."
+    }
+  ],
+  "limitations": [
+    "No final independent approval or critic-measured mutation sentinel exists.",
+    "The earlier independent.md is historical pre-fix review, not approval of this final candidate.",
+    "Current local command results remain separately verifiable and do not substitute for independent review."
+  ]
+}

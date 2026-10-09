@@ -159,7 +159,7 @@ test("captura os limites visuais principais", async ({ page }, testInfo) => {
   await expect(page.getByRole("heading", { name: "Bom dia, Ricardo." })).toBeVisible();
   await expect(page.getByText("Hoje na agenda", { exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Próximos atendimentos", exact: true })).toBeVisible();
-  await page.screenshot({ path: `artifacts/runs/${testInfo.project.name}-dashboard.png`, fullPage: false });
+  await page.screenshot({ path: testInfo.outputPath(`${testInfo.project.name}-dashboard.png`), fullPage: false });
   if (testInfo.project.name === "chromium-tablet-768") {
     const menu = page.getByRole("button", { name: "Abrir menu" });
     if (await menu.isVisible()) await menu.click();
@@ -167,7 +167,7 @@ test("captura os limites visuais principais", async ({ page }, testInfo) => {
     await expect(page.getByRole("heading", { name: "Agenda", exact: true })).toBeVisible();
     await expect(page.locator(".sidebar.sidebar-open")).toHaveCount(0);
     await page.waitForTimeout(300);
-    await page.screenshot({ path: `artifacts/runs/${testInfo.project.name}-agenda.png`, fullPage: false });
+    await page.screenshot({ path: testInfo.outputPath(`${testInfo.project.name}-agenda.png`), fullPage: false });
   }
 });
 
@@ -402,6 +402,46 @@ test("falha do servidor no logout mostra pendência em vez de sucesso falso", as
   await expect(page.getByText("revogação desta sessão no servidor ainda não foi confirmada")).toHaveCount(0);
 });
 
+test("logout durante revalidação revoga no servidor e a resposta atrasada não reabre a sessão", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: /Abrir demonstração sintética/i }).click();
+  await expect(page.getByRole("heading", { name: "Bom dia, Ricardo." })).toBeVisible();
+  let release!: () => void;
+  let entered!: () => void;
+  const responseReady = new Promise<void>((resolve) => { entered = resolve; });
+  const releaseResponse = new Promise<void>((resolve) => { release = resolve; });
+  let logoutRequests = 0;
+  page.on("request", (request) => {
+    if (request.url().endsWith("/api/v1/auth/logout")) logoutRequests += 1;
+  });
+  await page.route("**/api/v1/contexts", async (route) => {
+    const actualResponse = await route.fetch();
+    entered();
+    await releaseResponse;
+    await route.fulfill({ response: actualResponse });
+  });
+  const menu = page.getByRole("button", { name: "Abrir menu" });
+  try {
+    if (await menu.isVisible()) await menu.click();
+    await page.getByLabel("Selecionar unidade e workspace").selectOption({ label: "Unidade Sul · Operação clínica" });
+    await responseReady;
+    await expect(page.getByRole("region", { name: "Estado do ambiente" }).getByText("REVALIDATING", { exact: true })).toBeVisible();
+    if (await menu.isVisible() && (await menu.getAttribute("aria-expanded")) !== "true") await menu.click();
+    await page.getByRole("button", { name: "Sair", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "O cuidado em foco." })).toBeVisible();
+    await expect(page.getByText("revogação desta sessão no servidor ainda não foi confirmada")).toHaveCount(0);
+    release();
+    await page.waitForLoadState("networkidle");
+    await expect(page.getByRole("heading", { name: "O cuidado em foco." })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Bom dia, Ricardo." })).toHaveCount(0);
+    expect(logoutRequests).toBe(1);
+    expect((await page.request.get("/api/v1/me")).status()).toBe(401);
+  } finally {
+    release();
+    await page.unroute("**/api/v1/contexts");
+  }
+});
+
 const mfaSessionPayload = {
   user: { id: "00000000-0000-4000-8000-000000000001", displayName: "Ricardo", email: "admin@cvg.local", status: "ACTIVE" },
   contexts: [{ organization: { id: "00000000-0000-4000-8000-000000000010", name: "CVG", slug: "cvg" }, unit: { id: "00000000-0000-4000-8000-000000000020", name: "Unidade Centro", code: "CENTRO" }, workspace: { id: "00000000-0000-4000-8000-000000000030", name: "Operação clínica", purpose: "clinical" }, roles: ["admin"] }],
@@ -536,17 +576,19 @@ test.describe("agenda derivada do contexto e do relógio", () => {
 
   test("dia, semana e unidade seguem contexto e relógio, inclusive virada de dia", async ({ page }) => {
     const appointmentRequest = page.waitForRequest((request) => new URL(request.url()).pathname.endsWith("/appointments"));
-    await page.clock.install({ time: new Date("2026-09-16T02:59:50Z") });
-    await page.clock.pauseAt(new Date("2026-09-16T02:59:50Z"));
     await page.goto("/");
     await page.getByRole("button", { name: /Abrir demonstração sintética/i }).click();
     await expect(page.getByRole("heading", { name: "Bom dia, Ricardo." })).toBeVisible();
+    // WebKit can advance the installed clock between install and pauseAt;
+    // leave a real target window while preserving the pre-midnight instant.
+    await page.clock.install({ time: new Date("2026-09-16T02:00:00Z") });
+    await page.clock.pauseAt(new Date("2026-09-16T02:59:50Z"));
     await openAgenda(page);
     await expect(page.getByText("15 SET · UNIDADE CENTRO")).toBeVisible();
     await expect(page.getByRole("heading", { name: "Terça-feira", exact: true })).toBeVisible();
 
     const centroHeaders = (await appointmentRequest).headers();
-    const reservations = await page.evaluate(async (scope) => {
+    await page.evaluate(async (scope) => {
       const headers: Record<string, string> = {
         "content-type": "application/json", "x-cvg-unit-id": scope["x-cvg-unit-id"]!, "x-cvg-workspace-id": scope["x-cvg-workspace-id"]!,
         "x-csrf-token": decodeURIComponent(document.cookie.split("; ").find((value) => value.startsWith("cvg_csrf="))!.split("=")[1]!)
@@ -599,11 +641,13 @@ test.describe("agenda derivada do contexto e do relógio", () => {
 
   test("meia-noite inexistente mantém limites e reservas do dia e da semana", async ({ page }) => {
     const instant = new Date("2018-11-04T12:00:00Z");
-    await page.clock.install({ time: instant });
-    await page.clock.pauseAt(instant);
     await page.goto("/");
     await page.getByRole("button", { name: /Abrir demonstração sintética/i }).click();
     await expect(page.getByRole("heading", { name: "Bom dia, Ricardo." })).toBeVisible();
+    // WebKit can advance the installed clock between install and pauseAt;
+    // leave a real target window while preserving the DST-boundary instant.
+    await page.clock.install({ time: new Date("2018-11-04T11:00:00Z") });
+    await page.clock.pauseAt(instant);
     const initialRead = page.waitForResponse((response) => {
       const url = new URL(response.url());
       return url.pathname.endsWith("/appointments") && url.searchParams.has("startsAt");
@@ -825,7 +869,7 @@ test.describe("agenda derivada do contexto e do relógio", () => {
     await expect(page.getByText("Nenhuma janela encontrada")).toBeVisible();
   });
 
-  for (const [attempt, dayOffset] of [[0, 0], [1, 1]] as const) {
+  for (const [, dayOffset] of [[0, 0], [1, 1]] as const) {
     test(`jornada de agenda: reserva, confirmação, remarcação, check-in, triagem e handoff (offset ${dayOffset})`, async ({ page }, testInfo) => {
       // 15-minute slots from 10:00: late enough to stay clear of the seeded
       // morning fixture in every runner timezone, and each project owns a
@@ -952,6 +996,20 @@ test("copiloto mostra a proveniência real da resposta, sem rótulo fixo", async
       body: JSON.stringify({
         schemaVersion: 1,
         data: {
+          session: {
+            id: "00000000-0000-4000-8000-000000000202",
+            organizationId: "00000000-0000-4000-8000-000000000010",
+            actorId: "00000000-0000-4000-8000-000000000001",
+            unitId: "00000000-0000-4000-8000-000000000011",
+            workspaceId: "00000000-0000-4000-8000-000000000021",
+            patientId: null,
+            encounterId: null,
+            purpose: "SUMMARY",
+            engineCommit: "abcdef0123456789abcdef0123456789abcdef01",
+            profileDigest: "d".repeat(64),
+            status: "ACTIVE",
+            createdAt: "2026-09-13T12:00:00.000Z"
+          },
           turn: {
             id: "00000000-0000-4000-8000-000000000201",
             sessionId: "00000000-0000-4000-8000-000000000202",
@@ -964,6 +1022,7 @@ test("copiloto mostra a proveniência real da resposta, sem rótulo fixo", async
             references: [{ title: "Protocolo CVG", source: "knowledge://protocolo" }],
             createdAt: "2026-09-13T12:00:00.000Z"
           },
+          draft: null,
           approval: null,
           provenance: {
             provider: "deepseek-harness",
@@ -1480,6 +1539,58 @@ test("jornada de estoque: entrada, dispensação, negativa de saldo, devolução
   await expect(page.locator(".audit-row", { hasText: "Ajuste de baixa" }).first()).toBeVisible();
 });
 
+test("produto criado antes de um lote recusado continua recuperável após recarregar", async ({ page }) => {
+  const suffix = Date.now().toString(36);
+  const productName = `Produto órfão E2E ${suffix}`;
+  const yesterday = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
+  const expiry = new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10);
+  const openStock = async () => {
+    const menu = page.getByRole("button", { name: "Abrir menu" });
+    if (await menu.isVisible()) await menu.click();
+    await page.locator('nav[aria-label="Navegação principal"]').getByRole("button", { name: "Farmácia" }).click();
+    await expect(page.getByRole("heading", { name: "Estoque", exact: true })).toBeVisible();
+  };
+  await page.goto("/");
+  await page.getByRole("button", { name: /Abrir demonstração sintética/i }).click();
+  await expect(page.getByRole("heading", { name: "Bom dia, Ricardo." })).toBeVisible();
+  await openStock();
+
+  await page.getByRole("button", { name: "Registrar entrada" }).click();
+  await page.getByRole("button", { name: "Novo produto" }).click();
+  await page.locator("#stock-sku").fill(`SKU-ORFAO-${suffix}`);
+  await page.locator("#stock-name").fill(productName);
+  await page.locator("#stock-category").fill("Sintético");
+  await page.locator("#stock-lot").fill(`LOTE-VENCIDO-${suffix}`);
+  await page.locator("#stock-expiry").fill(yesterday);
+  await page.locator("#stock-quantity").fill("5");
+  await page.locator("#stock-location").selectOption({ index: 1 });
+  await page.getByRole("button", { name: "Confirmar entrada" }).click();
+  await expect(page.getByRole("dialog").getByRole("alert").filter({ hasText: "data futura" })).toBeVisible();
+  // FQ-01: the refused lot leaves the created product selected instead of re-creating the SKU.
+  await expect(page.getByRole("button", { name: "Produto existente" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#stock-product option:checked")).toHaveText(`${productName} · unidade`);
+  await page.getByRole("dialog").getByRole("button", { name: "Cancelar" }).click();
+
+  await page.reload();
+  await expect(page.getByLabel("Selecionar unidade e workspace")).toBeAttached();
+  await openStock();
+  await page.getByRole("button", { name: "Registrar entrada" }).click();
+  await page.getByRole("button", { name: "Produto existente" }).click();
+  // The product has no lot, so only the server catalog can offer it after a reload.
+  await page.locator("#stock-product").selectOption({ label: `${productName} · unidade` });
+  await page.locator("#stock-lot").fill(`LOTE-OK-${suffix}`);
+  await page.locator("#stock-expiry").fill(yesterday);
+  await page.locator("#stock-quantity").fill("5");
+  await page.locator("#stock-location").selectOption({ index: 1 });
+  await page.getByRole("button", { name: "Confirmar entrada" }).click();
+  await expect(page.getByRole("dialog").getByRole("alert").filter({ hasText: "data futura" })).toBeVisible();
+  // Correcting the refused lot in the same dialog is a new intent, not a replay.
+  await page.locator("#stock-expiry").fill(expiry);
+  await page.getByRole("button", { name: "Confirmar entrada" }).click();
+  await expect(page.getByRole("status").filter({ hasText: `Lote LOTE-OK-${suffix} com saldo 5` })).toBeVisible();
+  await expect(page.locator(".stock-card", { hasText: productName })).toBeVisible();
+});
+
 test("jornada financeira: cobrança, pagamento, negativa de excesso, estorno e ledger", async ({ page }) => {
   const suffix = Date.now().toString(36);
   const description = `Consulta E2E ${suffix}`;
@@ -1500,12 +1611,15 @@ test("jornada financeira: cobrança, pagamento, negativa de excesso, estorno e l
   const chargeRow = () => page.locator(".ledger-row", { hasText: description });
   await expect(chargeRow().getByText("Em aberto", { exact: true })).toBeVisible();
   await chargeRow().getByRole("button", { name: "Pagamento" }).click();
+  await expect(page.locator("#finance-payment-amount")).toHaveValue("100,00");
   await page.locator("#finance-payment-amount").fill("40,00");
   await page.getByRole("button", { name: "Registrar pagamento" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Pagamento de R$ 40,00 liquidado" })).toBeVisible();
   await expect(chargeRow().getByText("Parcial", { exact: true })).toBeVisible();
 
   await chargeRow().getByRole("button", { name: "Pagamento" }).click();
+  // The partial payment form suggests the open balance, not the charge total.
+  await expect(page.locator("#finance-payment-amount")).toHaveValue("60,00");
   await page.locator("#finance-payment-amount").fill("70,00");
   await page.getByRole("button", { name: "Registrar pagamento" }).click();
   await expect(page.getByRole("alert").filter({ hasText: "excede o saldo" })).toBeVisible();
@@ -1675,4 +1789,110 @@ test("comunicação: preparar, decidir por outro ator e aprovação sem outbox d
   await page.getByRole("button", { name: "Comunicação", exact: true }).click();
   await expect(secondRow().getByText("Aguardando aprovação", { exact: true })).toBeVisible();
   await expect(page.getByText(/Mensagem aprovada/)).toHaveCount(0);
+});
+
+test("CVG-AUD19-020: resposta de busca antiga nao substitui a consulta mais nova", async ({ page }) => {
+  await page.route("**/api/v1/patients**", async (route) => {
+    const url = new URL(route.request().url());
+    const query = url.searchParams.get("q") ?? "";
+    const items = query === "Nino"
+      ? [{ id: "11111111-1111-4111-8111-111111111111", name: "Nino", species: "Felina", breed: "SRD", status: "ACTIVE", guardian: null }]
+      : [{ id: "22222222-2222-4222-8222-222222222222", name: "Luna", species: "Canina", breed: "Golden", status: "ACTIVE", guardian: null }];
+    if (query === "Luna") await new Promise((resolve) => setTimeout(resolve, 700));
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ schemaVersion: 1, data: { items }, correlationId: "e2e-search-race" }) });
+  });
+  await page.goto("/");
+  await page.getByRole("button", { name: /Abrir demonstração sintética/i }).click();
+  await expect(page.getByRole("heading", { name: "Bom dia, Ricardo." })).toBeVisible();
+  const menu = page.getByRole("button", { name: "Abrir menu" });
+  if (await menu.isVisible()) await menu.click();
+  await page.locator('nav[aria-label="Navegação principal"]').getByRole("button", { name: "Pacientes", exact: true }).click();
+  const search = page.getByLabel("Buscar pacientes");
+  await search.fill("Luna");
+  await search.fill("Nino");
+  await expect(page.getByText("Nino", { exact: true })).toBeVisible();
+  await page.waitForTimeout(900);
+  await expect(page.getByText("Nino", { exact: true })).toBeVisible();
+  await expect(page.getByText("Luna", { exact: true })).toHaveCount(0);
+});
+
+test("CVG-AUD21-007: erro de busca encerra loading e retry recupera", async ({ page }) => {
+  let failures = 0;
+  await page.route("**/api/v1/patients**", async (route) => {
+    const query = new URL(route.request().url()).searchParams.get("q") ?? "";
+    if (query === "Falha" && failures++ === 0) {
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ schemaVersion: 1, data: { items: "not-an-array" }, correlationId: "e2e-search-error" }) });
+      return;
+    }
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ schemaVersion: 1, data: { items: [{ id: "11111111-1111-4111-8111-111111111111", name: "Luna", species: "Canina", breed: "Golden", status: "ACTIVE", guardian: null }] }, correlationId: "e2e-search-recovery" }) });
+  });
+  await page.goto("/");
+  await page.getByRole("button", { name: /Abrir demonstração sintética/i }).click();
+  await expect(page.getByRole("heading", { name: "Bom dia, Ricardo." })).toBeVisible();
+  const menu = page.getByRole("button", { name: "Abrir menu" });
+  if (await menu.isVisible()) await menu.click();
+  await page.locator('nav[aria-label="Navegação principal"]').getByRole("button", { name: "Pacientes", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Pacientes", exact: true })).toBeVisible();
+  const search = page.getByLabel("Buscar pacientes");
+  await search.fill("Falha");
+  await expect(page.getByText("Busca indisponível", { exact: true })).toBeVisible();
+  await expect(page.getByText("Buscando pacientes", { exact: true })).toHaveCount(0);
+  await page.getByRole("button", { name: "Tentar novamente", exact: true }).click();
+  await expect(page.getByText("Luna", { exact: true })).toBeVisible();
+  await expect(page.getByText("Buscando pacientes", { exact: true })).toHaveCount(0);
+});
+
+test("CVG-AUD21-007: StrictMode aborta busca em voo no unmount", async ({ page }) => {
+  let aborted = false;
+  page.on("requestfailed", (request) => {
+    const url = new URL(request.url());
+    if (url.pathname.endsWith("/patients") && url.searchParams.get("q") === "Luna") aborted = true;
+  });
+  await page.route("**/api/v1/patients**", async (route) => {
+    const query = new URL(route.request().url()).searchParams.get("q") ?? "";
+    if (query === "Luna") {
+      await new Promise((resolve) => setTimeout(resolve, 1_500));
+      try { await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ schemaVersion: 1, data: { items: [{ id: "11111111-1111-4111-8111-111111111111", name: "Luna", species: "Canina", breed: "Golden", status: "ACTIVE", guardian: null }] }, correlationId: "e2e-search-unmount" }) }); } catch { /* the browser aborted the request during unmount */ }
+      return;
+    }
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ schemaVersion: 1, data: { items: [{ id: "22222222-2222-4222-8222-222222222222", name: "Nino", species: "Felina", breed: "SRD", status: "ACTIVE", guardian: null }] }, correlationId: "e2e-search-initial" }) });
+  });
+  await page.goto("/");
+  await page.getByRole("button", { name: /Abrir demonstração sintética/i }).click();
+  await expect(page.getByRole("heading", { name: "Bom dia, Ricardo." })).toBeVisible();
+  const menu = page.getByRole("button", { name: "Abrir menu" });
+  if (await menu.isVisible()) await menu.click();
+  await page.locator('nav[aria-label="Navegação principal"]').getByRole("button", { name: "Pacientes", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Pacientes", exact: true })).toBeVisible();
+  const pending = page.waitForRequest((request) => {
+    const url = new URL(request.url());
+    return url.pathname.endsWith("/patients") && url.searchParams.get("q") === "Luna";
+  });
+  await page.getByLabel("Buscar pacientes").fill("Luna");
+  await pending;
+  if (await menu.isVisible()) await menu.click();
+  await page.locator('nav[aria-label="Navegação principal"]').getByRole("button", { name: "Visão geral", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Bom dia, Ricardo.", exact: true })).toBeVisible();
+  await expect.poll(() => aborted, { timeout: 3_000 }).toBe(true);
+});
+
+test("CVG-AUD19-018/019: payload malformado nao deixa tela branca e a tela se recupera", async ({ page }) => {
+  let intercept = true;
+  await page.route("**/api/v1/patients**", async (route) => {
+    if (!intercept) { await route.continue(); return; }
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ schemaVersion: 1, data: { items: "not-an-array" }, correlationId: "e2e-malformed-payload" }) });
+  });
+  await page.goto("/");
+  await page.getByRole("button", { name: /Abrir demonstração sintética/i }).click();
+  await expect(page.getByRole("heading", { name: "Bom dia, Ricardo." })).toBeVisible();
+  const menu = page.getByRole("button", { name: "Abrir menu" });
+  if (await menu.isVisible()) await menu.click();
+  await page.locator('nav[aria-label="Navegação principal"]').getByRole("button", { name: "Pacientes", exact: true }).click();
+  await expect(page.getByText("Busca indisponível", { exact: true })).toBeVisible();
+  // The shell is still rendered: no blank screen, no root boundary needed.
+  await expect(page.locator("#root")).not.toBeEmpty();
+  await expect(page.getByRole("heading", { name: "Pacientes", exact: true })).toBeVisible();
+  intercept = false;
+  await page.getByRole("button", { name: "Tentar novamente", exact: true }).click();
+  await expect(page.getByText("Luna", { exact: true })).toBeVisible();
 });

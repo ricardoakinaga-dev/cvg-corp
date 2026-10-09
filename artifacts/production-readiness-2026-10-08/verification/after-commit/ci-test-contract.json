@@ -1,0 +1,13 @@
+{
+  "name": "ci-test-contract",
+  "command": [
+    "npm",
+    "run",
+    "test:contract"
+  ],
+  "exit_status": 0,
+  "started_at": "2026-10-08T10:44:47.583237+00:00",
+  "duration_s": 0.5,
+  "log": "artifacts/production-readiness-2026-10-08/verification/after-commit/ci-test-contract.log",
+  "log_sha256": "7593e7fe5fe446eeb12bc4c144cac5934ae5f75edbc10a3c4ea1a04c591c4c44"
+}

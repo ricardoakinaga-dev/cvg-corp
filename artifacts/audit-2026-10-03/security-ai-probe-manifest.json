@@ -1,0 +1,126 @@
+{
+  "schema_version": 1,
+  "head": "9aab406b164497978b05dd3aa431db49ad11677a",
+  "created_at": "2026-10-03T05:49:27.712274+00:00",
+  "status": "PRESERVED_ORIGINAL_PROBE_EVIDENCE",
+  "files": [
+    {
+      "path": "artifacts/audit-2026-10-03/security-ai-boundary-probes.mjs",
+      "sha256": "bfd6fbedaed753bf068b095a92197b8d57245cc2469b1fe76199f311a79346a4",
+      "bytes": 4982,
+      "synthetic_only": true,
+      "copied_without_byte_changes": true
+    },
+    {
+      "path": "artifacts/audit-2026-10-03/security-ai-boundary-probes.log",
+      "sha256": "3a7c6d16def7d6010dc0c7c4ee1834418324aa840ebc199781a224c773eebe47",
+      "bytes": 779,
+      "synthetic_only": true,
+      "copied_without_byte_changes": true
+    },
+    {
+      "path": "artifacts/audit-2026-10-03/security-ai-context-probe.mjs",
+      "sha256": "253f28faf1485ddf242cc9182d6bb7f45ca47af838cd3f99cd45647963046f28",
+      "bytes": 3202,
+      "synthetic_only": true,
+      "copied_without_byte_changes": true
+    },
+    {
+      "path": "artifacts/audit-2026-10-03/security-ai-context-probe.log",
+      "sha256": "beb4d053e45203c543f0a591c8895cb2676491a941514a585c5ea3193b8c76eb",
+      "bytes": 492,
+      "synthetic_only": true,
+      "copied_without_byte_changes": true
+    }
+  ],
+  "observed_results": [
+    {
+      "probe": "MFA_ROTATION_DURING_RESOLVER",
+      "loginStatus": 202,
+      "challengeCredentialVersion": 1,
+      "currentCredentialVersion": 2,
+      "verifyStatus": 200,
+      "sessionAcceptedAfterRotation": true,
+      "newSessionCredentialVersion": 2,
+      "scope": "real HTTP handler via app.inject; isolated memory; rotation via actual domain method; no PostgreSQL or network"
+    },
+    {
+      "probe": "PRODUCTION_AI_DISABLED_CONFIG",
+      "accepted": false,
+      "issues": [
+        {
+          "path": [
+            "deepseekRuntimeEnabled"
+          ],
+          "message": "production cannot use the local mock runtime"
+        }
+      ],
+      "scope": "pure schema parse; no database or provider"
+    },
+    {
+      "probe": "CALLBACK_KEY_PROVIDER_BINDING",
+      "targetProvider": "provider-b",
+      "signingKeyFor": "provider-a",
+      "policyAccepted": true,
+      "hmacAccepted": true,
+      "scope": "actual policy and secret-provider/HMAC components; HTTP-to-SQL path inspected only"
+    },
+    {
+      "probe": "SECRET_TASK_CONTEXT",
+      "sanitized": true,
+      "quarantined": [
+        {
+          "itemId": "conversation:0:user",
+          "reason": "SECRET_MATERIAL"
+        }
+      ],
+      "markerItems": [
+        {
+          "kind": "task.state",
+          "trust": "CVG_TRUSTED",
+          "dataClass": "D0"
+        }
+      ]
+    },
+    {
+      "probe": "SECRET_HTTP_TO_MODEL_AND_STORE",
+      "httpStatus": 201,
+      "turnStatus": "COMPLETED",
+      "providerCalls": 1,
+      "providerReceivedMarker": true,
+      "storedPromptContainsMarker": true,
+      "scope": "real authenticated HTTP and embedded runtime; synthetic in-memory model observer; no network or real credentials"
+    }
+  ],
+  "prior_executions": [
+    {
+      "script": "security-ai-boundary-probes.mjs",
+      "exit_status": 0,
+      "observed_in": "prior lane tool execution; original log preserved",
+      "rerun_during_finalization": false
+    },
+    {
+      "script": "security-ai-context-probe.mjs",
+      "exit_status": 0,
+      "observed_in": "prior lane tool execution; original log preserved",
+      "rerun_during_finalization": false
+    }
+  ],
+  "reproduction": {
+    "cwd": "/home/ricardo/Área de trabalho/cvg-corp",
+    "environment": "empty inherited environment except PATH, NODE_ENV=test, TSX_DISABLE_CACHE=1",
+    "commands": [
+      "env -i PATH=\"$PATH\" NODE_ENV=test TSX_DISABLE_CACHE=1 node --import tsx artifacts/audit-2026-10-03/security-ai-boundary-probes.mjs",
+      "env -i PATH=\"$PATH\" NODE_ENV=test TSX_DISABLE_CACHE=1 node --import tsx artifacts/audit-2026-10-03/security-ai-context-probe.mjs"
+    ],
+    "requires": "Existing Node/tsx dependencies; no install step",
+    "oracle": "Compare named JSON result fields with observed_results. Exit 0 demonstrates execution, not security PASS."
+  },
+  "limitations": [
+    "No external network/provider, PostgreSQL, browser, deployed credential or real patient data used.",
+    "MFA concurrency confirmed in memory with a real domain rotation; durable CAS may change production outcome.",
+    "Callback probe exercises actual policy/HMAC/secret-provider components, not an executed HTTP-to-SQL forgery.",
+    "Context probe captures actual model-bound request at a synthetic observer; no real external disclosure occurred.",
+    "Original execution timestamps were not embedded in the logs; preservation time is not represented as execution time."
+  ]
+}

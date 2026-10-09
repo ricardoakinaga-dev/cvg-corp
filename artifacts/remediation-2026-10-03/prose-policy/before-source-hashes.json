@@ -1,0 +1,12 @@
+{
+  "packages/agent-context/src/index.ts": "eba42176252f82c1b57a4d1aaf8f851565ced4a0b8669e1d84f2c8bf14cd1e5c",
+  "packages/embedded-agent-runtime/src/index.ts": "58ec1758a360dde6477f3e3b42bbc9fb1cae11df1a17e47ad1b9f43324ac22f4",
+  "packages/domain/src/index.ts": "9c1a135d23dbc14b277ebb3d03fe2aa318d131d21615ec79a25a2e04bc3e3107",
+  "scripts/verify-secrets.mjs": "8817e7944540434017afba2248e069805a9cd62ac4aa3dd582f3342b7802211e",
+  "tests/fixtures/secret-material.ts": "f7134613c9430bf73a4fd47e768eb08138dd5b5576589177af1eba0f8d5a035d",
+  "tests/unit/agent-context.test.ts": "fd657de69eaba05756ebd5802b37b37439b2421942daceae2e4ec028813fc0ac",
+  "tests/unit/embedded-runtime.test.ts": "6fe69cd1416da9f6cec7ca53076c5dfb5e55a642f20552c05378a3404e159290",
+  "tests/unit/secret-detector-review.test.ts": "755918183b15d09bdb1fd91f223733f70cc1cdbc00ebec68910abe204018dd9a",
+  "tests/integration/ai-secret-boundary.test.ts": "365c8c968f04a73e8cc4153c6f96229cf69755cfcdff994ff5bcb8e3f8731db6",
+  "tests/integration/auth-challenge-race.test.ts": "3dd0f526fc0285da7ac3295e79d95265522ce13b994059cc3d0614cb7e6e545d"
+}

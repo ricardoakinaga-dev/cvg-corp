@@ -1,0 +1,16 @@
+{
+  "name": "static-final",
+  "command": [
+    "npm",
+    "run",
+    "verify:static"
+  ],
+  "exit_status": 0,
+  "started_at": "2026-10-04T11:54:30.196866+00:00",
+  "finished_at": "2026-10-04T11:54:32.343980+00:00",
+  "source_fingerprint_before": "sha256:15ece6ef83fb9e9918dddcde7757e337fb81b42b07b6b04474c68580fcb794b2",
+  "source_fingerprint_after": "sha256:15ece6ef83fb9e9918dddcde7757e337fb81b42b07b6b04474c68580fcb794b2",
+  "source_unchanged": true,
+  "log": "artifacts/production-hardening-2026-10-04/verification/after-review/static-final.log",
+  "log_sha256": "38e20147f6678e1b3c5215525438bb660be2110bba0a2f4d11c4a84c58c946e1"
+}

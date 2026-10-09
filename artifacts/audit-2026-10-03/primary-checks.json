@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "baseline": "9aab406b164497978b05dd3aa431db49ad11677a",
+  "inventory": "docs-inventory.json",
+  "checks": [
+    {"command":"npm test","exit_status":1,"log":"tests.log","total":765,"passed":763,"failed":1,"skipped":1},
+    {"command":"npm run build","exit_status":0,"log":"build.log"},
+    {"command":"npm run verify:coverage","exit_status":1,"log":"coverage.log","line":88.45,"branch":76.69,"functions":88.20,"numericRatchet":"PASS","failure":"tests_exit=1"},
+    {"command":"npm run verify:ephemeral-postgres -- --rounds=1 --run-restore","exit_status":1,"log":"postgres-restore.log","failure":"POSTGRES_BEHAVIOR_FAILED: direct SQL oracle audit_records diverged"},
+    {"command":"npm run verify:ephemeral-postgres -- --rounds=1 --run-postgres","exit_status":0,"log":"postgres-core.log","migrations":49,"databaseRemoved":true,"inventoryUnchanged":true},
+    {"command":"npm run verify:ephemeral-postgres -- --rounds=1 --run-aud27-24-slices","exit_status":0,"log":"postgres-24-slices.log","slices":24,"authority":"SNAPSHOT_PRIMARY","cutover":"NOT_CLAIMED","databaseRemoved":true},
+    {"command":"npm run verify:production -- --skip-local-gates","exit_status":0,"log":"production-structural-only.log","scope":"Structural artifact and synthetic Compose configuration only; no deployment or production approval"},
+    {"command":"npm audit --omit=dev --json","exit_status":1,"log":"dependency-production-audit.json","scope":"Installed production dependency advisories"},
+    {"command":"npx --no-install playwright test --project=chromium-wide-1440 --project=chromium-mobile-375 --project=firefox-wide-1440 --project=chromium-stress","exit_status":1,"log":"e2e.log","total":180,"passed":170,"failed":1,"skipped":9,"limitation":"Ran concurrently with verify:production browser matrix. API/web servers and synthetic stores were separate, but Vite cache and browser artifact directories were shared. Targeted isolated reproduction remains pending."}
+  ],
+  "executionNotes": [
+    "The default verify:production command unexpectedly duplicated the local test and browser matrix; its complete result is recorded separately in checks.json when settled.",
+    "The platform blocked an attempt to interrupt only the duplicate browser process. No interruption was executed; both invocations were allowed to finish.",
+    "Coverage raw output and summary were copied into this audit directory after the current command settled.",
+    "Source code, tests and existing .agent control records were not intentionally changed by this audit. Final hash comparison is pending."
+  ]
+}

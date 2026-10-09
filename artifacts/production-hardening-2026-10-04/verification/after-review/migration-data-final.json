@@ -1,0 +1,20 @@
+{
+  "name": "migration-data-final",
+  "command": [
+    "npm",
+    "run",
+    "verify:ephemeral-postgres",
+    "--",
+    "--rounds=1",
+    "--run-aud27-migration",
+    "--run-aud27-normalized-writes"
+  ],
+  "exit_status": 0,
+  "started_at": "2026-10-04T11:56:53.186975+00:00",
+  "finished_at": "2026-10-04T11:57:02.525828+00:00",
+  "source_fingerprint_before": "sha256:15ece6ef83fb9e9918dddcde7757e337fb81b42b07b6b04474c68580fcb794b2",
+  "source_fingerprint_after": "sha256:15ece6ef83fb9e9918dddcde7757e337fb81b42b07b6b04474c68580fcb794b2",
+  "source_unchanged": true,
+  "log": "artifacts/production-hardening-2026-10-04/verification/after-review/migration-data-final.log",
+  "log_sha256": "cfffae93eca85fb647ce12fe09e209e85490289a721b30630c952fa40b2f74d7"
+}

@@ -1,0 +1,24 @@
+{
+  "source_fingerprint": "sha256:184e1f7dbb767479f74fa0ed37a139d14b0692d42e960ced8ab0fde4dd3611aa",
+  "source_sha": "3e7308ab0e012b81046eda82f59ca86ed48ed6d9",
+  "context": "git archive of the committed SHA",
+  "scope": "committed source; not a frozen release",
+  "builds": [
+    {
+      "kind": "api",
+      "tag": "cvg-corp-requal-api:3e7308ab0e01",
+      "image_id": "sha256:4346663e98cc8f568fd1d7cbf9091ee82269f1f8389a8c03919775c926bd86e3",
+      "user": "65532:65532",
+      "exit_status": 0,
+      "receipt": "artifacts/production-readiness-2026-10-08/requalification-3f5a736/verification/image-api.json"
+    },
+    {
+      "kind": "web",
+      "tag": "cvg-corp-requal-web:3e7308ab0e01",
+      "image_id": "sha256:a94b19c3620faac7684fcb26b6f02c85bead5b4bde4ed6811b875ee32dbb78dc",
+      "user": "101",
+      "exit_status": 0,
+      "receipt": "artifacts/production-readiness-2026-10-08/requalification-3f5a736/verification/image-web.json"
+    }
+  ]
+}

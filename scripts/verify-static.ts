@@ -4,8 +4,9 @@ import { API_ROUTE_CATALOG } from "@cvg/contracts";
 import { applicationPolicyFor } from "@cvg/agent-policy";
 import { inspectApplicationPdpBoundaries } from "./pdp-boundary.ts";
 import { inspectRouteIdentityContextReads } from "./identity-context-boundary.ts";
+import { inspectHttpRouteInventory } from "./pdp-route-inventory.ts";
 import { EXPECTED_PROMPT_SHA256, PROMPT_REFERENCE, promptIntegrityValid, promptSha256, qualityBarPhaseInventoryValid } from "./prompt-integrity.ts";
-import { EVIDENCE_SNAPSHOT_PATH, verifyEvidenceSnapshot, type EvidenceSnapshot } from "./verify-evidence-snapshot.ts";
+import { AUD26_EVIDENCE_SNAPSHOT_PATH, verifyAud26Evidence, type Aud26EvidenceSnapshot } from "./verify-aud26-evidence.ts";
 
 const failures: string[] = [];
 const required = [
@@ -93,7 +94,24 @@ const required = [
   "tests/unit/agent-security.test.ts",
   "db/migrations/038_agent_runtime_session_state.sql",
   "db/migrations/039_agent_runtime_fence_guard.sql",
+  "db/migrations/040_runtime_least_privilege.sql",
+  "db/migrations/041_agent_restore_fence_guard.sql",
+  "db/migrations/042_restore_authority_and_terminal_guards.sql",
+  "db/migrations/043_runtime_default_privileges_minimal.sql",
+  "db/migrations/044_agent_restore_authority_and_lease_terminality.sql",
+  "db/migrations/045_restore_role_contract_no_replication.sql",
+  "db/migrations/046_runtime_sequence_least_privilege.sql",
+  "db/migrations/047_aud27_migration_protocol.sql",
+  "db/migrations/048_aud27_migration_rls.sql",
+  "scripts/verify-aud27-normalized-writes.ts",
+  "scripts/docs-integrity.ts",
+  "scripts/verify-mel23-evidence.ts",
+  "scripts/capture-mel23-control-plane.ts",
+  "tests/unit/docs-integrity.test.ts",
+  "tests/unit/mel23-evidence.test.ts",
   "docs/README.md",
+  "docs/mel23-aud27-reconciliation.json",
+  "docs/mel23-status-vocabulary.md",
   "docs/prompt-final-operational-proof-2026-09-10.txt",
   "docs/final-operational-proof-audit.md",
   "docs/pdp-universal-proof.md",
@@ -144,7 +162,7 @@ const required = [
   "artifacts/operational-proof/security-red-team-local.json",
   "artifacts/operational-proof/resource-pressure-local.json",
   "artifacts/operational-proof/runbook-execution-local.json",
-  EVIDENCE_SNAPSHOT_PATH,
+  AUD26_EVIDENCE_SNAPSHOT_PATH,
   "packages/contracts/src/index.ts", "packages/contracts/src/version.ts", "packages/contracts/src/api-catalog.ts", "packages/domain/src/index.ts", "packages/domain/src/snapshot-validation.ts", "packages/harness/src/index.ts", "packages/agent-runtime/src/index.ts", "packages/agent-policy/src/index.ts", "packages/agent-tools/src/index.ts", "packages/auth/src/index.ts", "packages/harness-adapters/src/index.ts", "packages/deepseek-bridge/src/index.ts", "packages/deepseek-bridge/src/real-proof.ts", "packages/config/src/index.ts", "apps/api/src/server.ts", "apps/deepseek-bridge/src/server.ts", "apps/api/src/routes/health.ts", "apps/api/src/application/agent-service.ts", "apps/api/src/application/appointment-service.ts", "apps/api/src/application/diagnostic-service.ts", "apps/api/src/application/encounter-service.ts", "apps/api/src/application/patient-service.ts", "apps/api/src/application/guardian-service.ts", "apps/api/src/application/read-services.ts", "apps/api/src/application/domain-command-service.ts", "apps/api/src/application/clinical-command-service.ts", "apps/api/src/application/export-service.ts", "apps/api/src/application/idempotency-service.ts", "apps/api/src/application/integration-service.ts", "apps/api/src/application/operational-metrics-service.ts", "apps/api/src/application/break-glass-service.ts", "apps/worker/src/main.ts", "apps/worker/src/operational-backup.ts", "apps/worker/src/worker.ts", "docker/worker.ts", "tsconfig.json", "apps/web/src/main.tsx", "apps/web/src/app-shell/App.tsx", "apps/web/src/state/runtime-state.ts", "db/migrations/001_initial.sql", "db/migrations/019_runtime_scope_guards.sql", "db/migrations/020_auth_security_boundary.sql", "db/migrations/021_snapshot_revision_scope.sql", "db/migrations/022_runtime_database_role.sql", "db/migrations/023_distributed_rate_limit.sql", "db/migrations/024_external_effect_reconciliation_states.sql", "db/migrations/025_communication_approval_provenance.sql", "db/migrations/026_audit_tamper_evident_chain.sql", "db/migrations/027_append_only_audit_guard.sql", "db/migrations/028_append_only_lock_privileges.sql", "db/migrations/029_ai_turn_provenance_usage_and_dml_scope.sql", "db/migrations/030_break_glass_durable_lifecycle.sql", "db/migrations/031_worker_jobs_and_heartbeats.sql", "db/migrations/032_diagnostic_request_scope.sql", "db/migrations/033_diagnostic_specimen_result_scope.sql", "db/migrations/034_diagnostic_child_integrity_backstop.sql", "db/migrations/035_break_glass_scope.sql", "db/migrations/036_runtime_migration_metadata_privileges.sql", "db/migrations/037_command_receipt_claim_fence.sql", "scripts/benchmark-local.ts", "scripts/lint.ts", "scripts/pdp-boundary.ts", "scripts/pdp-route-inventory.ts", "scripts/identity-context-boundary.ts", "scripts/verify-pdp-universal.ts", "scripts/verify-audit-chain.ts", "scripts/verify-deepseek-real.ts", "scripts/verify-triplo-aaa.ts", "scripts/verify-provider-real.ts", "scripts/verify-provider-sandbox.ts", "tests/unit/auth.test.ts", "tests/unit/pdp-coverage.test.ts", "tests/unit/pdp-universal.test.ts", "tests/unit/pdp-route-inventory.test.ts", "tests/unit/identity-context-boundary.test.ts", "tests/unit/break-glass-service.test.ts", "tests/unit/worker.test.ts", "tests/unit/deepseek-bridge.test.ts", "tests/unit/deepseek-real-proof.test.ts", "tests/unit/triplo-aaa.test.ts", "tests/unit/domain.test.ts", "tests/integration/api.test.ts", "tests/integration/faults.test.ts", "tests/integration/provider-sandbox.test.ts", "tests/integration/worker-jobs.test.ts", "tests/integration/route-catalog.test.ts"
 ];
 required.push("tests/unit/worker-backup.test.ts");
@@ -165,14 +183,14 @@ else {
     failures.push(`.gauntlet/bar-v4.json: invalid JSON (${error instanceof Error ? error.message : String(error)})`);
   }
 }
-const snapshotContent = await readFile(EVIDENCE_SNAPSHOT_PATH, "utf8").catch(() => "");
-if (!snapshotContent) failures.push(`${EVIDENCE_SNAPSHOT_PATH}: evidence snapshot is missing`);
+const snapshotContent = await readFile(AUD26_EVIDENCE_SNAPSHOT_PATH, "utf8").catch(() => "");
+if (!snapshotContent) failures.push(`${AUD26_EVIDENCE_SNAPSHOT_PATH}: evidence snapshot is missing`);
 else {
   try {
-    const snapshot = JSON.parse(snapshotContent) as EvidenceSnapshot;
-    for (const error of await verifyEvidenceSnapshot(snapshot)) failures.push(`evidence snapshot: ${error}`);
+    const snapshot = JSON.parse(snapshotContent) as Aud26EvidenceSnapshot;
+    for (const error of verifyAud26Evidence(snapshot)) failures.push(`AUD26 evidence snapshot: ${error}`);
   } catch (error) {
-    failures.push(`${EVIDENCE_SNAPSHOT_PATH}: invalid JSON or snapshot contract (${error instanceof Error ? error.message : String(error)})`);
+    failures.push(`${AUD26_EVIDENCE_SNAPSHOT_PATH}: invalid JSON or snapshot contract (${error instanceof Error ? error.message : String(error)})`);
   }
 }
 const sourceFiles: string[] = [];
@@ -196,12 +214,13 @@ for (const path of sourceFiles) {
 const docs = await readFile("docs/README.md", "utf8");
 if (!docs.includes("Quality") && !docs.includes("qualidade")) failures.push("docs/README.md: documentation index not found");
 const packageManifest = await readFile("package.json", "utf8");
-if (!packageManifest.includes("verify:embedded-deepseek") || !packageManifest.includes("verify:agent-runtime") || !packageManifest.includes("verify:embedded-harness") || !packageManifest.includes("verify:agent-security") || !packageManifest.includes("verify:agent-evals") || !packageManifest.includes("verify:ai-disabled") || !packageManifest.includes("verify:state-of-art") || !packageManifest.includes("verify:docs-provenance") || !packageManifest.includes("verify:claims") || !packageManifest.includes("verify:pdp-universal") || !packageManifest.includes("verify:audit-chain") || !packageManifest.includes("verify:authoritative-writes") || !packageManifest.includes("verify:postgres:concurrency") || !packageManifest.includes("verify:deepseek-real") || !packageManifest.includes("verify:provider-real") || !packageManifest.includes("verify:worker-runtime") || !packageManifest.includes("verify:triplo-aaa") || !packageManifest.includes("verify:release-provenance") || !packageManifest.includes("verify:promotion-invariant") || !packageManifest.includes("verify:container-smoke") || !packageManifest.includes("verify:security-red-team") || !packageManifest.includes("verify:resource-pressure") || !packageManifest.includes("verify:runbook-execution") || !packageManifest.includes("verify:backup-retention") || !packageManifest.includes("verify:evidence-snapshot") || !packageManifest.includes("verify:alertmanager")) failures.push("package.json: operational proof gates are not declared");
+if (!packageManifest.includes("verify:embedded-deepseek") || !packageManifest.includes("verify:agent-runtime") || !packageManifest.includes("verify:embedded-harness") || !packageManifest.includes("verify:agent-security") || !packageManifest.includes("verify:agent-evals") || !packageManifest.includes("verify:ai-disabled") || !packageManifest.includes("verify:state-of-art") || !packageManifest.includes("verify:docs-provenance") || !packageManifest.includes("verify:claims") || !packageManifest.includes("verify:pdp-universal") || !packageManifest.includes("verify:audit-chain") || !packageManifest.includes("verify:authoritative-writes") || !packageManifest.includes("verify:postgres:concurrency") || !packageManifest.includes("verify:deepseek-real") || !packageManifest.includes("verify:provider-real") || !packageManifest.includes("verify:worker-runtime") || !packageManifest.includes("verify:triplo-aaa") || !packageManifest.includes("verify:release-provenance") || !packageManifest.includes("verify:promotion-invariant") || !packageManifest.includes("verify:container-smoke") || !packageManifest.includes("verify:security-red-team") || !packageManifest.includes("verify:resource-pressure") || !packageManifest.includes("verify:runbook-execution") || !packageManifest.includes("verify:backup-retention") || !packageManifest.includes("verify:evidence-snapshot") || !packageManifest.includes("verify:alertmanager") || !packageManifest.includes("verify:docs-integrity") || !packageManifest.includes("verify:mel23-evidence") || !packageManifest.includes("verify:mel23-control-plane")) failures.push("package.json: operational proof gates are not declared");
 const contractCatalog = await readFile("packages/contracts/src/api-catalog.ts", "utf8");
 if (!contractCatalog.includes("API_UPCASTERS") || !contractCatalog.includes("upcastApiValue") || !contractCatalog.includes('upcasters: "FAIL_CLOSED_REGISTRY"')) failures.push("packages/contracts/src/api-catalog.ts: API compatibility must expose an executable fail-closed upcaster registry");
 const ciWorkflow = await readFile(".github/workflows/ci.yml", "utf8");
 if (!ciWorkflow.includes("npm run verify:agent-runtime") || !ciWorkflow.includes("npm run verify:embedded-harness") || !ciWorkflow.includes("npm run verify:agent-evals") || !ciWorkflow.includes("npm run verify:agent-chaos") || !ciWorkflow.includes("npm run verify:pdp-universal") || !ciWorkflow.includes("npm run verify:audit-chain") || !ciWorkflow.includes("npm run verify:authoritative-writes") || !ciWorkflow.includes("npm run verify:postgres:concurrency") || !ciWorkflow.includes("npm run verify:release-provenance") || !ciWorkflow.includes("npm run verify:evidence-snapshot")) failures.push(".github/workflows/ci.yml: operational proof gates are not executed");
-const containerJob = /container-build:[\s\S]*?(?=\n  [A-Za-z0-9_-]+:|$)/.exec(ciWorkflow)?.[0] ?? "";
+if (!ciWorkflow.includes("npm run verify:docs-integrity")) failures.push(".github/workflows/ci.yml: internal documentation links and ADR numbering are not checked");
+const containerJob = /container-build:[\s\S]*?(?=\n {2}[A-Za-z0-9_-]+:|$)/.exec(ciWorkflow)?.[0] ?? "";
 if (!containerJob.includes("actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020") || !containerJob.includes("npm ci --ignore-scripts")) failures.push(".github/workflows/ci.yml: container provenance job must install the pinned Node toolchain locally");
 if (containerJob.includes("docker image inspect --format '{{.Id}}'")) failures.push(".github/workflows/ci.yml: container provenance must not use a local image ID as a deployable digest");
 if (!containerJob.includes("docker buildx build") || !containerJob.includes("type=oci") || !containerJob.includes("index.json") || !containerJob.includes("sha256:[a-f0-9]{64}")) failures.push(".github/workflows/ci.yml: container provenance must bind OCI manifest bytes to immutable sha256 digests");
@@ -213,6 +232,7 @@ const dockerWorker = await readFile("docker/worker.ts", "utf8");
 const operationalBackup = await readFile("apps/worker/src/operational-backup.ts", "utf8");
 const workerComposition = await readFile("apps/worker/src/worker.ts", "utf8");
 const restoreScript = await readFile("scripts/verify-postgres-restore.ts", "utf8");
+const persistenceSource = await readFile("packages/persistence/src/index.ts", "utf8");
 const productionVerifier = await readFile("scripts/verify-production.ts", "utf8");
 const alertmanagerRenderer = await readFile("scripts/render-alertmanager.ts", "utf8");
 const tsconfig = await readFile("tsconfig.json", "utf8");
@@ -228,8 +248,12 @@ if (!dockerWorker.includes("createOperationalBackupJob") || !dockerWorker.includ
 if (!operationalBackup.includes("exportRecoveryBundle") || !operationalBackup.includes("configured backup organization") || !operationalBackup.includes("OperationalBackupJob")) failures.push("apps/worker/src/operational-backup.ts: backup composition is not organization-scoped and fail-closed");
 if (!workerComposition.includes("const effects = hasDurableEffectLedger(persistence) ? persistence : null")) failures.push("apps/worker/src/worker.ts: production composition must connect a complete durable effect ledger or remain fail-closed");
 if (!workerComposition.includes("effects,")) failures.push("apps/worker/src/worker.ts: worker dependencies must expose the composed effect ledger");
-if (!restoreScript.includes("auditRecords: restoredSnapshot.auditRecords")) failures.push("scripts/verify-postgres-restore.ts: restore must project the canonical audit records into the quarantine target");
-if (!restoreScript.includes("commandReceipts: restoredSnapshot.commandReceipts")) failures.push("scripts/verify-postgres-restore.ts: restore must project the canonical command receipts into the quarantine target");
+if (!restoreScript.includes("targetPersistence.restore({") || !restoreScript.includes("bundle: restoredBundle") || !restoreScript.includes("migrationFingerprint: targetMigrationFingerprint") || !restoreScript.includes("authority: { role: CVG_RESTORE_AUTHORITY_ROLE")) failures.push("scripts/verify-postgres-restore.ts: restore must use the sealed bundle/fingerprint/authority entrypoint");
+if (!persistenceSource.includes("async restore(input: DurableRestoreInput)") || !persistenceSource.includes("assertRestorableRecoveryBundle(input.bundle)") || !persistenceSource.includes("validateRecoveryBundle(input.bundle, { expectedMigrationFingerprint: input.migrationFingerprint })")) failures.push("packages/persistence/src/index.ts: restore must validate the complete bundle before connecting");
+const commitInterfaceStart = persistenceSource.indexOf("export interface DurableCommitInput");
+const commitInterfaceEnd = persistenceSource.indexOf("export interface DurableRestoreAuthority");
+const publicCommitInterface = commitInterfaceStart >= 0 && commitInterfaceEnd > commitInterfaceStart ? persistenceSource.slice(commitInterfaceStart, commitInterfaceEnd) : "";
+if (publicCommitInterface.includes("recoveredAgent")) failures.push("packages/persistence/src/index.ts: DurableCommitInput must not expose recoveredAgent arrays");
 if (!restoreScript.includes("cvg_audit_ledger") || !restoreScript.includes("cvg_command_receipt_ledger")) failures.push("scripts/verify-postgres-restore.ts: restore must verify append-only audit and receipt ledgers in the target");
 if (!restoreScript.includes("order by ledger.sequence_id")) failures.push("scripts/verify-postgres-restore.ts: restore must compare canonical records in append-only ledger order");
 if (!restoreScript.includes("targetBundle.snapshot.sessions.some")) failures.push("scripts/verify-postgres-restore.ts: restore must verify revoked sessions after target persistence");
@@ -242,17 +266,11 @@ const apiSource = routeSources[0];
 if (!apiSource.includes("assertProductionRuntimeOverrides") || !apiSource.includes("PRODUCTION_INJECTION_KEYS")) failures.push("apps/api/src/app.ts: production runtime must reject injected synthetic dependencies");
 for (const finding of inspectRouteIdentityContextReads("apps/api/src/app.ts", apiSource)) failures.push(`identity/context route read ${finding.path}:${finding.line}: ${finding.detail}`);
 if (!apiSource.includes("x-cvg-release-sha") || !apiSource.includes("x-cvg-release-artifact-digest")) failures.push("apps/api/src/app.ts: release provenance headers are not bound to responses");
-const declaredRoutes = new Set<string>();
-for (const source of routeSources) {
-  for (const match of source.matchAll(/app\.(get|post|delete)\("\/api\/v1([^"?]*)"/g)) {
-    const method = match[1];
-    const path = match[2] ?? "/";
-    if (method) declaredRoutes.add(`${method.toUpperCase()} ${path}`);
-  }
-}
-const catalogRoutes = new Set(API_ROUTE_CATALOG.map((route) => `${route.method} ${route.path}`));
-for (const route of declaredRoutes) if (!catalogRoutes.has(route)) failures.push(`API route catalog missing ${route}`);
-for (const route of catalogRoutes) if (!declaredRoutes.has(route)) failures.push(`API route catalog declares non-existent ${route}`);
+const routeInventory = inspectHttpRouteInventory([
+  { path: "apps/api/src/app.ts", source: routeSources[0] ?? "" },
+  { path: "apps/api/src/routes/health.ts", source: routeSources[1] ?? "" }
+], API_ROUTE_CATALOG);
+for (const finding of routeInventory.findings) failures.push(`HTTP inventory ${finding.path}:${finding.line} ${finding.code}: ${finding.detail}`);
 if (!apiSource.includes("authorizeApplicationRequest")) failures.push("apps/api/src/app.ts: application PDP is not wired into the request boundary");
 if (!apiSource.includes("new DurableIdempotencyService") || !apiSource.includes("commandExecutor.execute")) failures.push("apps/api/src/app.ts: durable command idempotency is not wired into the mutation boundary");
 if (apiSource.includes("idempotent(store")) failures.push("apps/api/src/app.ts: direct process-local idempotency bypasses the durable command boundary");
@@ -260,7 +278,7 @@ for (const match of apiSource.matchAll(/requestContext\(request,\s*(?:"([^"]+)"|
   const operation = match[1] ?? match[2] ?? "";
   if (!applicationPolicyFor(operation)) failures.push(`apps/api/src/app.ts: requestContext operation ${operation} has no application policy rule`);
 }
-for (const match of apiSource.matchAll(/app\.(get|post|delete)\("([^\"]+)"[\s\S]*?(?=\n  app\.(?:get|post|delete)\(|\n  app\.setNotFoundHandler|\n  app\.setErrorHandler)/g)) {
+for (const match of apiSource.matchAll(/app\.(get|post|delete)\("([^"]+)"[\s\S]*?(?=\n {2}app\.(?:get|post|delete)\(|\n {2}app\.setNotFoundHandler|\n {2}app\.setErrorHandler)/g)) {
   const path = match[2] ?? "";
   // Prometheus scrapes this redacted aggregate endpoint over the private observability network;
   // it is deliberately outside /api/v1, has no tenant/route labels and is not a user operation.

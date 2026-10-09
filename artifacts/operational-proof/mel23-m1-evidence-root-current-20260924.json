@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-09-24T07:17:29.177Z",
+  "requirement_ids": [
+    "MEL23-005",
+    "MEL23-006",
+    "MEL23-007"
+  ],
+  "source_sha": "c990914148a8f375082cd12bbdb2ad20cfe1900f",
+  "observed_subject_fingerprint": "sha256:59f31c53baaae3d62b0f4857bef1f6e76930926a2df194ff37a6dd3ca8673f77",
+  "external_root": "/home/ricardo/Área de trabalho/cvg-aud27-evidence-mel23-20260924",
+  "previous_root_preserved": "/home/ricardo/Área de trabalho/cvg-aud27-evidence",
+  "package": {
+    "status": "LOCAL_SYNTHETIC_ONLY",
+    "package_digest": "sha256:f217bb53bc33ca53d34a046618a17939b93695c55e3a8750e8f47b1b07d03a57",
+    "manifest_sha256": "sha256:43616bd8a76204b37305d909741966bc50846c9fd74815e7fd4be6bdb3e6d638",
+    "integrity_sha256": "sha256:fffb686aefed657fdffb07a66803c5e4ed4654a3294b6bfb3c5c0d87f80e1b7b",
+    "artifact_count": 16
+  },
+  "unit_tests": {
+    "command": "node --import tsx --test tests/unit/aud27-evidence-root.test.ts",
+    "exit_status": 0,
+    "tests": 12,
+    "pass": 12,
+    "fail": 0,
+    "log_path": "artifacts/operational-proof/mel23-m2-revalidation-20260924/evidence-root-tests-current-subject.log",
+    "log_sha256": "sha256:0c25eff361f339c7444ad466242f919a403e30e0dd4bd9f95b35ed25d5ead485"
+  },
+  "root_verifier": {
+    "command": "CVG_EVIDENCE_ROOT=<new-root> npm run verify:aud27-evidence-root",
+    "exit_status": 1,
+    "expected_exit_status": 1,
+    "status": "BLOCKED",
+    "errors": [],
+    "limitations": [
+      "LOCAL_SYNTHETIC_ONLY",
+      "independent candidate anchor NOT_PROVEN",
+      "external evidence authority unavailable",
+      "recovery procedure not independently executed"
+    ],
+    "log_path": "artifacts/operational-proof/mel23-m2-revalidation-20260924/evidence-root-verifier-current-subject.log",
+    "log_sha256": "sha256:faa80e35f1652d21e8b7be28c9443c31f8ad283dc7562bed22f75b8edd604e01"
+  },
+  "criterion_results": {
+    "MEL23-005": "PARTIAL",
+    "MEL23-006": "BLOCKED",
+    "MEL23-007": "PARTIAL"
+  },
+  "promotion": "BLOCKED",
+  "global_verdict": "AAA_NOT_PROVEN",
+  "limitations": [
+    "Root is outside candidate but on the same workstation; package remains LOCAL_SYNTHETIC_ONLY.",
+    "No authorized independent checkout/freeze, external anchor, authority receipt or verified recovery exists.",
+    "MEL23-005 remains PARTIAL, MEL23-006 BLOCKED, and MEL23-007 PARTIAL."
+  ],
+  "receipt_refs": {
+    "MEL23-005": "VER-CVG-AUD27-004-015",
+    "MEL23-006": "VER-CVG-AUD27-005-017",
+    "MEL23-007": "VER-CVG-AUD27-005-017"
+  },
+  "current_matrix": {
+    "qualified": 19,
+    "not_qualified": 31,
+    "global_issues": 0
+  }
+}

@@ -1,0 +1,2782 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-09-26T21:42:31.362Z",
+  "source_sha": "566c8f6e7edd9194d091a59ab2fa3c5c6015ac77",
+  "observed_subject_fingerprint": "sha256:9547dc3319cf187c3ea9e6e2b47c2533cc8215e571ed5df54df8336265985aaa",
+  "candidate_fingerprint": null,
+  "fingerprint_status": "UNFROZEN_UNTIL_AUD27-004",
+  "status_source": ".agent/backlog.json#items (AUD27 only)",
+  "crosswalk_source": "docs/mel23-aud27-reconciliation.json (no task status fields)",
+  "catalogue_issues": [],
+  "report": {
+    "summary": {
+      "requirements": 50,
+      "mapped": 50,
+      "qualified": 0,
+      "blocked": 50
+    },
+    "rows": [
+      {
+        "id": "MEL23-001",
+        "milestone": "M0",
+        "target": "Reconciliar `last_gate_record` e `last_event_id` por novo evento; `verify:control-plane` passa e ambos apontam às caudas corretas.",
+        "coverage": "SUBSCOPE",
+        "acceptance_additions": [],
+        "aud27": [
+          {
+            "id": "AUD27-001",
+            "status": "DONE",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
+            "implementation_targets": [
+              ".agent/backlog.json",
+              "docs/aud27-semantic-manifest.json",
+              ".agent/verification.jsonl"
+            ]
+          },
+          {
+            "id": "AUD27-003",
+            "status": "DONE",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
+            "implementation_targets": [
+              ".agent/backlog.json",
+              "scripts/verify-control-plane.ts"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm run verify:coverage",
+          "node --import tsx --test tests/unit/vps-bootstrap.test.ts tests/unit/sealed-critic-packet.test.ts tests/unit/runtime-state.test.ts",
+          "node --import tsx --test tests/unit/observability-config.test.ts tests/unit/integration-service.test.ts tests/unit/mel23-evidence.test.ts",
+          "npm run verify:docs-integrity",
+          "npm run verify:control-plane"
+        ],
+        "evidence_artifacts": [
+          "artifacts/operational-proof/mel26-local-revalidation-20260926/coverage-recovery.log#sha256:b0ef4365d61a82a8263b5ef7d2aa37c94b89398d9cb6c01805ef9e0bc9db566d",
+          "artifacts/operational-proof/mel26-local-revalidation-20260926/coverage-summary-run2.json#sha256:b68f7e21b83836894b6e8afda647001ae5cc244d660e4214d8fd3300e6af996d",
+          "artifacts/operational-proof/mel23-control-plane-current.json"
+        ],
+        "receipt_id": "VER-CVG-AUD27-015-013",
+        "environment": "Frozen candidate 10 566c8f6e7edd9194d091a59ab2fa3c5c6015ac77; local workspace; Node v24.20.0; synthetic data only; no external resources contacted.",
+        "result": "PARTIAL_WITH_LIMITATIONS",
+        "receipt_result": "PARTIAL_WITH_LIMITATIONS",
+        "fingerprint": "sha256:9547dc3319cf187c3ea9e6e2b47c2533cc8215e571ed5df54df8336265985aaa",
+        "candidate_fingerprint": "sha256:9547dc3319cf187c3ea9e6e2b47c2533cc8215e571ed5df54df8336265985aaa",
+        "fingerprint_status": "FROZEN_CANDIDATE",
+        "issues": [
+          "focal receipt task does not match the primary AUD27 owner",
+          "AUD27-001 does not reference focal receipt VER-CVG-AUD27-015-013",
+          "receipt result uses a noncanonical alias",
+          "criterion is not proven PASS by its focal receipt",
+          "AUD27-001 does not reference focal receipt VER-CVG-AUD27-015-013"
+        ]
+      },
+      {
+        "id": "MEL23-002",
+        "milestone": "M0",
+        "target": "Mutante `missing_transition` remove a transição do evento lido pelo verificador; known-bad é rejeitado e conhecido-bom passa.",
+        "coverage": "ACCEPTANCE_ADDITION",
+        "acceptance_additions": [
+          "Add a named negative fixture that removes next_state from the event selected by state.last_event_id; known-good passes and known-bad produces MISSING_ACTIVE_TRANSITION."
+        ],
+        "aud27": [
+          {
+            "id": "AUD27-002",
+            "status": "DONE",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
+            "implementation_targets": [
+              "scripts/verify-aud27-semantics.ts",
+              "tests/unit/"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm run verify:aud27-semantics",
+          "npm test",
+          "npm run verify:coverage",
+          "npm run verify:mutation",
+          "npm run verify:docs-integrity"
+        ],
+        "evidence_artifacts": [
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/aud27-semantics-final.log#sha256=79be9e002a09d40436d3dd788902b324d3f9bbf42e3193a195e9cd72fe85d628",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/npm-test-final.log#sha256=4a69e291eb0f4aef7ee0b70825be44264ca0ef5a7874f5cfce17e1365801260c",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/coverage-final.log#sha256=03b98687d856f871992022af76579bc0ff6bbf0e4050c70fdd25fc35180a2086",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/mutation-final.log#sha256=ff689b1c30ee4ea78298f272efc6b0fbd8007f2decf06b1e8881b23e15d4384b",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/docs-integrity-final.log#sha256=f360836136be58ef1c6d062f6ddc113fdf47560c596ce4ecb98f848712771185",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/subject-observation.json#sha256=aa145ed0702c1edbf54852f2a3ae351abb1863ad4512e0717ec826e807d48438",
+          "artifacts/operational-proof/mel23-evidence-matrix-current.json"
+        ],
+        "receipt_id": "VER-CVG-AUD27-002-021",
+        "environment": "Dirty local workspace; linux; Node v24.20.0; synthetic/local checks only; no production data, external provider or human approval.",
+        "result": "PASS",
+        "receipt_result": "IMPLEMENTED_LOCAL",
+        "fingerprint": "sha256:492181ca3eb8452c80f55b4c35de91ddf3f01d5cb17e8b0d22bb552cc9ab8501",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "AUD27-002 does not reference focal receipt VER-CVG-AUD27-002-021",
+          "receipt source SHA does not match the current checkout",
+          "receipt fingerprint does not match the current observed subject",
+          "AUD27-002 does not reference focal receipt VER-CVG-AUD27-002-021"
+        ]
+      },
+      {
+        "id": "MEL23-003",
+        "milestone": "M0",
+        "target": "`npm test` termina com zero falhas no candidato observado; guardar contagens e exit status.",
+        "coverage": "SUBSCOPE",
+        "acceptance_additions": [],
+        "aud27": [
+          {
+            "id": "AUD27-004",
+            "status": "DONE",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
+            "implementation_targets": [
+              "git status",
+              ".agent/subject-manifest.json"
+            ]
+          },
+          {
+            "id": "AUD27-025",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              ".agent/",
+              "docs/"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm test",
+          "npx tsx -e \"import { buildSubjectManifest } from './scripts/subject-manifest.ts'; console.log(buildSubjectManifest().fingerprint)\"",
+          "npm run test:e2e -- --project=chromium-stress"
+        ],
+        "evidence_artifacts": [
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/npm-test-final.log#sha256=4a69e291eb0f4aef7ee0b70825be44264ca0ef5a7874f5cfce17e1365801260c",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/subject-observation.json#sha256=aa145ed0702c1edbf54852f2a3ae351abb1863ad4512e0717ec826e807d48438",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/e2e-chromium-stress.log#sha256=3fe4571e4ed10831a9dc061b1b7fdc55d7730d7b8850d0962fb71065e87bd71d"
+        ],
+        "receipt_id": "VER-CVG-AUD27-004-025",
+        "environment": "Dirty local workspace; linux; Node v24.20.0; synthetic/local checks only; no production data, external provider or human approval.",
+        "result": "PASS",
+        "receipt_result": "BLOCKED_BY_DEPENDENCIES",
+        "fingerprint": "sha256:492181ca3eb8452c80f55b4c35de91ddf3f01d5cb17e8b0d22bb552cc9ab8501",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "AUD27-004 does not reference focal receipt VER-CVG-AUD27-004-025",
+          "receipt source SHA does not match the current checkout",
+          "receipt fingerprint does not match the current observed subject",
+          "AUD27-004 does not reference focal receipt VER-CVG-AUD27-004-025"
+        ]
+      },
+      {
+        "id": "MEL23-004",
+        "milestone": "M1",
+        "target": "Revisão Git limpa e checkout novo reproduzem instalação, typecheck, build e manifesto; nenhuma alteração necessária fica untracked.",
+        "coverage": "SUBSCOPE",
+        "acceptance_additions": [],
+        "aud27": [
+          {
+            "id": "AUD27-004",
+            "status": "DONE",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
+            "implementation_targets": [
+              "git status",
+              ".agent/subject-manifest.json"
+            ]
+          },
+          {
+            "id": "AUD27-025",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              ".agent/",
+              "docs/"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm test",
+          "npx tsx -e \"import { buildSubjectManifest } from './scripts/subject-manifest.ts'; console.log(buildSubjectManifest().fingerprint)\"",
+          "npm run test:e2e -- --project=chromium-stress"
+        ],
+        "evidence_artifacts": [
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/npm-test-final.log#sha256=4a69e291eb0f4aef7ee0b70825be44264ca0ef5a7874f5cfce17e1365801260c",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/subject-observation.json#sha256=aa145ed0702c1edbf54852f2a3ae351abb1863ad4512e0717ec826e807d48438",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/e2e-chromium-stress.log#sha256=3fe4571e4ed10831a9dc061b1b7fdc55d7730d7b8850d0962fb71065e87bd71d"
+        ],
+        "receipt_id": "VER-CVG-AUD27-004-025",
+        "environment": "Dirty local workspace; linux; Node v24.20.0; synthetic/local checks only; no production data, external provider or human approval.",
+        "result": "BLOCKED",
+        "receipt_result": "BLOCKED_BY_DEPENDENCIES",
+        "fingerprint": "sha256:492181ca3eb8452c80f55b4c35de91ddf3f01d5cb17e8b0d22bb552cc9ab8501",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "AUD27-004 does not reference focal receipt VER-CVG-AUD27-004-025",
+          "receipt source SHA does not match the current checkout",
+          "receipt fingerprint does not match the current observed subject",
+          "criterion is not proven PASS by its focal receipt",
+          "AUD27-004 does not reference focal receipt VER-CVG-AUD27-004-025"
+        ]
+      },
+      {
+        "id": "MEL23-005",
+        "milestone": "M1",
+        "target": "Fingerprint é recalculado dos bytes do candidato e coincide em checkout independente; repetir após qualquer mudança.",
+        "coverage": "SUBSCOPE",
+        "acceptance_additions": [],
+        "aud27": [
+          {
+            "id": "AUD27-004",
+            "status": "DONE",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
+            "implementation_targets": [
+              "git status",
+              ".agent/subject-manifest.json"
+            ]
+          },
+          {
+            "id": "AUD27-005",
+            "status": "DONE",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
+            "implementation_targets": [
+              ".agent/authority.jsonl",
+              "evidence-root externo"
+            ]
+          },
+          {
+            "id": "AUD27-025",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              ".agent/",
+              "docs/"
+            ]
+          }
+        ],
+        "test_commands": [
+          "git status --short --untracked-files=all",
+          "npx tsx -e \"import { buildSubjectManifest } from './scripts/subject-manifest.ts'; console.log(buildSubjectManifest().fingerprint)\"",
+          "npm run test:e2e:smoke"
+        ],
+        "evidence_artifacts": [
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/worktree-status-current.log#sha256=728d85f50d45109c5fe2672fa33ec57808fd1811a9874569c4da2e1065f14e55",
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/subject-fingerprint-current.log#sha256=3f47f790f794a31b294a83416628c5fca483ff59241fd6df7376e6798b2b3f86",
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/e2e-smoke-current.log#sha256=01e58ac95db3a098bbdd88c9e2ea8c494434c29899ebc758f770d44d3b6895ba",
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/e2e-smoke-manifest.json#sha256=b6ef7ebdececea8f8bb8718fb035ecf60ed4628f6c904e7a6a4deee2e943a5e3"
+        ],
+        "receipt_id": "VER-CVG-AUD27-004-021",
+        "environment": "Local dirty workspace; subject-manifest verifier and Playwright synthetic smoke; no independent checkout, CI, production data or human approval.",
+        "result": "PARTIAL",
+        "receipt_result": "BLOCKED_BY_DEPENDENCIES",
+        "fingerprint": "sha256:ff3c001b92c0b834e06e407f91943037e91940442abe37c57a988e90e8520eab",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "AUD27-004 does not reference focal receipt VER-CVG-AUD27-004-021",
+          "receipt source SHA does not match the current checkout",
+          "receipt fingerprint does not match the current observed subject",
+          "criterion is not proven PASS by its focal receipt",
+          "AUD27-004 does not reference focal receipt VER-CVG-AUD27-004-021"
+        ]
+      },
+      {
+        "id": "MEL23-006",
+        "milestone": "M1",
+        "target": "`verify:aud27-evidence-root` passa para o fingerprint exato; pacote externo contém recibos aplicáveis e atuais.",
+        "coverage": "SUBSCOPE",
+        "acceptance_additions": [],
+        "aud27": [
+          {
+            "id": "AUD27-005",
+            "status": "DONE",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
+            "implementation_targets": [
+              ".agent/authority.jsonl",
+              "evidence-root externo"
+            ]
+          },
+          {
+            "id": "AUD27-006",
+            "status": "DONE",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
+            "implementation_targets": [
+              ".agent/backlog.json",
+              ".agent/verification.jsonl"
+            ]
+          },
+          {
+            "id": "AUD27-025",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              ".agent/",
+              "docs/"
+            ]
+          }
+        ],
+        "test_commands": [
+          "node --import tsx --test tests/unit/aud27-evidence-root.test.ts",
+          "CVG_EVIDENCE_ROOT=<current-synthetic-root> npm run verify:aud27-evidence-root"
+        ],
+        "evidence_artifacts": [
+          "artifacts/operational-proof/mel23-m2-revalidation-20260924/evidence-root-tests-current-subject.log#sha256=0c25eff361f339c7444ad466242f919a403e30e0dd4bd9f95b35ed25d5ead485",
+          "artifacts/operational-proof/mel23-m2-revalidation-20260924/evidence-root-verifier-current-subject.log#sha256=faa80e35f1652d21e8b7be28c9443c31f8ad283dc7562bed22f75b8edd604e01",
+          "/home/ricardo/Área de trabalho/cvg-aud27-evidence-mel23-20260924/package-manifest.json#sha256=43616bd8a76204b37305d909741966bc50846c9fd74815e7fd4be6bdb3e6d638",
+          "/home/ricardo/Área de trabalho/cvg-aud27-evidence-mel23-20260924/package-payload.json#sha256=f217bb53bc33ca53d34a046618a17939b93695c55e3a8750e8f47b1b07d03a57",
+          "/home/ricardo/Área de trabalho/cvg-aud27-evidence-mel23-20260924/package-integrity.json#sha256=fffb686aefed657fdffb07a66803c5e4ed4654a3294b6bfb3c5c0d87f80e1b7b"
+        ],
+        "receipt_id": "VER-CVG-AUD27-005-017",
+        "environment": "Local workspace; dirty worktree preserved; synthetic fixtures only; no production endpoints, clinical data, external providers or human approval.",
+        "result": "BLOCKED",
+        "receipt_result": "BLOCKED_BY_DEPENDENCIES",
+        "fingerprint": "sha256:59f31c53baaae3d62b0f4857bef1f6e76930926a2df194ff37a6dd3ca8673f77",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "AUD27-005 does not reference focal receipt VER-CVG-AUD27-005-017",
+          "receipt source SHA does not match the current checkout",
+          "receipt fingerprint does not match the current observed subject",
+          "criterion is not proven PASS by its focal receipt",
+          "AUD27-005 does not reference focal receipt VER-CVG-AUD27-005-017"
+        ]
+      },
+      {
+        "id": "MEL23-007",
+        "milestone": "M1",
+        "target": "Adulteração de recibo/hash é rejeitada; outro checkout valida pacote, digest e origem sem depender da árvore original.",
+        "coverage": "SUBSCOPE",
+        "acceptance_additions": [],
+        "aud27": [
+          {
+            "id": "AUD27-005",
+            "status": "DONE",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
+            "implementation_targets": [
+              ".agent/authority.jsonl",
+              "evidence-root externo"
+            ]
+          },
+          {
+            "id": "AUD27-025",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              ".agent/",
+              "docs/"
+            ]
+          }
+        ],
+        "test_commands": [
+          "node --import tsx --test tests/unit/aud27-evidence-root.test.ts",
+          "CVG_EVIDENCE_ROOT=<current-synthetic-root> npm run verify:aud27-evidence-root"
+        ],
+        "evidence_artifacts": [
+          "artifacts/operational-proof/mel23-m2-revalidation-20260924/evidence-root-tests-current-subject.log#sha256=0c25eff361f339c7444ad466242f919a403e30e0dd4bd9f95b35ed25d5ead485",
+          "artifacts/operational-proof/mel23-m2-revalidation-20260924/evidence-root-verifier-current-subject.log#sha256=faa80e35f1652d21e8b7be28c9443c31f8ad283dc7562bed22f75b8edd604e01",
+          "/home/ricardo/Área de trabalho/cvg-aud27-evidence-mel23-20260924/package-manifest.json#sha256=43616bd8a76204b37305d909741966bc50846c9fd74815e7fd4be6bdb3e6d638",
+          "/home/ricardo/Área de trabalho/cvg-aud27-evidence-mel23-20260924/package-payload.json#sha256=f217bb53bc33ca53d34a046618a17939b93695c55e3a8750e8f47b1b07d03a57",
+          "/home/ricardo/Área de trabalho/cvg-aud27-evidence-mel23-20260924/package-integrity.json#sha256=fffb686aefed657fdffb07a66803c5e4ed4654a3294b6bfb3c5c0d87f80e1b7b"
+        ],
+        "receipt_id": "VER-CVG-AUD27-005-017",
+        "environment": "Local workspace; dirty worktree preserved; synthetic fixtures only; no production endpoints, clinical data, external providers or human approval.",
+        "result": "PARTIAL",
+        "receipt_result": "BLOCKED_BY_DEPENDENCIES",
+        "fingerprint": "sha256:59f31c53baaae3d62b0f4857bef1f6e76930926a2df194ff37a6dd3ca8673f77",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "AUD27-005 does not reference focal receipt VER-CVG-AUD27-005-017",
+          "receipt source SHA does not match the current checkout",
+          "receipt fingerprint does not match the current observed subject",
+          "criterion is not proven PASS by its focal receipt",
+          "AUD27-005 does not reference focal receipt VER-CVG-AUD27-005-017"
+        ]
+      },
+      {
+        "id": "MEL23-008",
+        "milestone": "M2",
+        "target": "As 24 coleções residuais têm caminho de comando autoritativo; inventário final registra 0 `SNAPSHOT_PRIMARY`, sem fallback oculto.",
+        "coverage": "SUBSCOPE",
+        "acceptance_additions": [],
+        "aud27": [
+          {
+            "id": "AUD27-011",
+            "status": "PARTIAL",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
+            "implementation_targets": [
+              "scripts/verify-aud27-24-slices.ts",
+              "packages/persistence/src/aud27-postgres-migration.ts"
+            ]
+          },
+          {
+            "id": "AUD27-012",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              "db/migrations",
+              "scripts/"
+            ]
+          },
+          {
+            "id": "AUD27-013",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              "db/migrations",
+              "scripts/"
+            ]
+          },
+          {
+            "id": "AUD27-014",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              "db/migrations",
+              "scripts/"
+            ]
+          }
+        ],
+        "test_commands": [
+          "node --import tsx --test tests/unit/aud27-postgres-migration-cleanup.test.ts tests/unit/aud27-postgres-migration.test.ts",
+          "npm run typecheck",
+          "npm run verify:ephemeral-postgres -- --rounds=1 --run-aud27-migration --run-aud27-24-slices",
+          "npm run verify:snapshot-command-migration",
+          "npm run verify:aud27-migration-harness",
+          "npm test",
+          "npm run verify:control-plane",
+          "npm run verify:aud27-semantics",
+          "git diff --check"
+        ],
+        "evidence_artifacts": [
+          "artifacts/operational-proof/mel23-aud27-migration-cleanup-20260924-dac0e6/migration-cleanup-unit.log#sha256=45e4e05c291484a08eeb3d343135f5805ef64ef2df49c81a8837e034d15ac1e8",
+          "artifacts/operational-proof/mel23-aud27-migration-cleanup-20260924-dac0e6/typecheck.log#sha256=19c71cde12d596f5abd6f07b9713c068230e6bd3a8086d6bdf9ba3a34d1a9409",
+          "artifacts/operational-proof/mel23-aud27-migration-cleanup-20260924-dac0e6/full-suite.log#sha256=5bde8e3c0366def6cd965a590174d9aaca1711673ea949883a4b9972b95028ae",
+          "artifacts/operational-proof/mel23-aud27-migration-cleanup-20260924-dac0e6/ephemeral-postgres-migration.log#sha256=50b58e4602944d9dd6cd2f4c7a975c738de2185ecaf59701e373e7f70094eac0",
+          "artifacts/operational-proof/mel23-aud27-migration-cleanup-20260924-dac0e6/snapshot-inventory.log#sha256=f4beacba8448d22f3626b4be60ef5a8e3b8884150de3195e313c47b3a5aad6a1",
+          "artifacts/operational-proof/mel23-aud27-migration-cleanup-20260924-dac0e6/migration-harness-unit.log#sha256=b628ec94b6b41b82d5e31dca2081321f267886247d8bc18325cbac8eab35641a",
+          "artifacts/operational-proof/mel23-aud27-migration-cleanup-20260924-dac0e6/control-plane.log#sha256=e5f022c48a9e436906523abbe64ba70d25b2b1462fed1aa654d59129fc9df449",
+          "artifacts/operational-proof/mel23-aud27-migration-cleanup-20260924-dac0e6/aud27-semantics.log#sha256=79be9e002a09d40436d3dd788902b324d3f9bbf42e3193a195e9cd72fe85d628",
+          "artifacts/operational-proof/mel23-aud27-migration-cleanup-20260924-dac0e6/verification-manifest.json#sha256=8b33d6f17eb3ad115ea27475fac7256de2eb5d80998328e63a937b5dba627e67"
+        ],
+        "receipt_id": "VER-CVG-AUD27-011-028",
+        "environment": "Local dirty workspace; PostgreSQL 16 temporary container on loopback with synthetic credentials/data; no production system or real clinical data.",
+        "result": "PARTIAL",
+        "receipt_result": "IMPLEMENTED_LOCAL",
+        "fingerprint": "sha256:dac0e6cd6eaa3bc335569ffaee11d9f2d5c8e2fc7d7fbb6adc392f91c876f744",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt source SHA does not match the current checkout",
+          "receipt fingerprint does not match the current observed subject",
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-009",
+        "milestone": "M2",
+        "target": "Cada coleção possui backfill idempotente, contagem/digest/invariantes iguais e registro de divergência em quarentena.",
+        "coverage": "SUBSCOPE",
+        "acceptance_additions": [],
+        "aud27": [
+          {
+            "id": "AUD27-011",
+            "status": "PARTIAL",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
+            "implementation_targets": [
+              "scripts/verify-aud27-24-slices.ts",
+              "packages/persistence/src/aud27-postgres-migration.ts"
+            ]
+          },
+          {
+            "id": "AUD27-012",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              "db/migrations",
+              "scripts/"
+            ]
+          },
+          {
+            "id": "AUD27-013",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              "db/migrations",
+              "scripts/"
+            ]
+          },
+          {
+            "id": "AUD27-014",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              "db/migrations",
+              "scripts/"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm run verify:ephemeral-postgres -- --rounds=1 --run-aud27-migration",
+          "npm run verify:ephemeral-postgres -- --rounds=1 --run-aud27-normalized-writes",
+          "npm run verify:ephemeral-postgres -- --rounds=1 --run-aud27-24-slices",
+          "DATABASE_URL=<synthetic-loopback> npm run db:migrate",
+          "CVG_AUD27_PRODUCTS_BACKFILL_URL=<synthetic-loopback> npm run verify:aud27-products-backfill"
+        ],
+        "evidence_artifacts": [
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/aud27-migration-postgres-final.log#sha256=cc6c3d2b344024c6923db4ed4145ad1eb4e9c9a5cbda29c0678da1dd8b6e18ef",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/aud27-normalized-writes-postgres-final.log#sha256=c21e67b9c4ca7c81a4094743442fb367c51938a6e69c835ee13b449f33587074",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/aud27-24-slices-postgres-final.log#sha256=d82b15b583777a28007182656a1c10dce28844a2d4f57d1c76aff5e040fde733",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/products-backfill-postgres/migrations.log#sha256=34acc61e481e8f3985f0df22a6625b8f5b08d269e05191ea7818a14caa9dce0d",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/products-backfill-postgres/products-backfill.log#sha256=fec515ceb7df7c760a4d60496fec29c4e1e15c201ba2adfae565bf40a7f0649a",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/products-backfill-postgres/environment.txt#sha256=b8034e80a4ecef02d377f042bd05b4fa8075d430640b33549c2114263d61a899",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/products-backfill-postgres/container-cleanup.log#sha256=575684611f27519afe9e3551569e85d770d701600229471659dd6ef7b0ba9b48",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/products-backfill-postgres/container-inventory-before.txt#sha256=1e34c290cc4145c91fdaf436bfbf36ed0c3bb53ac921e14a65b21f99c3f46918",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/products-backfill-postgres/container-inventory-after.txt#sha256=1e34c290cc4145c91fdaf436bfbf36ed0c3bb53ac921e14a65b21f99c3f46918",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/api-response-postgres-final.log#sha256=8eab8f5366b8e997668d4ac3e1512090adb580701b835bfc8d8683ee6ff8b0e4",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/subject-observation.json#sha256=aa145ed0702c1edbf54852f2a3ae351abb1863ad4512e0717ec826e807d48438"
+        ],
+        "receipt_id": "VER-CVG-AUD27-011-029",
+        "environment": "Dirty local workspace; linux; Node v24.20.0; synthetic/local checks only; no production data, external provider or human approval.",
+        "result": "PARTIAL",
+        "receipt_result": "PARTIAL",
+        "fingerprint": "sha256:492181ca3eb8452c80f55b4c35de91ddf3f01d5cb17e8b0d22bb552cc9ab8501",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt source SHA does not match the current checkout",
+          "receipt fingerprint does not match the current observed subject",
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-010",
+        "milestone": "M2",
+        "target": "Testes de concorrência, replay e idempotência rejeitam duplicata/divergência para cada novo comando em PostgreSQL.",
+        "coverage": "SUBSCOPE",
+        "acceptance_additions": [],
+        "aud27": [
+          {
+            "id": "AUD27-011",
+            "status": "PARTIAL",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
+            "implementation_targets": [
+              "scripts/verify-aud27-24-slices.ts",
+              "packages/persistence/src/aud27-postgres-migration.ts"
+            ]
+          },
+          {
+            "id": "AUD27-012",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              "db/migrations",
+              "scripts/"
+            ]
+          },
+          {
+            "id": "AUD27-013",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              "db/migrations",
+              "scripts/"
+            ]
+          },
+          {
+            "id": "AUD27-014",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              "db/migrations",
+              "scripts/"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm run verify:ephemeral-postgres -- --rounds=1 --run-aud27-migration",
+          "npm run verify:ephemeral-postgres -- --rounds=1 --run-aud27-normalized-writes",
+          "npm run verify:ephemeral-postgres -- --rounds=1 --run-aud27-24-slices",
+          "DATABASE_URL=<synthetic-loopback> npm run db:migrate",
+          "CVG_AUD27_PRODUCTS_BACKFILL_URL=<synthetic-loopback> npm run verify:aud27-products-backfill"
+        ],
+        "evidence_artifacts": [
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/aud27-migration-postgres-final.log#sha256=cc6c3d2b344024c6923db4ed4145ad1eb4e9c9a5cbda29c0678da1dd8b6e18ef",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/aud27-normalized-writes-postgres-final.log#sha256=c21e67b9c4ca7c81a4094743442fb367c51938a6e69c835ee13b449f33587074",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/aud27-24-slices-postgres-final.log#sha256=d82b15b583777a28007182656a1c10dce28844a2d4f57d1c76aff5e040fde733",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/products-backfill-postgres/migrations.log#sha256=34acc61e481e8f3985f0df22a6625b8f5b08d269e05191ea7818a14caa9dce0d",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/products-backfill-postgres/products-backfill.log#sha256=fec515ceb7df7c760a4d60496fec29c4e1e15c201ba2adfae565bf40a7f0649a",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/products-backfill-postgres/environment.txt#sha256=b8034e80a4ecef02d377f042bd05b4fa8075d430640b33549c2114263d61a899",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/products-backfill-postgres/container-cleanup.log#sha256=575684611f27519afe9e3551569e85d770d701600229471659dd6ef7b0ba9b48",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/products-backfill-postgres/container-inventory-before.txt#sha256=1e34c290cc4145c91fdaf436bfbf36ed0c3bb53ac921e14a65b21f99c3f46918",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/products-backfill-postgres/container-inventory-after.txt#sha256=1e34c290cc4145c91fdaf436bfbf36ed0c3bb53ac921e14a65b21f99c3f46918",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/api-response-postgres-final.log#sha256=8eab8f5366b8e997668d4ac3e1512090adb580701b835bfc8d8683ee6ff8b0e4",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/subject-observation.json#sha256=aa145ed0702c1edbf54852f2a3ae351abb1863ad4512e0717ec826e807d48438"
+        ],
+        "receipt_id": "VER-CVG-AUD27-011-029",
+        "environment": "Dirty local workspace; linux; Node v24.20.0; synthetic/local checks only; no production data, external provider or human approval.",
+        "result": "PARTIAL",
+        "receipt_result": "PARTIAL",
+        "fingerprint": "sha256:492181ca3eb8452c80f55b4c35de91ddf3f01d5cb17e8b0d22bb552cc9ab8501",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt source SHA does not match the current checkout",
+          "receipt fingerprint does not match the current observed subject",
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-011",
+        "milestone": "M2",
+        "target": "Cada onda demonstra rollback e compatibilidade antes de retirar fallback; falha não perde nem duplica dados.",
+        "coverage": "SUBSCOPE",
+        "acceptance_additions": [],
+        "aud27": [
+          {
+            "id": "AUD27-011",
+            "status": "PARTIAL",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
+            "implementation_targets": [
+              "scripts/verify-aud27-24-slices.ts",
+              "packages/persistence/src/aud27-postgres-migration.ts"
+            ]
+          },
+          {
+            "id": "AUD27-012",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              "db/migrations",
+              "scripts/"
+            ]
+          },
+          {
+            "id": "AUD27-013",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              "db/migrations",
+              "scripts/"
+            ]
+          },
+          {
+            "id": "AUD27-014",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              "db/migrations",
+              "scripts/"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm run verify:ephemeral-postgres -- --rounds=1 --run-aud27-migration",
+          "npm run verify:ephemeral-postgres -- --rounds=1 --run-aud27-normalized-writes",
+          "npm run verify:ephemeral-postgres -- --rounds=1 --run-aud27-24-slices",
+          "DATABASE_URL=<synthetic-loopback> npm run db:migrate",
+          "CVG_AUD27_PRODUCTS_BACKFILL_URL=<synthetic-loopback> npm run verify:aud27-products-backfill"
+        ],
+        "evidence_artifacts": [
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/aud27-migration-postgres-final.log#sha256=cc6c3d2b344024c6923db4ed4145ad1eb4e9c9a5cbda29c0678da1dd8b6e18ef",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/aud27-normalized-writes-postgres-final.log#sha256=c21e67b9c4ca7c81a4094743442fb367c51938a6e69c835ee13b449f33587074",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/aud27-24-slices-postgres-final.log#sha256=d82b15b583777a28007182656a1c10dce28844a2d4f57d1c76aff5e040fde733",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/products-backfill-postgres/migrations.log#sha256=34acc61e481e8f3985f0df22a6625b8f5b08d269e05191ea7818a14caa9dce0d",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/products-backfill-postgres/products-backfill.log#sha256=fec515ceb7df7c760a4d60496fec29c4e1e15c201ba2adfae565bf40a7f0649a",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/products-backfill-postgres/environment.txt#sha256=b8034e80a4ecef02d377f042bd05b4fa8075d430640b33549c2114263d61a899",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/products-backfill-postgres/container-cleanup.log#sha256=575684611f27519afe9e3551569e85d770d701600229471659dd6ef7b0ba9b48",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/products-backfill-postgres/container-inventory-before.txt#sha256=1e34c290cc4145c91fdaf436bfbf36ed0c3bb53ac921e14a65b21f99c3f46918",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/products-backfill-postgres/container-inventory-after.txt#sha256=1e34c290cc4145c91fdaf436bfbf36ed0c3bb53ac921e14a65b21f99c3f46918",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/api-response-postgres-final.log#sha256=8eab8f5366b8e997668d4ac3e1512090adb580701b835bfc8d8683ee6ff8b0e4",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/subject-observation.json#sha256=aa145ed0702c1edbf54852f2a3ae351abb1863ad4512e0717ec826e807d48438"
+        ],
+        "receipt_id": "VER-CVG-AUD27-011-029",
+        "environment": "Dirty local workspace; linux; Node v24.20.0; synthetic/local checks only; no production data, external provider or human approval.",
+        "result": "PARTIAL",
+        "receipt_result": "PARTIAL",
+        "fingerprint": "sha256:492181ca3eb8452c80f55b4c35de91ddf3f01d5cb17e8b0d22bb552cc9ab8501",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt source SHA does not match the current checkout",
+          "receipt fingerprint does not match the current observed subject",
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-012",
+        "milestone": "M2",
+        "target": "Restore e replay são executados sobre o esquema após cutover; hashes, escopo, quarentena e continuidade são conferidos.",
+        "coverage": "SUBSCOPE",
+        "acceptance_additions": [],
+        "aud27": [
+          {
+            "id": "AUD27-011",
+            "status": "PARTIAL",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
+            "implementation_targets": [
+              "scripts/verify-aud27-24-slices.ts",
+              "packages/persistence/src/aud27-postgres-migration.ts"
+            ]
+          },
+          {
+            "id": "AUD27-012",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              "db/migrations",
+              "scripts/"
+            ]
+          },
+          {
+            "id": "AUD27-013",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              "db/migrations",
+              "scripts/"
+            ]
+          },
+          {
+            "id": "AUD27-014",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              "db/migrations",
+              "scripts/"
+            ]
+          },
+          {
+            "id": "AUD27-022",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PARTIAL_LOCAL_WITH_EXTERNAL_GAP",
+            "implementation_targets": [
+              "scripts/",
+              "docs/runbooks",
+              "staging"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm run verify:ephemeral-postgres -- --rounds=1 --run-aud27-migration",
+          "npm run verify:ephemeral-postgres -- --rounds=1 --run-aud27-normalized-writes",
+          "npm run verify:ephemeral-postgres -- --rounds=1 --run-aud27-24-slices",
+          "DATABASE_URL=<synthetic-loopback> npm run db:migrate",
+          "CVG_AUD27_PRODUCTS_BACKFILL_URL=<synthetic-loopback> npm run verify:aud27-products-backfill"
+        ],
+        "evidence_artifacts": [
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/aud27-migration-postgres-final.log#sha256=cc6c3d2b344024c6923db4ed4145ad1eb4e9c9a5cbda29c0678da1dd8b6e18ef",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/aud27-normalized-writes-postgres-final.log#sha256=c21e67b9c4ca7c81a4094743442fb367c51938a6e69c835ee13b449f33587074",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/aud27-24-slices-postgres-final.log#sha256=d82b15b583777a28007182656a1c10dce28844a2d4f57d1c76aff5e040fde733",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/products-backfill-postgres/migrations.log#sha256=34acc61e481e8f3985f0df22a6625b8f5b08d269e05191ea7818a14caa9dce0d",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/products-backfill-postgres/products-backfill.log#sha256=fec515ceb7df7c760a4d60496fec29c4e1e15c201ba2adfae565bf40a7f0649a",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/products-backfill-postgres/environment.txt#sha256=b8034e80a4ecef02d377f042bd05b4fa8075d430640b33549c2114263d61a899",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/products-backfill-postgres/container-cleanup.log#sha256=575684611f27519afe9e3551569e85d770d701600229471659dd6ef7b0ba9b48",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/products-backfill-postgres/container-inventory-before.txt#sha256=1e34c290cc4145c91fdaf436bfbf36ed0c3bb53ac921e14a65b21f99c3f46918",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/products-backfill-postgres/container-inventory-after.txt#sha256=1e34c290cc4145c91fdaf436bfbf36ed0c3bb53ac921e14a65b21f99c3f46918",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/api-response-postgres-final.log#sha256=8eab8f5366b8e997668d4ac3e1512090adb580701b835bfc8d8683ee6ff8b0e4",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/subject-observation.json#sha256=aa145ed0702c1edbf54852f2a3ae351abb1863ad4512e0717ec826e807d48438"
+        ],
+        "receipt_id": "VER-CVG-AUD27-011-029",
+        "environment": "Dirty local workspace; linux; Node v24.20.0; synthetic/local checks only; no production data, external provider or human approval.",
+        "result": "BLOCKED",
+        "receipt_result": "PARTIAL",
+        "fingerprint": "sha256:492181ca3eb8452c80f55b4c35de91ddf3f01d5cb17e8b0d22bb552cc9ab8501",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt source SHA does not match the current checkout",
+          "receipt fingerprint does not match the current observed subject",
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-013",
+        "milestone": "M3",
+        "target": "As 10 ocorrências da allowlist recebem substituição ou decisão formal de política; `audit:licenses` passa para o lockfile candidato.",
+        "coverage": "DIRECT",
+        "acceptance_additions": [],
+        "aud27": [
+          {
+            "id": "AUD27-016",
+            "status": "DONE",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
+            "implementation_targets": [
+              "LICENSE",
+              "notices",
+              "scripts/verify-licenses.ts"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm run audit:licenses"
+        ],
+        "evidence_artifacts": [
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/license-audit-final.log#sha256=ddeffc1193c3129acad00ec58f0768e5c03426ddf3d62063ab5c61aa1992758e",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/subject-observation.json#sha256=aa145ed0702c1edbf54852f2a3ae351abb1863ad4512e0717ec826e807d48438"
+        ],
+        "receipt_id": "VER-CVG-AUD27-016-014",
+        "environment": "Dirty local workspace; linux; Node v24.20.0; synthetic/local checks only; no production data, external provider or human approval.",
+        "result": "PASS",
+        "receipt_result": "BLOCKED_BY_DEPENDENCIES",
+        "fingerprint": "sha256:492181ca3eb8452c80f55b4c35de91ddf3f01d5cb17e8b0d22bb552cc9ab8501",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "AUD27-016 does not reference focal receipt VER-CVG-AUD27-016-014",
+          "receipt source SHA does not match the current checkout",
+          "receipt fingerprint does not match the current observed subject",
+          "AUD27-016 does not reference focal receipt VER-CVG-AUD27-016-014"
+        ]
+      },
+      {
+        "id": "MEL23-014",
+        "milestone": "M3",
+        "target": "`LICENSE` ou `COPYING` de raiz corresponde à decisão do responsável e é verificado no pacote de release.",
+        "coverage": "SUBSCOPE",
+        "acceptance_additions": [],
+        "aud27": [
+          {
+            "id": "AUD27-016",
+            "status": "DONE",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
+            "implementation_targets": [
+              "LICENSE",
+              "notices",
+              "scripts/verify-licenses.ts"
+            ]
+          },
+          {
+            "id": "AUD27-017",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "BLOCKED_EXTERNAL",
+            "implementation_targets": [
+              ".github/workflows/ci.yml",
+              "Dockerfiles"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm run audit:licenses",
+          "CVG_EVIDENCE_ROOT=<synthetic> npm run verify:aud27-evidence-root",
+          "node --import tsx --test tests/unit/external-evidence-package.test.ts"
+        ],
+        "evidence_artifacts": [
+          "artifacts/operational-proof/aud27-candidate4-20260925/license-audit.log#sha256:896c4931df9e1fe8ecff38fc469cec585edb2c2d4e7c6f34ccd42949daa8140b",
+          "artifacts/operational-proof/aud27-candidate4-20260925/evidence-root-pass.log#sha256:3d9b10d6b99f43083a1a639d2fa9bf19dc2d9a073040b5450814ccb2bc14e1fc",
+          "artifacts/operational-proof/aud27-candidate4-20260925/kit-test.log#sha256:ef3f161e34c8baf98c709b25233e4b113efc1721c4630047a8197a3872a471d4"
+        ],
+        "receipt_id": "VER-CVG-AUD27-016-015",
+        "environment": "Frozen candidate 4 ce308b6a366b9206d6abe8df29602de9f0f34cc2; linux; Node v24.20.0; synthetic/local checks only.",
+        "result": "PASS",
+        "receipt_result": "PASS",
+        "fingerprint": "sha256:1a336459e9e5bea2e30855975c130f1e52aa686375866c5e4cbfd206ce42fd29",
+        "candidate_fingerprint": "sha256:1a336459e9e5bea2e30855975c130f1e52aa686375866c5e4cbfd206ce42fd29",
+        "fingerprint_status": "FROZEN_CANDIDATE",
+        "issues": [
+          "receipt source SHA does not match the current checkout",
+          "receipt fingerprint does not match the current observed subject"
+        ]
+      },
+      {
+        "id": "MEL23-015",
+        "milestone": "M3",
+        "target": "Smoke usa a imagem real: start, health, non-root, escrita/leitura controlada, shutdown e restart com resultado registrado.",
+        "coverage": "DIRECT",
+        "acceptance_additions": [],
+        "aud27": [
+          {
+            "id": "AUD27-015",
+            "status": "PARTIAL",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
+            "implementation_targets": [
+              "Dockerfile.api",
+              "scripts/verify-container-smoke.ts"
+            ]
+          }
+        ],
+        "test_commands": [
+          "docker compose -f docker-compose.yml -f docker-compose.production.yml --env-file <synthetic-only> config --format json"
+        ],
+        "evidence_artifacts": [
+          "artifacts/operational-proof/mel23-m2-revalidation-20260924/compose-production-config-current-subject.log#sha256=4dd85e71e7b2269c892c6c382debda3dcb521200662ce0c77d9a5cb3f18d4e96",
+          "artifacts/operational-proof/mel23-m2-revalidation-20260924/compose-policy-current-subject.json#sha256=1940c4a3420ffb49eb27af159f3647aafc26816fea07124e8d3975f4c4f681d7"
+        ],
+        "receipt_id": "VER-CVG-AUD27-015-009",
+        "environment": "Local workspace; dirty candidate preserved; browser/Compose evidence uses only local synthetic fixtures; no human approval.",
+        "result": "PARTIAL",
+        "receipt_result": "PARTIAL",
+        "fingerprint": "sha256:59f31c53baaae3d62b0f4857bef1f6e76930926a2df194ff37a6dd3ca8673f77",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt source SHA does not match the current checkout",
+          "receipt fingerprint does not match the current observed subject",
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-016",
+        "milestone": "M3",
+        "target": "Digests de API/web correspondem a SBOM, scan e proveniência OCI do mesmo build; divergência bloqueia release.",
+        "coverage": "DIRECT",
+        "acceptance_additions": [],
+        "aud27": [
+          {
+            "id": "AUD27-015",
+            "status": "PARTIAL",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
+            "implementation_targets": [
+              "Dockerfile.api",
+              "scripts/verify-container-smoke.ts"
+            ]
+          },
+          {
+            "id": "AUD27-017",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "BLOCKED_EXTERNAL",
+            "implementation_targets": [
+              ".github/workflows/ci.yml",
+              "Dockerfiles"
+            ]
+          }
+        ],
+        "test_commands": [
+          "docker compose -f docker-compose.yml -f docker-compose.production.yml --env-file <synthetic-only> config --format json"
+        ],
+        "evidence_artifacts": [
+          "artifacts/operational-proof/mel23-m2-revalidation-20260924/compose-production-config-current-subject.log#sha256=4dd85e71e7b2269c892c6c382debda3dcb521200662ce0c77d9a5cb3f18d4e96",
+          "artifacts/operational-proof/mel23-m2-revalidation-20260924/compose-policy-current-subject.json#sha256=1940c4a3420ffb49eb27af159f3647aafc26816fea07124e8d3975f4c4f681d7"
+        ],
+        "receipt_id": "VER-CVG-AUD27-015-009",
+        "environment": "Local workspace; dirty candidate preserved; browser/Compose evidence uses only local synthetic fixtures; no human approval.",
+        "result": "PARTIAL",
+        "receipt_result": "PARTIAL",
+        "fingerprint": "sha256:59f31c53baaae3d62b0f4857bef1f6e76930926a2df194ff37a6dd3ca8673f77",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt source SHA does not match the current checkout",
+          "receipt fingerprint does not match the current observed subject",
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-017",
+        "milestone": "M5",
+        "target": "Staging autorizado prova Secret Authority, login, revogação e falha fechada sem segredos expostos em logs.",
+        "coverage": "ACCEPTANCE_ADDITION",
+        "acceptance_additions": [
+          "Name Secret Authority, login and revocation scenarios, fail-closed outcomes, and secret-leak checks in staging logs."
+        ],
+        "aud27": [
+          {
+            "id": "AUD27-022",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PARTIAL_LOCAL_WITH_EXTERNAL_GAP",
+            "implementation_targets": [
+              "scripts/",
+              "docs/runbooks",
+              "staging"
+            ]
+          },
+          {
+            "id": "AUD27-026",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              ".agent/authority.jsonl",
+              "evidence-root externo"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm run verify:observability-local",
+          "node --import tsx --test tests/unit/idempotency-lifecycle.test.ts tests/unit/idempotency-service.test.ts tests/unit/load-gate.test.ts tests/unit/worker.test.ts tests/unit/ops.test.ts"
+        ],
+        "evidence_artifacts": [
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/observability-local.log#sha256=7ab900db80963da596b5b98d046ff63268f6fc69c19c507c8a2c23b272c6a772",
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/observability-focused-tests.log#sha256=64fddd904be4e02fded549328f045ef16635f176a749a9a8e0918d7c31e20794",
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/observability-architecture-manifest.json#sha256=8732c32b50e5fa5a2351d7115cbf078201df6d88b500946b023d42173e1a350c",
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/verification-manifest.json#sha256=db4f5b28656b6a0f14111ccd858f54f894caf21df7f99ecfa21786118d9ea566"
+        ],
+        "receipt_id": "VER-CVG-AUD27-022-006",
+        "environment": "Current local harness with synthetic data; no production provider/staging or human approval.",
+        "result": "PARTIAL",
+        "receipt_result": "BLOCKED_BY_DEPENDENCIES",
+        "fingerprint": "sha256:ff3c001b92c0b834e06e407f91943037e91940442abe37c57a988e90e8520eab",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt source SHA does not match the current checkout",
+          "receipt fingerprint does not match the current observed subject",
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-018",
+        "milestone": "M5",
+        "target": "Provedores e DeepSeek reais passam casos positivo, negativo, timeout, receipt e reconciliação no mesmo candidato.",
+        "coverage": "ACCEPTANCE_ADDITION",
+        "acceptance_additions": [
+          "Name real DeepSeek/provider positive, negative, timeout, receipt, and reconciliation cases bound to the same candidate."
+        ],
+        "aud27": [
+          {
+            "id": "AUD27-022",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PARTIAL_LOCAL_WITH_EXTERNAL_GAP",
+            "implementation_targets": [
+              "scripts/",
+              "docs/runbooks",
+              "staging"
+            ]
+          },
+          {
+            "id": "AUD27-026",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              ".agent/authority.jsonl",
+              "evidence-root externo"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm run verify:observability-local",
+          "node --import tsx --test tests/unit/idempotency-lifecycle.test.ts tests/unit/idempotency-service.test.ts tests/unit/load-gate.test.ts tests/unit/worker.test.ts tests/unit/ops.test.ts"
+        ],
+        "evidence_artifacts": [
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/observability-local.log#sha256=7ab900db80963da596b5b98d046ff63268f6fc69c19c507c8a2c23b272c6a772",
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/observability-focused-tests.log#sha256=64fddd904be4e02fded549328f045ef16635f176a749a9a8e0918d7c31e20794",
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/observability-architecture-manifest.json#sha256=8732c32b50e5fa5a2351d7115cbf078201df6d88b500946b023d42173e1a350c",
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/verification-manifest.json#sha256=db4f5b28656b6a0f14111ccd858f54f894caf21df7f99ecfa21786118d9ea566"
+        ],
+        "receipt_id": "VER-CVG-AUD27-022-006",
+        "environment": "Current local harness with synthetic data; no production provider/staging or human approval.",
+        "result": "PARTIAL",
+        "receipt_result": "BLOCKED_BY_DEPENDENCIES",
+        "fingerprint": "sha256:ff3c001b92c0b834e06e407f91943037e91940442abe37c57a988e90e8520eab",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt source SHA does not match the current checkout",
+          "receipt fingerprint does not match the current observed subject",
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-019",
+        "milestone": "M5",
+        "target": "Restore em infraestrutura equivalente mede RTO/RPO aprovados e verifica não reativação de dados ou privilégios revogados.",
+        "coverage": "ACCEPTANCE_ADDITION",
+        "acceptance_additions": [
+          "After restore, explicitly prove revoked data and privileges are not reactivated."
+        ],
+        "aud27": [
+          {
+            "id": "AUD27-022",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PARTIAL_LOCAL_WITH_EXTERNAL_GAP",
+            "implementation_targets": [
+              "scripts/",
+              "docs/runbooks",
+              "staging"
+            ]
+          },
+          {
+            "id": "AUD27-026",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              ".agent/authority.jsonl",
+              "evidence-root externo"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm run verify:observability-local",
+          "node --import tsx --test tests/unit/idempotency-lifecycle.test.ts tests/unit/idempotency-service.test.ts tests/unit/load-gate.test.ts tests/unit/worker.test.ts tests/unit/ops.test.ts"
+        ],
+        "evidence_artifacts": [
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/observability-local.log#sha256=7ab900db80963da596b5b98d046ff63268f6fc69c19c507c8a2c23b272c6a772",
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/observability-focused-tests.log#sha256=64fddd904be4e02fded549328f045ef16635f176a749a9a8e0918d7c31e20794",
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/observability-architecture-manifest.json#sha256=8732c32b50e5fa5a2351d7115cbf078201df6d88b500946b023d42173e1a350c",
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/verification-manifest.json#sha256=db4f5b28656b6a0f14111ccd858f54f894caf21df7f99ecfa21786118d9ea566"
+        ],
+        "receipt_id": "VER-CVG-AUD27-022-006",
+        "environment": "Current local harness with synthetic data; no production provider/staging or human approval.",
+        "result": "PARTIAL",
+        "receipt_result": "BLOCKED_BY_DEPENDENCIES",
+        "fingerprint": "sha256:ff3c001b92c0b834e06e407f91943037e91940442abe37c57a988e90e8520eab",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt source SHA does not match the current checkout",
+          "receipt fingerprint does not match the current observed subject",
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-020",
+        "milestone": "M6",
+        "target": "Duas revisões independentes qualificam o mesmo fingerprint e a autoridade humana registra decisão explícita; sem qualquer gate, permanece bloqueado.",
+        "coverage": "DIRECT",
+        "acceptance_additions": [],
+        "aud27": [
+          {
+            "id": "AUD27-025",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              ".agent/",
+              "docs/"
+            ]
+          },
+          {
+            "id": "AUD27-026",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              ".agent/authority.jsonl",
+              "evidence-root externo"
+            ]
+          },
+          {
+            "id": "AUD27-027",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              "docs/",
+              ".agent/authority.jsonl"
+            ]
+          }
+        ],
+        "test_commands": [
+          "read-only authority ledger status check"
+        ],
+        "evidence_artifacts": [
+          ".agent/authority.jsonl#sha256=01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+        ],
+        "receipt_id": "VER-CVG-AUD27-025-003",
+        "environment": "Local read-only inspection of .agent/authority.jsonl; no message sent and no decision created.",
+        "result": "BLOCKED",
+        "receipt_result": "BLOCKED_BY_DEPENDENCIES",
+        "fingerprint": "sha256:59f31c53baaae3d62b0f4857bef1f6e76930926a2df194ff37a6dd3ca8673f77",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt source SHA does not match the current checkout",
+          "receipt fingerprint does not match the current observed subject",
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-021",
+        "milestone": "M2",
+        "target": "Fixtures de respostas reais cobrem 105/105 rotas e satisfazem os 80 schemas específicos, incluindo erros versionados.",
+        "coverage": "DIRECT",
+        "acceptance_additions": [],
+        "aud27": [
+          {
+            "id": "AUD27-007",
+            "status": "DONE",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
+            "implementation_targets": [
+              "packages/contracts",
+              "apps/api/src/response-contract.ts"
+            ]
+          },
+          {
+            "id": "AUD27-008",
+            "status": "DONE",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
+            "implementation_targets": [
+              "apps/api/src/response-schemas/auth-ops.ts",
+              "tests/unit/api-response-contract-auth-ops.test.ts"
+            ]
+          },
+          {
+            "id": "AUD27-009",
+            "status": "DONE",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
+            "implementation_targets": [
+              "apps/api/src/response-schemas/clinical.ts",
+              "tests/unit/api-response-contract-clinical.test.ts"
+            ]
+          },
+          {
+            "id": "AUD27-010",
+            "status": "DONE",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
+            "implementation_targets": [
+              "apps/api/src/response-schemas/remaining.ts",
+              "tests/unit/api-response-contract-remaining.test.ts"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm run test:contract",
+          "npm run verify:pdp:runtime",
+          "node --import tsx --test tests/unit/api-response-contract.test.ts tests/unit/api-response-contract-auth-ops.test.ts tests/unit/api-response-contract-clinical.test.ts tests/unit/api-response-contract-remaining.test.ts tests/integration/api-response-routes.test.ts",
+          "npm run verify:static",
+          "npm run verify:schema-manifest"
+        ],
+        "evidence_artifacts": [
+          "artifacts/operational-proof/aud27-007-frozen-20260925/contract.log#sha256:0f6eec6864eba330251fbb29432d0d106ec768ac47928f1cff283143c2b01e1f",
+          "artifacts/operational-proof/aud27-007-frozen-20260925/pdp-runtime.log#sha256:9b7bd050b67f4c4d5e0dcbd759faf110586a1abf28f20f5aff45a9d0ef130d22",
+          "artifacts/operational-proof/aud27-007-frozen-20260925/response-contracts.log#sha256:3e3851d2326ac0c6de5f2d0b6efb40f43ca2953f93094d5759718d6f60084da4",
+          "artifacts/operational-proof/aud27-007-frozen-20260925/static.log#sha256:8b22a6021e4a29c9e225aadfe402160e4f3b8b2ae9f5e858306ccc8f747e7979",
+          "artifacts/operational-proof/aud27-007-frozen-20260925/schema-manifest.log#sha256:3f71d84e1208d12145289b8b60a89df78ba09f1065c6813cd4352b1149e7d12b"
+        ],
+        "receipt_id": "VER-CVG-AUD27-007-016",
+        "environment": "Frozen local subject f1b7bdd6f44162feca84a2651dd4878dcc47e032; linux; Node v24.20.0; synthetic/local checks only; no production data, external provider or human approval.",
+        "result": "PASS",
+        "receipt_result": "PASS",
+        "fingerprint": "sha256:8d1999f9ba134cbbce39578e59e03f2d5f4490e3c4982811c5f16522bd8959ee",
+        "candidate_fingerprint": "sha256:8d1999f9ba134cbbce39578e59e03f2d5f4490e3c4982811c5f16522bd8959ee",
+        "fingerprint_status": "FROZEN_CANDIDATE",
+        "issues": [
+          "receipt source SHA does not match the current checkout",
+          "receipt fingerprint does not match the current observed subject"
+        ]
+      },
+      {
+        "id": "MEL23-022",
+        "milestone": "M2",
+        "target": "Cada família de API rejeita campos sensíveis, payload excessivo e forma inválida antes do envio; casos negativos passam.",
+        "coverage": "DIRECT",
+        "acceptance_additions": [],
+        "aud27": [
+          {
+            "id": "AUD27-008",
+            "status": "DONE",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
+            "implementation_targets": [
+              "apps/api/src/response-schemas/auth-ops.ts",
+              "tests/unit/api-response-contract-auth-ops.test.ts"
+            ]
+          },
+          {
+            "id": "AUD27-009",
+            "status": "DONE",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
+            "implementation_targets": [
+              "apps/api/src/response-schemas/clinical.ts",
+              "tests/unit/api-response-contract-clinical.test.ts"
+            ]
+          },
+          {
+            "id": "AUD27-010",
+            "status": "DONE",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
+            "implementation_targets": [
+              "apps/api/src/response-schemas/remaining.ts",
+              "tests/unit/api-response-contract-remaining.test.ts"
+            ]
+          }
+        ],
+        "test_commands": [
+          "node --import tsx --test tests/unit/api-response-contract-auth-ops.test.ts tests/unit/api-response-contract-clinical.test.ts tests/unit/api-response-contract-remaining.test.ts",
+          "node --import tsx --test tests/unit/api-response-contract-auth-ops.test.ts tests/unit/api-response-contract-clinical.test.ts tests/unit/api-response-contract-remaining.test.ts",
+          "node --import tsx --test tests/unit/api-response-contract-auth-ops.test.ts tests/unit/api-response-contract-clinical.test.ts tests/unit/api-response-contract-remaining.test.ts",
+          "node --import tsx --test tests/integration/api-response-routes.test.ts",
+          "node --import tsx --test tests/unit/api-response-contract.test.ts",
+          "npm run typecheck",
+          "npm test"
+        ],
+        "evidence_artifacts": [
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/api-response-family-contracts.log#sha256=44340070664da1bd5e9ae16d4450e63d59c1c7e86a6a759371d7b8a45c07b350",
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/api-response-routes.log#sha256=f7cff88c8136421cd8ecc252c0aca000b3002503711d453abe3f02d8a70773aa",
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/api-examples-contract.log#sha256=49959aecb6e3b0180a8a27b787c678fdbd310851c37e041ed606e6dee4f06b1c",
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/typecheck.log#sha256=19c71cde12d596f5abd6f07b9713c068230e6bd3a8086d6bdf9ba3a34d1a9409",
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/npm-test.log#sha256=80830b425eee8fcba9a930a04b021dbf9cfc8219353c5b13a06c4eb0f58daad7",
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/verification-manifest.json#sha256=db4f5b28656b6a0f14111ccd858f54f894caf21df7f99ecfa21786118d9ea566",
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/m2-quality-verification-manifest.json#sha256=2c58e86448fabf75a7591929a1e234cbd91de948b1d787a793fdc9cfaa7ae8b0"
+        ],
+        "receipt_id": "VER-CVG-AUD27-008-011",
+        "environment": "Local dirty workspace; synthetic fixtures and docs; disposable PostgreSQL 16 only; no production endpoint, real clinical data, provider or human approval.",
+        "result": "PASS",
+        "receipt_result": "IMPLEMENTED_LOCAL",
+        "fingerprint": "sha256:ff3c001b92c0b834e06e407f91943037e91940442abe37c57a988e90e8520eab",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "AUD27-008 does not reference focal receipt VER-CVG-AUD27-008-011",
+          "receipt source SHA does not match the current checkout",
+          "receipt fingerprint does not match the current observed subject",
+          "AUD27-008 does not reference focal receipt VER-CVG-AUD27-008-011"
+        ]
+      },
+      {
+        "id": "MEL23-023",
+        "milestone": "M2",
+        "target": "Após cada onda, testes PostgreSQL negam leitura/escrita cross-tenant e cross-workspace nas tabelas afetadas.",
+        "coverage": "SUBSCOPE",
+        "acceptance_additions": [],
+        "aud27": [
+          {
+            "id": "AUD27-011",
+            "status": "PARTIAL",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
+            "implementation_targets": [
+              "scripts/verify-aud27-24-slices.ts",
+              "packages/persistence/src/aud27-postgres-migration.ts"
+            ]
+          },
+          {
+            "id": "AUD27-012",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              "db/migrations",
+              "scripts/"
+            ]
+          },
+          {
+            "id": "AUD27-013",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              "db/migrations",
+              "scripts/"
+            ]
+          },
+          {
+            "id": "AUD27-014",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              "db/migrations",
+              "scripts/"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm run verify:ephemeral-postgres -- --rounds=1 --run-aud27-migration",
+          "npm run verify:ephemeral-postgres -- --rounds=1 --run-aud27-normalized-writes",
+          "npm run verify:ephemeral-postgres -- --rounds=1 --run-aud27-24-slices",
+          "DATABASE_URL=<synthetic-loopback> npm run db:migrate",
+          "CVG_AUD27_PRODUCTS_BACKFILL_URL=<synthetic-loopback> npm run verify:aud27-products-backfill"
+        ],
+        "evidence_artifacts": [
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/aud27-migration-postgres-final.log#sha256=cc6c3d2b344024c6923db4ed4145ad1eb4e9c9a5cbda29c0678da1dd8b6e18ef",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/aud27-normalized-writes-postgres-final.log#sha256=c21e67b9c4ca7c81a4094743442fb367c51938a6e69c835ee13b449f33587074",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/aud27-24-slices-postgres-final.log#sha256=d82b15b583777a28007182656a1c10dce28844a2d4f57d1c76aff5e040fde733",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/products-backfill-postgres/migrations.log#sha256=34acc61e481e8f3985f0df22a6625b8f5b08d269e05191ea7818a14caa9dce0d",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/products-backfill-postgres/products-backfill.log#sha256=fec515ceb7df7c760a4d60496fec29c4e1e15c201ba2adfae565bf40a7f0649a",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/products-backfill-postgres/environment.txt#sha256=b8034e80a4ecef02d377f042bd05b4fa8075d430640b33549c2114263d61a899",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/products-backfill-postgres/container-cleanup.log#sha256=575684611f27519afe9e3551569e85d770d701600229471659dd6ef7b0ba9b48",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/products-backfill-postgres/container-inventory-before.txt#sha256=1e34c290cc4145c91fdaf436bfbf36ed0c3bb53ac921e14a65b21f99c3f46918",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/products-backfill-postgres/container-inventory-after.txt#sha256=1e34c290cc4145c91fdaf436bfbf36ed0c3bb53ac921e14a65b21f99c3f46918",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/api-response-postgres-final.log#sha256=8eab8f5366b8e997668d4ac3e1512090adb580701b835bfc8d8683ee6ff8b0e4",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/subject-observation.json#sha256=aa145ed0702c1edbf54852f2a3ae351abb1863ad4512e0717ec826e807d48438"
+        ],
+        "receipt_id": "VER-CVG-AUD27-011-029",
+        "environment": "Dirty local workspace; linux; Node v24.20.0; synthetic/local checks only; no production data, external provider or human approval.",
+        "result": "PARTIAL",
+        "receipt_result": "PARTIAL",
+        "fingerprint": "sha256:492181ca3eb8452c80f55b4c35de91ddf3f01d5cb17e8b0d22bb552cc9ab8501",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt source SHA does not match the current checkout",
+          "receipt fingerprint does not match the current observed subject",
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-024",
+        "milestone": "M2",
+        "target": "Fault injection entre commit, checkpoint e receipt retoma sem segundo efeito e sem falso sucesso.",
+        "coverage": "ACCEPTANCE_ADDITION",
+        "acceptance_additions": [
+          "Inject failures between commit, checkpoint, and receipt; prove safe resume, one effect, and no false success."
+        ],
+        "aud27": [
+          {
+            "id": "AUD27-011",
+            "status": "PARTIAL",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
+            "implementation_targets": [
+              "scripts/verify-aud27-24-slices.ts",
+              "packages/persistence/src/aud27-postgres-migration.ts"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm run verify:ephemeral-postgres -- --rounds=1 --run-aud27-migration",
+          "npm run verify:ephemeral-postgres -- --rounds=1 --run-aud27-normalized-writes",
+          "npm run verify:ephemeral-postgres -- --rounds=1 --run-aud27-24-slices",
+          "DATABASE_URL=<synthetic-loopback> npm run db:migrate",
+          "CVG_AUD27_PRODUCTS_BACKFILL_URL=<synthetic-loopback> npm run verify:aud27-products-backfill"
+        ],
+        "evidence_artifacts": [
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/aud27-migration-postgres-final.log#sha256=cc6c3d2b344024c6923db4ed4145ad1eb4e9c9a5cbda29c0678da1dd8b6e18ef",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/aud27-normalized-writes-postgres-final.log#sha256=c21e67b9c4ca7c81a4094743442fb367c51938a6e69c835ee13b449f33587074",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/aud27-24-slices-postgres-final.log#sha256=d82b15b583777a28007182656a1c10dce28844a2d4f57d1c76aff5e040fde733",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/products-backfill-postgres/migrations.log#sha256=34acc61e481e8f3985f0df22a6625b8f5b08d269e05191ea7818a14caa9dce0d",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/products-backfill-postgres/products-backfill.log#sha256=fec515ceb7df7c760a4d60496fec29c4e1e15c201ba2adfae565bf40a7f0649a",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/products-backfill-postgres/environment.txt#sha256=b8034e80a4ecef02d377f042bd05b4fa8075d430640b33549c2114263d61a899",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/products-backfill-postgres/container-cleanup.log#sha256=575684611f27519afe9e3551569e85d770d701600229471659dd6ef7b0ba9b48",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/products-backfill-postgres/container-inventory-before.txt#sha256=1e34c290cc4145c91fdaf436bfbf36ed0c3bb53ac921e14a65b21f99c3f46918",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/products-backfill-postgres/container-inventory-after.txt#sha256=1e34c290cc4145c91fdaf436bfbf36ed0c3bb53ac921e14a65b21f99c3f46918",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/api-response-postgres-final.log#sha256=8eab8f5366b8e997668d4ac3e1512090adb580701b835bfc8d8683ee6ff8b0e4",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/subject-observation.json#sha256=aa145ed0702c1edbf54852f2a3ae351abb1863ad4512e0717ec826e807d48438"
+        ],
+        "receipt_id": "VER-CVG-AUD27-011-029",
+        "environment": "Dirty local workspace; linux; Node v24.20.0; synthetic/local checks only; no production data, external provider or human approval.",
+        "result": "PASS",
+        "receipt_result": "PARTIAL",
+        "fingerprint": "sha256:492181ca3eb8452c80f55b4c35de91ddf3f01d5cb17e8b0d22bb552cc9ab8501",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt source SHA does not match the current checkout",
+          "receipt fingerprint does not match the current observed subject"
+        ]
+      },
+      {
+        "id": "MEL23-025",
+        "milestone": "M4",
+        "target": "Metas e exceções de cobertura por área crítica são versionadas; gate rejeita regressão abaixo do limite aprovado.",
+        "coverage": "DIRECT",
+        "acceptance_additions": [],
+        "aud27": [
+          {
+            "id": "AUD27-018",
+            "status": "DONE",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
+            "implementation_targets": [
+              "scripts/verify-mutation.ts",
+              "artifacts/mutation-summary.json",
+              "tests/"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm run verify:coverage",
+          "npm run verify:mutation"
+        ],
+        "evidence_artifacts": [
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/coverage-current.log#sha256=690888c30593ab967a19395ee7df0cdb937eafdcb69cc0f166b86cea37ffa9f4",
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/mutation-current.log#sha256=a1fc2edfae33543c70d2bc958498264656949041efdfdddea377132d87681f3b",
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/coverage-summary-current.json#sha256=392afeec5bc347dddff5e139b38f5e0479f3f38e94d9c248c8ea5660b29800fa",
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/coverage-output-current.txt#sha256=8f24a33bc20396147c0c246bdcb6a479bb2ff7620bd74fc013af4c1111a4e287",
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/mutation-summary-current.json#sha256=6cd16cafac9dddec98f628dcc78f2c4dd2d1dd936aed6dbab1dccc655c541817",
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/verification-manifest.json#sha256=db4f5b28656b6a0f14111ccd858f54f894caf21df7f99ecfa21786118d9ea566",
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/m2-quality-verification-manifest.json#sha256=2c58e86448fabf75a7591929a1e234cbd91de948b1d787a793fdc9cfaa7ae8b0"
+        ],
+        "receipt_id": "VER-CVG-AUD27-018-019",
+        "environment": "Local dirty workspace; synthetic fixtures and docs; disposable PostgreSQL 16 only; no production endpoint, real clinical data, provider or human approval.",
+        "result": "PARTIAL",
+        "receipt_result": "PARTIAL",
+        "fingerprint": "sha256:ff3c001b92c0b834e06e407f91943037e91940442abe37c57a988e90e8520eab",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "AUD27-018 does not reference focal receipt VER-CVG-AUD27-018-019",
+          "receipt source SHA does not match the current checkout",
+          "receipt fingerprint does not match the current observed subject",
+          "criterion is not proven PASS by its focal receipt",
+          "AUD27-018 does not reference focal receipt VER-CVG-AUD27-018-019"
+        ]
+      },
+      {
+        "id": "MEL23-026",
+        "milestone": "M4",
+        "target": "Mutantes relevantes de autorização, finanças, clínica e persistência são rejeitados; relatório identifica sobreviventes.",
+        "coverage": "DIRECT",
+        "acceptance_additions": [],
+        "aud27": [
+          {
+            "id": "AUD27-018",
+            "status": "DONE",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
+            "implementation_targets": [
+              "scripts/verify-mutation.ts",
+              "artifacts/mutation-summary.json",
+              "tests/"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm run verify:coverage",
+          "npm run verify:mutation"
+        ],
+        "evidence_artifacts": [
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/coverage-current.log#sha256=690888c30593ab967a19395ee7df0cdb937eafdcb69cc0f166b86cea37ffa9f4",
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/mutation-current.log#sha256=a1fc2edfae33543c70d2bc958498264656949041efdfdddea377132d87681f3b",
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/coverage-summary-current.json#sha256=392afeec5bc347dddff5e139b38f5e0479f3f38e94d9c248c8ea5660b29800fa",
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/coverage-output-current.txt#sha256=8f24a33bc20396147c0c246bdcb6a479bb2ff7620bd74fc013af4c1111a4e287",
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/mutation-summary-current.json#sha256=6cd16cafac9dddec98f628dcc78f2c4dd2d1dd936aed6dbab1dccc655c541817",
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/verification-manifest.json#sha256=db4f5b28656b6a0f14111ccd858f54f894caf21df7f99ecfa21786118d9ea566",
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/m2-quality-verification-manifest.json#sha256=2c58e86448fabf75a7591929a1e234cbd91de948b1d787a793fdc9cfaa7ae8b0"
+        ],
+        "receipt_id": "VER-CVG-AUD27-018-019",
+        "environment": "Local dirty workspace; synthetic fixtures and docs; disposable PostgreSQL 16 only; no production endpoint, real clinical data, provider or human approval.",
+        "result": "PASS",
+        "receipt_result": "PARTIAL",
+        "fingerprint": "sha256:ff3c001b92c0b834e06e407f91943037e91940442abe37c57a988e90e8520eab",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "AUD27-018 does not reference focal receipt VER-CVG-AUD27-018-019",
+          "receipt source SHA does not match the current checkout",
+          "receipt fingerprint does not match the current observed subject",
+          "AUD27-018 does not reference focal receipt VER-CVG-AUD27-018-019"
+        ]
+      },
+      {
+        "id": "MEL23-027",
+        "milestone": "M4",
+        "target": "Matriz E2E completa executa na CI para o candidato; falhas intermitentes têm reprodução e diagnóstico.",
+        "coverage": "ACCEPTANCE_ADDITION",
+        "acceptance_additions": [
+          "Specify the full E2E CI matrix and require reproduction and diagnosis for intermittent failures."
+        ],
+        "aud27": [
+          {
+            "id": "AUD27-004",
+            "status": "DONE",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
+            "implementation_targets": [
+              "git status",
+              ".agent/subject-manifest.json"
+            ]
+          },
+          {
+            "id": "AUD27-019",
+            "status": "PARTIAL",
+            "evidence_state": "PARTIAL_LOCAL_WITH_EXTERNAL_GAP",
+            "implementation_targets": [
+              "playwright.config.ts",
+              "tests/e2e",
+              "supported WebKit runtime",
+              "accessibility review"
+            ]
+          },
+          {
+            "id": "AUD27-025",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              ".agent/",
+              "docs/"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npx playwright test --workers=1 --project=webkit-wide-1440 --project=webkit-tablet-768 --project=webkit-mobile-375 --project=webkit-stress",
+          "npx playwright test --workers=1 --project=chromium-* --project=firefox-*"
+        ],
+        "evidence_artifacts": [
+          "artifacts/operational-proof/aud27-candidate5-20260925/webkit-matrix.log#sha256:d2888e933fc16de01e82467dae2885fe5d53fd4153146784bc5666b1e3a2327b",
+          "artifacts/operational-proof/aud27-candidate5-20260925/chromium-firefox-matrix.log#sha256:82e2bcdfe93443b637555c0b1b023af78e6a7faa4706e86e2a1a94432c4e02fb"
+        ],
+        "receipt_id": "VER-CVG-AUD27-019-015",
+        "environment": "Frozen candidate 5 b43adc80dd630d1bfa686d4059450e11e67d7812; host WebKit dependencies installed; linux; Node v24.20.0; synthetic data only.",
+        "result": "PARTIAL_WITH_LIMITATIONS",
+        "receipt_result": "PARTIAL_WITH_LIMITATIONS",
+        "fingerprint": "sha256:ff4b97a865ea1556068804510aa62a7e7a8cd195a0acd9902199c8eb5ac60e1a",
+        "candidate_fingerprint": "sha256:ff4b97a865ea1556068804510aa62a7e7a8cd195a0acd9902199c8eb5ac60e1a",
+        "fingerprint_status": "FROZEN_CANDIDATE",
+        "issues": [
+          "focal receipt task does not match the primary AUD27 owner",
+          "AUD27-004 does not reference focal receipt VER-CVG-AUD27-019-015",
+          "receipt result uses a noncanonical alias",
+          "receipt source SHA does not match the current checkout",
+          "receipt fingerprint does not match the current observed subject",
+          "criterion is not proven PASS by its focal receipt",
+          "AUD27-004 does not reference focal receipt VER-CVG-AUD27-019-015"
+        ]
+      },
+      {
+        "id": "MEL23-028",
+        "milestone": "M4",
+        "target": "WebKit executa em host suportado; jornadas prioritárias passam ou falhas ficam abertas com reprodução.",
+        "coverage": "DIRECT",
+        "acceptance_additions": [],
+        "aud27": [
+          {
+            "id": "AUD27-019",
+            "status": "PARTIAL",
+            "evidence_state": "PARTIAL_LOCAL_WITH_EXTERNAL_GAP",
+            "implementation_targets": [
+              "playwright.config.ts",
+              "tests/e2e",
+              "supported WebKit runtime",
+              "accessibility review"
+            ]
+          },
+          {
+            "id": "AUD27-026",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              ".agent/authority.jsonl",
+              "evidence-root externo"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm run test:e2e:smoke",
+          "npm run audit:contrast"
+        ],
+        "evidence_artifacts": [
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/e2e-smoke-current.log#sha256=01e58ac95db3a098bbdd88c9e2ea8c494434c29899ebc758f770d44d3b6895ba",
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/contrast-current.log#sha256=0d1f7e7ad46d85d3c96e4a5965cfece4b5b51be644c5734c7a108cddd60395ef",
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/e2e-smoke-manifest.json#sha256=b6ef7ebdececea8f8bb8718fb035ecf60ed4628f6c904e7a6a4deee2e943a5e3"
+        ],
+        "receipt_id": "VER-CVG-AUD27-019-014",
+        "environment": "Local workspace; Playwright 1.63.0 with synthetic in-memory API/web servers on ephemeral loopback ports; no CI, production data, WebKit current-subject run, assistive technology or human approval.",
+        "result": "PARTIAL",
+        "receipt_result": "PARTIAL",
+        "fingerprint": "sha256:ff3c001b92c0b834e06e407f91943037e91940442abe37c57a988e90e8520eab",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt source SHA does not match the current checkout",
+          "receipt fingerprint does not match the current observed subject",
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-029",
+        "milestone": "M4",
+        "target": "Testes renderizados documentam contraste, foco/teclado, zoom e reflow nos estados principais.",
+        "coverage": "DIRECT",
+        "acceptance_additions": [],
+        "aud27": [
+          {
+            "id": "AUD27-019",
+            "status": "PARTIAL",
+            "evidence_state": "PARTIAL_LOCAL_WITH_EXTERNAL_GAP",
+            "implementation_targets": [
+              "playwright.config.ts",
+              "tests/e2e",
+              "supported WebKit runtime",
+              "accessibility review"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm run test:e2e:smoke",
+          "npm run audit:contrast"
+        ],
+        "evidence_artifacts": [
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/e2e-smoke-current.log#sha256=01e58ac95db3a098bbdd88c9e2ea8c494434c29899ebc758f770d44d3b6895ba",
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/contrast-current.log#sha256=0d1f7e7ad46d85d3c96e4a5965cfece4b5b51be644c5734c7a108cddd60395ef",
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/e2e-smoke-manifest.json#sha256=b6ef7ebdececea8f8bb8718fb035ecf60ed4628f6c904e7a6a4deee2e943a5e3"
+        ],
+        "receipt_id": "VER-CVG-AUD27-019-014",
+        "environment": "Local workspace; Playwright 1.63.0 with synthetic in-memory API/web servers on ephemeral loopback ports; no CI, production data, WebKit current-subject run, assistive technology or human approval.",
+        "result": "PARTIAL",
+        "receipt_result": "PARTIAL",
+        "fingerprint": "sha256:ff3c001b92c0b834e06e407f91943037e91940442abe37c57a988e90e8520eab",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt source SHA does not match the current checkout",
+          "receipt fingerprint does not match the current observed subject",
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-030",
+        "milestone": "M4",
+        "target": "Revisão com tecnologia assistiva cobre login e jornadas clínicas/administrativas prioritárias, com achados e correção.",
+        "coverage": "DIRECT",
+        "acceptance_additions": [],
+        "aud27": [
+          {
+            "id": "AUD27-019",
+            "status": "PARTIAL",
+            "evidence_state": "PARTIAL_LOCAL_WITH_EXTERNAL_GAP",
+            "implementation_targets": [
+              "playwright.config.ts",
+              "tests/e2e",
+              "supported WebKit runtime",
+              "accessibility review"
+            ]
+          },
+          {
+            "id": "AUD27-026",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              ".agent/authority.jsonl",
+              "evidence-root externo"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm run test:e2e:smoke",
+          "npm run audit:contrast"
+        ],
+        "evidence_artifacts": [
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/e2e-smoke-current.log#sha256=01e58ac95db3a098bbdd88c9e2ea8c494434c29899ebc758f770d44d3b6895ba",
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/contrast-current.log#sha256=0d1f7e7ad46d85d3c96e4a5965cfece4b5b51be644c5734c7a108cddd60395ef",
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/e2e-smoke-manifest.json#sha256=b6ef7ebdececea8f8bb8718fb035ecf60ed4628f6c904e7a6a4deee2e943a5e3"
+        ],
+        "receipt_id": "VER-CVG-AUD27-019-014",
+        "environment": "Local workspace; Playwright 1.63.0 with synthetic in-memory API/web servers on ephemeral loopback ports; no CI, production data, WebKit current-subject run, assistive technology or human approval.",
+        "result": "BLOCKED",
+        "receipt_result": "PARTIAL",
+        "fingerprint": "sha256:ff3c001b92c0b834e06e407f91943037e91940442abe37c57a988e90e8520eab",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt source SHA does not match the current checkout",
+          "receipt fingerprint does not match the current observed subject",
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-031",
+        "milestone": "M2",
+        "target": "Responsabilidades de `persistence/index.ts` são extraídas por dono sem mudar contratos; testes de banco e imports passam.",
+        "coverage": "DIRECT",
+        "acceptance_additions": [],
+        "aud27": [
+          {
+            "id": "AUD27-020",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PARTIAL_LOCAL_WITH_SEAMS_REMAINING",
+            "implementation_targets": [
+              "packages/persistence",
+              "apps/api",
+              "packages/domain",
+              "packages/contracts"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm run verify:architecture",
+          "npm run typecheck",
+          "npm test"
+        ],
+        "evidence_artifacts": [
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/architecture-current.log#sha256=178cbbb7c328e9d717937629c8a98ed2f618fa757235dbddf92d1557141a9ea1",
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/typecheck.log#sha256=19c71cde12d596f5abd6f07b9713c068230e6bd3a8086d6bdf9ba3a34d1a9409",
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/npm-test.log#sha256=80830b425eee8fcba9a930a04b021dbf9cfc8219353c5b13a06c4eb0f58daad7",
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/observability-architecture-manifest.json#sha256=8732c32b50e5fa5a2351d7115cbf078201df6d88b500946b023d42173e1a350c",
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/verification-manifest.json#sha256=db4f5b28656b6a0f14111ccd858f54f894caf21df7f99ecfa21786118d9ea566"
+        ],
+        "receipt_id": "VER-CVG-AUD27-020-013",
+        "environment": "Current local harness with synthetic data; no production provider/staging or human approval.",
+        "result": "PARTIAL",
+        "receipt_result": "PARTIAL",
+        "fingerprint": "sha256:ff3c001b92c0b834e06e407f91943037e91940442abe37c57a988e90e8520eab",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt source SHA does not match the current checkout",
+          "receipt fingerprint does not match the current observed subject",
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-032",
+        "milestone": "M2",
+        "target": "Rotas/serviços saem de `app.ts` com ownership explícito; inventário runtime e testes HTTP continuam verdes.",
+        "coverage": "DIRECT",
+        "acceptance_additions": [],
+        "aud27": [
+          {
+            "id": "AUD27-020",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PARTIAL_LOCAL_WITH_SEAMS_REMAINING",
+            "implementation_targets": [
+              "packages/persistence",
+              "apps/api",
+              "packages/domain",
+              "packages/contracts"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm run verify:architecture",
+          "npm run typecheck",
+          "npm test"
+        ],
+        "evidence_artifacts": [
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/architecture-current.log#sha256=178cbbb7c328e9d717937629c8a98ed2f618fa757235dbddf92d1557141a9ea1",
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/typecheck.log#sha256=19c71cde12d596f5abd6f07b9713c068230e6bd3a8086d6bdf9ba3a34d1a9409",
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/npm-test.log#sha256=80830b425eee8fcba9a930a04b021dbf9cfc8219353c5b13a06c4eb0f58daad7",
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/observability-architecture-manifest.json#sha256=8732c32b50e5fa5a2351d7115cbf078201df6d88b500946b023d42173e1a350c",
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/verification-manifest.json#sha256=db4f5b28656b6a0f14111ccd858f54f894caf21df7f99ecfa21786118d9ea566"
+        ],
+        "receipt_id": "VER-CVG-AUD27-020-013",
+        "environment": "Current local harness with synthetic data; no production provider/staging or human approval.",
+        "result": "PARTIAL",
+        "receipt_result": "PARTIAL",
+        "fingerprint": "sha256:ff3c001b92c0b834e06e407f91943037e91940442abe37c57a988e90e8520eab",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt source SHA does not match the current checkout",
+          "receipt fingerprint does not match the current observed subject",
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-033",
+        "milestone": "M2",
+        "target": "Domínio e contratos centrais são decompostos sem ciclos de import ou alteração pública não versionada.",
+        "coverage": "DIRECT",
+        "acceptance_additions": [],
+        "aud27": [
+          {
+            "id": "AUD27-020",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PARTIAL_LOCAL_WITH_SEAMS_REMAINING",
+            "implementation_targets": [
+              "packages/persistence",
+              "apps/api",
+              "packages/domain",
+              "packages/contracts"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm run verify:architecture",
+          "npm run typecheck",
+          "npm test"
+        ],
+        "evidence_artifacts": [
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/architecture-current.log#sha256=178cbbb7c328e9d717937629c8a98ed2f618fa757235dbddf92d1557141a9ea1",
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/typecheck.log#sha256=19c71cde12d596f5abd6f07b9713c068230e6bd3a8086d6bdf9ba3a34d1a9409",
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/npm-test.log#sha256=80830b425eee8fcba9a930a04b021dbf9cfc8219353c5b13a06c4eb0f58daad7",
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/observability-architecture-manifest.json#sha256=8732c32b50e5fa5a2351d7115cbf078201df6d88b500946b023d42173e1a350c",
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/verification-manifest.json#sha256=db4f5b28656b6a0f14111ccd858f54f894caf21df7f99ecfa21786118d9ea566"
+        ],
+        "receipt_id": "VER-CVG-AUD27-020-013",
+        "environment": "Current local harness with synthetic data; no production provider/staging or human approval.",
+        "result": "PARTIAL",
+        "receipt_result": "PARTIAL",
+        "fingerprint": "sha256:ff3c001b92c0b834e06e407f91943037e91940442abe37c57a988e90e8520eab",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt source SHA does not match the current checkout",
+          "receipt fingerprint does not match the current observed subject",
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-034",
+        "milestone": "M4",
+        "target": "Carga sustentada prova limites de fila, backpressure, drenagem e retomada sem claim indevido do worker.",
+        "coverage": "ACCEPTANCE_ADDITION",
+        "acceptance_additions": [
+          "Measure bounded queue behavior, backpressure, draining, recovery, and worker claim/effect outcomes under sustained load."
+        ],
+        "aud27": [
+          {
+            "id": "AUD27-022",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PARTIAL_LOCAL_WITH_EXTERNAL_GAP",
+            "implementation_targets": [
+              "scripts/",
+              "docs/runbooks",
+              "staging"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm run verify:observability-local",
+          "node --import tsx --test tests/unit/idempotency-lifecycle.test.ts tests/unit/idempotency-service.test.ts tests/unit/load-gate.test.ts tests/unit/worker.test.ts tests/unit/ops.test.ts"
+        ],
+        "evidence_artifacts": [
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/observability-local.log#sha256=7ab900db80963da596b5b98d046ff63268f6fc69c19c507c8a2c23b272c6a772",
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/observability-focused-tests.log#sha256=64fddd904be4e02fded549328f045ef16635f176a749a9a8e0918d7c31e20794",
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/observability-architecture-manifest.json#sha256=8732c32b50e5fa5a2351d7115cbf078201df6d88b500946b023d42173e1a350c",
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/verification-manifest.json#sha256=db4f5b28656b6a0f14111ccd858f54f894caf21df7f99ecfa21786118d9ea566"
+        ],
+        "receipt_id": "VER-CVG-AUD27-022-006",
+        "environment": "Current local harness with synthetic data; no production provider/staging or human approval.",
+        "result": "PARTIAL",
+        "receipt_result": "BLOCKED_BY_DEPENDENCIES",
+        "fingerprint": "sha256:ff3c001b92c0b834e06e407f91943037e91940442abe37c57a988e90e8520eab",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt source SHA does not match the current checkout",
+          "receipt fingerprint does not match the current observed subject",
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-035",
+        "milestone": "M4",
+        "target": "Timeout/resposta perdida produzem `OUTCOME_UNKNOWN` e consulta/reconciliação; nenhum retry cego duplica efeito.",
+        "coverage": "ACCEPTANCE_ADDITION",
+        "acceptance_additions": [
+          "On timeout or lost response, observe OUTCOME_UNKNOWN and reconciliation; prohibit blind retry that duplicates an effect."
+        ],
+        "aud27": [
+          {
+            "id": "AUD27-022",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PARTIAL_LOCAL_WITH_EXTERNAL_GAP",
+            "implementation_targets": [
+              "scripts/",
+              "docs/runbooks",
+              "staging"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm run verify:observability-local",
+          "node --import tsx --test tests/unit/idempotency-lifecycle.test.ts tests/unit/idempotency-service.test.ts tests/unit/load-gate.test.ts tests/unit/worker.test.ts tests/unit/ops.test.ts"
+        ],
+        "evidence_artifacts": [
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/observability-local.log#sha256=7ab900db80963da596b5b98d046ff63268f6fc69c19c507c8a2c23b272c6a772",
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/observability-focused-tests.log#sha256=64fddd904be4e02fded549328f045ef16635f176a749a9a8e0918d7c31e20794",
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/observability-architecture-manifest.json#sha256=8732c32b50e5fa5a2351d7115cbf078201df6d88b500946b023d42173e1a350c",
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/verification-manifest.json#sha256=db4f5b28656b6a0f14111ccd858f54f894caf21df7f99ecfa21786118d9ea566"
+        ],
+        "receipt_id": "VER-CVG-AUD27-022-006",
+        "environment": "Current local harness with synthetic data; no production provider/staging or human approval.",
+        "result": "PASS",
+        "receipt_result": "BLOCKED_BY_DEPENDENCIES",
+        "fingerprint": "sha256:ff3c001b92c0b834e06e407f91943037e91940442abe37c57a988e90e8520eab",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt source SHA does not match the current checkout",
+          "receipt fingerprint does not match the current observed subject"
+        ]
+      },
+      {
+        "id": "MEL23-036",
+        "milestone": "M5",
+        "target": "SLOs recebem dono, baseline, janela e meta aprovada; queries medem os SLIs em tráfego representativo.",
+        "coverage": "DIRECT",
+        "acceptance_additions": [],
+        "aud27": [
+          {
+            "id": "AUD27-021",
+            "status": "PARTIAL",
+            "evidence_state": "PARTIAL_LOCAL_WITH_EXTERNAL_GAP",
+            "implementation_targets": [
+              "docker/observability",
+              "packages/ops",
+              "docs/runbooks"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm run verify:observability-local"
+        ],
+        "evidence_artifacts": [
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/observability-local.log#sha256=7ab900db80963da596b5b98d046ff63268f6fc69c19c507c8a2c23b272c6a772",
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/observability-architecture-manifest.json#sha256=8732c32b50e5fa5a2351d7115cbf078201df6d88b500946b023d42173e1a350c",
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/verification-manifest.json#sha256=db4f5b28656b6a0f14111ccd858f54f894caf21df7f99ecfa21786118d9ea566"
+        ],
+        "receipt_id": "VER-CVG-AUD27-021-006",
+        "environment": "Current local harness with synthetic data; no production provider/staging or human approval.",
+        "result": "PARTIAL",
+        "receipt_result": "BLOCKED_BY_DEPENDENCIES",
+        "fingerprint": "sha256:ff3c001b92c0b834e06e407f91943037e91940442abe37c57a988e90e8520eab",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt source SHA does not match the current checkout",
+          "receipt fingerprint does not match the current observed subject",
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-037",
+        "milestone": "M5",
+        "target": "Falha de serviço dispara alerta entregue; retenção e perda de telemetria são observadas e não substituem auditoria.",
+        "coverage": "ACCEPTANCE_ADDITION",
+        "acceptance_additions": [
+          "Observe actual alert delivery, retention, telemetry loss, and separation from the audit trail."
+        ],
+        "aud27": [
+          {
+            "id": "AUD27-021",
+            "status": "PARTIAL",
+            "evidence_state": "PARTIAL_LOCAL_WITH_EXTERNAL_GAP",
+            "implementation_targets": [
+              "docker/observability",
+              "packages/ops",
+              "docs/runbooks"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm run verify:observability-local"
+        ],
+        "evidence_artifacts": [
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/observability-local.log#sha256=7ab900db80963da596b5b98d046ff63268f6fc69c19c507c8a2c23b272c6a772",
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/observability-architecture-manifest.json#sha256=8732c32b50e5fa5a2351d7115cbf078201df6d88b500946b023d42173e1a350c",
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/verification-manifest.json#sha256=db4f5b28656b6a0f14111ccd858f54f894caf21df7f99ecfa21786118d9ea566"
+        ],
+        "receipt_id": "VER-CVG-AUD27-021-006",
+        "environment": "Current local harness with synthetic data; no production provider/staging or human approval.",
+        "result": "PARTIAL",
+        "receipt_result": "BLOCKED_BY_DEPENDENCIES",
+        "fingerprint": "sha256:ff3c001b92c0b834e06e407f91943037e91940442abe37c57a988e90e8520eab",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt source SHA does not match the current checkout",
+          "receipt fingerprint does not match the current observed subject",
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-038",
+        "milestone": "M5",
+        "target": "Carga e caos em staging registram workload, janela, limites, recuperação e critério de parada.",
+        "coverage": "DIRECT",
+        "acceptance_additions": [],
+        "aud27": [
+          {
+            "id": "AUD27-022",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PARTIAL_LOCAL_WITH_EXTERNAL_GAP",
+            "implementation_targets": [
+              "scripts/",
+              "docs/runbooks",
+              "staging"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm run verify:observability-local",
+          "node --import tsx --test tests/unit/idempotency-lifecycle.test.ts tests/unit/idempotency-service.test.ts tests/unit/load-gate.test.ts tests/unit/worker.test.ts tests/unit/ops.test.ts"
+        ],
+        "evidence_artifacts": [
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/observability-local.log#sha256=7ab900db80963da596b5b98d046ff63268f6fc69c19c507c8a2c23b272c6a772",
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/observability-focused-tests.log#sha256=64fddd904be4e02fded549328f045ef16635f176a749a9a8e0918d7c31e20794",
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/observability-architecture-manifest.json#sha256=8732c32b50e5fa5a2351d7115cbf078201df6d88b500946b023d42173e1a350c",
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/verification-manifest.json#sha256=db4f5b28656b6a0f14111ccd858f54f894caf21df7f99ecfa21786118d9ea566"
+        ],
+        "receipt_id": "VER-CVG-AUD27-022-006",
+        "environment": "Current local harness with synthetic data; no production provider/staging or human approval.",
+        "result": "PARTIAL",
+        "receipt_result": "BLOCKED_BY_DEPENDENCIES",
+        "fingerprint": "sha256:ff3c001b92c0b834e06e407f91943037e91940442abe37c57a988e90e8520eab",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt source SHA does not match the current checkout",
+          "receipt fingerprint does not match the current observed subject",
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-039",
+        "milestone": "M3",
+        "target": "Compose das imagens finais passa inspeção de usuário, capabilities, filesystem, rede e secrets conforme threat model.",
+        "coverage": "ACCEPTANCE_ADDITION",
+        "acceptance_additions": [
+          "Inspect final Compose network, filesystem, and secrets settings against the threat model."
+        ],
+        "aud27": [
+          {
+            "id": "AUD27-015",
+            "status": "PARTIAL",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
+            "implementation_targets": [
+              "Dockerfile.api",
+              "scripts/verify-container-smoke.ts"
+            ]
+          },
+          {
+            "id": "AUD27-017",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "BLOCKED_EXTERNAL",
+            "implementation_targets": [
+              ".github/workflows/ci.yml",
+              "Dockerfiles"
+            ]
+          }
+        ],
+        "test_commands": [
+          "docker compose -f docker-compose.yml -f docker-compose.production.yml --env-file <synthetic-only> config --format json"
+        ],
+        "evidence_artifacts": [
+          "artifacts/operational-proof/mel23-m2-revalidation-20260924/compose-production-config-current-subject.log#sha256=4dd85e71e7b2269c892c6c382debda3dcb521200662ce0c77d9a5cb3f18d4e96",
+          "artifacts/operational-proof/mel23-m2-revalidation-20260924/compose-policy-current-subject.json#sha256=1940c4a3420ffb49eb27af159f3647aafc26816fea07124e8d3975f4c4f681d7"
+        ],
+        "receipt_id": "VER-CVG-AUD27-015-009",
+        "environment": "Local workspace; dirty candidate preserved; browser/Compose evidence uses only local synthetic fixtures; no human approval.",
+        "result": "PARTIAL",
+        "receipt_result": "PARTIAL",
+        "fingerprint": "sha256:59f31c53baaae3d62b0f4857bef1f6e76930926a2df194ff37a6dd3ca8673f77",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt source SHA does not match the current checkout",
+          "receipt fingerprint does not match the current observed subject",
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-040",
+        "milestone": "M0",
+        "target": "Relatório automático liga cada requisito obrigatório a teste, recibo, ambiente, resultado e fingerprint; lacunas falham.",
+        "coverage": "ACCEPTANCE_ADDITION",
+        "acceptance_additions": [
+          "Generate a mandatory requirement-to-test/receipt/environment/result/fingerprint report and fail closed on any missing link."
+        ],
+        "aud27": [
+          {
+            "id": "AUD27-002",
+            "status": "DONE",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
+            "implementation_targets": [
+              "scripts/verify-aud27-semantics.ts",
+              "tests/unit/"
+            ]
+          },
+          {
+            "id": "AUD27-006",
+            "status": "DONE",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
+            "implementation_targets": [
+              ".agent/backlog.json",
+              ".agent/verification.jsonl"
+            ]
+          },
+          {
+            "id": "AUD27-024",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              "docs/",
+              "README.md",
+              ".agent/state.json"
+            ]
+          },
+          {
+            "id": "AUD27-025",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              ".agent/",
+              "docs/"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm run verify:aud27-semantics",
+          "npm test",
+          "npm run verify:coverage",
+          "npm run verify:mutation",
+          "npm run verify:docs-integrity"
+        ],
+        "evidence_artifacts": [
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/aud27-semantics-final.log#sha256=79be9e002a09d40436d3dd788902b324d3f9bbf42e3193a195e9cd72fe85d628",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/npm-test-final.log#sha256=4a69e291eb0f4aef7ee0b70825be44264ca0ef5a7874f5cfce17e1365801260c",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/coverage-final.log#sha256=03b98687d856f871992022af76579bc0ff6bbf0e4050c70fdd25fc35180a2086",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/mutation-final.log#sha256=ff689b1c30ee4ea78298f272efc6b0fbd8007f2decf06b1e8881b23e15d4384b",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/docs-integrity-final.log#sha256=f360836136be58ef1c6d062f6ddc113fdf47560c596ce4ecb98f848712771185",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/subject-observation.json#sha256=aa145ed0702c1edbf54852f2a3ae351abb1863ad4512e0717ec826e807d48438",
+          "artifacts/operational-proof/mel23-evidence-matrix-current.json"
+        ],
+        "receipt_id": "VER-CVG-AUD27-002-021",
+        "environment": "Dirty local workspace; linux; Node v24.20.0; synthetic/local checks only; no production data, external provider or human approval.",
+        "result": "PASS",
+        "receipt_result": "IMPLEMENTED_LOCAL",
+        "fingerprint": "sha256:492181ca3eb8452c80f55b4c35de91ddf3f01d5cb17e8b0d22bb552cc9ab8501",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "AUD27-002 does not reference focal receipt VER-CVG-AUD27-002-021",
+          "receipt source SHA does not match the current checkout",
+          "receipt fingerprint does not match the current observed subject",
+          "AUD27-002 does not reference focal receipt VER-CVG-AUD27-002-021"
+        ]
+      },
+      {
+        "id": "MEL23-041",
+        "milestone": "M0",
+        "target": "`docs/README.md` aponta à fotografia atual; não chama 78/80 schemas genéricos nem raiz externa ausente de fatos atuais.",
+        "coverage": "SUBSCOPE",
+        "acceptance_additions": [],
+        "aud27": [
+          {
+            "id": "AUD27-003",
+            "status": "DONE",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
+            "implementation_targets": [
+              ".agent/backlog.json",
+              "scripts/verify-control-plane.ts"
+            ]
+          },
+          {
+            "id": "AUD27-024",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              "docs/",
+              "README.md",
+              ".agent/state.json"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm run verify:docs-integrity",
+          "npm run verify:docs-provenance",
+          "git diff --check"
+        ],
+        "evidence_artifacts": [
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/docs-integrity-final.log#sha256=f360836136be58ef1c6d062f6ddc113fdf47560c596ce4ecb98f848712771185",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/docs-provenance-final.log#sha256=60330de1d74fe15f34f97387682e0d287b0dbb4e97ccf9fbff5f804ee89ed3fd",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/diff-check-final.log#sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/subject-observation.json#sha256=aa145ed0702c1edbf54852f2a3ae351abb1863ad4512e0717ec826e807d48438"
+        ],
+        "receipt_id": "VER-CVG-AUD27-003-014",
+        "environment": "Dirty local workspace; linux; Node v24.20.0; synthetic/local checks only; no production data, external provider or human approval.",
+        "result": "PASS",
+        "receipt_result": "IMPLEMENTED_LOCAL",
+        "fingerprint": "sha256:492181ca3eb8452c80f55b4c35de91ddf3f01d5cb17e8b0d22bb552cc9ab8501",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "AUD27-003 does not reference focal receipt VER-CVG-AUD27-003-014",
+          "receipt source SHA does not match the current checkout",
+          "receipt fingerprint does not match the current observed subject",
+          "AUD27-003 does not reference focal receipt VER-CVG-AUD27-003-014"
+        ]
+      },
+      {
+        "id": "MEL23-042",
+        "milestone": "M0",
+        "target": "`12-estado-da-implementacao.md` distingue o último checkpoint dos registros históricos e reflete os gates atuais.",
+        "coverage": "SUBSCOPE",
+        "acceptance_additions": [],
+        "aud27": [
+          {
+            "id": "AUD27-003",
+            "status": "DONE",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
+            "implementation_targets": [
+              ".agent/backlog.json",
+              "scripts/verify-control-plane.ts"
+            ]
+          },
+          {
+            "id": "AUD27-024",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              "docs/",
+              "README.md",
+              ".agent/state.json"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm run verify:docs-integrity",
+          "npm run verify:docs-provenance",
+          "git diff --check"
+        ],
+        "evidence_artifacts": [
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/docs-integrity-final.log#sha256=f360836136be58ef1c6d062f6ddc113fdf47560c596ce4ecb98f848712771185",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/docs-provenance-final.log#sha256=60330de1d74fe15f34f97387682e0d287b0dbb4e97ccf9fbff5f804ee89ed3fd",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/diff-check-final.log#sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/subject-observation.json#sha256=aa145ed0702c1edbf54852f2a3ae351abb1863ad4512e0717ec826e807d48438"
+        ],
+        "receipt_id": "VER-CVG-AUD27-003-014",
+        "environment": "Dirty local workspace; linux; Node v24.20.0; synthetic/local checks only; no production data, external provider or human approval.",
+        "result": "PASS",
+        "receipt_result": "IMPLEMENTED_LOCAL",
+        "fingerprint": "sha256:492181ca3eb8452c80f55b4c35de91ddf3f01d5cb17e8b0d22bb552cc9ab8501",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "AUD27-003 does not reference focal receipt VER-CVG-AUD27-003-014",
+          "receipt source SHA does not match the current checkout",
+          "receipt fingerprint does not match the current observed subject",
+          "AUD27-003 does not reference focal receipt VER-CVG-AUD27-003-014"
+        ]
+      },
+      {
+        "id": "MEL23-043",
+        "milestone": "M0",
+        "target": "`production-readiness-vNext.md` é rotulado como histórico ou revalidado; contagens/gates vencidos não são apresentados como atuais.",
+        "coverage": "SUBSCOPE",
+        "acceptance_additions": [],
+        "aud27": [
+          {
+            "id": "AUD27-003",
+            "status": "DONE",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
+            "implementation_targets": [
+              ".agent/backlog.json",
+              "scripts/verify-control-plane.ts"
+            ]
+          },
+          {
+            "id": "AUD27-024",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              "docs/",
+              "README.md",
+              ".agent/state.json"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm run verify:docs-integrity",
+          "npm run verify:docs-provenance",
+          "git diff --check"
+        ],
+        "evidence_artifacts": [
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/docs-integrity-final.log#sha256=f360836136be58ef1c6d062f6ddc113fdf47560c596ce4ecb98f848712771185",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/docs-provenance-final.log#sha256=60330de1d74fe15f34f97387682e0d287b0dbb4e97ccf9fbff5f804ee89ed3fd",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/diff-check-final.log#sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/subject-observation.json#sha256=aa145ed0702c1edbf54852f2a3ae351abb1863ad4512e0717ec826e807d48438"
+        ],
+        "receipt_id": "VER-CVG-AUD27-003-014",
+        "environment": "Dirty local workspace; linux; Node v24.20.0; synthetic/local checks only; no production data, external provider or human approval.",
+        "result": "PASS",
+        "receipt_result": "IMPLEMENTED_LOCAL",
+        "fingerprint": "sha256:492181ca3eb8452c80f55b4c35de91ddf3f01d5cb17e8b0d22bb552cc9ab8501",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "AUD27-003 does not reference focal receipt VER-CVG-AUD27-003-014",
+          "receipt source SHA does not match the current checkout",
+          "receipt fingerprint does not match the current observed subject",
+          "AUD27-003 does not reference focal receipt VER-CVG-AUD27-003-014"
+        ]
+      },
+      {
+        "id": "MEL23-044",
+        "milestone": "M0",
+        "target": "Cada ADR tem número único; referências ao antigo ADR 036 são resolvidas sem quebrar rastreabilidade histórica.",
+        "coverage": "ACCEPTANCE_ADDITION",
+        "acceptance_additions": [
+          "Require unique ADR numbers and resolve old ADR 036 references without rewriting historical reports."
+        ],
+        "aud27": [
+          {
+            "id": "AUD27-024",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              "docs/",
+              "README.md",
+              ".agent/state.json"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm run verify:docs-integrity",
+          "npm run lint",
+          "npm run verify:static"
+        ],
+        "evidence_artifacts": [
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/docs-integrity-final.log#sha256=f360836136be58ef1c6d062f6ddc113fdf47560c596ce4ecb98f848712771185",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/lint-final.log#sha256=b99a76329973a4d5e557e58a7d94b7b96a9947e70e60fedb5e6f6c2c830cb13c",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/static-final.log#sha256=2b1e54327db6c6288133bd6eec70aeb9fc3f168776a3053831ba7fbcc3a15540",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/npm-test-final.log#sha256=4a69e291eb0f4aef7ee0b70825be44264ca0ef5a7874f5cfce17e1365801260c"
+        ],
+        "receipt_id": "VER-CVG-AUD27-024-010",
+        "environment": "Dirty local workspace; linux; Node v24.20.0; synthetic/local checks only; no production data, external provider or human approval.",
+        "result": "PASS",
+        "receipt_result": "BLOCKED_BY_DEPENDENCIES",
+        "fingerprint": "sha256:492181ca3eb8452c80f55b4c35de91ddf3f01d5cb17e8b0d22bb552cc9ab8501",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt source SHA does not match the current checkout",
+          "receipt fingerprint does not match the current observed subject"
+        ]
+      },
+      {
+        "id": "MEL23-045",
+        "milestone": "M0",
+        "target": "Índices mostram claramente estado atual, plano proposto e histórico datado; links internos passam.",
+        "coverage": "SUBSCOPE",
+        "acceptance_additions": [],
+        "aud27": [
+          {
+            "id": "AUD27-003",
+            "status": "DONE",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
+            "implementation_targets": [
+              ".agent/backlog.json",
+              "scripts/verify-control-plane.ts"
+            ]
+          },
+          {
+            "id": "AUD27-024",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              "docs/",
+              "README.md",
+              ".agent/state.json"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm run verify:docs-integrity",
+          "npm run verify:docs-provenance",
+          "git diff --check"
+        ],
+        "evidence_artifacts": [
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/docs-integrity-final.log#sha256=f360836136be58ef1c6d062f6ddc113fdf47560c596ce4ecb98f848712771185",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/docs-provenance-final.log#sha256=60330de1d74fe15f34f97387682e0d287b0dbb4e97ccf9fbff5f804ee89ed3fd",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/diff-check-final.log#sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/subject-observation.json#sha256=aa145ed0702c1edbf54852f2a3ae351abb1863ad4512e0717ec826e807d48438"
+        ],
+        "receipt_id": "VER-CVG-AUD27-003-014",
+        "environment": "Dirty local workspace; linux; Node v24.20.0; synthetic/local checks only; no production data, external provider or human approval.",
+        "result": "PASS",
+        "receipt_result": "IMPLEMENTED_LOCAL",
+        "fingerprint": "sha256:492181ca3eb8452c80f55b4c35de91ddf3f01d5cb17e8b0d22bb552cc9ab8501",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "AUD27-003 does not reference focal receipt VER-CVG-AUD27-003-014",
+          "receipt source SHA does not match the current checkout",
+          "receipt fingerprint does not match the current observed subject",
+          "AUD27-003 does not reference focal receipt VER-CVG-AUD27-003-014"
+        ]
+      },
+      {
+        "id": "MEL23-046",
+        "milestone": "M0",
+        "target": "Vocabulário de status/evidência é único entre docs, backlog e `.agent`; verificador rejeita sinônimos ambíguos.",
+        "coverage": "ACCEPTANCE_ADDITION",
+        "acceptance_additions": [
+          "Define one canonical task/evidence vocabulary and make the verifier reject ambiguous synonyms in current records."
+        ],
+        "aud27": [
+          {
+            "id": "AUD27-002",
+            "status": "DONE",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
+            "implementation_targets": [
+              "scripts/verify-aud27-semantics.ts",
+              "tests/unit/"
+            ]
+          },
+          {
+            "id": "AUD27-003",
+            "status": "DONE",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
+            "implementation_targets": [
+              ".agent/backlog.json",
+              "scripts/verify-control-plane.ts"
+            ]
+          },
+          {
+            "id": "AUD27-024",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              "docs/",
+              "README.md",
+              ".agent/state.json"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm run verify:aud27-semantics",
+          "npm test",
+          "npm run verify:coverage",
+          "npm run verify:mutation",
+          "npm run verify:docs-integrity"
+        ],
+        "evidence_artifacts": [
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/aud27-semantics-final.log#sha256=79be9e002a09d40436d3dd788902b324d3f9bbf42e3193a195e9cd72fe85d628",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/npm-test-final.log#sha256=4a69e291eb0f4aef7ee0b70825be44264ca0ef5a7874f5cfce17e1365801260c",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/coverage-final.log#sha256=03b98687d856f871992022af76579bc0ff6bbf0e4050c70fdd25fc35180a2086",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/mutation-final.log#sha256=ff689b1c30ee4ea78298f272efc6b0fbd8007f2decf06b1e8881b23e15d4384b",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/docs-integrity-final.log#sha256=f360836136be58ef1c6d062f6ddc113fdf47560c596ce4ecb98f848712771185",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/subject-observation.json#sha256=aa145ed0702c1edbf54852f2a3ae351abb1863ad4512e0717ec826e807d48438",
+          "artifacts/operational-proof/mel23-evidence-matrix-current.json"
+        ],
+        "receipt_id": "VER-CVG-AUD27-002-021",
+        "environment": "Dirty local workspace; linux; Node v24.20.0; synthetic/local checks only; no production data, external provider or human approval.",
+        "result": "PASS",
+        "receipt_result": "IMPLEMENTED_LOCAL",
+        "fingerprint": "sha256:492181ca3eb8452c80f55b4c35de91ddf3f01d5cb17e8b0d22bb552cc9ab8501",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "AUD27-002 does not reference focal receipt VER-CVG-AUD27-002-021",
+          "receipt source SHA does not match the current checkout",
+          "receipt fingerprint does not match the current observed subject",
+          "AUD27-002 does not reference focal receipt VER-CVG-AUD27-002-021"
+        ]
+      },
+      {
+        "id": "MEL23-047",
+        "milestone": "M2",
+        "target": "Contratos principais incluem exemplos válidos de request, success e erro que passam pelos schemas atuais.",
+        "coverage": "SUBSCOPE",
+        "acceptance_additions": [],
+        "aud27": [
+          {
+            "id": "AUD27-007",
+            "status": "DONE",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
+            "implementation_targets": [
+              "packages/contracts",
+              "apps/api/src/response-contract.ts"
+            ]
+          },
+          {
+            "id": "AUD27-008",
+            "status": "DONE",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
+            "implementation_targets": [
+              "apps/api/src/response-schemas/auth-ops.ts",
+              "tests/unit/api-response-contract-auth-ops.test.ts"
+            ]
+          },
+          {
+            "id": "AUD27-009",
+            "status": "DONE",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
+            "implementation_targets": [
+              "apps/api/src/response-schemas/clinical.ts",
+              "tests/unit/api-response-contract-clinical.test.ts"
+            ]
+          },
+          {
+            "id": "AUD27-010",
+            "status": "DONE",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
+            "implementation_targets": [
+              "apps/api/src/response-schemas/remaining.ts",
+              "tests/unit/api-response-contract-remaining.test.ts"
+            ]
+          }
+        ],
+        "test_commands": [
+          "node --import tsx --test tests/integration/api-response-routes.test.ts",
+          "node --import tsx --test tests/unit/api-response-contract.test.ts",
+          "npm test"
+        ],
+        "evidence_artifacts": [
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/api-response-routes.log#sha256=f7cff88c8136421cd8ecc252c0aca000b3002503711d453abe3f02d8a70773aa",
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/api-examples-contract.log#sha256=49959aecb6e3b0180a8a27b787c678fdbd310851c37e041ed606e6dee4f06b1c",
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/npm-test.log#sha256=80830b425eee8fcba9a930a04b021dbf9cfc8219353c5b13a06c4eb0f58daad7",
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/verification-manifest.json#sha256=db4f5b28656b6a0f14111ccd858f54f894caf21df7f99ecfa21786118d9ea566",
+          "artifacts/operational-proof/mel23-current-doc-revalidation-20260924-ff3c00/m2-quality-verification-manifest.json#sha256=2c58e86448fabf75a7591929a1e234cbd91de948b1d787a793fdc9cfaa7ae8b0"
+        ],
+        "receipt_id": "VER-CVG-AUD27-007-012",
+        "environment": "Local dirty workspace; synthetic fixtures and docs; disposable PostgreSQL 16 only; no production endpoint, real clinical data, provider or human approval.",
+        "result": "PASS",
+        "receipt_result": "IMPLEMENTED_LOCAL",
+        "fingerprint": "sha256:ff3c001b92c0b834e06e407f91943037e91940442abe37c57a988e90e8520eab",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "AUD27-007 does not reference focal receipt VER-CVG-AUD27-007-012",
+          "receipt source SHA does not match the current checkout",
+          "receipt fingerprint does not match the current observed subject",
+          "AUD27-007 does not reference focal receipt VER-CVG-AUD27-007-012"
+        ]
+      },
+      {
+        "id": "MEL23-048",
+        "milestone": "M3",
+        "target": "`CONTRIBUTING.md` documenta checks focais por área, pré-requisitos e execução sem alterar dados compartilhados.",
+        "coverage": "ACCEPTANCE_ADDITION",
+        "acceptance_additions": [
+          "Document area-specific focused checks, prerequisites, and how to avoid modifying shared data."
+        ],
+        "aud27": [
+          {
+            "id": "AUD27-024",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              "docs/",
+              "README.md",
+              ".agent/state.json"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm run verify:docs-integrity",
+          "npm run lint",
+          "npm run verify:static"
+        ],
+        "evidence_artifacts": [
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/docs-integrity-final.log#sha256=f360836136be58ef1c6d062f6ddc113fdf47560c596ce4ecb98f848712771185",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/lint-final.log#sha256=b99a76329973a4d5e557e58a7d94b7b96a9947e70e60fedb5e6f6c2c830cb13c",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/static-final.log#sha256=2b1e54327db6c6288133bd6eec70aeb9fc3f168776a3053831ba7fbcc3a15540",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/npm-test-final.log#sha256=4a69e291eb0f4aef7ee0b70825be44264ca0ef5a7874f5cfce17e1365801260c"
+        ],
+        "receipt_id": "VER-CVG-AUD27-024-010",
+        "environment": "Dirty local workspace; linux; Node v24.20.0; synthetic/local checks only; no production data, external provider or human approval.",
+        "result": "PASS",
+        "receipt_result": "BLOCKED_BY_DEPENDENCIES",
+        "fingerprint": "sha256:492181ca3eb8452c80f55b4c35de91ddf3f01d5cb17e8b0d22bb552cc9ab8501",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt source SHA does not match the current checkout",
+          "receipt fingerprint does not match the current observed subject"
+        ]
+      },
+      {
+        "id": "MEL23-049",
+        "milestone": "M2",
+        "target": "Changelog registra cada cutover e mudança pública por versão, com migração/rollback e compatibilidade.",
+        "coverage": "ACCEPTANCE_ADDITION",
+        "acceptance_additions": [
+          "Require a versioned changelog entry per cutover/public change with migration, rollback, and compatibility details."
+        ],
+        "aud27": [
+          {
+            "id": "AUD27-011",
+            "status": "PARTIAL",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
+            "implementation_targets": [
+              "scripts/verify-aud27-24-slices.ts",
+              "packages/persistence/src/aud27-postgres-migration.ts"
+            ]
+          },
+          {
+            "id": "AUD27-012",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              "db/migrations",
+              "scripts/"
+            ]
+          },
+          {
+            "id": "AUD27-013",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              "db/migrations",
+              "scripts/"
+            ]
+          },
+          {
+            "id": "AUD27-014",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              "db/migrations",
+              "scripts/"
+            ]
+          },
+          {
+            "id": "AUD27-024",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              "docs/",
+              "README.md",
+              ".agent/state.json"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm run verify:ephemeral-postgres -- --rounds=1 --run-aud27-migration",
+          "npm run verify:ephemeral-postgres -- --rounds=1 --run-aud27-normalized-writes",
+          "npm run verify:ephemeral-postgres -- --rounds=1 --run-aud27-24-slices",
+          "DATABASE_URL=<synthetic-loopback> npm run db:migrate",
+          "CVG_AUD27_PRODUCTS_BACKFILL_URL=<synthetic-loopback> npm run verify:aud27-products-backfill"
+        ],
+        "evidence_artifacts": [
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/aud27-migration-postgres-final.log#sha256=cc6c3d2b344024c6923db4ed4145ad1eb4e9c9a5cbda29c0678da1dd8b6e18ef",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/aud27-normalized-writes-postgres-final.log#sha256=c21e67b9c4ca7c81a4094743442fb367c51938a6e69c835ee13b449f33587074",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/aud27-24-slices-postgres-final.log#sha256=d82b15b583777a28007182656a1c10dce28844a2d4f57d1c76aff5e040fde733",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/products-backfill-postgres/migrations.log#sha256=34acc61e481e8f3985f0df22a6625b8f5b08d269e05191ea7818a14caa9dce0d",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/products-backfill-postgres/products-backfill.log#sha256=fec515ceb7df7c760a4d60496fec29c4e1e15c201ba2adfae565bf40a7f0649a",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/products-backfill-postgres/environment.txt#sha256=b8034e80a4ecef02d377f042bd05b4fa8075d430640b33549c2114263d61a899",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/products-backfill-postgres/container-cleanup.log#sha256=575684611f27519afe9e3551569e85d770d701600229471659dd6ef7b0ba9b48",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/products-backfill-postgres/container-inventory-before.txt#sha256=1e34c290cc4145c91fdaf436bfbf36ed0c3bb53ac921e14a65b21f99c3f46918",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/products-backfill-postgres/container-inventory-after.txt#sha256=1e34c290cc4145c91fdaf436bfbf36ed0c3bb53ac921e14a65b21f99c3f46918",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/api-response-postgres-final.log#sha256=8eab8f5366b8e997668d4ac3e1512090adb580701b835bfc8d8683ee6ff8b0e4",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/subject-observation.json#sha256=aa145ed0702c1edbf54852f2a3ae351abb1863ad4512e0717ec826e807d48438"
+        ],
+        "receipt_id": "VER-CVG-AUD27-011-029",
+        "environment": "Dirty local workspace; linux; Node v24.20.0; synthetic/local checks only; no production data, external provider or human approval.",
+        "result": "PARTIAL",
+        "receipt_result": "PARTIAL",
+        "fingerprint": "sha256:492181ca3eb8452c80f55b4c35de91ddf3f01d5cb17e8b0d22bb552cc9ab8501",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "receipt source SHA does not match the current checkout",
+          "receipt fingerprint does not match the current observed subject",
+          "criterion is not proven PASS by its focal receipt"
+        ]
+      },
+      {
+        "id": "MEL23-050",
+        "milestone": "M3",
+        "target": "Gate documental detecta links quebrados, ADR duplicado e referência a arquivo removido; fixture negativa falha.",
+        "coverage": "ACCEPTANCE_ADDITION",
+        "acceptance_additions": [
+          "Add known-good and negative documentation fixtures for broken links, duplicate ADR IDs, and references to removed files."
+        ],
+        "aud27": [
+          {
+            "id": "AUD27-002",
+            "status": "DONE",
+            "evidence_state": "PARTIAL_LOCAL_REAL",
+            "implementation_targets": [
+              "scripts/verify-aud27-semantics.ts",
+              "tests/unit/"
+            ]
+          },
+          {
+            "id": "AUD27-024",
+            "status": "BLOCKED_BY_DEPENDENCIES",
+            "evidence_state": "PLANNED",
+            "implementation_targets": [
+              "docs/",
+              "README.md",
+              ".agent/state.json"
+            ]
+          }
+        ],
+        "test_commands": [
+          "npm run verify:aud27-semantics",
+          "npm test",
+          "npm run verify:coverage",
+          "npm run verify:mutation",
+          "npm run verify:docs-integrity"
+        ],
+        "evidence_artifacts": [
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/aud27-semantics-final.log#sha256=79be9e002a09d40436d3dd788902b324d3f9bbf42e3193a195e9cd72fe85d628",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/npm-test-final.log#sha256=4a69e291eb0f4aef7ee0b70825be44264ca0ef5a7874f5cfce17e1365801260c",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/coverage-final.log#sha256=03b98687d856f871992022af76579bc0ff6bbf0e4050c70fdd25fc35180a2086",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/mutation-final.log#sha256=ff689b1c30ee4ea78298f272efc6b0fbd8007f2decf06b1e8881b23e15d4384b",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/docs-integrity-final.log#sha256=f360836136be58ef1c6d062f6ddc113fdf47560c596ce4ecb98f848712771185",
+          "artifacts/operational-proof/mel23-final-revalidation-20260924-r2/subject-observation.json#sha256=aa145ed0702c1edbf54852f2a3ae351abb1863ad4512e0717ec826e807d48438",
+          "artifacts/operational-proof/mel23-evidence-matrix-current.json"
+        ],
+        "receipt_id": "VER-CVG-AUD27-002-021",
+        "environment": "Dirty local workspace; linux; Node v24.20.0; synthetic/local checks only; no production data, external provider or human approval.",
+        "result": "PASS",
+        "receipt_result": "IMPLEMENTED_LOCAL",
+        "fingerprint": "sha256:492181ca3eb8452c80f55b4c35de91ddf3f01d5cb17e8b0d22bb552cc9ab8501",
+        "candidate_fingerprint": null,
+        "fingerprint_status": "UNFROZEN_OBSERVED_SUBJECT",
+        "issues": [
+          "AUD27-002 does not reference focal receipt VER-CVG-AUD27-002-021",
+          "receipt source SHA does not match the current checkout",
+          "receipt fingerprint does not match the current observed subject",
+          "AUD27-002 does not reference focal receipt VER-CVG-AUD27-002-021"
+        ]
+      }
+    ],
+    "global_issues": []
+  }
+}

@@ -172,6 +172,8 @@ export class MemoryAgentSessionStore implements AgentSessionStore {
   async load(sessionId: string, scope: AgentSessionScope): Promise<AgentSessionRecord | null> {
     const record = this.sessions.get(sessionId);
     if (!record || record.organizationId !== scope.organizationId || record.actorId !== scope.actorId) return null;
+    // An expired session is terminal: it is never loadable again.
+    if (Date.parse(record.expiresAt) <= this.clock.now()) return null;
     return { ...record };
   }
 
@@ -208,9 +210,16 @@ export class MemoryAgentSessionStore implements AgentSessionStore {
   async acquireLease(input: AcquireLeaseInput): Promise<AgentLease | null> {
     const session = this.sessions.get(input.sessionId);
     if (!session || session.organizationId !== input.organizationId) throw new AgentSessionError("SESSION_NOT_FOUND", "agent session not found");
+    // An expired or terminal session cannot start or resume work.  Restored
+    // sessions are QUARANTINED and stay un-leasable until explicitly
+    // reactivated (CVG-AUD19-011).
+    if (session.status !== "ACTIVE") return null;
+    if (Date.parse(session.expiresAt) <= this.clock.now()) return null;
     const current = this.leases.get(input.sessionId);
     const expired = current !== undefined && Date.parse(current.expiresAt) <= this.clock.now();
-    if (current && !expired && current.ownerId !== input.ownerId) return null;
+    // A live lease blocks every overlapping owner, including the same owner:
+    // exclusion is per session, not per idempotency key.
+    if (current && !expired) return null;
     const fence = (current?.fence ?? session.fence) + 1;
     const lease: AgentLease = { sessionId: input.sessionId, organizationId: input.organizationId, ownerId: input.ownerId, fence, acquiredAt: this.iso(), expiresAt: new Date(this.clock.now() + input.ttlMs).toISOString() };
     this.leases.set(input.sessionId, lease);
@@ -219,6 +228,10 @@ export class MemoryAgentSessionStore implements AgentSessionStore {
   }
 
   async renewLease(input: AcquireLeaseInput & { fence: number }): Promise<AgentLease | null> {
+    const session = this.sessions.get(input.sessionId);
+    if (!session || session.organizationId !== input.organizationId) return null;
+    if (session.status !== "ACTIVE") return null;
+    if (Date.parse(session.expiresAt) <= this.clock.now()) return null;
     const current = this.leases.get(input.sessionId);
     if (!current || current.ownerId !== input.ownerId || current.fence !== input.fence) return null;
     if (Date.parse(current.expiresAt) <= this.clock.now()) return null;
@@ -265,14 +278,22 @@ export class MemoryAgentSessionStore implements AgentSessionStore {
 
   async complete(input: { sessionId: string; organizationId: string; fence: number; runState: AgentRunState }): Promise<AgentSessionRecord> {
     const session = this.requireFence(input.sessionId, input.organizationId, input.fence);
-    const updated: AgentSessionRecord = { ...session, runState: input.runState, status: input.runState === "QUARANTINED" || input.runState === "QUARANTINED_RESTORE" ? "QUARANTINED" : "COMPLETED", updatedAt: this.iso() };
+    // CVG-AUD20-002: the runtime role may never create the restore state; that
+    // transition belongs to the separate restore authority.
+    if (input.runState === "QUARANTINED_RESTORE") throw new AgentSessionError("SESSION_INVALID", "QUARANTINED_RESTORE is reserved for the restore authority");
+    const updated: AgentSessionRecord = { ...session, runState: input.runState, status: input.runState === "QUARANTINED" ? "QUARANTINED" : "COMPLETED", updatedAt: this.iso() };
     this.sessions.set(input.sessionId, updated);
+    this.leases.delete(input.sessionId);
     return { ...updated };
   }
 
   private requireFence(sessionId: string, organizationId: string, fence: number): AgentSessionRecord {
     const session = this.sessions.get(sessionId);
     if (!session || session.organizationId !== organizationId) throw new AgentSessionError("SESSION_NOT_FOUND", "agent session not found");
+    if (Date.parse(session.expiresAt) <= this.clock.now()) throw new AgentSessionError("SESSION_NOT_FOUND", "agent session expired");
+    // CVG-AUD20-002: a terminal session is immutable; turn/checkpoint writes
+    // require an ACTIVE session with the authoritative fence.
+    if (session.status !== "ACTIVE") throw new AgentSessionError("SESSION_INVALID", `agent session is ${session.status}; terminal state is immutable`);
     if (session.fence !== fence) throw new AgentSessionError("DENIED_STALE_FENCE", `fence ${fence} is stale; authoritative fence is ${session.fence}`);
     return session;
   }
@@ -337,7 +358,7 @@ export function createScopedSqlExecutor(pool: ScopedSqlPool): ScopedSqlExecutor 
  * relies on the PostgreSQL RLS policies from migration 038 as defense in depth.
  */
 export class PostgresAgentSessionStore implements AgentSessionStore {
-  constructor(private readonly executor: ScopedSqlExecutor, private readonly clock: { now(): number } = { now: () => Date.now() }) {}
+  constructor(private readonly executor: ScopedSqlExecutor, _clock: { now(): number } = { now: () => Date.now() }) {}
 
   async create(input: CreateAgentSessionInput): Promise<AgentSessionRecord> {
     return this.executor.withScopedTransaction(input.organizationId, async (query) => {
@@ -354,7 +375,7 @@ export class PostgresAgentSessionStore implements AgentSessionStore {
   async load(sessionId: string, scope: AgentSessionScope): Promise<AgentSessionRecord | null> {
     return this.executor.withScopedTransaction(scope.organizationId, async (query) => {
       const result = await query(
-        `SELECT * FROM agent_sessions WHERE session_id = $1 AND organization_id = $2 AND actor_id = $3`,
+        `SELECT * FROM agent_sessions WHERE session_id = $1 AND organization_id = $2 AND actor_id = $3 AND expires_at > now()`,
         [sessionId, scope.organizationId, scope.actorId]
       );
       const row = result.rows[0];
@@ -374,7 +395,7 @@ export class PostgresAgentSessionStore implements AgentSessionStore {
          SELECT $1,$2,
                 (SELECT COALESCE(MAX(sequence), 0) + 1 FROM agent_checkpoints WHERE session_id = $1),
                 $3,$4,$5::jsonb,$6,now()
-          WHERE EXISTS (SELECT 1 FROM agent_sessions WHERE session_id = $1 AND organization_id = $2 AND fence = $6)
+          WHERE EXISTS (SELECT 1 FROM agent_sessions WHERE session_id = $1 AND organization_id = $2 AND fence = $6 AND expires_at > now() AND status = 'ACTIVE')
          RETURNING *`,
         [input.sessionId, input.organizationId, schemaVersion, digest, JSON.stringify(input.payload), input.fence]
       );
@@ -386,13 +407,15 @@ export class PostgresAgentSessionStore implements AgentSessionStore {
 
   async latestCheckpoint(sessionId: string, scope: AgentSessionScope): Promise<AgentCheckpointRecord | null> {
     return this.executor.withScopedTransaction(scope.organizationId, async (query) => {
-      // A checkpoint written by a future (unknown) fence is never resumable.
+      // A checkpoint written by a future (unknown) fence is never resumable, and
+      // an expired session exposes neither checkpoints nor other actors' state.
       const result = await query(
         `SELECT checkpoint.* FROM agent_checkpoints AS checkpoint
            JOIN agent_sessions AS session ON session.session_id = checkpoint.session_id
           WHERE checkpoint.session_id = $1 AND checkpoint.organization_id = $2 AND checkpoint.fence <= session.fence
+            AND session.actor_id = $3 AND session.expires_at > now()
           ORDER BY checkpoint.sequence DESC LIMIT 1`,
-        [sessionId, scope.organizationId]
+        [sessionId, scope.organizationId, scope.actorId]
       );
       const row = result.rows[0];
       if (!row) return null;
@@ -406,14 +429,17 @@ export class PostgresAgentSessionStore implements AgentSessionStore {
     return this.executor.withScopedTransaction(input.organizationId, async (query) => {
       const result = await query(
         `INSERT INTO agent_leases (session_id, organization_id, owner_id, fence, acquired_at, expires_at)
-         VALUES ($1,$2,$3,1,now(),now() + ($4 || ' milliseconds')::interval)
+         SELECT $1,$2,$3, session.fence + 1, now(), now() + ($4 || ' milliseconds')::interval
+           FROM agent_sessions AS session
+          WHERE session.session_id = $1 AND session.organization_id = $2 AND session.status = 'ACTIVE' AND session.expires_at > now()
          ON CONFLICT (session_id) DO UPDATE
            SET owner_id = EXCLUDED.owner_id,
                fence = agent_leases.fence + 1,
                acquired_at = now(),
                expires_at = now() + ($4 || ' milliseconds')::interval
            WHERE agent_leases.organization_id = EXCLUDED.organization_id
-             AND (agent_leases.expires_at <= now() OR agent_leases.owner_id = EXCLUDED.owner_id)
+             AND agent_leases.expires_at <= now()
+             AND EXISTS (SELECT 1 FROM agent_sessions AS session WHERE session.session_id = agent_leases.session_id AND session.organization_id = agent_leases.organization_id AND session.status = 'ACTIVE' AND session.expires_at > now())
          RETURNING *`,
         [input.sessionId, input.organizationId, input.ownerId, String(input.ttlMs)]
       );
@@ -429,7 +455,8 @@ export class PostgresAgentSessionStore implements AgentSessionStore {
     return this.executor.withScopedTransaction(input.organizationId, async (query) => {
       const result = await query(
         `UPDATE agent_leases SET expires_at = now() + ($4 || ' milliseconds')::interval
-          WHERE session_id = $1 AND organization_id = $2 AND owner_id = $3 AND fence = $5 AND expires_at > now()
+           WHERE session_id = $1 AND organization_id = $2 AND owner_id = $3 AND fence = $5 AND expires_at > now()
+            AND EXISTS (SELECT 1 FROM agent_sessions AS session WHERE session.session_id = agent_leases.session_id AND session.organization_id = agent_leases.organization_id AND session.status = 'ACTIVE' AND session.expires_at > now())
           RETURNING *`,
         [input.sessionId, input.organizationId, input.ownerId, String(input.ttlMs), input.fence]
       );
@@ -448,34 +475,53 @@ export class PostgresAgentSessionStore implements AgentSessionStore {
     return this.executor.withScopedTransaction(input.organizationId, async (query) => {
       const result = await query(
         `INSERT INTO agent_turns (turn_id, session_id, organization_id, sequence, status, input_digest, context_digest, model_request_digest, model_response_digest, tool_request_ids, usage_record_id, provenance, started_at, completed_at, fence)
-         SELECT $1,$2,$3,
-                (SELECT COALESCE(MAX(sequence), 0) + 1 FROM agent_turns WHERE session_id = $2),
-                $4,$5,$6,$7,$8,$9::jsonb,$10,$11::jsonb,$12,$13,$14
-          WHERE EXISTS (SELECT 1 FROM agent_sessions WHERE session_id = $2 AND organization_id = $3 AND fence = $14)
-         RETURNING *`,
-        [input.turnId, input.sessionId, input.organizationId, input.status, input.inputDigest, input.contextDigest, input.modelRequestDigest, input.modelResponseDigest, JSON.stringify(input.toolRequestIds), input.usageRecordId, JSON.stringify(input.provenance), input.startedAt, input.completedAt, input.fence]
+          SELECT $1,$2,$3,
+                 (SELECT COALESCE(MAX(sequence), 0) + 1 FROM agent_turns WHERE session_id = $2),
+                  $4,$5,$6,$7,$8,$9::jsonb,$10::uuid,$11::jsonb,$12,$13,$14
+           WHERE EXISTS (SELECT 1 FROM agent_sessions WHERE session_id = $2 AND organization_id = $3 AND fence = $14 AND expires_at > now() AND status = 'ACTIVE')
+             AND ($10::uuid IS NULL OR EXISTS (SELECT 1 FROM ai_usage_ledger AS usage WHERE usage.id = $10::uuid AND usage.organization_id = $3))
+          RETURNING *`,
+         [input.turnId, input.sessionId, input.organizationId, input.status, input.inputDigest, input.contextDigest, input.modelRequestDigest, input.modelResponseDigest, JSON.stringify(input.toolRequestIds), input.usageRecordId, JSON.stringify(input.provenance), input.startedAt, input.completedAt, input.fence]
       );
+      if (!result.rows[0] && input.usageRecordId !== null) {
+        const session = await query(
+          `SELECT 1 AS session_valid
+             FROM agent_sessions
+            WHERE session_id = $1 AND organization_id = $2 AND fence = $3 AND expires_at > now() AND status = 'ACTIVE'`,
+          [input.sessionId, input.organizationId, input.fence]
+        );
+        if (session.rows[0]) throw new AgentSessionError("SESSION_INVALID", "usage reference is invalid for the active session");
+      }
       return mapTurn(requireRow(result, "turn append rejected: stale fence or unknown session"));
     });
   }
 
   async listTurns(sessionId: string, scope: AgentSessionScope): Promise<AgentTurnLedgerEntry[]> {
     return this.executor.withScopedTransaction(scope.organizationId, async (query) => {
-      const result = await query(`SELECT * FROM agent_turns WHERE session_id = $1 AND organization_id = $2 ORDER BY sequence ASC`, [sessionId, scope.organizationId]);
+      const result = await query(
+        `SELECT turn.* FROM agent_turns AS turn
+           JOIN agent_sessions AS session ON session.session_id = turn.session_id
+          WHERE turn.session_id = $1 AND turn.organization_id = $2 AND session.actor_id = $3 AND session.expires_at > now()
+          ORDER BY turn.sequence ASC`,
+        [sessionId, scope.organizationId, scope.actorId]
+      );
       return result.rows.map(mapTurn);
     });
   }
 
   async complete(input: { sessionId: string; organizationId: string; fence: number; runState: AgentRunState }): Promise<AgentSessionRecord> {
+    if (input.runState === "QUARANTINED_RESTORE") throw new AgentSessionError("SESSION_INVALID", "QUARANTINED_RESTORE is reserved for the restore authority");
     return this.executor.withScopedTransaction(input.organizationId, async (query) => {
       const result = await query(
         `UPDATE agent_sessions
             SET run_state = $3, status = CASE WHEN $3 IN ('QUARANTINED','QUARANTINED_RESTORE') THEN 'QUARANTINED' ELSE 'COMPLETED' END, updated_at = now()
-          WHERE session_id = $1 AND organization_id = $2 AND fence = $4
-          RETURNING *`,
+         WHERE session_id = $1 AND organization_id = $2 AND fence = $4 AND expires_at > now() AND status = 'ACTIVE'
+           RETURNING *`,
         [input.sessionId, input.organizationId, input.runState, input.fence]
       );
-      return mapSession(requireRow(result, "session completion rejected: stale fence"));
+      const session = mapSession(requireRow(result, "session completion rejected: stale fence"));
+      await query(`DELETE FROM agent_leases WHERE session_id = $1 AND organization_id = $2`, [input.sessionId, input.organizationId]);
+      return session;
     });
   }
 }

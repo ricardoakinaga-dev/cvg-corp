@@ -1,0 +1,16 @@
+{
+  "name": "evidence-aud26-capture",
+  "command": [
+    "npm",
+    "run",
+    "verify:aud26-evidence",
+    "--",
+    "--capture"
+  ],
+  "exit_status": 1,
+  "duration_s": 0.3,
+  "log": "artifacts/production-readiness-2026-10-08/verification/after-commit/evidence-aud26-capture.log",
+  "log_sha256": "66088e52da0d6f99358d9dfc82005b7a2c9542ac615caff40fd896d3d9c36ced",
+  "observed_at": "2026-10-08T10:45:30.272836+00:00",
+  "classification": "BLOCKED_EVIDENCE_BINDING: fails identically on 9aab406 and origin/main c990914 today (evidence bound to c990914 / seven-day window over 2026-09 files)"
+}

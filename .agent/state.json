@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "project": "CVG-Corp",
-  "goal": "CVG-Corp Embedded Agent Runtime + final Triple AAA closure (HYBRID)",
+  "goal": "Preparação local para produção: correções, rotas, integrações, banco, migrations e limpeza comprovada",
   "project_profile": "BROWNFIELD",
   "work_mode": "EVOLUTION",
   "work_mode_overlays": [
@@ -10,16 +10,18 @@
     "INTEGRATION",
     "AUDIT"
   ],
-  "lifecycle_stage": "VERIFY",
-  "active_activity": "VERIFY",
+  "lifecycle_stage": "BUILD",
+  "active_activity": "BUILD",
   "engineering_tier": "T4_CONTROLS",
   "risk_level": "CRITICAL",
   "blast_radius": "SYSTEM",
-  "status": "IN_PROGRESS",
-  "active_execplan": ".agent/plans/2026-09-17-embedded-runtime-ci-closure.md",
-  "active_task": "CI-CLOSURE-01",
-  "verification_state": "LOCAL_GREEN_CI_PENDING",
-  "repository_state": "CHECKPOINT 2026-09-17: base 277f10f189750586ae32c7ae1974488c9c1b97ce; implementacao do runtime embarcado, gates locais 30/30 e PostgreSQL real local verdes; CI remoto verde ate o passo 36 e falhando apenas no passo 30 (Browser E2E, jornada de agenda); correcoes de robustez do teste e diagnostico ampliado aplicadas neste checkpoint; evidencia externa BLOCKED_EXTERNAL",
+  "status": "PARTIAL",
+  "active_execplan": ".agent/plans/2026-10-08-production-readiness.md",
+  "active_task": "AUD27-001",
+  "verification_state": "LOCAL_CHECKS_PASS_PROMOTION_BLOCKED",
+  "candidate_fingerprint": null,
+  "fingerprint_status": "UNFROZEN_UNTIL_AUD27-004",
+  "repository_state": "Branch production-readiness-2026-10-08 at cc02bd689d243f89f5982677aea2976db624633e; clean code subject, control/evidence committed on top; candidate not frozen.",
   "instruction_scope_refs": [
     "docs/prompt-state-of-the-art-triplo-aaa.md",
     "docs/prompt-state-of-the-art-triplo-aaa-2026-09-09-v2.txt",
@@ -46,12 +48,15 @@
     "docs/plano-triplo-aaa-pos-entrega-2026-09-13/backlog.json",
     "docs/plano-triplo-aaa-pos-entrega-2026-09-13/rastreabilidade.md",
     "docs/plano-triplo-aaa-pos-entrega-2026-09-13/qualidade-e-execucao.md",
-    ".agent/plans/2026-09-13-aaa2.md"
+    ".agent/plans/2026-09-13-aaa2.md",
+    "docs/auditoria-resultado-cvg-aud21-013-2026-09-20.md",
+    "docs/roadmap-melhorias-cvg-aud22-2026-09-20.md",
+    "docs/backlog-melhorias-cvg-aud22-2026-09-20.md"
   ],
-  "last_gate_record": null,
-  "last_event_id": "EVT-CVG-20260917-CI-CLOSURE-001",
-  "state_revision": 353,
-  "latest_evidence_note": "verify:state-of-art 30/30 verde em 73e1208/148a4ce; PostgreSQL 16.15 real local verde (verify:postgres, concurrency, restore); CI remoto run 35170108792 verde ate o passo 36; run 35176228659 falhou apenas na jornada de agenda do Browser E2E.",
+  "last_gate_record": "VER-CVG-AUD27-001-REQUALIFIED-20261008",
+  "last_event_id": "EVT-CVG-AUD27-001-REQUALIFIED-20261008",
+  "state_revision": 636,
+  "latest_evidence_note": "46 local checks PASS on 3f5a736 (sha256:184e1f7dbb767479f74fa0ed37a139d14b0692d42e960ced8ab0fde4dd3611aa); firefox-stress BLOCKED_HOST locally (CI 37876416723 passed it); Alertmanager and same-SHA evidence envelopes BLOCKED; code unfrozen and production release unqualified.",
   "historical_checkpoint": {
     "commit": "e43b3b0032aafb9d17563b1fce00fbae88ee0d51",
     "worktree": "modified",
@@ -69,20 +74,25 @@
     "tripleArtifactSha256": "a20b88c3ca8a827ba0210b792a807072fe1d5f49e1f952167b85827a0cb35818"
   },
   "current_checkpoint": {
-    "task": "CI-CLOSURE-01",
-    "action": "CI-CLOSURE-01:BROWSER-E2E-AGENDA",
-    "sourceSha": "9bda283f212f4a616a2b302bc943311238d63052",
-    "worktree": "clean (checkpoint committed)",
-    "plan": ".agent/plans/2026-09-17-embedded-runtime-ci-closure.md",
-    "result": "CHECKPOINT",
-    "evidence": "CI run 35170108792 (steps 1-36 PASS); rollback/retomada em docs/12-estado-da-implementacao.md",
+    "task": "AUD27-001",
+    "action": "AUD27-001:SEMANTIC-RECONCILIATION",
+    "plan": ".agent/plans/2026-10-08-production-readiness.md",
+    "fingerprint": null,
+    "fingerprint_status": "UNFROZEN_UNTIL_AUD27-004",
+    "sourceSha": "3f5a736d4c7bd27be76554bb91e1e0048b3656da",
+    "worktree": "clean code subject on branch production-readiness-2026-10-08",
+    "evidence": "VER-CVG-AUD27-001-REQUALIFIED-20261008",
+    "result": "PARTIAL",
     "globalVerdict": "AAA_NOT_PROVEN",
     "limitations": [
-      "Browser E2E (jornada de agenda) ainda falha no runner UTC; timeout de 15s e diagnostico ampliado aplicados e aguardando nova run",
-      "gates externos, staging, provider real e aprovacao humana ausentes"
-    ]
+      "Local mutable working tree; no clean candidate freeze or production deployment.",
+      "Historical receipts remain intact and do not qualify changed source.",
+      "Actual providers, target TLS/secret authority, managed backup and release authority require environment-specific validation."
+    ],
+    "observed_subject_fingerprint": "sha256:184e1f7dbb767479f74fa0ed37a139d14b0692d42e960ced8ab0fde4dd3611aa",
+    "independent_review": "PARTIAL: a critical review found five pending issues in the 2026-10-08 delivery; all were fixed and the committed source requalified. A fresh independent review of the final diff is still pending."
   },
-  "current_evidence_note": "AAA2-02/E01: correcao vertical e validacao local aprovadas com ressalvas; AUD13-16 segue IN_PROGRESS aguardando D-02/AUD13-16A. AAA2-01 permanece fechamento local aceito com limitacao; promocao/Triplo AAA global continuam AAA_NOT_PROVEN.",
+  "current_evidence_note": "46 local checks PASS on 3f5a736 (sha256:184e1f7dbb767479f74fa0ed37a139d14b0692d42e960ced8ab0fde4dd3611aa); firefox-stress BLOCKED_HOST locally (CI 37876416723 passed it); Alertmanager and same-SHA evidence envelopes BLOCKED; code unfrozen and production release unqualified.",
   "post_observation_checkpoint": {
     "commit": "5d09f25a224faecdd75631fdd7070e3fc8b14fda",
     "scope": "durable-command-idempotency-post-ci-observation",
@@ -99,14 +109,17 @@
   "blocked_by": [
     "external DeepSeek/model execution not authorized (BLOCKED_EXTERNAL)",
     "no authorized staging, real provider, secret authority, TLS, telemetry collector, load/chaos/recovery environment",
-    "staging PostgreSQL multi-instance, managed backup/restore and RTO/RPO remain external (local real PostgreSQL 16.15 proof is LOCAL_REAL)",
-    "Browser E2E agenda journey is failing on the UTC CI runner (receipt created, row missing); timeout/diagnostics fix pending a new run",
-    "no independent critics, signed evidence bundle or human approval at this state"
+    "CVG-AUD19-030 requires human release authority",
+    "staging PostgreSQL multi-instance, managed backup/restore and RTO/RPO remain external (local real PostgreSQL 16 proof is LOCAL_REAL)",
+    "no signed evidence bundle or human approval at this state",
+    "AUD27-004 clean candidate freeze remains unauthorized while the worktree is dirty.",
+    "AUD27-005 external root exists with a LOCAL_SYNTHETIC_ONLY package; independent anchor, authority and recovery are unavailable",
+    "AUD27-026 external gates and AUD27-027 human decision are not available"
   ],
   "human_approval_required": [
     "production release, real data, real provider, credential handling, break-glass, retention/residency, RTO/RPO/SLO and residual high/critical risk"
   ],
-  "updated_at": "2026-09-17T00:34:27-03:00",
+  "updated_at": "2026-10-09T10:55:13.774160+00:00",
   "latest_remote_observation": {
     "run": "34503647191",
     "sha": "539d34e48e4b94d83d161797219bbc95fb43fec4",
@@ -121,38 +134,81 @@
     "limitations": "Remote CI is not staging or external provider/DeepSeek/secret authority. Operational Collector/SLO, production-like load/chaos/recovery, staging browser/assistive-tech/real-zoom matrix and human acceptance remain absent",
     "observed_at": "2026-09-10T13:50:43-03:00"
   },
-  "next_gate": "CI-CLOSURE-01:RUN-ON-9bda283f212f",
-  "active_action_id": "CI-CLOSURE-01:BROWSER-E2E-AGENDA",
+  "next_gate": "AUD27-001:SEMANTIC-RECONCILIATION",
+  "active_action_id": "AUD27-001:SEMANTIC-RECONCILIATION",
   "active_checkpoint": {
-    "task": "AUD13-16",
-    "action": "AUD13-16:AAA2-02-E01-WAIT-D02",
-    "sourceSha": "1c22c5dc79c52151f4c7c94c4402dfdc86812cbc",
-    "worktree": "modified",
-    "ownedPaths": [
-      "packages/domain/src/",
-      "apps/api/src/",
-      "tests/"
+    "task": "AUD27-001",
+    "action": "AUD27-001:SEMANTIC-RECONCILIATION",
+    "plan": ".agent/plans/2026-10-08-production-readiness.md",
+    "fingerprint": null,
+    "fingerprint_status": "UNFROZEN_UNTIL_AUD27-004",
+    "sourceSha": "3f5a736d4c7bd27be76554bb91e1e0048b3656da",
+    "worktree": "clean code subject on branch production-readiness-2026-10-08",
+    "evidence": "VER-CVG-AUD27-001-REQUALIFIED-20261008",
+    "result": "PARTIAL",
+    "globalVerdict": "AAA_NOT_PROVEN",
+    "limitations": [
+      "Local mutable working tree; no clean candidate freeze or production deployment.",
+      "Historical receipts remain intact and do not qualify changed source.",
+      "Actual providers, target TLS/secret authority, managed backup and release authority require environment-specific validation."
     ],
-    "reason": "E01 foi corrigido e aprovado localmente com ressalvas; aguardar D-02 para AUD13-16A, sem efeitos externos ou promocao do item pai."
+    "observed_subject_fingerprint": "sha256:184e1f7dbb767479f74fa0ed37a139d14b0692d42e960ced8ab0fde4dd3611aa",
+    "independent_review": "PARTIAL: a critical review found five pending issues in the 2026-10-08 delivery; all were fixed and the committed source requalified. A fresh independent review of the final diff is still pending."
+  },
+  "previous_audit_addendum": {
+    "record": "VER-CVG-AUD27-001-COMMITTED-SOURCE-20261008",
+    "observedAt": "2026-10-08T10:45:48.691549+00:00",
+    "priorRecord": "VER-CVG-AUD27-001-READINESS-20261008",
+    "status": "PARTIAL",
+    "sourceSha": "3f5a736d4c7bd27be76554bb91e1e0048b3656da",
+    "verificationRefs": [
+      "VER-CVG-AUD27-001-COMMITTED-SOURCE-20261008",
+      "VER-CVG-AUD27-001-READINESS-20261008"
+    ],
+    "current_receipt_refs": [
+      "VER-CVG-AUD27-001-COMMITTED-SOURCE-20261008",
+      "VER-CVG-AUD27-001-READINESS-20261008"
+    ],
+    "scope": "Audit 2026-10-03 findings closed and local qualification rerun",
+    "result": "PARTIAL",
+    "globalVerdict": "AAA_NOT_PROVEN",
+    "promotion": "BLOCKED"
   },
   "latest_audit_addendum": {
-    "record": "VER-CVG-AAA2-02-005",
-    "observedAt": "2026-09-13T22:17:02-03:00",
-    "priorRecord": "VER-CVG-AAA2-02-004",
-    "critic": ".gauntlet/critique-aaa2-02-e01-final-20260913.md",
-    "status": "DONE_WITH_LIMITATION",
-    "evidenceAdmission": "LOCAL_SNAPSHOT_GUARD",
-    "scope": "AAA2-02/E01: terminal medication-order protection, direct/indirect dispensing, stock-reference integrity, focused/full regression and fresh I1 critique",
-    "sourceSha": "1c22c5dc79c52151f4c7c94c4402dfdc86812cbc",
-    "criticId": "CRIT-AAA2-02-E01-FINAL-20260913-7F3A",
+    "record": "VER-CVG-AUD22-001-001",
+    "observedAt": "2026-09-20T17:04:09-03:00",
+    "priorRecord": "VER-CVG-AUD21-013-002",
+    "critic": null,
+    "status": "PARTIAL_CONTROL_PLANE_RECONCILIATED",
+    "evidenceAdmission": "LOCAL_CONTROL_PLANE_KNOWN_BAD_REPRODUCED_AND_REJECTED",
+    "scope": "AUD22-001: control-plane reconciliation",
+    "sourceSha": "c990914148a8f375082cd12bbdb2ad20cfe1900f",
     "verificationRefs": [
-      "VER-CVG-AAA2-02-002",
-      "VER-CVG-AAA2-02-003",
-      "VER-CVG-AAA2-02-004",
-      "VER-CVG-AAA2-02-005"
+      "VER-CVG-AUD22-001-001"
     ],
-    "result": "VER-CVG-AAA2-02-004: E01 aprovado no escopo local com ressalvas; suite e gates locais passam; PostgreSQL multi-processo, AUD13-16A, gates externos e aprovacao humana permanecem ausentes",
+    "result": "AUD21 statuses reclassified; state/backlog/ExecPlan/checkpoint/event/evidence aligned append-only; AUD22-001 remains in progress",
     "globalVerdict": "AAA_NOT_PROVEN"
   },
-  "active_plan": ".agent/plans/2026-09-17-embedded-runtime-ci-closure.md"
+  "current_audit_addendum": {
+    "record": "VER-CVG-AUD27-001-REQUALIFIED-20261008",
+    "observedAt": "2026-10-09T10:55:13.774160+00:00",
+    "priorRecord": "VER-CVG-AUD27-001-COMMITTED-SOURCE-20261008",
+    "status": "PARTIAL",
+    "sourceSha": "3f5a736d4c7bd27be76554bb91e1e0048b3656da",
+    "verificationRefs": [
+      "VER-CVG-AUD27-001-REQUALIFIED-20261008"
+    ],
+    "current_receipt_refs": [
+      "VER-CVG-AUD27-001-REQUALIFIED-20261008"
+    ],
+    "scope": "Critical review fixes and requalification of the committed source",
+    "result": "PARTIAL",
+    "globalVerdict": "AAA_NOT_PROVEN",
+    "promotion": "BLOCKED"
+  },
+  "active_plan": ".agent/plans/2026-10-08-production-readiness.md",
+  "current_receipt_refs": [
+    "VER-CVG-AUD27-001-REQUALIFIED-20261008",
+    "VER-CVG-AUD27-001-CLOSURE-VERIFIED-20261004"
+  ]
 }

@@ -1,0 +1,163 @@
+{
+  "recorded_at": "2026-10-04T02:06:22.246348+00:00",
+  "status": "IMPLEMENTED_VERIFIED_WITH_LIMITATIONS",
+  "scope": [
+    "SEC-AI-01 report corrections",
+    "D1 prose false positives",
+    "D2 URL scanning performance"
+  ],
+  "focused_tests": {
+    "tests": 184,
+    "pass": 184,
+    "fail": 0,
+    "skipped": 0
+  },
+  "full_suite": {
+    "tests": 918,
+    "pass": 916,
+    "fail": 1,
+    "skipped": 1
+  },
+  "remaining_full_suite_failure": "control-plane-aud23.test.ts:141; COMPOSITE_EXIT_DIVERGENT and six FINGERPRINT_DIVERGENT findings",
+  "benchmark": {
+    "input_characters": 32768,
+    "measurement": "median CPU ms for both detector APIs together, three samples",
+    "before_ms": 1131.87,
+    "after_final_ms": 0.738,
+    "scope": "LOCAL_SYNTHETIC"
+  },
+  "checks": [
+    {
+      "name": "closure-focused",
+      "command": "node --import tsx --test --test-reporter=tap tests/unit/agent-context.test.ts tests/unit/secret-detector-review.test.ts tests/unit/embedded-runtime.test.ts tests/integration/ai-secret-boundary.test.ts tests/integration/auth-challenge-race.test.ts",
+      "procedure_status": "EXECUTED",
+      "evidence_kind": "COMMAND",
+      "exit_status": 0,
+      "result_source": "settled native command session",
+      "log": "artifacts/remediation-2026-10-03/follow-up/report-fixes/review-corrections/closure-focused.log",
+      "sha256": "bc914ba036832ef01e275f813e95946b1f7b33e9fb907a6b1d007fc3758d7334",
+      "log_modified_at": "2026-10-04T02:01:05.194119+00:00"
+    },
+    {
+      "name": "closure-full-tests",
+      "command": "npm test",
+      "procedure_status": "EXECUTED",
+      "evidence_kind": "COMMAND",
+      "exit_status": 1,
+      "result_source": "settled native command session",
+      "log": "artifacts/remediation-2026-10-03/follow-up/report-fixes/review-corrections/closure-full-tests.log",
+      "sha256": "88d804befc77166599f98c5f1d363eedcb7987e31d33aca74ce296b14c295424",
+      "log_modified_at": "2026-10-04T02:02:08.118687+00:00"
+    },
+    {
+      "name": "closure-build",
+      "command": "npm run build",
+      "procedure_status": "EXECUTED",
+      "evidence_kind": "COMMAND",
+      "exit_status": 0,
+      "result_source": "settled native command session",
+      "log": "artifacts/remediation-2026-10-03/follow-up/report-fixes/review-corrections/closure-build.log",
+      "sha256": "16f613cebecb992dc47d7af20efb928e7b29151d6f715c797b8cc8afbafcd18d",
+      "log_modified_at": "2026-10-04T02:02:14.829612+00:00"
+    },
+    {
+      "name": "closure-lint",
+      "command": "npm run lint",
+      "procedure_status": "EXECUTED",
+      "evidence_kind": "COMMAND",
+      "exit_status": 0,
+      "result_source": "settled native command session",
+      "log": "artifacts/remediation-2026-10-03/follow-up/report-fixes/review-corrections/closure-lint.log",
+      "sha256": "92bb6b395d809b041c21c1277507d16f872f9b30c687d530b05dc4bc1f415dc0",
+      "log_modified_at": "2026-10-04T02:02:05.824713+00:00"
+    },
+    {
+      "name": "closure-architecture",
+      "command": "npm run verify:architecture",
+      "procedure_status": "EXECUTED",
+      "evidence_kind": "COMMAND",
+      "exit_status": 0,
+      "result_source": "settled native command session",
+      "log": "artifacts/remediation-2026-10-03/follow-up/report-fixes/review-corrections/closure-architecture.log",
+      "sha256": "fb1b1996bc31cfb350a1d4d982956ea8ef984b22ba3f4a0fe045023fd2efc7e2",
+      "log_modified_at": "2026-10-04T02:02:22.256530+00:00"
+    },
+    {
+      "name": "closure-diff",
+      "command": "git diff --check",
+      "procedure_status": "EXECUTED",
+      "evidence_kind": "COMMAND",
+      "exit_status": 0,
+      "result_source": "settled native command session",
+      "log": "artifacts/remediation-2026-10-03/follow-up/report-fixes/review-corrections/closure-diff.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "log_modified_at": "2026-10-04T02:05:55.544158+00:00"
+    },
+    {
+      "name": "closure-secrets",
+      "command": "npm run verify:secrets",
+      "procedure_status": "NOT_EXECUTED",
+      "verification_status": "BLOCKED",
+      "exit_status": null,
+      "error": "Esta chamada de ferramenta foi bloqueada pela OpenAI porque não foi possível determinar o status de segurança da solicitação.",
+      "previous_executed_result": {
+        "log": "artifacts/remediation-2026-10-03/follow-up/report-fixes/review-corrections/secrets.log",
+        "sha256": "759bc372f74d68043e3167aa1cb36d768a416ec20fa3bf5af1340dfde15460ce",
+        "exit_status": 0,
+        "freshness": "PRIOR_SOURCE_REVISION"
+      }
+    }
+  ],
+  "source_sha256_after_checks": {
+    "packages/agent-context/src/index.ts": "eba42176252f82c1b57a4d1aaf8f851565ced4a0b8669e1d84f2c8bf14cd1e5c",
+    "packages/embedded-agent-runtime/src/index.ts": "58ec1758a360dde6477f3e3b42bbc9fb1cae11df1a17e47ad1b9f43324ac22f4",
+    "packages/domain/src/index.ts": "9c1a135d23dbc14b277ebb3d03fe2aa318d131d21615ec79a25a2e04bc3e3107",
+    "tests/fixtures/secret-material.ts": "f7134613c9430bf73a4fd47e768eb08138dd5b5576589177af1eba0f8d5a035d",
+    "tests/fixtures/secret-detector-scaling.ts": "83087250c5f3687bb190317660f67b6df163772c97a7933086aed434ac0108f7",
+    "tests/unit/agent-context.test.ts": "fd657de69eaba05756ebd5802b37b37439b2421942daceae2e4ec028813fc0ac",
+    "tests/unit/embedded-runtime.test.ts": "6fe69cd1416da9f6cec7ca53076c5dfb5e55a642f20552c05378a3404e159290",
+    "tests/unit/secret-detector-review.test.ts": "755918183b15d09bdb1fd91f223733f70cc1cdbc00ebec68910abe204018dd9a",
+    "tests/integration/ai-secret-boundary.test.ts": "365c8c968f04a73e8cc4153c6f96229cf69755cfcdff994ff5bcb8e3f8731db6",
+    "tests/integration/auth-challenge-race.test.ts": "3dd0f526fc0285da7ac3295e79d95265522ce13b994059cc3d0614cb7e6e545d"
+  },
+  "independent_reviews": [
+    {
+      "scope": "D2 URL scanning and original D1 examples",
+      "report": "artifacts/remediation-2026-10-03/follow-up/report-fixes/review-corrections/independent-recheck.md",
+      "sha256": "2a9a9e1b3c78e23ef96cbce1e8ebf28f9f686cbb037395bb5e0114a29f88c49d",
+      "verdict": "D2_RESOLVED; requested additional D1 punctuation correction",
+      "agent_final_delivery": "TIMED_OUT_AFTER_REPORT_SAVED"
+    },
+    {
+      "scope": "Final D1 punctuation and description normalization",
+      "report": "artifacts/remediation-2026-10-03/follow-up/report-fixes/review-corrections/punctuation-independent-review.md",
+      "sha256": "f59b712ec6962c848265abff45bd3ef48523fdfd423b2bf592dfb41658e95742",
+      "verdict": "PASS_FOR_NARROW_FINDING",
+      "probes": 58,
+      "export_calls": 232,
+      "failures": 0,
+      "current_detector_sha256_matches": true
+    }
+  ],
+  "blocked_attempts": [
+    {
+      "action": "grouped final-check command",
+      "procedure_status": "NOT_EXECUTED",
+      "error": "Esta chamada de ferramenta foi bloqueada pela OpenAI porque não foi possível determinar o status de segurança da solicitação."
+    },
+    {
+      "action": "smaller local inspection",
+      "procedure_status": "NOT_EXECUTED",
+      "error": "Esta chamada de ferramenta foi bloqueada pela OpenAI porque não foi possível determinar o status de segurança da solicitação."
+    },
+    {
+      "action": "final standalone secret scan",
+      "procedure_status": "NOT_EXECUTED",
+      "error": "Esta chamada de ferramenta foi bloqueada pela OpenAI porque não foi possível determinar o status de segurança da solicitação."
+    }
+  ],
+  "report": "artifacts/remediation-2026-10-03/follow-up/report-fixes/review-corrections/resultado.md",
+  "self_review": "artifacts/remediation-2026-10-03/follow-up/report-fixes/review-corrections/self-review.md",
+  "deployment": "NOT_PERFORMED",
+  "release_qualification": "NOT_GRANTED"
+}

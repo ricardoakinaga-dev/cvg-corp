@@ -1,0 +1,13 @@
+{
+  "name": "ci-embedded-harness",
+  "command": [
+    "npm",
+    "run",
+    "verify:embedded-harness"
+  ],
+  "exit_status": 0,
+  "started_at": "2026-10-08T10:45:15.831174+00:00",
+  "duration_s": 0.6,
+  "log": "artifacts/production-readiness-2026-10-08/verification/after-commit/ci-embedded-harness.log",
+  "log_sha256": "02ffb1884cac1c92a69e70e2ab39859c0feeb5f4777efebcc93cdcb87c4772f0"
+}

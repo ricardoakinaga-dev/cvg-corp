@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "label": "typecheck",
+  "command": [
+    "npm",
+    "run",
+    "typecheck"
+  ],
+  "capturedAt": "2026-09-25T02:28:56.678Z",
+  "exitStatus": 0,
+  "signal": null,
+  "stdout": "\n> cvg-corp@0.1.0 typecheck\n> tsc -p tsconfig.json --noEmit\n\n",
+  "stderr": ""
+}

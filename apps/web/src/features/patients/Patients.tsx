@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import type { ApiClient } from "../../api/client";
 import { Icon } from "../../components/Icon";
-import { PageHeader, StatePanel, StatusBadge } from "../../components/ui";
+import { Dialog, PageHeader, StatePanel, StatusBadge } from "../../components/ui";
 import type { ContextOption } from "../../state/types";
 
 type GuardianRef = { id: string; displayName: string; phone: string };
@@ -26,35 +26,6 @@ type DialogState =
 
 const SEX_LABELS: Record<string, string> = { FEMALE: "Fêmea", MALE: "Macho", UNKNOWN: "Não informado" };
 const REPRODUCTIVE_LABELS: Record<string, string> = { INTACT: "Inteiro", NEUTERED: "Castrado", UNKNOWN: "Não informado" };
-
-function Dialog({ titleId, title, description, onClose, closeDisabled = false, children }: { titleId: string; title: string; description: string; onClose: () => void; closeDisabled?: boolean; children: ReactNode }) {
-  const cardRef = useRef<HTMLElement | null>(null);
-  const returnFocusRef = useRef<HTMLElement | null>(null);
-  useEffect(() => {
-    returnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const target = cardRef.current?.querySelector<HTMLElement>("input, select, textarea") ?? cardRef.current?.querySelector<HTMLElement>("button");
-    target?.focus();
-    return () => returnFocusRef.current?.focus();
-  }, []);
-  useEffect(() => {
-    const focusable = () => Array.from(cardRef.current?.querySelectorAll<HTMLElement>("button, select, input, textarea, [href]") ?? []).filter((element) => !element.hasAttribute("disabled") && element.getAttribute("aria-hidden") !== "true");
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") { if (!closeDisabled) onClose(); return; }
-      if (event.key !== "Tab") return;
-      const items = focusable();
-      if (items.length === 0) return;
-      const first = items[0];
-      const last = items[items.length - 1];
-      if (!first || !last) return;
-      if (!cardRef.current?.contains(document.activeElement)) { event.preventDefault(); first.focus(); return; }
-      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
-      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [closeDisabled, onClose]);
-  return <div className="dialog-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !closeDisabled) onClose(); }}><section ref={cardRef} className="dialog-card" style={{ maxHeight: "min(88vh, 760px)", overflowY: "auto" }} role="dialog" aria-modal="true" aria-labelledby={titleId} aria-describedby={`${titleId}-description`}><div className="dialog-head"><div><span className="eyebrow">JORNADA DE CADASTRO</span><h2 id={titleId}>{title}</h2></div><button className="icon-button" type="button" aria-label="Fechar" onClick={onClose} disabled={closeDisabled}><Icon name="close" size={17} /></button></div><p id={`${titleId}-description`} className="dialog-description">{description}</p>{children}</section></div>;
-}
 
 export function Patients({ client, context, notify, initialQuery = "" }: { client: ApiClient; context: ContextOption | null; notify: (message: string) => void; initialQuery?: string }) {
   const [items, setItems] = useState<Patient[]>([]);
@@ -84,13 +55,31 @@ export function Patients({ client, context, notify, initialQuery = "" }: { clien
   const [mergeConfirmed, setMergeConfirmed] = useState(false);
   const [mergeOptions, setMergeOptions] = useState<Patient[]>([]);
   const submissionKey = useRef<string | null>(null);
+  // CVG-AUD19-020: a stale search response must never replace a newer one.
+  // CVG-AUD20-012: each search owns an AbortController.  A new execution
+  // cancels the previous one and only the current controller may update state,
+  // so a StrictMode remount or an inverted response can never leave the view
+  // loading or overwrite a newer query.
+  const activeSearch = useRef<AbortController | null>(null);
+  const mounted = useRef(true);
 
   const load = useCallback(async () => {
+    activeSearch.current?.abort();
+    const controller = new AbortController();
+    activeSearch.current = controller;
     setLoading(true);
     setError("");
-    try { setItems((await client.get<{ items: Patient[] }>(`/patients${query ? `?q=${encodeURIComponent(query)}` : ""}`, context)).items); }
-    catch (reason) { setError(reason instanceof Error ? reason.message : "Pacientes indisponíveis."); }
-    finally { setLoading(false); }
+    try {
+      const response = await client.get<{ items: Patient[] }>(`/patients${query ? `?q=${encodeURIComponent(query)}` : ""}`, context, { signal: controller.signal });
+      if (!mounted.current || activeSearch.current !== controller) return;
+      setItems(response.items);
+    } catch (reason) {
+      if (!mounted.current || activeSearch.current !== controller) return;
+      if ((reason instanceof DOMException && reason.name === "AbortError") || (reason instanceof Error && reason.name === "AbortError")) return;
+      setError(reason instanceof Error ? reason.message : "Pacientes indisponíveis.");
+    } finally {
+      if (mounted.current && activeSearch.current === controller) setLoading(false);
+    }
   }, [client, context, query]);
 
   const loadGuardians = useCallback(async () => {
@@ -103,11 +92,26 @@ export function Patients({ client, context, notify, initialQuery = "" }: { clien
     catch { setMergeOptions([]); }
   }, [client, context]);
 
+  useEffect(() => {
+    // StrictMode runs setup/cleanup/setup; re-assert mounted on every setup and
+    // abort the in-flight search on cleanup without invalidating the next run.
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      activeSearch.current?.abort();
+    };
+  }, []);
+
   useEffect(() => { setQuery(initialQuery); }, [initialQuery]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => void load(), 180);
-    return () => window.clearTimeout(timer);
+    return () => {
+      window.clearTimeout(timer);
+      const controller = activeSearch.current;
+      controller?.abort();
+      if (activeSearch.current === controller) activeSearch.current = null;
+    };
   }, [load]);
 
   const openDialog = (next: Exclude<DialogState, null>) => {
@@ -270,7 +274,7 @@ export function Patients({ client, context, notify, initialQuery = "" }: { clien
         {loading ? <StatePanel kind="loading" title="Buscando pacientes" body="Aplicando escopo da unidade e classificação de dados." /> : error ? <StatePanel kind="error" title="Busca indisponível" body={error} action="Tentar novamente" onAction={() => void load()} /> : items.length === 0 ? <StatePanel kind="empty" title="Nenhum paciente encontrado" body={query ? "Tente outro termo de busca." : "O registro ainda está vazio neste contexto."} /> : <div className="patient-list">{items.map((patient) => <div className="patient-list-row" key={patient.id}><span className="patient-avatar">{patient.name.slice(0, 1)}</span><div className="patient-primary"><strong>{patient.name}</strong><span>{patient.species} · {patient.breed ?? "sem raça definida"}</span></div><div className="patient-secondary"><span>Responsável</span><strong>{patient.guardian?.displayName ?? "Não informado"}</strong></div><div className="patient-secondary"><span>Contato</span><strong>{patient.guardian?.phone ?? "—"}</strong></div><StatusBadge tone={patient.status === "ACTIVE" ? "teal" : "slate"}>{patient.status === "ACTIVE" ? "Ativo" : patient.status}</StatusBadge><button className="icon-button row-arrow" type="button" aria-label={`Abrir ficha de ${patient.name}`} onClick={() => void openDetail(patient.id)}><Icon name="arrow" size={16} /></button></div>)}</div>}
       </section>
 
-      {detail && !dialog && <Dialog titleId="patient-detail-title" title={`Ficha de ${detail.name}`} description="Dados do paciente no contexto autorizado; ações destrutivas exigem confirmação explícita." onClose={() => setDetail(null)}>
+      {detail && !dialog && <Dialog eyebrow="JORNADA DE CADASTRO" titleId="patient-detail-title" title={`Ficha de ${detail.name}`} description="Dados do paciente no contexto autorizado; ações destrutivas exigem confirmação explícita." onClose={() => setDetail(null)}>
         <dl className="patient-detail">
           <div><dt>Espécie</dt><dd>{detail.species}</dd></div>
           <div><dt>Raça</dt><dd>{detail.breed ?? "sem raça definida"}</dd></div>
@@ -288,7 +292,7 @@ export function Patients({ client, context, notify, initialQuery = "" }: { clien
         </div>
       </Dialog>}
 
-      {dialog?.kind === "create" && <Dialog titleId="patient-create-title" title="Novo paciente" description="Cadastre o responsável e o paciente na mesma jornada; o recibo é exibido ao final." onClose={closeDialog} closeDisabled={submitting}>
+      {dialog?.kind === "create" && <Dialog eyebrow="JORNADA DE CADASTRO" titleId="patient-create-title" title="Novo paciente" description="Cadastre o responsável e o paciente na mesma jornada; o recibo é exibido ao final." onClose={closeDialog} closeDisabled={submitting}>
         <form onSubmit={submitCreate} className="dialog-form">
           <div className="segmented" role="group" aria-label="Origem do responsável">
             <button className={guardianMode === "existing" ? "selected" : undefined} aria-pressed={guardianMode === "existing"} type="button" onClick={() => setGuardianMode("existing")}>Responsável existente</button>
@@ -310,14 +314,14 @@ export function Patients({ client, context, notify, initialQuery = "" }: { clien
         </form>
       </Dialog>}
 
-      {dialog?.kind === "disable" && <Dialog titleId="patient-disable-title" title={`Desativar ${dialog.patient.name}`} description="O cadastro sai do registro ativo, mas o histórico clínico e a trilha são preservados. Nada é apagado." onClose={closeDialog} closeDisabled={submitting}>
+      {dialog?.kind === "disable" && <Dialog eyebrow="JORNADA DE CADASTRO" titleId="patient-disable-title" title={`Desativar ${dialog.patient.name}`} description="O cadastro sai do registro ativo, mas o histórico clínico e a trilha são preservados. Nada é apagado." onClose={closeDialog} closeDisabled={submitting}>
         <form onSubmit={submitDisable} className="dialog-form">
           {formError && <div className="inline-error" role="alert"><Icon name="alert" size={16} />{formError}</div>}
           <div className="dialog-foot"><span className="table-sub">Ação auditada · reversível apenas por novo cadastro/merge autorizado</span><button className="button button-ghost" type="button" onClick={closeDialog} disabled={submitting}>Cancelar</button><button className="button button-primary" type="submit" disabled={submitting}>{submitting ? "Desativando…" : "Confirmar desativação"}</button></div>
         </form>
       </Dialog>}
 
-      {dialog?.kind === "merge" && <Dialog titleId="patient-merge-title" title={`Mesclar ${dialog.patient.name}`} description="O cadastro de origem é preservado na trilha e aponta para o destino; a operação exige motivo e confirmação explícita." onClose={closeDialog} closeDisabled={submitting}>
+      {dialog?.kind === "merge" && <Dialog eyebrow="JORNADA DE CADASTRO" titleId="patient-merge-title" title={`Mesclar ${dialog.patient.name}`} description="O cadastro de origem é preservado na trilha e aponta para o destino; a operação exige motivo e confirmação explícita." onClose={closeDialog} closeDisabled={submitting}>
         <form onSubmit={submitMerge} className="dialog-form">
           <label htmlFor="merge-target">Cadastro de destino<select id="merge-target" value={mergeTargetId} onChange={(event) => setMergeTargetId(event.target.value)} required><option value="">Selecione…</option>{mergeTargets.map((patient) => <option key={patient.id} value={patient.id}>{patient.name} · {patient.species} · {patient.guardian?.displayName ?? "sem responsável"}</option>)}</select></label>
           <label htmlFor="merge-reason">Motivo<textarea id="merge-reason" value={mergeReason} onChange={(event) => setMergeReason(event.target.value)} required minLength={5} maxLength={500} rows={3} /></label>

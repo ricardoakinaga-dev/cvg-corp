@@ -1,0 +1,8 @@
+candidate=2239de7d45b54529d663f55e50471b33cc4071dd
+api_oci=artifacts/operational-proof/aud27-015-oci-20260925/cvg-api-2239de7d45b54529d663f55e50471b33cc4071dd.oci.tar
+web_oci=artifacts/operational-proof/aud27-015-oci-20260925/cvg-web-2239de7d45b54529d663f55e50471b33cc4071dd.oci.tar
+api_attestations=spdx-sbom(16 packages)+slsa-provenance-v1
+web_attestations=spdx-sbom(71 packages)+slsa-provenance-v1
+source_sha_recorded_in_layouts=yes
+npm_cyclonedx_sbom=140 components
+signature_issuer=BLOCKED_EXTERNAL

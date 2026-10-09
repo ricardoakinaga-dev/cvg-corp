@@ -1,0 +1,380 @@
+{
+  "config": {
+    "argv": [
+      "/home/ricardo/.nvm/versions/node/v24.20.0/bin/node",
+      "/home/ricardo/Área de trabalho/cvg-corp/node_modules/.bin/playwright",
+      "test",
+      "tests/e2e/app.spec.ts:33",
+      "--project=chromium-wide-1440",
+      "--repeat-each=3",
+      "--retries=0",
+      "--reporter=json",
+      "--output=artifacts/audit-2026-10-03/e2e-isolated-results"
+    ],
+    "configFile": "/home/ricardo/Área de trabalho/cvg-corp/playwright.config.ts",
+    "rootDir": "/home/ricardo/Área de trabalho/cvg-corp/tests/e2e",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "/home/ricardo/Área de trabalho/cvg-corp/artifacts/audit-2026-10-03/e2e-isolated-results",
+        "repeatEach": 3,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "chromium-wide-1440",
+        "name": "chromium-wide-1440",
+        "testDir": "/home/ricardo/Área de trabalho/cvg-corp/tests/e2e",
+        "testIgnore": [
+          "/accessibility-stress\\.spec\\.ts/"
+        ],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/ricardo/Área de trabalho/cvg-corp/artifacts/audit-2026-10-03/e2e-isolated-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "chromium-tablet-768",
+        "name": "chromium-tablet-768",
+        "testDir": "/home/ricardo/Área de trabalho/cvg-corp/tests/e2e",
+        "testIgnore": [
+          "/accessibility-stress\\.spec\\.ts/"
+        ],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/ricardo/Área de trabalho/cvg-corp/artifacts/audit-2026-10-03/e2e-isolated-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "chromium-mobile-375",
+        "name": "chromium-mobile-375",
+        "testDir": "/home/ricardo/Área de trabalho/cvg-corp/tests/e2e",
+        "testIgnore": [
+          "/accessibility-stress\\.spec\\.ts/"
+        ],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/ricardo/Área de trabalho/cvg-corp/artifacts/audit-2026-10-03/e2e-isolated-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "firefox-wide-1440",
+        "name": "firefox-wide-1440",
+        "testDir": "/home/ricardo/Área de trabalho/cvg-corp/tests/e2e",
+        "testIgnore": [
+          "/accessibility-stress\\.spec\\.ts/"
+        ],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/ricardo/Área de trabalho/cvg-corp/artifacts/audit-2026-10-03/e2e-isolated-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "firefox-tablet-768",
+        "name": "firefox-tablet-768",
+        "testDir": "/home/ricardo/Área de trabalho/cvg-corp/tests/e2e",
+        "testIgnore": [
+          "/accessibility-stress\\.spec\\.ts/"
+        ],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/ricardo/Área de trabalho/cvg-corp/artifacts/audit-2026-10-03/e2e-isolated-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "firefox-mobile-375",
+        "name": "firefox-mobile-375",
+        "testDir": "/home/ricardo/Área de trabalho/cvg-corp/tests/e2e",
+        "testIgnore": [
+          "/accessibility-stress\\.spec\\.ts/"
+        ],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/ricardo/Área de trabalho/cvg-corp/artifacts/audit-2026-10-03/e2e-isolated-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "webkit-wide-1440",
+        "name": "webkit-wide-1440",
+        "testDir": "/home/ricardo/Área de trabalho/cvg-corp/tests/e2e",
+        "testIgnore": [
+          "/accessibility-stress\\.spec\\.ts/"
+        ],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/ricardo/Área de trabalho/cvg-corp/artifacts/audit-2026-10-03/e2e-isolated-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "webkit-tablet-768",
+        "name": "webkit-tablet-768",
+        "testDir": "/home/ricardo/Área de trabalho/cvg-corp/tests/e2e",
+        "testIgnore": [
+          "/accessibility-stress\\.spec\\.ts/"
+        ],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/ricardo/Área de trabalho/cvg-corp/artifacts/audit-2026-10-03/e2e-isolated-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "webkit-mobile-375",
+        "name": "webkit-mobile-375",
+        "testDir": "/home/ricardo/Área de trabalho/cvg-corp/tests/e2e",
+        "testIgnore": [
+          "/accessibility-stress\\.spec\\.ts/"
+        ],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/ricardo/Área de trabalho/cvg-corp/artifacts/audit-2026-10-03/e2e-isolated-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "chromium-stress",
+        "name": "chromium-stress",
+        "testDir": "/home/ricardo/Área de trabalho/cvg-corp/tests/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "/accessibility.*\\.spec\\.ts/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/ricardo/Área de trabalho/cvg-corp/artifacts/audit-2026-10-03/e2e-isolated-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "firefox-stress",
+        "name": "firefox-stress",
+        "testDir": "/home/ricardo/Área de trabalho/cvg-corp/tests/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "/accessibility.*\\.spec\\.ts/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/ricardo/Área de trabalho/cvg-corp/artifacts/audit-2026-10-03/e2e-isolated-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "webkit-stress",
+        "name": "webkit-stress",
+        "testDir": "/home/ricardo/Área de trabalho/cvg-corp/tests/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "/accessibility.*\\.spec\\.ts/"
+        ],
+        "timeout": 30000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "json"
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.63.0",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "app.spec.ts",
+      "file": "app.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "rotas e controles permanecem utilizáveis sem overflow",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium-wide-1440",
+              "projectName": "chromium-wide-1440",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 4030,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-03T05:46:09.570Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "c31ff144dc4fee3acd0a-e0788fbddfaecb4b61d9",
+          "file": "app.spec.ts",
+          "line": 33,
+          "column": 1
+        },
+        {
+          "title": "rotas e controles permanecem utilizáveis sem overflow",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium-wide-1440",
+              "projectName": "chromium-wide-1440",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3628,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-03T05:46:14.079Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "c31ff144dc4fee3acd0a-8700647eed76e5910957",
+          "file": "app.spec.ts",
+          "line": 33,
+          "column": 1
+        },
+        {
+          "title": "rotas e controles permanecem utilizáveis sem overflow",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium-wide-1440",
+              "projectName": "chromium-wide-1440",
+              "results": [
+                {
+                  "workerIndex": 2,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3381,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-03T05:46:18.233Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "c31ff144dc4fee3acd0a-a2e6cdb88384a7ec3632",
+          "file": "app.spec.ts",
+          "line": 33,
+          "column": 1
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-10-03T05:46:06.916Z",
+    "duration": 14874.232,
+    "expected": 3,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

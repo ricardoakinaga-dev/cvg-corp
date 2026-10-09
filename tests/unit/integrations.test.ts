@@ -98,6 +98,61 @@ test("outbox worker records the external dispatch boundary before completing the
   assert.deepEqual(completed, [item.id]);
 });
 
+test("outbox worker quarantines a delivered receipt that arrives after abort", async () => {
+  const item = record("00000000-0000-4000-0000-000000000213", 1);
+  let effect: DurableExternalEffectRecord = {
+    id: item.id,
+    organizationId,
+    outboxId: item.id,
+    integrationId: "outbox:synthetic.event",
+    idempotencyKey: item.id,
+    request: { synthetic: true },
+    requestDigest: "request-digest",
+    status: "ADMISSION_PENDING",
+    attempts: 0,
+    claimedBy: "worker-1",
+    leaseUntil: "2099-01-01T00:00:00.000Z",
+    fenceToken: item.fenceToken,
+    providerRequestId: null,
+    response: null,
+    lastError: null,
+    outcomeDigest: null,
+    reconciliationSource: null,
+    reconciledAt: null,
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z"
+  };
+  const transitions: string[] = [];
+  const effects: ExternalEffectLedger = {
+    prepareExternalEffect: async () => effect,
+    markExternalEffectDispatched: async () => { transitions.push("DISPATCHED"); effect = { ...effect, status: "DISPATCHED", attempts: 1 }; return effect; },
+    recordExternalEffectOutcome: async (_organizationId, _effectId, _workerId, _fenceToken, outcome) => { transitions.push(outcome.status); effect = { ...effect, status: outcome.status, providerRequestId: outcome.providerRequestId ?? null, response: outcome.response ?? null, lastError: outcome.error ?? null, claimedBy: null, leaseUntil: null }; return effect; }
+  };
+  const controller = new AbortController();
+  let completed = false;
+  const failed: Array<{ reason: string; quarantine: boolean }> = [];
+  const worker = new OutboxWorker({
+    claimOutbox: async () => [item],
+    completeOutbox: async () => { completed = true; },
+    failOutbox: async (_organizationId, _recordId, _workerId, _fenceToken, reason, quarantine) => { failed.push({ reason, quarantine: Boolean(quarantine) }); return "QUARANTINED"; }
+  }, effects);
+
+  const result = await worker.runOnce(organizationId, "worker-abort", {
+    deliver: async (_record, context) => {
+      assert.equal(context?.signal, controller.signal);
+      controller.abort();
+      return { status: "DELIVERED", providerRequestId: "late-provider-213", receipt: { accepted: true } };
+    }
+  }, { signal: controller.signal });
+
+  assert.deepEqual(result, { claimed: 1, delivered: 0, retried: 0, quarantined: 1, outcomeUnknown: 1 });
+  assert.equal(completed, false);
+  assert.deepEqual(transitions, ["DISPATCHED", "OUTCOME_UNKNOWN"]);
+  assert.equal(effect.status, "OUTCOME_UNKNOWN");
+  assert.equal(effect.providerRequestId, "late-provider-213");
+  assert.equal(failed[0]?.quarantine, true);
+});
+
 test("signed inbox projection creates a bounded local outbox without copying signature metadata", () => {
   const input: DurableInboxInput = {
     id: id("00000000-0000-4000-0000-000000000204"),
@@ -362,7 +417,9 @@ test("HTTP messaging validates receipts, keeps credentials out of results and ne
   assert.equal(delivered.providerRequestId, "provider-1");
   assert.equal(calls.length, 1);
   assert.equal(calls[0]?.url, "https://provider.example.test/api/messages");
-  assert.match(String(calls[0]?.init?.headers && (calls[0]?.init?.headers as Record<string, string>).authorization), /Bearer fixture-secret/);
+  const sentHeaders = calls[0]?.init?.headers;
+  const authorization = sentHeaders && (sentHeaders as Record<string, string>).authorization;
+  assert.match(String(authorization), /Bearer fixture-secret/);
 
   const accepted = new HttpMessagingProvider({
     endpoint: "https://provider.example.test",
@@ -444,4 +501,37 @@ test("messaging rate limiter and circuit breaker stop new egress explicitly", as
   assert.equal(first.status, "OUTCOME_UNKNOWN");
   await assert.rejects(() => broken.send({ idempotencyKey: "circuit-2", channel: "SMS", recipient: "+5511", body: "fixture" }), (error: unknown) => error instanceof DomainError && error.code === "DEPENDENCY_UNAVAILABLE");
   assert.equal(providerCalls, 1);
+});
+
+test("CVG-AUD20-009: cooperative cancellation reaches the messaging provider", async () => {
+  const { MessagingOutboxSink, SyntheticMessagingProvider } = await import("@cvg/integrations");
+  const controller = new AbortController();
+  let observed: AbortSignal | undefined;
+  let requestSignal: AbortSignal | undefined;
+  let blockedResolve: ((value: unknown) => void) | undefined;
+  const provider = {
+    async send(request: { signal?: AbortSignal }, options?: { signal?: AbortSignal }) {
+      observed = options?.signal;
+      requestSignal = request.signal;
+      return await new Promise((resolve, reject) => {
+        blockedResolve = resolve;
+        options?.signal?.addEventListener("abort", () => reject(new Error("provider observed abort")), { once: true });
+      });
+    }
+  } as never;
+  const sink = new MessagingOutboxSink(provider, (_record, context) => ({ idempotencyKey: context.idempotencyKey, channel: "SMS", recipient: "+5511999999999", body: "fixture" }));
+  const delivery = sink.deliver({ id: "11111111-1111-4111-8111-111111111111", organizationId: "22222222-2222-4222-8222-222222222222", eventType: "fixture", aggregateId: "33333333-3333-4333-8333-333333333333", payload: {}, status: "CLAIMED", attempts: 1, availableAt: new Date().toISOString(), claimedBy: "w", leaseUntil: null, fenceToken: 1n, lastError: null, createdAt: new Date().toISOString(), processedAt: null, recordDigest: "a".repeat(64) } as never, { effectId: "44444444-4444-4444-8444-444444444444" as never, integrationId: "outbox:fixture", idempotencyKey: "key-1", fenceToken: 1n, signal: controller.signal });
+  controller.abort();
+  await assert.rejects(() => delivery);
+  assert.equal(observed, controller.signal, "send options must carry the cooperative signal");
+  assert.equal(requestSignal, controller.signal, "mapped request must carry the cooperative signal");
+  void blockedResolve;
+
+  const aborted = new AbortController();
+  aborted.abort();
+  const synthetic = new SyntheticMessagingProvider();
+  await assert.rejects(
+    () => synthetic.send({ idempotencyKey: "aborted-send", channel: "SMS", recipient: "+5511999999999", body: "x" }, { signal: aborted.signal }),
+    (error: unknown) => error instanceof MessagingProviderError && error.failure === "CANCELLED" && error.outcome === "NOT_SENT"
+  );
 });

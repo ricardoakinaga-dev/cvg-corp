@@ -1,0 +1,164 @@
+{
+  "schemaVersion": 1,
+  "reportId": "MEL23-015-016-LOCAL-2026-09-23",
+  "capturedAtUtc": "2026-09-23T14:17:07Z",
+  "melIds": ["MEL23-015", "MEL23-016"],
+  "source": {
+    "head": "c990914148a8f375082cd12bbdb2ad20cfe1900f",
+    "workingTreeClean": false,
+    "candidateFrozen": false,
+    "candidateFingerprint": null,
+    "promotion": "PROMOTION_BLOCKED",
+    "assurance": "AAA_NOT_PROVEN"
+  },
+  "environment": {
+    "dockerEngineVersion": "29.1.3",
+    "platform": "linux/amd64",
+    "databaseImage": "postgres:16-alpine",
+    "databaseMigrationsApplied": 48,
+    "databaseStorage": "container tmpfs only",
+    "network": {
+      "name": "cvg-mel23-015-20260923-r3-net",
+      "id": "8cf118e87a1d1475ce42d721e4bd6e06e81a0b0d867efd0f11369fcdc0f9b9b1",
+      "internal": true,
+      "publishedHostPorts": false
+    },
+    "dataAndCredentials": "synthetic test identity and records only; no real veterinary data, real credentials, or real providers"
+  },
+  "api": {
+    "tag": "cvg-mel23-api:mel23-015-20260923-r3",
+    "indexDigest": "sha256:29a2887dcc034032b85bda4f344cc8fe910af57db4bdc32ef93cbf953bf02888",
+    "platformManifestDigest": "sha256:5738f4e0894808e507aa8fa172968225a96f6938d35efc9ca842fe1fa74aa3e6",
+    "imageConfigDigest": "sha256:2d8e55dd15453064c4d713ad2ad7d595ef317604b6653f2f60f8815755af02c9",
+    "build": {
+      "dockerfile": "Dockerfile.api",
+      "buildxRecordId": "rvisz3mqtyle5xxbzpas2i4ju",
+      "sourceRevisionLabel": "c990914148a8f375082cd12bbdb2ad20cfe1900f",
+      "baseImageDigest": "sha256:bb6b03d81066993293a10feda7250e8e1cc034035fe9b61cfceededa7c8bf04d",
+      "provenanceEnabled": true,
+      "sbomEnabled": true
+    },
+    "container": {
+      "id": "9087d1adc246ba37c0b35e0ca3fe42c5ec0530f8d5dd5b92d5927e6ec4fb21c1",
+      "health": "healthy",
+      "user": "65532:65532",
+      "readOnlyRootFilesystem": true,
+      "capabilitiesDropped": ["ALL"],
+      "noNewPrivileges": true,
+      "memoryBytes": 805306368,
+      "nanoCpus": 1000000000,
+      "publishedPorts": []
+    },
+    "smoke": {
+      "migrateCommand": "container command: migrate",
+      "migrationRows": 48,
+      "initialHealth": 200,
+      "syntheticLogin": 200,
+      "controlledWrite": 201,
+      "controlledRead": 200,
+      "writtenRecordId": "26ca41ed-0796-4157-9bb2-0c3549908133",
+      "gracefulStopExitCode": 0,
+      "healthAfterRestart": 200,
+      "readinessAfterRestart": 200,
+      "loginAfterRestart": 200,
+      "recordReadAfterRestart": true,
+      "releaseHeaderProbeUsedOnlyAsLocalTestInput": true
+    },
+    "sbom": {
+      "predicateType": "https://spdx.dev/Document",
+      "format": "SPDX-2.3",
+      "subjectDigest": "sha256:5738f4e0894808e507aa8fa172968225a96f6938d35efc9ca842fe1fa74aa3e6",
+      "packageCount": 16,
+      "file": "api-image-r3-sbom.intoto.json",
+      "sha256": "490373732f14c9b632cb724a6a46c5c9ad390d56cb4cc2d23b5baac12e860783"
+    },
+    "provenance": {
+      "predicateType": "https://slsa.dev/provenance/v0.2",
+      "subjectDigest": "sha256:5738f4e0894808e507aa8fa172968225a96f6938d35efc9ca842fe1fa74aa3e6",
+      "file": "api-image-r3-provenance.intoto.json",
+      "sha256": "9fc085c2567e2f5ffaeae13ecafe89c41867fb46525957a23d9f86c2b5831958"
+    },
+    "scan": {
+      "scanner": "Trivy 0.74.0",
+      "scannerImageDigest": "sha256:62b1e65e8869bc4b4c6aa4fa2b21595256c7c2f6018a9d9ad61caf87187c1969",
+      "databaseUpdatedAtUtc": "2026-09-23T14:07:58Z",
+      "targetImageConfigDigest": "sha256:2d8e55dd15453064c4d713ad2ad7d595ef317604b6653f2f60f8815755af02c9",
+      "os": "Debian 13.7",
+      "vulnerabilities": {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 15, "LOW": 7, "UNKNOWN": 0},
+      "secretFindings": 0,
+      "misconfigurationFindings": 0,
+      "allVulnerabilityEntriesHadNoFixedVersion": true,
+      "file": "api-image-r3-trivy.json",
+      "sha256": "55adca47aff05a15668bd97c0c565902dbea714192d40b9b3c7dd2007a5e12a3"
+    }
+  },
+  "web": {
+    "tag": "cvg-mel23-web:mel23-016-20260923-r1",
+    "indexDigest": "sha256:12f1597e5c376898a559ebc57acf825945097fd57356815511ef4684992c1a41",
+    "platformManifestDigest": "sha256:9a4bb0b20a6ca8f2fe310cc7f39ce83e9b27cdb9945dd80fe2ba3bba4b8256aa",
+    "imageConfigDigest": "sha256:232ed49a05a433627b1164d18952838d546b20e608cf1ec2a9deab836592f512",
+    "build": {
+      "dockerfile": "Dockerfile.web",
+      "buildxRecordId": "a5ythdlrvxspdrva8yig9jk73",
+      "sourceRevisionLabel": "unbound",
+      "baseImageDigest": "sha256:2ddec616f1cb58bcac057aa388f28cb81e35137641ef4226d321714499329bd1",
+      "provenanceEnabled": true,
+      "sbomEnabled": true
+    },
+    "container": {
+      "id": "4efc8bdb755b2f9be6bf82918f53adaf279e003403d9eb900f5e610fe070920e",
+      "health": "healthy",
+      "user": "101",
+      "readOnlyRootFilesystem": true,
+      "capabilitiesDropped": ["ALL"],
+      "noNewPrivileges": true,
+      "memoryBytes": 134217728,
+      "nanoCpus": 500000000,
+      "publishedPorts": []
+    },
+    "smoke": {
+      "healthz": 200,
+      "rootPage": 200,
+      "staticAssetsChecked": 2,
+      "contentSecurityAndFrameHeaders": "PASS"
+    },
+    "sbom": {
+      "predicateType": "https://spdx.dev/Document",
+      "format": "SPDX-2.3",
+      "subjectDigest": "sha256:9a4bb0b20a6ca8f2fe310cc7f39ce83e9b27cdb9945dd80fe2ba3bba4b8256aa",
+      "packageCount": 71,
+      "file": "web-image-r1-sbom.intoto.json",
+      "sha256": "6f4aa6883854241c6186eda1208064d3818405d3bf1c39048845084c8dea477e"
+    },
+    "provenance": {
+      "predicateType": "https://slsa.dev/provenance/v0.2",
+      "subjectDigest": "sha256:9a4bb0b20a6ca8f2fe310cc7f39ce83e9b27cdb9945dd80fe2ba3bba4b8256aa",
+      "file": "web-image-r1-provenance.intoto.json",
+      "sha256": "2a792663cebb6c2f847ed2ab5cf2321dd1901c9573be08e4365b5206f47ea277"
+    },
+    "scan": {
+      "scanner": "Trivy 0.74.0",
+      "scannerImageDigest": "sha256:62b1e65e8869bc4b4c6aa4fa2b21595256c7c2f6018a9d9ad61caf87187c1969",
+      "databaseUpdatedAtUtc": "2026-09-23T14:07:58Z",
+      "targetImageConfigDigest": "sha256:232ed49a05a433627b1164d18952838d546b20e608cf1ec2a9deab836592f512",
+      "os": "Alpine 3.24.1",
+      "vulnerabilities": {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0, "UNKNOWN": 0},
+      "secretFindings": 0,
+      "misconfigurationFindings": 0,
+      "file": "web-image-r1-trivy.json",
+      "sha256": "9d176f460e4bb79f8797e391434a157e9cbe3d4b775866173c8b8d669d85bb80"
+    }
+  },
+  "interpretation": {
+    "platformManifestLinks": "For each image the BuildKit SPDX and SLSA subjects equal the platform manifest digest; Trivy Metadata.ImageID equals that platform manifest's config digest. The index digest identifies the locally tested image tag and includes the platform manifest plus its attestation manifest.",
+    "apiVulnerabilityReview": "The local scan found 22 Debian base OS findings (15 medium, 7 low), all without FixedVersion in the scan output. No organization-approved threshold or risk acceptance was supplied.",
+    "provenanceScope": "BuildKit SLSA v0.2 and SPDX attestations are local build attachments. They are not signed, published to a registry, or verified by an external issuer.",
+    "candidateScope": "These runs exercise local images built from a dirty working tree. The API release header values were test inputs only. Neither image is bound to a frozen candidate or external evidence root; MEL23-004..007 and release qualification remain open."
+  },
+  "cleanup": {
+    "disposableContainersRemoved": false,
+    "disposableNetworksRemoved": false,
+    "imagesRetainedLocally": true,
+    "preexistingContainersOrVolumesChanged": false
+  }
+}

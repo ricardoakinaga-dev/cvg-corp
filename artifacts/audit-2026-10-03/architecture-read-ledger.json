@@ -1,0 +1,1515 @@
+{
+  "head": "9aab406b164497978b05dd3aa431db49ad11677a",
+  "method": "Complete UTF-8 source read in bounded line chunks; acknowledge only returned untruncated content. Hashing alone is not full reading.",
+  "status": "READING_COMPLETE",
+  "files": [
+    {
+      "index": 0,
+      "path": "docs/00-fontes-e-premissas.md",
+      "bytes": 13512,
+      "sha256": "3524b5b6e0256fc6b57f68c17c32e594a3ea9011333551a4ee8bca84cf2b8200",
+      "assignment_sha256": "3524b5b6e0256fc6b57f68c17c32e594a3ea9011333551a4ee8bca84cf2b8200",
+      "hash_matches_assignment": true,
+      "total_lines": 103,
+      "read_chunks": [
+        0
+      ],
+      "full_read": true,
+      "summary": "Proveniência e premissas da arquitetura; separa capacidades documentadas do DeepSeek, metas CVG e desconhecidos; fontes corporativas ausentes permanecem não verificadas.",
+      "relevance": "historical_baseline_with_current_invariants",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 1,
+      "path": "docs/00-quality-bar-v1.md",
+      "bytes": 13483,
+      "sha256": "b91d089099c4810119a016b157627f8a157f6422548ef3d5a6d9d857dc5a3049",
+      "assignment_sha256": "b91d089099c4810119a016b157627f8a157f6422548ef3d5a6d9d857dc5a3049",
+      "hash_matches_assignment": true,
+      "total_lines": 96,
+      "read_chunks": [
+        0,
+        1
+      ],
+      "full_read": true,
+      "summary": "Quality Bar documental v1/v1.1 de 7/9; exige proveniência, isolamento, idempotência, auditoria durável e recuperação; declaração sem implementação é histórica.",
+      "relevance": "historical_quality_bar_current_control_expectations",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 2,
+      "path": "docs/01-prd-cvg.md",
+      "bytes": 29412,
+      "sha256": "92784ca1b0d3c6242ed2a4daa4364eef8a595d5e87ed3e3ed388e42d67e69ef2",
+      "assignment_sha256": "92784ca1b0d3c6242ed2a4daa4364eef8a595d5e87ed3e3ed388e42d67e69ef2",
+      "hash_matches_assignment": true,
+      "total_lines": 275,
+      "read_chunks": [
+        1,
+        2
+      ],
+      "full_read": true,
+      "summary": "PRD: sete jornadas, 22 requisitos, isolamento, assinatura imutável, medicação em fatos distintos, estoque não negativo, idempotência e operação manual/offline limitada.",
+      "relevance": "historical_product_baseline_with_current_invariants",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 3,
+      "path": "docs/02-arquitetura-alvo.md",
+      "bytes": 25296,
+      "sha256": "21f5c44578b380c4738067003551d53c9a646c64ccf69ae28749930c2ff06d90",
+      "assignment_sha256": "21f5c44578b380c4738067003551d53c9a646c64ccf69ae28749930c2ff06d90",
+      "hash_matches_assignment": true,
+      "total_lines": 269,
+      "read_chunks": [
+        2,
+        3,
+        4
+      ],
+      "full_read": true,
+      "summary": "Arquitetura modular: domínio transacional autoritativo, portas governadas, worker separado, outbox/inbox atômicos e contratos de integração; stack M1 histórica.",
+      "relevance": "target_architecture_and_historical_stack",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 4,
+      "path": "docs/03-dominio-dados-contratos.md",
+      "bytes": 48787,
+      "sha256": "384d60a301cd920d31970f04c30e207c870532c3dc06f162d9d7fa0494c8219b",
+      "assignment_sha256": "384d60a301cd920d31970f04c30e207c870532c3dc06f162d9d7fa0494c8219b",
+      "hash_matches_assignment": true,
+      "total_lines": 562,
+      "read_chunks": [
+        4,
+        5,
+        6
+      ],
+      "full_read": true,
+      "summary": "Entidades, estados, 12 invariantes, comandos/eventos, lifecycle durável, exportação e restore em quarentena; contratos SQL administrativos M1 históricos.",
+      "relevance": "normative_invariants_and_proposed_lifecycle",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 5,
+      "path": "docs/07-plano-execucao.md",
+      "bytes": 44197,
+      "sha256": "3e7c0c57eebfe57dae95335d94b9ba5cb5eaafb9804d380d62647350e5b32371",
+      "assignment_sha256": "3e7c0c57eebfe57dae95335d94b9ba5cb5eaafb9804d380d62647350e5b32371",
+      "hash_matches_assignment": true,
+      "total_lines": 362,
+      "read_chunks": [
+        6,
+        7,
+        8,
+        9
+      ],
+      "full_read": true,
+      "summary": "Plano M0–M7, critérios de entrada/saída e checkpoints B1–B6/SQL até 018; evidências sintéticas antigas, sem qualificação do HEAD atual.",
+      "relevance": "historical_execution_plan",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 6,
+      "path": "docs/08-rastreabilidade-e-decisoes.md",
+      "bytes": 38561,
+      "sha256": "14e7742dc8b2393b9ff1ea1b16434e6c02086239ba87ff6184bfb6b7b4fe5b0e",
+      "assignment_sha256": "14e7742dc8b2393b9ff1ea1b16434e6c02086239ba87ff6184bfb6b7b4fe5b0e",
+      "hash_matches_assignment": true,
+      "total_lines": 259,
+      "read_chunks": [
+        9,
+        10,
+        11
+      ],
+      "full_read": true,
+      "summary": "Matriz FR/quality bar, ADRs iniciais, vinte correções documentais e decisões humanas M1; distingue proposta, implementação e prova.",
+      "relevance": "historical_traceability_with_current_contract_expectations",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 7,
+      "path": "docs/10-preparacao-m1.md",
+      "bytes": 7429,
+      "sha256": "013a647be28cc17a855c65f9194739e3efa7d2052ec395541e8483865a079ac9",
+      "assignment_sha256": "013a647be28cc17a855c65f9194739e3efa7d2052ec395541e8483865a079ac9",
+      "hash_matches_assignment": true,
+      "total_lines": 68,
+      "read_chunks": [
+        11
+      ],
+      "full_read": true,
+      "summary": "Preparação M1 restrita a identidade/contexto/permissões/auditoria sintética, matriz inicial de papéis e nove critérios funcionais.",
+      "relevance": "superseded_initial_scope",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 8,
+      "path": "docs/adr/001-agent-runtime-boundary.md",
+      "bytes": 535,
+      "sha256": "77d72062b2da9b394d2a52e4f077c12b10649677e8bc7dc6beb913844a26858e",
+      "assignment_sha256": "77d72062b2da9b394d2a52e4f077c12b10649677e8bc7dc6beb913844a26858e",
+      "hash_matches_assignment": true,
+      "total_lines": 7,
+      "read_chunks": [
+        11
+      ],
+      "full_read": true,
+      "summary": "AgentRuntime provider-neutral; domínio sem SDK, URL ou credencial do runtime.",
+      "relevance": "accepted_architectural_boundary",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 9,
+      "path": "docs/adr/002-tool-gateway.md",
+      "bytes": 477,
+      "sha256": "d9b2f8f6c198d2c74674881e9c1c8e03dc02005e2e1b55397e082d9b5b785b15",
+      "assignment_sha256": "d9b2f8f6c198d2c74674881e9c1c8e03dc02005e2e1b55397e082d9b5b785b15",
+      "hash_matches_assignment": true,
+      "total_lines": 7,
+      "read_chunks": [
+        11
+      ],
+      "full_read": true,
+      "summary": "ToolGateway único com catálogo, schemas, roles, escopo, approval, timeout e auditoria.",
+      "relevance": "accepted_security_boundary",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 10,
+      "path": "docs/adr/003-pdp-abac.md",
+      "bytes": 495,
+      "sha256": "abc6cc26ea019f1f0dc64ce5407042a8aa83dbea6e2c8c782619a3d9fecbca1d",
+      "assignment_sha256": "abc6cc26ea019f1f0dc64ce5407042a8aa83dbea6e2c8c782619a3d9fecbca1d",
+      "hash_matches_assignment": true,
+      "total_lines": 7,
+      "read_chunks": [
+        11
+      ],
+      "full_read": true,
+      "summary": "PDP separado e compartilhado por rota/tool/repository; RLS é defesa adicional.",
+      "relevance": "accepted_authorization_contract",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 11,
+      "path": "docs/adr/004-persistence-and-ledgers.md",
+      "bytes": 848,
+      "sha256": "9c5d82945c68e6f36effd3f2a2a27a9a602969d408877c4e2865e5133eb516df",
+      "assignment_sha256": "9c5d82945c68e6f36effd3f2a2a27a9a602969d408877c4e2865e5133eb516df",
+      "hash_matches_assignment": true,
+      "total_lines": 7,
+      "read_chunks": [
+        11
+      ],
+      "full_read": true,
+      "summary": "Commit transacional com normalizado/snapshot/journal/audit/receipt; ledgers externos e export governado cifrado.",
+      "relevance": "accepted_persistence_contract",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 12,
+      "path": "docs/adr/005-worker-and-effects.md",
+      "bytes": 460,
+      "sha256": "713a276d132b0555db1bd7ab3dbb579bd89794a14b7449a21637268309e7e07b",
+      "assignment_sha256": "713a276d132b0555db1bd7ab3dbb579bd89794a14b7449a21637268309e7e07b",
+      "hash_matches_assignment": true,
+      "total_lines": 7,
+      "read_chunks": [
+        11
+      ],
+      "full_read": true,
+      "summary": "Worker separado, intenção na API, lease/fence e resultado externo desconhecido sem reenvio cego.",
+      "relevance": "accepted_worker_contract",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 13,
+      "path": "docs/adr/006-secret-provider.md",
+      "bytes": 471,
+      "sha256": "ab0086a4cae7b68002226be15da82c2d27fddcd09ca17037d4b622f6f841583a",
+      "assignment_sha256": "ab0086a4cae7b68002226be15da82c2d27fddcd09ca17037d4b622f6f841583a",
+      "hash_matches_assignment": true,
+      "total_lines": 7,
+      "read_chunks": [
+        11
+      ],
+      "full_read": true,
+      "summary": "SecretProvider por referência, sem segredos em dados públicos, logs ou prompts; ausência falha fechada.",
+      "relevance": "accepted_secret_boundary",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 14,
+      "path": "docs/adr/007-deployment-and-observability.md",
+      "bytes": 484,
+      "sha256": "b96b1578804cd704a7f920f0da45be70c3ba9af8b0fe735b3444f3dac44178e8",
+      "assignment_sha256": "b96b1578804cd704a7f920f0da45be70c3ba9af8b0fe735b3444f3dac44178e8",
+      "hash_matches_assignment": true,
+      "total_lines": 7,
+      "read_chunks": [
+        11
+      ],
+      "full_read": true,
+      "summary": "Artifact reprodutível, configuração externa, containers e observabilidade; prova local não equivale a produção.",
+      "relevance": "accepted_operational_target",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 15,
+      "path": "docs/adr/008-recovery-and-release.md",
+      "bytes": 746,
+      "sha256": "d1cad2e24e09a0cdf393f1a420bb8cace7e743c104096ee26b1e0a75e5029880",
+      "assignment_sha256": "d1cad2e24e09a0cdf393f1a420bb8cace7e743c104096ee26b1e0a75e5029880",
+      "hash_matches_assignment": true,
+      "total_lines": 7,
+      "read_chunks": [
+        11
+      ],
+      "full_read": true,
+      "summary": "Restore/quarentena, manifest/checksum/chave externa, compatibilidade de rollback e gates humanos/externos.",
+      "relevance": "accepted_recovery_target",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 16,
+      "path": "docs/adr/009-deepseek-harness-external-runtime.md",
+      "bytes": 554,
+      "sha256": "9ae82e93dcd5ddcf59c94d35ac60fe28fc15a6b9a85315c2719a193b8dd858fa",
+      "assignment_sha256": "9ae82e93dcd5ddcf59c94d35ac60fe28fc15a6b9a85315c2719a193b8dd858fa",
+      "hash_matches_assignment": true,
+      "total_lines": 7,
+      "read_chunks": [
+        11
+      ],
+      "full_read": true,
+      "summary": "DeepSeek externo atrás de adapter CVG HTTP v1; protocolo próprio não é prova de compatibilidade nativa.",
+      "relevance": "accepted_external_runtime_boundary",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 17,
+      "path": "docs/adr/010-postgresql-rls.md",
+      "bytes": 526,
+      "sha256": "ecbc910f1789c4b11c8962c1288510005f828401cca95bddf2fbab3a955e6503",
+      "assignment_sha256": "ecbc910f1789c4b11c8962c1288510005f828401cca95bddf2fbab3a955e6503",
+      "hash_matches_assignment": true,
+      "total_lines": 7,
+      "read_chunks": [
+        11
+      ],
+      "full_read": true,
+      "summary": "ENABLE/FORCE RLS e contexto transacional; FKs organizacionais e migration 019 aditiva.",
+      "relevance": "accepted_database_isolation_contract",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 18,
+      "path": "docs/adr/011-approval-model.md",
+      "bytes": 450,
+      "sha256": "b84dfbae25dacbcfd5b9536484734ef4ebc8bb8bf49d45104c64b8012c7daf35",
+      "assignment_sha256": "b84dfbae25dacbcfd5b9536484734ef4ebc8bb8bf49d45104c64b8012c7daf35",
+      "hash_matches_assignment": true,
+      "total_lines": 7,
+      "read_chunks": [
+        11,
+        12
+      ],
+      "full_read": true,
+      "summary": "Approval one-shot por TTL, policy/digest/recurso; alto risco exige aprovador independente.",
+      "relevance": "accepted_approval_contract",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 19,
+      "path": "docs/adr/012-ai-source-of-truth.md",
+      "bytes": 500,
+      "sha256": "cb2f0122baed6a9f4e1ee23affb9651f9e5baf6bcc3c2b5630a8af9e8310eb15",
+      "assignment_sha256": "cb2f0122baed6a9f4e1ee23affb9651f9e5baf6bcc3c2b5630a8af9e8310eb15",
+      "hash_matches_assignment": true,
+      "total_lines": 7,
+      "read_chunks": [
+        12
+      ],
+      "full_read": true,
+      "summary": "IA cria sugestões/rascunhos; domínio é autoridade clínica, financeira e de autorização.",
+      "relevance": "accepted_domain_authority",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 20,
+      "path": "docs/adr/013-restore-quarantine.md",
+      "bytes": 496,
+      "sha256": "ddb027df92aa55007364670617999cce0cee1d697d8397c810391274553e35b2",
+      "assignment_sha256": "ddb027df92aa55007364670617999cce0cee1d697d8397c810391274553e35b2",
+      "hash_matches_assignment": true,
+      "total_lines": 7,
+      "read_chunks": [
+        12
+      ],
+      "full_read": true,
+      "summary": "Restore identificado e isolado permanece QUARANTINED até validação e revisão independente.",
+      "relevance": "accepted_recovery_contract",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 21,
+      "path": "docs/adr/014-authentication-boundary.md",
+      "bytes": 1492,
+      "sha256": "4ff1595161feab11c3ba572f0df03049cfdb044c76abbc78884473ce19bac331",
+      "assignment_sha256": "4ff1595161feab11c3ba572f0df03049cfdb044c76abbc78884473ce19bac331",
+      "hash_matches_assignment": true,
+      "total_lines": 21,
+      "read_chunks": [
+        12
+      ],
+      "full_read": true,
+      "summary": "Autenticação em boundary própria, desafios one-shot, credentialVersion, revogação e secrets; migration 020.",
+      "relevance": "accepted_authentication_contract",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 22,
+      "path": "docs/adr/015-deepseek-bridge-contract.md",
+      "bytes": 1481,
+      "sha256": "9b79a6632dfdcaa66a47139244fdeeb704b37623b0aff8d0829c843d1af91c21",
+      "assignment_sha256": "9b79a6632dfdcaa66a47139244fdeeb704b37623b0aff8d0829c843d1af91c21",
+      "hash_matches_assignment": true,
+      "total_lines": 24,
+      "read_chunks": [
+        12
+      ],
+      "full_read": true,
+      "summary": "Bridge CVG v1 com native port injetado, validação de manifesto/schema/provenance e default indisponível.",
+      "relevance": "accepted_bridge_contract",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 23,
+      "path": "docs/adr/016-authoritative-normalized-commands.md",
+      "bytes": 5289,
+      "sha256": "ff0a32b4bc72f936450d16804676e09d5f4edd529eb3fe2c8f1fe85ece12f448",
+      "assignment_sha256": "ff0a32b4bc72f936450d16804676e09d5f4edd529eb3fe2c8f1fe85ece12f448",
+      "hash_matches_assignment": true,
+      "total_lines": 65,
+      "read_chunks": [
+        12
+      ],
+      "full_read": true,
+      "summary": "Writes command-owned de patient/appointment/encounter/signature: equivalência de snapshot, UPSERT condicionado, CAS, replay sem segundo DML e rollback.",
+      "relevance": "accepted_incremental_authoritative_write_design",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 24,
+      "path": "docs/adr/017-worker-effect-ledger-composition.md",
+      "bytes": 2657,
+      "sha256": "ac8658f646ecbccde872b72da2b293d91f77aff8d2e12e704f65dd4e78015abd",
+      "assignment_sha256": "ac8658f646ecbccde872b72da2b293d91f77aff8d2e12e704f65dd4e78015abd",
+      "hash_matches_assignment": true,
+      "total_lines": 51,
+      "read_chunks": [
+        12
+      ],
+      "full_read": true,
+      "summary": "Correção histórica da factory do worker para conectar ExternalEffectLedger completo; readiness bloqueada sem ledger.",
+      "relevance": "historical_fix_to_verify_in_current_wiring",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 25,
+      "path": "docs/adr/018-restore-audit-receipt-durability.md",
+      "bytes": 1979,
+      "sha256": "053bc9e8d65a9a4c1ba38aada9c7968cbbd29c7b7492435f9423c4e1cdf2094f",
+      "assignment_sha256": "053bc9e8d65a9a4c1ba38aada9c7968cbbd29c7b7492435f9423c4e1cdf2094f",
+      "hash_matches_assignment": true,
+      "total_lines": 42,
+      "read_chunks": [
+        12
+      ],
+      "full_read": true,
+      "summary": "Drill de restore passa auditoria/receipts ao commit e compara ledgers canônicos, hashes e origem inalterada.",
+      "relevance": "historical_recovery_fix_and_expected_invariant",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 26,
+      "path": "docs/adr/019-universal-durable-command-idempotency.md",
+      "bytes": 3395,
+      "sha256": "41230f50265897c42a9f6e0668a2e18bb8f0cc324ac2026216e2683c00bdc298",
+      "assignment_sha256": "41230f50265897c42a9f6e0668a2e18bb8f0cc324ac2026216e2683c00bdc298",
+      "hash_matches_assignment": true,
+      "total_lines": 69,
+      "read_chunks": [
+        12
+      ],
+      "full_read": true,
+      "summary": "DurableIdempotencyService reivindica antes do callback e assenta falhas; identidade v2 com sessão foi posteriormente substituída pelo ADR032.",
+      "relevance": "partially_superseded_idempotency_design",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 27,
+      "path": "docs/adr/020-universal-pdp-boundary-guard.md",
+      "bytes": 2897,
+      "sha256": "597b73512e6d4aff243e545587f290331eedcb51259e91cac17a5f871e59a77d",
+      "assignment_sha256": "597b73512e6d4aff243e545587f290331eedcb51259e91cac17a5f871e59a77d",
+      "hash_matches_assignment": true,
+      "total_lines": 63,
+      "read_chunks": [
+        12,
+        13
+      ],
+      "full_read": true,
+      "summary": "Guard AST de ApplicationService/DomainCommandService e operações do PDP; cobertura estrutural não prova autorização em runtime.",
+      "relevance": "accepted_static_verification_boundary",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 28,
+      "path": "docs/adr/021-authoritative-normalized-guardian-write.md",
+      "bytes": 3459,
+      "sha256": "631721ef46c6b77c0ad329f16e9ea95f2a9aaed59206054426d43576171a7c8e",
+      "assignment_sha256": "631721ef46c6b77c0ad329f16e9ea95f2a9aaed59206054426d43576171a7c8e",
+      "hash_matches_assignment": true,
+      "total_lines": 72,
+      "read_chunks": [
+        13
+      ],
+      "full_read": true,
+      "summary": "Guardian command-owned com repository, equivalência, UPSERT condicionado e replay sem DML; timestamp SQL não integra contrato.",
+      "relevance": "accepted_authoritative_guardian_write",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 29,
+      "path": "docs/adr/022-authoritative-diagnostic-request-write.md",
+      "bytes": 2917,
+      "sha256": "aee3bf6d0c82d0ab49ac4119c7fb92c46a72325882290362c69e32fc189ddb85",
+      "assignment_sha256": "aee3bf6d0c82d0ab49ac4119c7fb92c46a72325882290362c69e32fc189ddb85",
+      "hash_matches_assignment": true,
+      "total_lines": 66,
+      "read_chunks": [
+        13
+      ],
+      "full_read": true,
+      "summary": "Pedido diagnóstico command-owned com dependências de paciente/encounter/ator e escopo; migration 032.",
+      "relevance": "accepted_authoritative_diagnostic_write",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 30,
+      "path": "docs/adr/023-authoritative-diagnostic-child-writes.md",
+      "bytes": 3925,
+      "sha256": "13d2dc009d987240da159976467ce4e2f8e3a10a7ad4fb6d4ff15d6a578ed223",
+      "assignment_sha256": "13d2dc009d987240da159976467ce4e2f8e3a10a7ad4fb6d4ff15d6a578ed223",
+      "hash_matches_assignment": true,
+      "total_lines": 80,
+      "read_chunks": [
+        13
+      ],
+      "full_read": true,
+      "summary": "Espécime/resultado command-owned e cadeia de escopo/paciente; migrations 033–034 evitam bypass NULL e divergência de filhos.",
+      "relevance": "accepted_diagnostic_integrity_contract",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 31,
+      "path": "docs/adr/024-runtime-route-catalog-admission.md",
+      "bytes": 2637,
+      "sha256": "6a672e7210045041b524f7dcb1a5cd80c50310772dbfcd6f4e1bc5b08139e41d",
+      "assignment_sha256": "6a672e7210045041b524f7dcb1a5cd80c50310772dbfcd6f4e1bc5b08139e41d",
+      "hash_matches_assignment": true,
+      "total_lines": 45,
+      "read_chunks": [
+        13
+      ],
+      "full_read": true,
+      "summary": "Catálogo HTTP admitido no startup, HEAD derivado, exceções exatas e rejeição persistente de rotas desconhecidas.",
+      "relevance": "accepted_runtime_route_contract",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 32,
+      "path": "docs/adr/025-application-and-worker-policy-admission.md",
+      "bytes": 1205,
+      "sha256": "303c45108b2d261788102dc448ca8e0244eaa8c04cac2b6235e9ea404aace3af",
+      "assignment_sha256": "303c45108b2d261788102dc448ca8e0244eaa8c04cac2b6235e9ea404aace3af",
+      "hash_matches_assignment": true,
+      "total_lines": 14,
+      "read_chunks": [
+        13
+      ],
+      "full_read": true,
+      "summary": "Inbox, sign claim e métricas em services; callbacks e jobs recebem registries de policy explícitos.",
+      "relevance": "accepted_application_worker_admission",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 33,
+      "path": "docs/adr/026-universal-authoritative-invariants.md",
+      "bytes": 1596,
+      "sha256": "e2f490981a075ed74abf46b02d08c0aa2f302a48cd9f51ead0511a56ac70eebc",
+      "assignment_sha256": "e2f490981a075ed74abf46b02d08c0aa2f302a48cd9f51ead0511a56ac70eebc",
+      "hash_matches_assignment": true,
+      "total_lines": 17,
+      "read_chunks": [
+        13
+      ],
+      "full_read": true,
+      "summary": "Registro de 32 coleções e validação de invariantes antes de toda projeção; não equivale ao cutover de todos os comandos.",
+      "relevance": "accepted_aggregate_validation_design",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 34,
+      "path": "docs/adr/027-worker-handler-runtime-and-backpressure.md",
+      "bytes": 2042,
+      "sha256": "f55de0ba8a3056029d545253148a3fbf6e34c72268cb0efbbd98aba42c11601c",
+      "assignment_sha256": "f55de0ba8a3056029d545253148a3fbf6e34c72268cb0efbbd98aba42c11601c",
+      "hash_matches_assignment": true,
+      "total_lines": 21,
+      "read_chunks": [
+        13,
+        14
+      ],
+      "full_read": true,
+      "summary": "Handlers tipados com deadline/retry/backpressure; claims limitados e estados explícitos de timeout/quarentena.",
+      "relevance": "accepted_worker_runtime_contract",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 35,
+      "path": "docs/adr/028-deepseek-acp-governance-boundary.md",
+      "bytes": 2817,
+      "sha256": "78dacaecccea012dd760d7f33f75ba72a59d1c60da03062ea05b38e6b02430aa",
+      "assignment_sha256": "78dacaecccea012dd760d7f33f75ba72a59d1c60da03062ea05b38e6b02430aa",
+      "hash_matches_assignment": true,
+      "total_lines": 36,
+      "read_chunks": [
+        14
+      ],
+      "full_read": true,
+      "summary": "Governança CVG obrigatória ao ACP: sessão durável, autorização, budget, usage/provenance e resultado desconhecido pós-dispatch.",
+      "relevance": "accepted_external_ai_governance",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 36,
+      "path": "docs/adr/029-architecture-boundaries-and-ownership.md",
+      "bytes": 14279,
+      "sha256": "644085a05011bc06b589be0c87cb20f6708e26618c45ed2a39d71989d2998503",
+      "assignment_sha256": "644085a05011bc06b589be0c87cb20f6708e26618c45ed2a39d71989d2998503",
+      "hash_matches_assignment": true,
+      "total_lines": 116,
+      "read_chunks": [
+        14
+      ],
+      "full_read": true,
+      "summary": "Mapa de ownership e callers no baseline de setembro; fluxo HTTP→PDP→domínio→commit CAS e preservação de contratos nas extrações.",
+      "relevance": "historical_architecture_inventory",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 37,
+      "path": "docs/adr/030-contracts-session-finance-compatibility.md",
+      "bytes": 7861,
+      "sha256": "2974306776dac09398dc3d2206a45a19eda24665261bd6e14bde15e58d73de41",
+      "assignment_sha256": "2974306776dac09398dc3d2206a45a19eda24665261bd6e14bde15e58d73de41",
+      "hash_matches_assignment": true,
+      "total_lines": 168,
+      "read_chunks": [
+        14,
+        15
+      ],
+      "full_read": true,
+      "summary": "Schemas versionados de envelopes/receipts/logout/saldo; JSON bounded; adoção por endpoints era incremental, não comprovada pela existência do schema.",
+      "relevance": "accepted_contracts_with_historical_adoption_limits",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 38,
+      "path": "docs/adr/031-journey-inventory-and-open-decisions.md",
+      "bytes": 15201,
+      "sha256": "f609eb0cb54883592ebaf24f2197b76fc300738810e2520feb59b63d418269bd",
+      "assignment_sha256": "f609eb0cb54883592ebaf24f2197b76fc300738810e2520feb59b63d418269bd",
+      "hash_matches_assignment": true,
+      "total_lines": 124,
+      "read_chunks": [
+        15,
+        16
+      ],
+      "full_read": true,
+      "summary": "Matriz 22 FR/7 UC e CTAs; lacunas de jornadas e decisões humanas D01–D06 explicitadas.",
+      "relevance": "historical_journey_inventory",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 39,
+      "path": "docs/adr/032-idempotency-identity-and-claim-fence.md",
+      "bytes": 2602,
+      "sha256": "3a1d8eda09c45eff187d1088d26c4fb1b12d55e69c61764c872252f1a16297ec",
+      "assignment_sha256": "3a1d8eda09c45eff187d1088d26c4fb1b12d55e69c61764c872252f1a16297ec",
+      "hash_matches_assignment": true,
+      "total_lines": 50,
+      "read_chunks": [
+        16
+      ],
+      "full_read": true,
+      "summary": "Chave idempotente v3 sem sessão, dual-read v2, claimEpoch/expiry/dispatch e reconciliação de abandono; migration 037.",
+      "relevance": "accepted_current_idempotency_identity",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 40,
+      "path": "docs/adr/033-external-test-authority.md",
+      "bytes": 2034,
+      "sha256": "dd0f7995ad883fa7b8376fba0c6e3740d47df5db34e12fde005875bd8d4e5ef5",
+      "assignment_sha256": "dd0f7995ad883fa7b8376fba0c6e3740d47df5db34e12fde005875bd8d4e5ef5",
+      "hash_matches_assignment": true,
+      "total_lines": 46,
+      "read_chunks": [
+        16
+      ],
+      "full_read": true,
+      "summary": "Contrato de preparação de staging e autoridade externa por recurso/operação/escopo/janela/custo.",
+      "relevance": "historical_external_qualification_policy",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 41,
+      "path": "docs/adr/039-remote-route-store-isolation.md",
+      "bytes": 3585,
+      "sha256": "994fc153226d291b705f803ebdbe18bdd872e8601894230feb3432def28d5b17",
+      "assignment_sha256": "994fc153226d291b705f803ebdbe18bdd872e8601894230feb3432def28d5b17",
+      "hash_matches_assignment": true,
+      "total_lines": 68,
+      "read_chunks": [
+        16
+      ],
+      "full_read": true,
+      "summary": "Fork por requisição remota com AsyncLocalStorage; CAS antes de adotar estado canônico, conflito descarta alterações e preserva UNKNOWN.",
+      "relevance": "accepted_remote_transaction_isolation",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 42,
+      "path": "docs/adr/040-snapshot-command-migration.md",
+      "bytes": 2087,
+      "sha256": "f94aaf2037031e6ce6657797e84748f2e8cf0809108edf5f351d6d8a8baad5b4",
+      "assignment_sha256": "f94aaf2037031e6ce6657797e84748f2e8cf0809108edf5f351d6d8a8baad5b4",
+      "hash_matches_assignment": true,
+      "total_lines": 33,
+      "read_chunks": [
+        16
+      ],
+      "full_read": true,
+      "summary": "Framework snapshot→comando: 8 coleções command-owned e 24 residuais, backfill/replay/paridade/rollback exigidos antes de cutover.",
+      "relevance": "current_migration_framework_not_completed_cutovers",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 43,
+      "path": "docs/adr/041-aud27-migration-harness.md",
+      "bytes": 3240,
+      "sha256": "d2b5c760df6bc7ab552a970c6310c9699bf6f9e6e3d9756c7ef33dd721916669",
+      "assignment_sha256": "d2b5c760df6bc7ab552a970c6310c9699bf6f9e6e3d9756c7ef33dd721916669",
+      "hash_matches_assignment": true,
+      "total_lines": 69,
+      "read_chunks": [
+        16
+      ],
+      "full_read": true,
+      "summary": "Harness AUD27 com batches/checkpoints duráveis e tabelas operadoras 047; protocolo de migração não substitui cutover dos 24 slices.",
+      "relevance": "accepted_operator_migration_protocol",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 44,
+      "path": "docs/adr/042-egress-runtime-contract.md",
+      "bytes": 4809,
+      "sha256": "2f4066b818d533f22dd263e7fdc02e15afb06f5a54afd5cd04c7dd7be05b8a20",
+      "assignment_sha256": "2f4066b818d533f22dd263e7fdc02e15afb06f5a54afd5cd04c7dd7be05b8a20",
+      "hash_matches_assignment": true,
+      "total_lines": 82,
+      "read_chunks": [
+        16,
+        17
+      ],
+      "full_read": true,
+      "summary": "Egress pinned DNS, redirects restritos, budgets de corpo/token, buckets com retenção e validação de respostas HTTP.",
+      "relevance": "accepted_egress_and_response_contract",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 45,
+      "path": "docs/adr/043-aud27-run-serialization.md",
+      "bytes": 3765,
+      "sha256": "65955b142462d76c223818c29d6fca825f8f0b02f33d62dc3a8c1b0c018cee9c",
+      "assignment_sha256": "65955b142462d76c223818c29d6fca825f8f0b02f33d62dc3a8c1b0c018cee9c",
+      "hash_matches_assignment": true,
+      "total_lines": 72,
+      "read_chunks": [
+        17
+      ],
+      "full_read": true,
+      "summary": "Serialização de execução AUD27 por advisory lock de sessão, mesmo cliente SQL e chave tenant/slice/runId; perda de conexão encerra ownership.",
+      "relevance": "accepted_migration_run_serialization",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 46,
+      "path": "docs/adr/044-scoped-control-plane-dml-rls.md",
+      "bytes": 3314,
+      "sha256": "cd788e75f995165b6df164449a581b3e7868a5c96de18af23638683e52a6d081",
+      "assignment_sha256": "cd788e75f995165b6df164449a581b3e7868a5c96de18af23638683e52a6d081",
+      "hash_matches_assignment": true,
+      "total_lines": 63,
+      "read_chunks": [
+        17
+      ],
+      "full_read": true,
+      "summary": "Migration 049 restringe DML de audit/receipts/role assignments por unidade/workspace e propaga GUC por registro.",
+      "relevance": "accepted_control_plane_scope_fix",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 47,
+      "path": "docs/adr/ADR-agent-runtime-embedding-decision.md",
+      "bytes": 6132,
+      "sha256": "38f2085fc0c6e1f74db7daef787684e25b8beeb854c29c8b823adcbcf88130b1",
+      "assignment_sha256": "38f2085fc0c6e1f74db7daef787684e25b8beeb854c29c8b823adcbcf88130b1",
+      "hash_matches_assignment": true,
+      "total_lines": 94,
+      "read_chunks": [
+        17
+      ],
+      "full_read": true,
+      "summary": "Decisão HYBRID: kernel autoral CVG atrás de AgentRuntime, sem copiar upstream; adapter externo preservado como opção.",
+      "relevance": "accepted_runtime_ownership_decision",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 48,
+      "path": "docs/adr/ADR-agent-runtime-process-boundary.md",
+      "bytes": 3526,
+      "sha256": "fcbc6b42a09d0581dac07d117c5f534845e2d35939219bbd20e1e7a2a69c1220",
+      "assignment_sha256": "fcbc6b42a09d0581dac07d117c5f534845e2d35939219bbd20e1e7a2a69c1220",
+      "hash_matches_assignment": true,
+      "total_lines": 54,
+      "read_chunks": [
+        17
+      ],
+      "full_read": true,
+      "summary": "Runtime inicialmente in-process com portas tipadas; extração standalone futura; separação de readiness e limites de imports.",
+      "relevance": "accepted_process_boundary_with_staging_limits",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 49,
+      "path": "docs/adr/ADR-agent-session-persistence.md",
+      "bytes": 3072,
+      "sha256": "585b1b7cf272ace685f993add8ca045a95840cc7ae6cc0847e5c24021c5d7f16",
+      "assignment_sha256": "585b1b7cf272ace685f993add8ca045a95840cc7ae6cc0847e5c24021c5d7f16",
+      "hash_matches_assignment": true,
+      "total_lines": 56,
+      "read_chunks": [
+        17,
+        18
+      ],
+      "full_read": true,
+      "summary": "AgentSessionStore PostgreSQL com sessões/turnos/checkpoints/leases, fencing, digests e retenção separada; memória somente local.",
+      "relevance": "accepted_agent_persistence_contract",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 50,
+      "path": "docs/adr/ADR-model-provider-boundary.md",
+      "bytes": 2581,
+      "sha256": "f4f7cc89f90fd2d7e3864e09e6dc2d929e842ef23da9f8e76096458012c870af",
+      "assignment_sha256": "f4f7cc89f90fd2d7e3864e09e6dc2d929e842ef23da9f8e76096458012c870af",
+      "hash_matches_assignment": true,
+      "total_lines": 51,
+      "read_chunks": [
+        18
+      ],
+      "full_read": true,
+      "summary": "ModelProvider/ModelRouter separados do harness e domínio; capabilities/data policy/fallback governados antes do envio.",
+      "relevance": "accepted_provider_boundary",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 51,
+      "path": "docs/adr/ADR-plugin-security-model.md",
+      "bytes": 2603,
+      "sha256": "52ba727e631c91d53b38b176043d5d7da609a61127047ee1af9e044b5a2fd966",
+      "assignment_sha256": "52ba727e631c91d53b38b176043d5d7da609a61127047ee1af9e044b5a2fd966",
+      "hash_matches_assignment": true,
+      "total_lines": 49,
+      "read_chunks": [
+        18
+      ],
+      "full_read": true,
+      "summary": "Plugins allowlisted por versão/digest/capabilities, contexto mínimo e sem hot reload; risco alto depende de controles explícitos.",
+      "relevance": "accepted_plugin_security_contract",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 52,
+      "path": "docs/api-compatibility-proof.md",
+      "bytes": 1184,
+      "sha256": "f2b979169327410be5a57c5ad4828045708e24e654a0f5ceab2ea67e0b266674",
+      "assignment_sha256": "f2b979169327410be5a57c5ad4828045708e24e654a0f5ceab2ea67e0b266674",
+      "hash_matches_assignment": true,
+      "total_lines": 9,
+      "read_chunks": [
+        18
+      ],
+      "full_read": true,
+      "summary": "Compatibilidade v1 fail-closed com registry de upcasters vazio; payload atual clonado, versões não registradas rejeitadas.",
+      "relevance": "local_contract_claim_to_verify",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 53,
+      "path": "docs/api-examples-v1.md",
+      "bytes": 4290,
+      "sha256": "f285b5e30101405a422be4969844235ba38b88f4af8ebeb12db4746554745c38",
+      "assignment_sha256": "f285b5e30101405a422be4969844235ba38b88f4af8ebeb12db4746554745c38",
+      "hash_matches_assignment": true,
+      "total_lines": 139,
+      "read_chunks": [
+        18
+      ],
+      "full_read": true,
+      "summary": "Exemplos HTTP/JSON v1 de login e guardian, contexto, CSRF/idempotência, envelopes e erros; valores sintéticos.",
+      "relevance": "current_public_api_examples",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 54,
+      "path": "docs/architecture-audit-vNext.md",
+      "bytes": 28756,
+      "sha256": "2b329a9dc0fb9fa82812d65ea5a507cbb13c7c5d928316d64b480e64615fe82f",
+      "assignment_sha256": "2b329a9dc0fb9fa82812d65ea5a507cbb13c7c5d928316d64b480e64615fe82f",
+      "hash_matches_assignment": true,
+      "total_lines": 255,
+      "read_chunks": [
+        18,
+        19,
+        20
+      ],
+      "full_read": true,
+      "summary": "Auditoria vNext histórica e deltas posteriores; mapa de fronteiras, lacunas e testes de recortes, sem prova global de produção.",
+      "relevance": "historical_architecture_audit",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 55,
+      "path": "docs/architecture-final.md",
+      "bytes": 13899,
+      "sha256": "41db3ac36ddcff49348638c5f9dfb8fdb0fb220a9b0c9045c5a83125e7d457b6",
+      "assignment_sha256": "41db3ac36ddcff49348638c5f9dfb8fdb0fb220a9b0c9045c5a83125e7d457b6",
+      "hash_matches_assignment": true,
+      "total_lines": 151,
+      "read_chunks": [
+        20
+      ],
+      "full_read": true,
+      "summary": "Arquitetura HYBRID de setembro com dois planos e autoridade CVG; kernel/contexto/session/plugin/provider, incluindo lacuna histórica de wiring da sessão SQL.",
+      "relevance": "historical_runtime_architecture_snapshot",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 56,
+      "path": "docs/auditoria-codigo-2026-09-19.md",
+      "bytes": 18238,
+      "sha256": "06a3ad8ddebad1def88e2751ef1595eaf2385b6a6e03035d3b411f35197d3559",
+      "assignment_sha256": "06a3ad8ddebad1def88e2751ef1595eaf2385b6a6e03035d3b411f35197d3559",
+      "hash_matches_assignment": true,
+      "total_lines": 279,
+      "read_chunks": [
+        20,
+        21
+      ],
+      "full_read": true,
+      "summary": "Auditoria de 19/09 explicitamente superada: isolamento clínico, recovery/readiness, TTL/lease, singleton remoto e privilégios; cenários a revalidar.",
+      "relevance": "superseded_audit_regression_scenarios",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 57,
+      "path": "docs/auditoria-entrega-2026-09-13.md",
+      "bytes": 22790,
+      "sha256": "69402de24574a15f7a5550b4e8d5c31e7faf225cebbaa2cc80c6d3a98e152548",
+      "assignment_sha256": "69402de24574a15f7a5550b4e8d5c31e7faf225cebbaa2cc80c6d3a98e152548",
+      "hash_matches_assignment": true,
+      "total_lines": 284,
+      "read_chunks": [
+        21,
+        22,
+        23
+      ],
+      "full_read": true,
+      "summary": "Auditoria da entrega de 13/09: 18 contraprovas sobre medicação terminal, budget, autoridade ACP, jornadas clínicas, contratos e evidências; testes e notas qualificam somente o candidato histórico.",
+      "relevance": "historical_audit_regression_scenarios",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 58,
+      "path": "docs/auditoria-resultado-cvg-aud21-013-2026-09-20.md",
+      "bytes": 10406,
+      "sha256": "8d645971d95b60b5c8790808aa8d421db2a96a70ca08930ca4541deec87ccfe0",
+      "assignment_sha256": "8d645971d95b60b5c8790808aa8d421db2a96a70ca08930ca4541deec87ccfe0",
+      "hash_matches_assignment": true,
+      "total_lines": 178,
+      "read_chunks": [
+        23
+      ],
+      "full_read": true,
+      "summary": "Reauditoria AUD21-013: usage órfão e lease fence zero aceitos, arrays públicos de restore sem validação estrutural, false-green de control plane e grants auxiliares; evidência PostgreSQL 044 histórica.",
+      "relevance": "historical_recovery_defects_to_revalidate",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 59,
+      "path": "docs/auditoria-resultado-cvg-aud27-2026-09-21.md",
+      "bytes": 16524,
+      "sha256": "6c46d47ed96457da07416b980ba788f01f0a7e1c13632b3f4ec359b7f0a58219",
+      "assignment_sha256": "6c46d47ed96457da07416b980ba788f01f0a7e1c13632b3f4ec359b7f0a58219",
+      "hash_matches_assignment": true,
+      "total_lines": 206,
+      "read_chunks": [
+        23,
+        24
+      ],
+      "full_read": true,
+      "summary": "AUD27 reavalia AUD26 com 69 técnico/40 produção; mapeamento semântico de tarefas divergente, 78/80 schemas genéricos, 24 snapshots primários e provas de candidato/infra incompletas naquela fotografia.",
+      "relevance": "historical_audit_not_current_score",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 60,
+      "path": "docs/authoritative-write-proof.md",
+      "bytes": 2147,
+      "sha256": "abcd509759bb8c09865b0181056c7596d2d3731259524123029cacea0aa8c0a8",
+      "assignment_sha256": "abcd509759bb8c09865b0181056c7596d2d3731259524123029cacea0aa8c0a8",
+      "hash_matches_assignment": true,
+      "total_lines": 18,
+      "read_chunks": [
+        24
+      ],
+      "full_read": true,
+      "summary": "Prova declarada de validação agregada das 32 coleções, oito comandos normalizados e rejeição de resultado diagnóstico órfão antes da projeção; não comprova cutovers ou concorrência universal.",
+      "relevance": "current_persistence_contract_with_local_evidence_limits",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 61,
+      "path": "docs/backlog-2026-09-24.md",
+      "bytes": 13309,
+      "sha256": "397349b770d912e164fc7be098b888d6ae176afef6e038eccdcd7a8cd6ea9b2f",
+      "assignment_sha256": "397349b770d912e164fc7be098b888d6ae176afef6e038eccdcd7a8cd6ea9b2f",
+      "hash_matches_assignment": true,
+      "total_lines": 100,
+      "read_chunks": [
+        24,
+        25
+      ],
+      "full_read": true,
+      "summary": "MEL24 propõe 30 melhorias e registra execução local: suite 741, helpers da API, checker transicional 8/24 e freeze; nenhum dos 24 cutovers concluído e várias qualificações externas/humanas pendentes.",
+      "relevance": "historical_execution_snapshot_and_remaining_requirements",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 62,
+      "path": "docs/backlog-melhorias-cvg-aud23-2026-09-20.md",
+      "bytes": 15273,
+      "sha256": "0d297477d2220a3fdc1b7412f8cd4d4e0eb6fe6addf75c9cf26cff2e5f958a3c",
+      "assignment_sha256": "0d297477d2220a3fdc1b7412f8cd4d4e0eb6fe6addf75c9cf26cff2e5f958a3c",
+      "hash_matches_assignment": true,
+      "total_lines": 239,
+      "read_chunks": [
+        25,
+        26
+      ],
+      "full_read": true,
+      "summary": "Backlog AUD23 explicitamente superado: 21 contratos de controle, PostgreSQL isolado, usage, restore selado, atomicidade, menor privilégio, evidência, qualidade, operação e gates externos/humanos.",
+      "relevance": "superseded_plan_not_action_authorization",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 63,
+      "path": "docs/backlog-melhorias-cvg-aud27-2026-09-21.md",
+      "bytes": 19952,
+      "sha256": "ae36a0235e6a15d968b964496c6563d24f84e802ae41905f62d7616a545e279a",
+      "assignment_sha256": "ae36a0235e6a15d968b964496c6563d24f84e802ae41905f62d7616a545e279a",
+      "hash_matches_assignment": true,
+      "total_lines": 306,
+      "read_chunks": [
+        26,
+        27
+      ],
+      "full_read": true,
+      "summary": "Backlog AUD27 com 27 tarefas: semântica de evidência, candidato reproduzível, schemas específicos, harness e 24 cutovers, imagens/licenças, qualidade, operação e dupla qualificação.",
+      "relevance": "planning_contract_not_execution_evidence",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 64,
+      "path": "docs/final-closure-audit.md",
+      "bytes": 55720,
+      "sha256": "15571cf072654b86a0459e33434156dc1a051452bc16c4c29e871a3e388315ce",
+      "assignment_sha256": "15571cf072654b86a0459e33434156dc1a051452bc16c4c29e871a3e388315ce",
+      "hash_matches_assignment": true,
+      "total_lines": 506,
+      "read_chunks": [
+        27,
+        28,
+        29,
+        30
+      ],
+      "full_read": true,
+      "summary": "Auditoria de fechamento de setembro com checkpoints e CI de múltiplos SHAs, domínio soberano, RLS, worker/effects, leituras e oito writes normalizados; resultados antigos não qualificam este HEAD.",
+      "relevance": "historical_multi_revision_audit",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 65,
+      "path": "docs/mel23-status-vocabulary.md",
+      "bytes": 2053,
+      "sha256": "1dd700b160e4c717231150cc63c8390a820f55196929b51a1ecc5e4863c21e85",
+      "assignment_sha256": "1dd700b160e4c717231150cc63c8390a820f55196929b51a1ecc5e4863c21e85",
+      "hash_matches_assignment": true,
+      "total_lines": 23,
+      "read_chunks": [
+        30
+      ],
+      "full_read": true,
+      "summary": "Separa status de tarefa, estado da evidência e veredito de promoção; .agent/backlog é autoridade de execução, PROPOSED não é status e fingerprint sujo não é candidato congelado.",
+      "relevance": "current_status_vocabulary",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 66,
+      "path": "docs/mel24-aud27-reconciliation.json",
+      "bytes": 8722,
+      "sha256": "b026b88c25494f1eee48d2e8cc87fac49343c9be9f35d5ba72fde497de7526ba",
+      "assignment_sha256": "b026b88c25494f1eee48d2e8cc87fac49343c9be9f35d5ba72fde497de7526ba",
+      "hash_matches_assignment": true,
+      "total_lines": 339,
+      "read_chunks": [
+        30
+      ],
+      "full_read": true,
+      "summary": "Crosswalk JSON completo de 30 MEL24 para tarefas AUD27/MEL23, hashes das fontes, dependências e relações DIRECT/SUBSCOPE/ACCEPTANCE_ADDITION; não atribui status nem cria tarefas.",
+      "relevance": "historical_requirement_mapping_no_execution_authority",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 67,
+      "path": "docs/pdp-universal-coverage.md",
+      "bytes": 6408,
+      "sha256": "6c5b0b81797417367394fa446bd32642629ccdb106e5ea3e40c9999b3bdc7a8a",
+      "assignment_sha256": "6c5b0b81797417367394fa446bd32642629ccdb106e5ea3e40c9999b3bdc7a8a",
+      "hash_matches_assignment": true,
+      "total_lines": 83,
+      "read_chunks": [
+        30,
+        31
+      ],
+      "full_read": true,
+      "summary": "Cobertura PDP parcial por application/tools/repositories, claims duráveis e guard AST; worker usa autoridade de job admitido; Guardian command-owned e replay sem DML documentados.",
+      "relevance": "local_boundary_contract_with_historical_counts",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 68,
+      "path": "docs/pdp-universal-proof.md",
+      "bytes": 14773,
+      "sha256": "1a510ebf2b8dbc30759bfab26ece70862fd7263becfdccf36b26fd464503a184",
+      "assignment_sha256": "1a510ebf2b8dbc30759bfab26ece70862fd7263becfdccf36b26fd464503a184",
+      "hash_matches_assignment": true,
+      "total_lines": 103,
+      "read_chunks": [
+        31
+      ],
+      "full_read": true,
+      "summary": "Prova local PDP com inventário AST, catálogo Fastify selado, chamadas dominantes de autorização, 41 mapas defensivos e validação compartilhada de snapshot; histórico de reparos e limites do guard.",
+      "relevance": "historical_verification_and_current_boundary_expectations",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 69,
+      "path": "docs/plano-aaa-2026-09-12/areas/01-arc.md",
+      "bytes": 5488,
+      "sha256": "184764ccfb8f5b2563e9ed96eae87c2961f49b532c0ef1f3a4fb2daef2c1fb94",
+      "assignment_sha256": "184764ccfb8f5b2563e9ed96eae87c2961f49b532c0ef1f3a4fb2daef2c1fb94",
+      "hash_matches_assignment": true,
+      "total_lines": 111,
+      "read_chunks": [
+        31,
+        32
+      ],
+      "full_read": true,
+      "summary": "ARC-01/02/03 planejam ownership real e extrações da API/persistência preservando contratos, autorização, CAS e atomicidade; tamanho sozinho não justifica mudança.",
+      "relevance": "historical_architecture_plan",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 70,
+      "path": "docs/plano-aaa-2026-09-12/areas/02-con.md",
+      "bytes": 5484,
+      "sha256": "d24aeb9bede5f58361ce8765ac391111098a15ccf1abfccab725b37803762399",
+      "assignment_sha256": "d24aeb9bede5f58361ce8765ac391111098a15ccf1abfccab725b37803762399",
+      "hash_matches_assignment": true,
+      "total_lines": 109,
+      "read_chunks": [
+        32
+      ],
+      "full_read": true,
+      "summary": "CON-01/02/03 planejam contratos de logout/saldo, validação semântica no cliente, catálogo/versionamento e negação explícita de versões não suportadas.",
+      "relevance": "historical_contract_plan",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 71,
+      "path": "docs/plano-aaa-2026-09-12/areas/03-sec.md",
+      "bytes": 7678,
+      "sha256": "705303a70304d093b761bfb0f536feef68a45ab0100b6bb84448a87992417689",
+      "assignment_sha256": "705303a70304d093b761bfb0f536feef68a45ab0100b6bb84448a87992417689",
+      "hash_matches_assignment": true,
+      "total_lines": 148,
+      "read_chunks": [
+        32
+      ],
+      "full_read": true,
+      "summary": "SEC-01..04: logout sob falha, contexto e revogação, secrets/WebAuthn/break-glass, matrizes negativas e red teams; distingue prova local de autoridade externa.",
+      "relevance": "historical_security_plan",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 72,
+      "path": "docs/plano-aaa-2026-09-12/areas/07-fun.md",
+      "bytes": 6075,
+      "sha256": "26f1ac62962820a2d8a9c982d74168f4f999a48b81dd009a99b4e3549de543f1",
+      "assignment_sha256": "26f1ac62962820a2d8a9c982d74168f4f999a48b81dd009a99b4e3549de543f1",
+      "hash_matches_assignment": true,
+      "total_lines": 113,
+      "read_chunks": [
+        32,
+        33
+      ],
+      "full_read": true,
+      "summary": "FUN-01..03: inventário de jornadas e CTAs, entrada/inventário de estoque com audit/receipt/replay e jornadas clínicas com erro, conflito e aprovação.",
+      "relevance": "historical_functional_plan",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 73,
+      "path": "docs/plano-aaa-2026-09-12/areas/08-fin.md",
+      "bytes": 7715,
+      "sha256": "76c362cfe28ba38cf23b6320cdb8f4e8cb23520e2dbf7b543ec75cb20e5afe8f",
+      "assignment_sha256": "76c362cfe28ba38cf23b6320cdb8f4e8cb23520e2dbf7b543ec75cb20e5afe8f",
+      "hash_matches_assignment": true,
+      "total_lines": 148,
+      "read_chunks": [
+        33
+      ],
+      "full_read": true,
+      "summary": "FIN-01..04: centavos inteiros, saldo PAID/parcial, estorno com regra aprovada, idempotência financeira e equações de ledger sob concorrência/restart.",
+      "relevance": "historical_plan_with_financial_invariants",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 74,
+      "path": "docs/plano-aaa-2026-09-12/areas/10-a11y.md",
+      "bytes": 5424,
+      "sha256": "05b3bdb9bebd4f8ea08aff97fefead376876e230e44c828f0d15cfe6a482e516",
+      "assignment_sha256": "05b3bdb9bebd4f8ea08aff97fefead376876e230e44c828f0d15cfe6a482e516",
+      "hash_matches_assignment": true,
+      "total_lines": 110,
+      "read_chunks": [
+        33
+      ],
+      "full_read": true,
+      "summary": "A11Y-01..03: matriz automatizada, teclado/foco/contraste, tecnologia assistiva e zoom reais, reteste independente; não substitui uso humano por screenshot.",
+      "relevance": "historical_accessibility_plan_outside_primary_code_scope",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 75,
+      "path": "docs/plano-executivo-2026-09-23.md",
+      "bytes": 6928,
+      "sha256": "54c7a77131d109f7c3bda66ff1d5094fe0d624c4aa42eb1b07b88ba314ef426f",
+      "assignment_sha256": "54c7a77131d109f7c3bda66ff1d5094fe0d624c4aa42eb1b07b88ba314ef426f",
+      "hash_matches_assignment": true,
+      "total_lines": 69,
+      "read_chunks": [
+        33,
+        34
+      ],
+      "full_read": true,
+      "summary": "Plano MEL23 de sete marcos e 50 propostas refinando AUD27; prioriza prova dos mesmos bytes, 24 cutovers, schemas, supply chain e operação antes da qualificação.",
+      "relevance": "historical_executive_plan",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 76,
+      "path": "docs/plano-triplo-aaa-pos-entrega-2026-09-13/rastreabilidade.md",
+      "bytes": 5676,
+      "sha256": "f77c32dd0854787e5238cd093096f2ea693262f5b1a68a29346e370b6dadd0fa",
+      "assignment_sha256": "f77c32dd0854787e5238cd093096f2ea693262f5b1a68a29346e370b6dadd0fa",
+      "hash_matches_assignment": true,
+      "total_lines": 79,
+      "read_chunks": [
+        34
+      ],
+      "full_read": true,
+      "summary": "Rastreabilidade dos 18 achados E01–E18 para 33 AAA2 e dos 38 AUD13 mais seis filhos; mantém requisitos herdados e distingue preservar, continuar e reabrir aceites.",
+      "relevance": "historical_acceptance_crosswalk",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 77,
+      "path": "docs/postgres-concurrency-proof.md",
+      "bytes": 4992,
+      "sha256": "fba97e5cfef36ac5177cffe0711ed5c3b5eb54125af54eb90dbccee43f4b6d1d",
+      "assignment_sha256": "fba97e5cfef36ac5177cffe0711ed5c3b5eb54125af54eb90dbccee43f4b6d1d",
+      "hash_matches_assignment": true,
+      "total_lines": 45,
+      "read_chunks": [
+        34
+      ],
+      "full_read": true,
+      "summary": "Prova PostgreSQL histórica de 001–036 em banco efêmero, dois processos disputando claim, replay/conflito, CAS/RLS e restore quarentenado; sem qualificação do schema atual.",
+      "relevance": "historical_database_execution_not_current_proof",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 78,
+      "path": "docs/prompt-codex-implementacao-auditoria-2026-09-21.md",
+      "bytes": 12419,
+      "sha256": "0c733f83c82c731004f38dd3d640e7f6eabf9c0afe39160ad7e60308327eb9b7",
+      "assignment_sha256": "0c733f83c82c731004f38dd3d640e7f6eabf9c0afe39160ad7e60308327eb9b7",
+      "hash_matches_assignment": true,
+      "total_lines": 209,
+      "read_chunks": [
+        34,
+        35
+      ],
+      "full_read": true,
+      "summary": "Prompt arquivado para implementação AUD26: 36 tarefas/39 achados, etapas de dados/contratos/operação e evidência exact-subject. Texto integral lido como dados, sem executar suas autorizações.",
+      "relevance": "archived_prompt_data_only",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 79,
+      "path": "docs/prompt-state-of-the-art-triplo-aaa.md",
+      "bytes": 27078,
+      "sha256": "1fb482d752e37db2ad75fdf8c5ea8f893f9343102c42cde7da2fe32f9ad112da",
+      "assignment_sha256": "1fb482d752e37db2ad75fdf8c5ea8f893f9343102c42cde7da2fe32f9ad112da",
+      "hash_matches_assignment": true,
+      "total_lines": 1940,
+      "read_chunks": [
+        35,
+        36
+      ],
+      "full_read": true,
+      "summary": "Prompt original completo de 40 fases: soberania de domínio, runtime separado, autorização/RLS/receipts, repos normalizados, recovery/qualidade/operação e notas somente com prova; partes do runtime evoluíram depois.",
+      "relevance": "archived_specification_data_only_partly_superseded",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 80,
+      "path": "docs/roadmap-melhorias-cvg-aud20-2026-09-20.md",
+      "bytes": 7553,
+      "sha256": "6e03932a9d0d2f7dc5a1ee831139313c672755db3e42df00cfa9df8935d3ed22",
+      "assignment_sha256": "6e03932a9d0d2f7dc5a1ee831139313c672755db3e42df00cfa9df8935d3ed22",
+      "hash_matches_assignment": true,
+      "total_lines": 140,
+      "read_chunks": [
+        36,
+        37
+      ],
+      "full_read": true,
+      "summary": "Roadmap AUD20 superado: terminalidade/fence, restore role, privilégios, resource IDs, abort, contratos, controle/evidência, qualificação local e externa.",
+      "relevance": "superseded_roadmap",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 81,
+      "path": "docs/roadmap-melhorias-cvg-aud21-2026-09-20.md",
+      "bytes": 10832,
+      "sha256": "eca94fb04be180874bb8ff144a9e7766465cc930999c6319aca207289a8fbf0b",
+      "assignment_sha256": "eca94fb04be180874bb8ff144a9e7766465cc930999c6319aca207289a8fbf0b",
+      "hash_matches_assignment": true,
+      "total_lines": 186,
+      "read_chunks": [
+        37
+      ],
+      "full_read": true,
+      "summary": "Roadmap AUD21 superado: quatro contraprovas P0, schema 042/043, recovery semântico, receipts ligados ao freeze, gates não mutantes e F0–37 técnicos/F38 humano.",
+      "relevance": "superseded_roadmap",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 82,
+      "path": "docs/roadmap-melhorias-cvg-aud22-2026-09-20.md",
+      "bytes": 7837,
+      "sha256": "6beb20a7e7978604ae318e710a8619c77882b04fb7f6d29dc57935a48a986ce1",
+      "assignment_sha256": "6beb20a7e7978604ae318e710a8619c77882b04fb7f6d29dc57935a48a986ce1",
+      "hash_matches_assignment": true,
+      "total_lines": 156,
+      "read_chunks": [
+        37,
+        38
+      ],
+      "full_read": true,
+      "summary": "Roadmap AUD22 superado: restore selado/usage/fences, atomicidade e menor privilégio, evidência externa ao sujeito, schema final e duas qualificações antes dos gates externos.",
+      "relevance": "superseded_roadmap",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 83,
+      "path": "docs/rodada-aaa3-2026-09-13/continuidade-aaa2.md",
+      "bytes": 4997,
+      "sha256": "bea60b6cd04cd9760059ae4837bbdaa7fee1deaefd83c7bc1907d7bc3df9011a",
+      "assignment_sha256": "bea60b6cd04cd9760059ae4837bbdaa7fee1deaefd83c7bc1907d7bc3df9011a",
+      "hash_matches_assignment": true,
+      "total_lines": 43,
+      "read_chunks": [
+        38
+      ],
+      "full_read": true,
+      "summary": "Continuidade AAA3 preserva os 33 contratos AAA2; terminalidade de medicação tem aceite local preservado/DB pendente, demais critérios continuam, sem fechar pais para liberar filhos.",
+      "relevance": "historical_program_continuity",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 84,
+      "path": "docs/rodada-aaa3-2026-09-13/plano-executivo.md",
+      "bytes": 3084,
+      "sha256": "31e7894f759fe30fd55df213df896a40f79307ee3e916db16e01b54dbed49f9d",
+      "assignment_sha256": "31e7894f759fe30fd55df213df896a40f79307ee3e916db16e01b54dbed49f9d",
+      "hash_matches_assignment": true,
+      "total_lines": 32,
+      "read_chunks": [
+        38
+      ],
+      "full_read": true,
+      "summary": "Plano AAA3 prioriza orçamento, autoridade e contexto clínico, preservando correções válidas; decisões clínicas não interrompem trabalho independente e progresso exige produto/evidência.",
+      "relevance": "historical_executive_direction",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 85,
+      "path": "docs/triple-aaa-final-scorecard.md",
+      "bytes": 3325,
+      "sha256": "d7a1217ebf24d364e0c7a5f533063003dd342cf7ad108a8df82dff9522c883da",
+      "assignment_sha256": "d7a1217ebf24d364e0c7a5f533063003dd342cf7ad108a8df82dff9522c883da",
+      "hash_matches_assignment": true,
+      "total_lines": 75,
+      "read_chunks": [
+        38
+      ],
+      "full_read": true,
+      "summary": "Scorecard de 16/09 com scores nulos, AAA_NOT_PROVEN e produção NOT_PROVEN; não observar incidentes no recorte não prova os gates externos/humanos ausentes.",
+      "relevance": "historical_scorecard_not_current_audit",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 86,
+      "path": "docs/verification-2026-09-10-appointment-source-write.md",
+      "bytes": 3723,
+      "sha256": "57ed1385457233d32770a99809ddd9e55c9cbbd266f87ad6a4152afa56bb10b7",
+      "assignment_sha256": "57ed1385457233d32770a99809ddd9e55c9cbbd266f87ad6a4152afa56bb10b7",
+      "hash_matches_assignment": true,
+      "total_lines": 77,
+      "read_chunks": [
+        38,
+        39
+      ],
+      "full_read": true,
+      "summary": "Verificação histórica de appointment command-owned no mesmo commit, escopo/equivalência/replay e rollback; prova sintética local e CI do SHA 9c304, sem staging ou crítica recebida.",
+      "relevance": "historical_authoritative_write_proof",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 87,
+      "path": "docs/verification-2026-09-10-pdp-operational-repair.md",
+      "bytes": 3214,
+      "sha256": "7704937ec22f35ae267a9a11e27c7fb02d72e43892826ed899ed580238f40db4",
+      "assignment_sha256": "7704937ec22f35ae267a9a11e27c7fb02d72e43892826ed899ed580238f40db4",
+      "hash_matches_assignment": true,
+      "total_lines": 22,
+      "read_chunks": [
+        39
+      ],
+      "full_read": true,
+      "summary": "Reparo histórico do inventário PDP AST e de checks dominantes, catálogo Fastify/worker policies e 216 testes; crítico local aprovou recorte, não cobertura operacional/produção.",
+      "relevance": "historical_authorization_verification",
+      "unread_line_ranges": []
+    },
+    {
+      "index": 88,
+      "path": "docs/verification-2026-09-10-worker-effect-ledger.md",
+      "bytes": 2052,
+      "sha256": "c0333e4e2836ae2f1ae873735b2f901fbb5790e1755028d60d2cf9f1365cc35f",
+      "assignment_sha256": "c0333e4e2836ae2f1ae873735b2f901fbb5790e1755028d60d2cf9f1365cc35f",
+      "hash_matches_assignment": true,
+      "total_lines": 48,
+      "read_chunks": [
+        39
+      ],
+      "full_read": true,
+      "summary": "Verificação histórica da factory do worker com ExternalEffectLedger completo e bloqueio quando parcial; sequência admission→dispatch→provider→outcome→complete e crítico local com limites.",
+      "relevance": "historical_worker_wiring_verification",
+      "unread_line_ranges": []
+    }
+  ],
+  "acknowledged_chunks": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39
+  ],
+  "total_chunks": 40,
+  "read_files": 89,
+  "documentation_reading_complete": true
+}

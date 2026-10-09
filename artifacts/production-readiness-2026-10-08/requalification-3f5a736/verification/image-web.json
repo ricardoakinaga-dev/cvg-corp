@@ -1,0 +1,13 @@
+{
+  "name": "image-web",
+  "context": "git archive 3e7308ab0e012b81046eda82f59ca86ed48ed6d9",
+  "exit_status": 0,
+  "duration_s": 21.0,
+  "source_sha": "3e7308ab0e012b81046eda82f59ca86ed48ed6d9",
+  "subject_fingerprint": "sha256:184e1f7dbb767479f74fa0ed37a139d14b0692d42e960ced8ab0fde4dd3611aa",
+  "tag": "cvg-corp-requal-web:3e7308ab0e01",
+  "image_id": "sha256:a94b19c3620faac7684fcb26b6f02c85bead5b4bde4ed6811b875ee32dbb78dc",
+  "log": "artifacts/production-readiness-2026-10-08/requalification-3f5a736/verification/image-web.log",
+  "log_sha256": "bb29f231b1f2f1441d760f9174cf3c072a7e82e40b8aa4d0575b3d9da8f03c6b",
+  "observed_at": "2026-10-09T10:23:53.285951+00:00"
+}

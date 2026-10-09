@@ -1,0 +1,14 @@
+{
+  "name": "control-plane",
+  "command": [
+    "npm",
+    "run",
+    "verify:control-plane"
+  ],
+  "exit_status": 0,
+  "duration_s": 0.5,
+  "log": "artifacts/production-readiness-2026-10-08/verification/control-plane.log",
+  "log_sha256": "e5f022c48a9e436906523abbe64ba70d25b2b1462fed1aa654d59129fc9df449",
+  "observed_at": "2026-10-08T10:33:37.600985+00:00",
+  "prior_attempt": "verification/control-plane-first-attempt.json (exit 1: plan lacked the Next Action section; fixed in the plan only)"
+}

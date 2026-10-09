@@ -66,11 +66,11 @@ humano.
 | `env -u DATABASE_URL npm run verify:postgres` | BLOCKED_EXTERNAL — URL PostgreSQL explicitamente identificada é obrigatória |
 
 O teste visual foi inspecionado nos renders Chromium de 375, 768 e 1440 px:
-[mobile](../../artifacts/runs/chromium-mobile-375-dashboard.png),
-[tablet](../../artifacts/runs/chromium-tablet-768-dashboard.png) e
-[wide](../../artifacts/runs/chromium-wide-1440-dashboard.png). A geometria tablet
+mobile (`artifacts/runs/chromium-mobile-375-dashboard.png`, local, não versionado),
+tablet (`artifacts/runs/chromium-tablet-768-dashboard.png`, local, não versionado) e
+wide (`artifacts/runs/chromium-wide-1440-dashboard.png`, local, não versionado). A geometria tablet
 da Agenda também foi capturada após a transição do drawer:
-[agenda tablet](../../artifacts/runs/chromium-tablet-768-agenda.png).
+agenda tablet (`artifacts/runs/chromium-tablet-768-agenda.png`, local, não versionado).
 
 ## Limitações que permanecem bloqueadoras
 

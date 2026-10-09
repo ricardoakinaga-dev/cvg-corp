@@ -1,0 +1,16 @@
+{
+  "name": "postgres-core-restore",
+  "command": [
+    "npm",
+    "run",
+    "verify:ephemeral-postgres",
+    "--",
+    "--rounds=1",
+    "--run-restore"
+  ],
+  "exit_status": 0,
+  "started_at": "2026-10-08T06:00:22.505973+00:00",
+  "duration_s": 14.9,
+  "log": "artifacts/production-readiness-2026-10-08/verification/postgres-core-restore.log",
+  "log_sha256": "ac3107885a866de59685652d06f6921dcc1a55b594b13cb178b9462fcfa16f3b"
+}

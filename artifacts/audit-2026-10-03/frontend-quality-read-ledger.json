@@ -1,0 +1,1481 @@
+{
+  "schema_version": 1,
+  "lane": "frontend-quality",
+  "head": "9aab406b164497978b05dd3aa431db49ad11677a",
+  "updated_at": "2026-10-03T10:49:46.969727+00:00",
+  "status": "READING_COMPLETE",
+  "method": "Conteúdo UTF-8 integral em chunks contíguos de linhas, exibidos sem truncamento; confirmação e resumo gravados na chamada seguinte. Inventário/hash/grep não contam como leitura. Comandos históricos são dados.",
+  "assigned_files": 58,
+  "total_assigned_bytes": 745227,
+  "full_read_files": 58,
+  "confirmed_read_bytes": 745227,
+  "unread_bytes": 0,
+  "files": [
+    {
+      "id": 0,
+      "path": "docs/accessibility-proof.md",
+      "sha256": "043e5f7b025e450cd8f60441ee1c3f13c953551893a73fdebb7b5e4f5cfd7338",
+      "assigned_sha256": "043e5f7b025e450cd8f60441ee1c3f13c953551893a73fdebb7b5e4f5cfd7338",
+      "matches_assignment": true,
+      "bytes": 2912,
+      "total_lines": 23,
+      "full_read": true,
+      "read_status": "full_read",
+      "read_bytes": 2912,
+      "summary": "Provas históricas Playwright/axe e limitações WebKit; PARTIAL_ASSISTIVE, leitor de tela e zoom real não comprovados.",
+      "relevance": "historical",
+      "chunks": [
+        {
+          "start_byte": 0,
+          "end_byte_exclusive": 2912,
+          "start_line": 1,
+          "end_line": 23,
+          "status": "full_read"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "path": "docs/auditoria-2026-09-13.md",
+      "sha256": "3a03f1d37c3bb482ba7291a3abbfc4919d39f1e3c4c62fac2dbb1c7b3ccd37ff",
+      "assigned_sha256": "3a03f1d37c3bb482ba7291a3abbfc4919d39f1e3c4c62fac2dbb1c7b3ccd37ff",
+      "matches_assignment": true,
+      "bytes": 36251,
+      "total_lines": 245,
+      "full_read": true,
+      "read_status": "full_read",
+      "read_bytes": 36251,
+      "summary": "Auditoria 13/09: 59/100, FR/NFR, logout/MFA/saldo/toast e jornadas incompletas; achados históricos exigem revalidação.",
+      "relevance": "historical",
+      "chunks": [
+        {
+          "start_byte": 0,
+          "end_byte_exclusive": 21561,
+          "start_line": 1,
+          "end_line": 142,
+          "status": "full_read"
+        },
+        {
+          "start_byte": 21561,
+          "end_byte_exclusive": 36251,
+          "start_line": 143,
+          "end_line": 245,
+          "status": "full_read"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "path": "docs/auditoria-profunda-repositorio-2026-09-21.md",
+      "sha256": "0485eef7559d1bfc761636734de6dac5e442ee2ceb1381d00dd7e393faa13fff",
+      "assigned_sha256": "0485eef7559d1bfc761636734de6dac5e442ee2ceb1381d00dd7e393faa13fff",
+      "matches_assignment": true,
+      "bytes": 18039,
+      "total_lines": 228,
+      "full_read": true,
+      "read_status": "full_read",
+      "read_bytes": 18039,
+      "summary": "Auditoria 21/09: 65/100, 39 achados; E2E flakiness, tokens/contraste limitados, bundle e cobertura sem gates naquela revisão.",
+      "relevance": "historical",
+      "chunks": [
+        {
+          "start_byte": 0,
+          "end_byte_exclusive": 18039,
+          "start_line": 1,
+          "end_line": 228,
+          "status": "full_read"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "path": "docs/auditoria-resultado-cvg-aud19-2026-09-20.md",
+      "sha256": "17b48ccceee0e30766599aae7df475a8316da1213db050b7077f31a0a554b30d",
+      "assigned_sha256": "17b48ccceee0e30766599aae7df475a8316da1213db050b7077f31a0a554b30d",
+      "matches_assignment": true,
+      "bytes": 16498,
+      "total_lines": 241,
+      "full_read": true,
+      "read_status": "full_read",
+      "read_bytes": 16498,
+      "summary": "Reauditoria AUD19: 57/100; StrictMode, schemas permissivos, boundary sem prova e dois E2E falhos; evidência/control-plane incoerentes.",
+      "relevance": "historical",
+      "chunks": [
+        {
+          "start_byte": 0,
+          "end_byte_exclusive": 16498,
+          "start_line": 1,
+          "end_line": 241,
+          "status": "full_read"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "path": "docs/backlog-2026-09-23.md",
+      "sha256": "af8ea7b2e112c174f36d815b0e75690644f855ddfa819102a29b08b2a724bb5a",
+      "assigned_sha256": "af8ea7b2e112c174f36d815b0e75690644f855ddfa819102a29b08b2a724bb5a",
+      "matches_assignment": true,
+      "bytes": 9327,
+      "total_lines": 81,
+      "full_read": true,
+      "read_status": "full_read",
+      "read_bytes": 9327,
+      "summary": "50 melhorias propostas MEL23, aceite por fingerprint e gates de cobertura/mutação/E2E/assistividade; propostas não equivalem a DONE.",
+      "relevance": "historical",
+      "chunks": [
+        {
+          "start_byte": 0,
+          "end_byte_exclusive": 9327,
+          "start_line": 1,
+          "end_line": 81,
+          "status": "full_read"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "path": "docs/e2e-skip-justification-2026-09-25.md",
+      "sha256": "5ded2f214f4c8605de015b8681a44ef94675bbcd8e9be3f06857619414211405",
+      "assigned_sha256": "5ded2f214f4c8605de015b8681a44ef94675bbcd8e9be3f06857619414211405",
+      "matches_assignment": true,
+      "bytes": 2772,
+      "total_lines": 22,
+      "full_read": true,
+      "read_status": "full_read",
+      "read_bytes": 2772,
+      "summary": "Justificativa de 37 skips históricos por viewport/capacidade; internação restrita a Chromium wide por fixture compartilhado; AT humana pendente.",
+      "relevance": "historical",
+      "chunks": [
+        {
+          "start_byte": 0,
+          "end_byte_exclusive": 2772,
+          "start_line": 1,
+          "end_line": 22,
+          "status": "full_read"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "path": "docs/error-taxonomy-vNext.md",
+      "sha256": "ea017ffeb631ae9668268d005d3240cde7c8ded454d7b2c02131337df45ae327",
+      "assigned_sha256": "ea017ffeb631ae9668268d005d3240cde7c8ded454d7b2c02131337df45ae327",
+      "matches_assignment": true,
+      "bytes": 1616,
+      "total_lines": 18,
+      "full_read": true,
+      "read_status": "full_read",
+      "read_bytes": 1616,
+      "summary": "Taxonomia contratual vigente de erros HTTP/CVG e envelopes; outcome unknown exige reconciliação e não repetição cega.",
+      "relevance": "current",
+      "chunks": [
+        {
+          "start_byte": 0,
+          "end_byte_exclusive": 1616,
+          "start_line": 1,
+          "end_line": 18,
+          "status": "full_read"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "path": "docs/fault-matrix-vNext.md",
+      "sha256": "7df4e52c3d2be4d698d9d29704f7169baa3ca25d4bc660d79feeba0e38fd4191",
+      "assigned_sha256": "7df4e52c3d2be4d698d9d29704f7169baa3ca25d4bc660d79feeba0e38fd4191",
+      "matches_assignment": true,
+      "bytes": 2713,
+      "total_lines": 23,
+      "full_read": true,
+      "read_status": "full_read",
+      "read_bytes": 2713,
+      "summary": "Matriz de falhas sintéticas e regras de reconciliação; banco/provedor/restores externos explicitamente não provados.",
+      "relevance": "current",
+      "chunks": [
+        {
+          "start_byte": 0,
+          "end_byte_exclusive": 2713,
+          "start_line": 1,
+          "end_line": 23,
+          "status": "full_read"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "path": "docs/final-state-of-art-scorecard.md",
+      "sha256": "5998f1f41f557bb8ceb58264c40da8531afef818e3e2c184cbddc087ec7464e2",
+      "assigned_sha256": "5998f1f41f557bb8ceb58264c40da8531afef818e3e2c184cbddc087ec7464e2",
+      "matches_assignment": true,
+      "bytes": 7009,
+      "total_lines": 59,
+      "full_read": true,
+      "read_status": "full_read",
+      "read_bytes": 7009,
+      "summary": "Scorecard local 16/09 com scores null, limites externos/AT e fatos históricos concorrentes; AAA/produção não provados.",
+      "relevance": "historical",
+      "chunks": [
+        {
+          "start_byte": 0,
+          "end_byte_exclusive": 7009,
+          "start_line": 1,
+          "end_line": 59,
+          "status": "full_read"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "path": "docs/performance-vNext.md",
+      "sha256": "8578146b640d4aa21e1c52e0a2b23dc2fe016edd5c09a621a0311007356319d4",
+      "assigned_sha256": "8578146b640d4aa21e1c52e0a2b23dc2fe016edd5c09a621a0311007356319d4",
+      "matches_assignment": true,
+      "bytes": 943,
+      "total_lines": 20,
+      "full_read": true,
+      "read_status": "full_read",
+      "read_bytes": 943,
+      "summary": "Contrato de desempenho distingue baseline sintética de workload e SLO de staging ainda propostos.",
+      "relevance": "current",
+      "chunks": [
+        {
+          "start_byte": 0,
+          "end_byte_exclusive": 943,
+          "start_line": 1,
+          "end_line": 20,
+          "status": "full_read"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "path": "docs/plano-aaa-2026-09-12/README.md",
+      "sha256": "d15c335847d4856ba1362267c85f17ee0ad0813488cc18d9154c84e154127384",
+      "assigned_sha256": "d15c335847d4856ba1362267c85f17ee0ad0813488cc18d9154c84e154127384",
+      "matches_assignment": true,
+      "bytes": 4185,
+      "total_lines": 64,
+      "full_read": true,
+      "read_status": "full_read",
+      "read_bytes": 4185,
+      "summary": "Índice do programa AAA de 54 tarefas/16 áreas, fontes de verdade e prompts de execução histórica, sem autoridade para esta auditoria.",
+      "relevance": "historical",
+      "chunks": [
+        {
+          "start_byte": 0,
+          "end_byte_exclusive": 4185,
+          "start_line": 1,
+          "end_line": 64,
+          "status": "full_read"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "path": "docs/plano-aaa-2026-09-12/areas/06-wrk.md",
+      "sha256": "a1dc3f7b21b536642a4bebbe09bf0943f7c70177a063b0f622861fc464378162",
+      "assigned_sha256": "a1dc3f7b21b536642a4bebbe09bf0943f7c70177a063b0f622861fc464378162",
+      "matches_assignment": true,
+      "bytes": 5557,
+      "total_lines": 115,
+      "full_read": true,
+      "read_status": "full_read",
+      "read_bytes": 5557,
+      "summary": "Plano WRK: handlers, leases, fencing, shutdown, backpressure e provider externo com receipts.",
+      "relevance": "historical",
+      "chunks": [
+        {
+          "start_byte": 0,
+          "end_byte_exclusive": 5557,
+          "start_line": 1,
+          "end_line": 115,
+          "status": "full_read"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "path": "docs/plano-aaa-2026-09-12/areas/09-ux.md",
+      "sha256": "a19754821ebf343cf16e471ae1febd3612403bd8504aa3c71e86f5519e46c120",
+      "assigned_sha256": "a19754821ebf343cf16e471ae1febd3612403bd8504aa3c71e86f5519e46c120",
+      "matches_assignment": true,
+      "bytes": 5504,
+      "total_lines": 111,
+      "full_read": true,
+      "read_status": "full_read",
+      "read_bytes": 5504,
+      "summary": "Plano UX: estados honestos, buffers eliminados na perda de contexto, tokens, foco e validação com usuários representativos.",
+      "relevance": "historical",
+      "chunks": [
+        {
+          "start_byte": 0,
+          "end_byte_exclusive": 5504,
+          "start_line": 1,
+          "end_line": 111,
+          "status": "full_read"
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "path": "docs/plano-aaa-2026-09-12/areas/11-qua.md",
+      "sha256": "c0454285338124e60b90b3fd33a9f110ed7e7537fb63dd1763e93a74de5deb00",
+      "assigned_sha256": "c0454285338124e60b90b3fd33a9f110ed7e7537fb63dd1763e93a74de5deb00",
+      "matches_assignment": true,
+      "bytes": 5678,
+      "total_lines": 110,
+      "full_read": true,
+      "read_status": "full_read",
+      "read_bytes": 5678,
+      "summary": "Plano QUA: fixtures determinísticas, evidência portátil e isolamento completo de portas/origem/banco/output/seed por job.",
+      "relevance": "historical",
+      "chunks": [
+        {
+          "start_byte": 0,
+          "end_byte_exclusive": 5678,
+          "start_line": 1,
+          "end_line": 110,
+          "status": "full_read"
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "path": "docs/plano-aaa-2026-09-12/areas/12-per.md",
+      "sha256": "08737f493e3fd723ac4fde4ffebc866511493205b106a9da91c9eeea47624bdc",
+      "assigned_sha256": "08737f493e3fd723ac4fde4ffebc866511493205b106a9da91c9eeea47624bdc",
+      "matches_assignment": true,
+      "bytes": 5960,
+      "total_lines": 113,
+      "full_read": true,
+      "read_status": "full_read",
+      "read_bytes": 5960,
+      "summary": "Plano PER: workloads W-A a W-H, percentis, profiling e carga/caos autorizados, sem inferir produção de benchmarks.",
+      "relevance": "historical",
+      "chunks": [
+        {
+          "start_byte": 0,
+          "end_byte_exclusive": 5960,
+          "start_line": 1,
+          "end_line": 113,
+          "status": "full_read"
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "path": "docs/plano-aaa-2026-09-12/areas/13-ops.md",
+      "sha256": "46046307f501f0ef9e584f6da057000c3efea403bb0cd533b81a21ff6173dfa4",
+      "assigned_sha256": "46046307f501f0ef9e584f6da057000c3efea403bb0cd533b81a21ff6173dfa4",
+      "matches_assignment": true,
+      "bytes": 6009,
+      "total_lines": 120,
+      "full_read": true,
+      "read_status": "full_read",
+      "read_bytes": 6009,
+      "summary": "Plano OPS: observabilidade ponta a ponta, backups cifrados, retenção, RTO/RPO e drills com operador independente.",
+      "relevance": "historical",
+      "chunks": [
+        {
+          "start_byte": 0,
+          "end_byte_exclusive": 6009,
+          "start_line": 1,
+          "end_line": 120,
+          "status": "full_read"
+        }
+      ]
+    },
+    {
+      "id": 16,
+      "path": "docs/plano-aaa-2026-09-12/areas/14-sup.md",
+      "sha256": "c958bad92c92c467ad0ddb395ca94b90c59c016adc643fa0f463eb020f2d06b3",
+      "assigned_sha256": "c958bad92c92c467ad0ddb395ca94b90c59c016adc643fa0f463eb020f2d06b3",
+      "matches_assignment": true,
+      "bytes": 5823,
+      "total_lines": 116,
+      "full_read": true,
+      "read_status": "full_read",
+      "read_bytes": 5823,
+      "summary": "Plano SUP: instalação coerente com lockfile, SBOM, imagens, proveniência e rejeição de adulteração.",
+      "relevance": "historical",
+      "chunks": [
+        {
+          "start_byte": 0,
+          "end_byte_exclusive": 5823,
+          "start_line": 1,
+          "end_line": 116,
+          "status": "full_read"
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "path": "docs/plano-aaa-2026-09-12/areas/15-dev.md",
+      "sha256": "8ca8add41fb44a2d87837c3aba1e271f01d551c773565f4448d9720caa55efae",
+      "assigned_sha256": "8ca8add41fb44a2d87837c3aba1e271f01d551c773565f4448d9720caa55efae",
+      "matches_assignment": true,
+      "bytes": 9755,
+      "total_lines": 191,
+      "full_read": true,
+      "read_status": "full_read",
+      "read_bytes": 9755,
+      "summary": "Plano DEV: CI, staging, container smoke, freeze, críticos e decisão humana separados de implementação local.",
+      "relevance": "historical",
+      "chunks": [
+        {
+          "start_byte": 0,
+          "end_byte_exclusive": 9755,
+          "start_line": 1,
+          "end_line": 191,
+          "status": "full_read"
+        }
+      ]
+    },
+    {
+      "id": 18,
+      "path": "docs/plano-aaa-2026-09-12/areas/16-doc.md",
+      "sha256": "fdeed5413cfd664c9f89596ff70b0ba61a64b97b5c5db61f8dd48d350f7ae863",
+      "assigned_sha256": "fdeed5413cfd664c9f89596ff70b0ba61a64b97b5c5db61f8dd48d350f7ae863",
+      "matches_assignment": true,
+      "bytes": 7445,
+      "total_lines": 137,
+      "full_read": true,
+      "read_status": "full_read",
+      "read_bytes": 7445,
+      "summary": "Plano DOC: reconciliação idempotente e preservação de históricos; rastreabilidade tarefa/fase/gate/digest.",
+      "relevance": "historical",
+      "chunks": [
+        {
+          "start_byte": 0,
+          "end_byte_exclusive": 7445,
+          "start_line": 1,
+          "end_line": 137,
+          "status": "full_read"
+        }
+      ]
+    },
+    {
+      "id": 19,
+      "path": "docs/plano-aaa-2026-09-12/backlog.json",
+      "sha256": "e28cd95e967cf705ec787b9ca68be46e210b96c420ddca204a1dbdef07214936",
+      "assigned_sha256": "e28cd95e967cf705ec787b9ca68be46e210b96c420ddca204a1dbdef07214936",
+      "matches_assignment": true,
+      "bytes": 105106,
+      "total_lines": 3013,
+      "full_read": true,
+      "read_status": "full_read",
+      "read_bytes": 105106,
+      "summary": "Leitura integral do catálogo histórico de 54 tarefas: 16 áreas, 25 gates, F0–F38, contratos/aceites/dependências e distinção entre plano e execução.",
+      "relevance": "historical",
+      "chunks": [
+        {
+          "start_byte": 0,
+          "end_byte_exclusive": 21988,
+          "start_line": 1,
+          "end_line": 738,
+          "status": "full_read"
+        },
+        {
+          "start_byte": 21988,
+          "end_byte_exclusive": 43884,
+          "start_line": 739,
+          "end_line": 1359,
+          "status": "full_read"
+        },
+        {
+          "start_byte": 43884,
+          "end_byte_exclusive": 65812,
+          "start_line": 1360,
+          "end_line": 1954,
+          "status": "full_read"
+        },
+        {
+          "start_byte": 65812,
+          "end_byte_exclusive": 87805,
+          "start_line": 1955,
+          "end_line": 2558,
+          "status": "full_read"
+        },
+        {
+          "start_byte": 87805,
+          "end_byte_exclusive": 105106,
+          "start_line": 2559,
+          "end_line": 3013,
+          "status": "full_read"
+        }
+      ]
+    },
+    {
+      "id": 20,
+      "path": "docs/plano-aaa-2026-09-12/backlog.md",
+      "sha256": "f81e8081b7b3541d004adef56ac1dee2fdbbdecaedd1f7b2c746109fa5aa82c2",
+      "assigned_sha256": "f81e8081b7b3541d004adef56ac1dee2fdbbdecaedd1f7b2c746109fa5aa82c2",
+      "matches_assignment": true,
+      "bytes": 7151,
+      "total_lines": 70,
+      "full_read": true,
+      "read_status": "full_read",
+      "read_bytes": 7151,
+      "summary": "Tabela integral dos 54 contratos e DAG; estado canônico separado, implementação não equivale a DONE.",
+      "relevance": "historical",
+      "chunks": [
+        {
+          "start_byte": 0,
+          "end_byte_exclusive": 7151,
+          "start_line": 1,
+          "end_line": 70,
+          "status": "full_read"
+        }
+      ]
+    },
+    {
+      "id": 21,
+      "path": "docs/plano-aaa-2026-09-12/multiagentes.md",
+      "sha256": "1c320bdc6a879b30e39d9f00abe0c931eac669461bf808e203f73d9e4e9ab69f",
+      "assigned_sha256": "1c320bdc6a879b30e39d9f00abe0c931eac669461bf808e203f73d9e4e9ab69f",
+      "matches_assignment": true,
+      "bytes": 9931,
+      "total_lines": 123,
+      "full_read": true,
+      "read_status": "full_read",
+      "read_bytes": 9931,
+      "summary": "Protocolo histórico multiagente: donos, isolamento completo de outputs/seed/portas, críticos independentes, evidência e aviso de que verify:production executa E2E.",
+      "relevance": "historical",
+      "chunks": [
+        {
+          "start_byte": 0,
+          "end_byte_exclusive": 9931,
+          "start_line": 1,
+          "end_line": 123,
+          "status": "full_read"
+        }
+      ]
+    },
+    {
+      "id": 22,
+      "path": "docs/plano-aaa-2026-09-12/plano-executivo.md",
+      "sha256": "77816c3c44f05fae32f781970d02dda89d6782789c1da2cb8aed891fcded2a4e",
+      "assigned_sha256": "77816c3c44f05fae32f781970d02dda89d6782789c1da2cb8aed891fcded2a4e",
+      "matches_assignment": true,
+      "bytes": 10571,
+      "total_lines": 91,
+      "full_read": true,
+      "read_status": "full_read",
+      "read_bytes": 10571,
+      "summary": "Plano executivo histórico AAA: marcos, objetivos, decisões humanas/externas, riscos, estimativas e limites da prova local.",
+      "relevance": "historical",
+      "chunks": [
+        {
+          "start_byte": 0,
+          "end_byte_exclusive": 10571,
+          "start_line": 1,
+          "end_line": 91,
+          "status": "full_read"
+        }
+      ]
+    },
+    {
+      "id": 23,
+      "path": "docs/plano-aaa-2026-09-12/prompt-implementacao.md",
+      "sha256": "a2e220f90685791c0710a43d0b307960c03a145694f104e5393f51ffe3f71cfe",
+      "assigned_sha256": "a2e220f90685791c0710a43d0b307960c03a145694f104e5393f51ffe3f71cfe",
+      "matches_assignment": true,
+      "bytes": 17916,
+      "total_lines": 194,
+      "full_read": true,
+      "read_status": "full_read",
+      "read_bytes": 17916,
+      "summary": "Prompt histórico completo para implementação futura; exige jornadas reais e gates, mas nesta auditoria é somente dado e não concede autorização de execução.",
+      "relevance": "historical",
+      "chunks": [
+        {
+          "start_byte": 0,
+          "end_byte_exclusive": 17916,
+          "start_line": 1,
+          "end_line": 194,
+          "status": "full_read"
+        }
+      ]
+    },
+    {
+      "id": 24,
+      "path": "docs/plano-aaa-2026-09-12/qualidade.md",
+      "sha256": "8eb7a275cedea9bfe6bccc09803bcf0132a785c29467535e0fa6fc921baf8e00",
+      "assigned_sha256": "8eb7a275cedea9bfe6bccc09803bcf0132a785c29467535e0fa6fc921baf8e00",
+      "matches_assignment": true,
+      "bytes": 11743,
+      "total_lines": 159,
+      "full_read": true,
+      "read_status": "full_read",
+      "read_bytes": 11743,
+      "summary": "Barra histórica v4, 22 dimensões, 25 gates e F0–F38; metas e evidência separadas; prova assistiva real não substituída por automação.",
+      "relevance": "historical",
+      "chunks": [
+        {
+          "start_byte": 0,
+          "end_byte_exclusive": 11743,
+          "start_line": 1,
+          "end_line": 159,
+          "status": "full_read"
+        }
+      ]
+    },
+    {
+      "id": 25,
+      "path": "docs/plano-aaa-2026-09-12/roadmap.md",
+      "sha256": "a22e2924a7ba34fdfe80cb1b94f079ce4fae8a18aac3a380e3d4821d41c9a7d2",
+      "assigned_sha256": "a22e2924a7ba34fdfe80cb1b94f079ce4fae8a18aac3a380e3d4821d41c9a7d2",
+      "matches_assignment": true,
+      "bytes": 7625,
+      "total_lines": 76,
+      "full_read": true,
+      "read_status": "full_read",
+      "read_bytes": 7625,
+      "summary": "Roadmap histórico M0–M5, DAG, reservas de recursos, isolamento E2E e revisão do candidato; marcos não equivalem às fases normativas.",
+      "relevance": "historical",
+      "chunks": [
+        {
+          "start_byte": 0,
+          "end_byte_exclusive": 7625,
+          "start_line": 1,
+          "end_line": 76,
+          "status": "full_read"
+        }
+      ]
+    },
+    {
+      "id": 26,
+      "path": "docs/plano-aaa-2026-09-12/validacao.md",
+      "sha256": "3b417e40b16dc696e34eb0efa4d2535ac1ef78bda8ce045aee11ac9531bf1ec1",
+      "assigned_sha256": "3b417e40b16dc696e34eb0efa4d2535ac1ef78bda8ce045aee11ac9531bf1ec1",
+      "matches_assignment": true,
+      "bytes": 2916,
+      "total_lines": 32,
+      "full_read": true,
+      "read_status": "full_read",
+      "read_bytes": 2916,
+      "summary": "Validação documental histórica: 54 tarefas, DAG, hashes e seis casos negativos; explicitamente não prova produto.",
+      "relevance": "historical",
+      "chunks": [
+        {
+          "start_byte": 0,
+          "end_byte_exclusive": 2916,
+          "start_line": 1,
+          "end_line": 32,
+          "status": "full_read"
+        }
+      ]
+    },
+    {
+      "id": 27,
+      "path": "docs/plano-aaa-2026-09-12/validar-plano.py",
+      "sha256": "73e8f8bda1143e759d00fc2624ad2e2d88249c14cd2dbf363bb699cd153838c3",
+      "assigned_sha256": "73e8f8bda1143e759d00fc2624ad2e2d88249c14cd2dbf363bb699cd153838c3",
+      "matches_assignment": true,
+      "bytes": 5504,
+      "total_lines": 103,
+      "full_read": true,
+      "read_status": "full_read",
+      "read_bytes": 5504,
+      "summary": "Validador Python lido integralmente, não executado: confere catálogo, hash da barra, fases, DAG, paths, scripts e links.",
+      "relevance": "historical",
+      "chunks": [
+        {
+          "start_byte": 0,
+          "end_byte_exclusive": 5504,
+          "start_line": 1,
+          "end_line": 103,
+          "status": "full_read"
+        }
+      ]
+    },
+    {
+      "id": 28,
+      "path": "docs/plano-executivo-melhorias-auditoria-2026-09-21.md",
+      "sha256": "3c5388b313a1a8c026c857a4ac5a061eed55d87ac6d4a342082c9c0ec100ea4e",
+      "assigned_sha256": "3c5388b313a1a8c026c857a4ac5a061eed55d87ac6d4a342082c9c0ec100ea4e",
+      "matches_assignment": true,
+      "bytes": 12618,
+      "total_lines": 201,
+      "full_read": true,
+      "read_status": "full_read",
+      "read_bytes": 12618,
+      "summary": "Plano proposto AUD26 para 39 achados/36 tarefas: restore, telemetria, persistência, qualidade frontend, budgets, CI e gates externos.",
+      "relevance": "historical",
+      "chunks": [
+        {
+          "start_byte": 0,
+          "end_byte_exclusive": 12618,
+          "start_line": 1,
+          "end_line": 201,
+          "status": "full_read"
+        }
+      ]
+    },
+    {
+      "id": 29,
+      "path": "docs/plano-melhorias-2026-09-13/README.md",
+      "sha256": "7d1c8de1efd5c2e449bc95599134a791336e158378f04fa3a369ffd32accc39a",
+      "assigned_sha256": "7d1c8de1efd5c2e449bc95599134a791336e158378f04fa3a369ffd32accc39a",
+      "matches_assignment": true,
+      "bytes": 1541,
+      "total_lines": 17,
+      "full_read": true,
+      "read_status": "full_read",
+      "read_bytes": 1541,
+      "summary": "Índice histórico AUD13 de 38 tarefas ligadas a 21 achados e FR/NFR; legado reconciliável, sem execução implícita.",
+      "relevance": "historical",
+      "chunks": [
+        {
+          "start_byte": 0,
+          "end_byte_exclusive": 1541,
+          "start_line": 1,
+          "end_line": 17,
+          "status": "full_read"
+        }
+      ]
+    },
+    {
+      "id": 30,
+      "path": "docs/plano-melhorias-2026-09-13/backlog.json",
+      "sha256": "1b6fc4e05b9a9f2c612021f2f6376da17372931d8a78df94e85f6aded67fa0ba",
+      "assigned_sha256": "1b6fc4e05b9a9f2c612021f2f6376da17372931d8a78df94e85f6aded67fa0ba",
+      "matches_assignment": true,
+      "bytes": 91235,
+      "total_lines": 2296,
+      "full_read": true,
+      "read_status": "full_read",
+      "read_bytes": 91235,
+      "summary": "Catálogo AUD13 integral: 38 contratos de sessão/MFA, jornadas, conhecimento, budget, idempotência, dados, worker, operação, acessibilidade e promoção; planejamento histórico.",
+      "relevance": "historical",
+      "chunks": [
+        {
+          "start_byte": 0,
+          "end_byte_exclusive": 21947,
+          "start_line": 1,
+          "end_line": 553,
+          "status": "full_read"
+        },
+        {
+          "start_byte": 21947,
+          "end_byte_exclusive": 43921,
+          "start_line": 554,
+          "end_line": 1109,
+          "status": "full_read"
+        },
+        {
+          "start_byte": 43921,
+          "end_byte_exclusive": 65914,
+          "start_line": 1110,
+          "end_line": 1648,
+          "status": "full_read"
+        },
+        {
+          "start_byte": 65914,
+          "end_byte_exclusive": 87880,
+          "start_line": 1649,
+          "end_line": 2221,
+          "status": "full_read"
+        },
+        {
+          "start_byte": 87880,
+          "end_byte_exclusive": 91235,
+          "start_line": 2222,
+          "end_line": 2296,
+          "status": "full_read"
+        }
+      ]
+    },
+    {
+      "id": 31,
+      "path": "docs/plano-melhorias-2026-09-13/backlog.md",
+      "sha256": "f08ad09857c7151e603976501fbfa862f243944de162259e9dbc10631aa582bd",
+      "assigned_sha256": "f08ad09857c7151e603976501fbfa862f243944de162259e9dbc10631aa582bd",
+      "matches_assignment": true,
+      "bytes": 72743,
+      "total_lines": 1166,
+      "full_read": true,
+      "read_status": "full_read",
+      "read_bytes": 72743,
+      "summary": "Versão Markdown integral dos 38 contratos AUD13, com todos os aceites, procedimentos, dependências e recuperação; lida separadamente do JSON, como planejamento histórico.",
+      "relevance": "historical",
+      "chunks": [
+        {
+          "start_byte": 0,
+          "end_byte_exclusive": 21966,
+          "start_line": 1,
+          "end_line": 345,
+          "status": "full_read"
+        },
+        {
+          "start_byte": 21966,
+          "end_byte_exclusive": 43764,
+          "start_line": 346,
+          "end_line": 708,
+          "status": "full_read"
+        },
+        {
+          "start_byte": 43764,
+          "end_byte_exclusive": 65703,
+          "start_line": 709,
+          "end_line": 1053,
+          "status": "full_read"
+        },
+        {
+          "start_byte": 65703,
+          "end_byte_exclusive": 72743,
+          "start_line": 1054,
+          "end_line": 1166,
+          "status": "full_read"
+        }
+      ]
+    },
+    {
+      "id": 32,
+      "path": "docs/plano-melhorias-2026-09-13/plano-executivo.md",
+      "sha256": "1f0414befa0b903aa445626f63fa9661c7e2c548da5aa3b76cf909fb2ae2f926",
+      "assigned_sha256": "1f0414befa0b903aa445626f63fa9661c7e2c548da5aa3b76cf909fb2ae2f926",
+      "matches_assignment": true,
+      "bytes": 7590,
+      "total_lines": 66,
+      "full_read": true,
+      "read_status": "full_read",
+      "read_bytes": 7590,
+      "summary": "Plano executivo AUD13: 38 tarefas sobre 21 achados, jornadas completas e prova integrada, preservando regras e legado.",
+      "relevance": "historical",
+      "chunks": [
+        {
+          "start_byte": 0,
+          "end_byte_exclusive": 7590,
+          "start_line": 1,
+          "end_line": 66,
+          "status": "full_read"
+        }
+      ]
+    },
+    {
+      "id": 33,
+      "path": "docs/plano-melhorias-2026-09-13/qualidade-e-execucao.md",
+      "sha256": "ea9855a26e1f28192b28f0caa9481f13a0553d95bd1fbca63b501ecbf98e96cb",
+      "assigned_sha256": "ea9855a26e1f28192b28f0caa9481f13a0553d95bd1fbca63b501ecbf98e96cb",
+      "matches_assignment": true,
+      "bytes": 7484,
+      "total_lines": 51,
+      "full_read": true,
+      "read_status": "full_read",
+      "read_bytes": 7484,
+      "summary": "Contrato histórico AUD13 de qualidade: fonte única, isolamento, testes por fronteira, estados honestos e limites de autoridade.",
+      "relevance": "historical",
+      "chunks": [
+        {
+          "start_byte": 0,
+          "end_byte_exclusive": 7484,
+          "start_line": 1,
+          "end_line": 51,
+          "status": "full_read"
+        }
+      ]
+    },
+    {
+      "id": 34,
+      "path": "docs/plano-melhorias-2026-09-13/rastreabilidade.md",
+      "sha256": "e6a1d99423dc3eb87bc554249fa65c6ccac510876c34528da98e357f70041de0",
+      "assigned_sha256": "e6a1d99423dc3eb87bc554249fa65c6ccac510876c34528da98e357f70041de0",
+      "matches_assignment": true,
+      "bytes": 2259,
+      "total_lines": 64,
+      "full_read": true,
+      "read_status": "full_read",
+      "read_bytes": 2259,
+      "summary": "Matriz histórica de achados H/M e 22 FRs/13 NFRs para tarefas AUD13; cobertura documental não comprova realização.",
+      "relevance": "historical",
+      "chunks": [
+        {
+          "start_byte": 0,
+          "end_byte_exclusive": 2259,
+          "start_line": 1,
+          "end_line": 64,
+          "status": "full_read"
+        }
+      ]
+    },
+    {
+      "id": 35,
+      "path": "docs/plano-melhorias-2026-09-13/roadmap.md",
+      "sha256": "9295d28fc200b1974e827f00538bc664cf1dfe9cb9acff6fa244c3df93aa1e29",
+      "assigned_sha256": "9295d28fc200b1974e827f00538bc664cf1dfe9cb9acff6fa244c3df93aa1e29",
+      "matches_assignment": true,
+      "bytes": 5079,
+      "total_lines": 65,
+      "full_read": true,
+      "read_status": "full_read",
+      "read_bytes": 5079,
+      "summary": "Roadmap histórico AUD13 por resultados M0–M5, DAG, primeiras janelas e dependências de jornadas, dados e ambientes externos.",
+      "relevance": "historical",
+      "chunks": [
+        {
+          "start_byte": 0,
+          "end_byte_exclusive": 5079,
+          "start_line": 1,
+          "end_line": 65,
+          "status": "full_read"
+        }
+      ]
+    },
+    {
+      "id": 36,
+      "path": "docs/plano-melhorias-2026-09-13/validacao.md",
+      "sha256": "44582dcd3334cbd7f35e27fec9155db01677174c98a3da7bf9bea4aabb97898b",
+      "assigned_sha256": "44582dcd3334cbd7f35e27fec9155db01677174c98a3da7bf9bea4aabb97898b",
+      "matches_assignment": true,
+      "bytes": 1669,
+      "total_lines": 24,
+      "full_read": true,
+      "read_status": "full_read",
+      "read_bytes": 1669,
+      "summary": "Validação histórica dos 38 contratos e cinco negativos; integridade estrutural não demonstra suficiência funcional.",
+      "relevance": "historical",
+      "chunks": [
+        {
+          "start_byte": 0,
+          "end_byte_exclusive": 1669,
+          "start_line": 1,
+          "end_line": 24,
+          "status": "full_read"
+        }
+      ]
+    },
+    {
+      "id": 37,
+      "path": "docs/plano-melhorias-2026-09-13/validar-plano.py",
+      "sha256": "c9049c091dc129be478121fbd67b85658af724e54b4dc98a4f0fc02455bbc11c",
+      "assigned_sha256": "c9049c091dc129be478121fbd67b85658af724e54b4dc98a4f0fc02455bbc11c",
+      "matches_assignment": true,
+      "bytes": 3740,
+      "total_lines": 78,
+      "full_read": true,
+      "read_status": "full_read",
+      "read_bytes": 3740,
+      "summary": "Validador Python AUD13 integralmente lido, não executado: IDs, hashes, legado, cobertura de achados, DAG, scripts e links.",
+      "relevance": "historical",
+      "chunks": [
+        {
+          "start_byte": 0,
+          "end_byte_exclusive": 3740,
+          "start_line": 1,
+          "end_line": 78,
+          "status": "full_read"
+        }
+      ]
+    },
+    {
+      "id": 38,
+      "path": "docs/plano-triplo-aaa-pos-entrega-2026-09-13/plano-executivo.md",
+      "sha256": "16a86949d7272db06088c42ed8103ea9104ea003a651619387df6b4018297c07",
+      "assigned_sha256": "16a86949d7272db06088c42ed8103ea9104ea003a651619387df6b4018297c07",
+      "matches_assignment": true,
+      "bytes": 5376,
+      "total_lines": 57,
+      "full_read": true,
+      "read_status": "full_read",
+      "read_bytes": 5376,
+      "summary": "Plano histórico AAA2: integridade clínica e de budget, personas reais, jornadas, dados e operação; 33 contratos sem nova nota de produto.",
+      "relevance": "historical",
+      "chunks": [
+        {
+          "start_byte": 0,
+          "end_byte_exclusive": 5376,
+          "start_line": 1,
+          "end_line": 57,
+          "status": "full_read"
+        }
+      ]
+    },
+    {
+      "id": 39,
+      "path": "docs/plano-triplo-aaa-pos-entrega-2026-09-13/validacao.md",
+      "sha256": "9471e012bee8b0a9f10ea1f68689f9958b514f0fe390ebcca958d641e51778e4",
+      "assigned_sha256": "9471e012bee8b0a9f10ea1f68689f9958b514f0fe390ebcca958d641e51778e4",
+      "matches_assignment": true,
+      "bytes": 1445,
+      "total_lines": 22,
+      "full_read": true,
+      "read_status": "full_read",
+      "read_bytes": 1445,
+      "summary": "Validação documental histórica AAA2 de 33 contratos e 18 achados, revisão I1 e preservação; não aprova produto.",
+      "relevance": "historical",
+      "chunks": [
+        {
+          "start_byte": 0,
+          "end_byte_exclusive": 1445,
+          "start_line": 1,
+          "end_line": 22,
+          "status": "full_read"
+        }
+      ]
+    },
+    {
+      "id": 40,
+      "path": "docs/plano-triplo-aaa-pos-entrega-2026-09-13/validar-plano.py",
+      "sha256": "9452ec43c813653b03d153d443ef896d7ac42bc7b22f96c4f69e78f420238ee5",
+      "assigned_sha256": "9452ec43c813653b03d153d443ef896d7ac42bc7b22f96c4f69e78f420238ee5",
+      "matches_assignment": true,
+      "bytes": 2735,
+      "total_lines": 45,
+      "full_read": true,
+      "read_status": "full_read",
+      "read_bytes": 2735,
+      "summary": "Validador Python AAA2 integralmente lido, não executado: 33 contratos, 18 achados, 44 legados, hashes, DAG e referências.",
+      "relevance": "historical",
+      "chunks": [
+        {
+          "start_byte": 0,
+          "end_byte_exclusive": 2735,
+          "start_line": 1,
+          "end_line": 45,
+          "status": "full_read"
+        }
+      ]
+    },
+    {
+      "id": 41,
+      "path": "docs/prompt-state-of-the-art-triplo-aaa-2026-09-09-v2.txt",
+      "sha256": "34e886f59adacf8fda46d8d54bdede259705adc6e1521590cd3c281509b0e0d9",
+      "assigned_sha256": "34e886f59adacf8fda46d8d54bdede259705adc6e1521590cd3c281509b0e0d9",
+      "matches_assignment": true,
+      "bytes": 18725,
+      "total_lines": 1599,
+      "full_read": true,
+      "read_status": "full_read",
+      "read_bytes": 18725,
+      "summary": "Prompt histórico v2 integral, fases 0–40: soberania do domínio, integrações, falhas, browsers/assistividade, CI e critérios AAA; comandos tratados somente como dados.",
+      "relevance": "historical",
+      "chunks": [
+        {
+          "start_byte": 0,
+          "end_byte_exclusive": 18725,
+          "start_line": 1,
+          "end_line": 1599,
+          "status": "full_read"
+        }
+      ]
+    },
+    {
+      "id": 42,
+      "path": "docs/prompt-state-of-the-art-triplo-aaa-2026-09-09.txt",
+      "sha256": "e6f6cb4b81f333433d7a5e7b497b602d4c266b107fb772925aaf9d0369ebdd79",
+      "assigned_sha256": "e6f6cb4b81f333433d7a5e7b497b602d4c266b107fb772925aaf9d0369ebdd79",
+      "matches_assignment": true,
+      "bytes": 21709,
+      "total_lines": 1715,
+      "full_read": true,
+      "read_status": "full_read",
+      "read_bytes": 21709,
+      "summary": "Prompt histórico inicial integral, fases 0–50 e final: requisitos técnicos/operacionais e prova real; sua numeração e comandos não substituem a tarefa atual.",
+      "relevance": "historical",
+      "chunks": [
+        {
+          "start_byte": 0,
+          "end_byte_exclusive": 21709,
+          "start_line": 1,
+          "end_line": 1715,
+          "status": "full_read"
+        }
+      ]
+    },
+    {
+      "id": 43,
+      "path": "docs/relatorio-parcial-2026-09-25.md",
+      "sha256": "e00b752a0b7e524f36ce3dad61cb081b2c8d0513de3f210ca024865dc83e6a8d",
+      "assigned_sha256": "e00b752a0b7e524f36ce3dad61cb081b2c8d0513de3f210ca024865dc83e6a8d",
+      "matches_assignment": true,
+      "bytes": 7317,
+      "total_lines": 85,
+      "full_read": true,
+      "read_status": "full_read",
+      "read_bytes": 7317,
+      "summary": "Fotografia histórica de 25/09: candidatos, testes/cobertura/mutação/browser, staging local e smoke limitado a edge; gates externos e assistivos separados de prova local.",
+      "relevance": "historical",
+      "chunks": [
+        {
+          "start_byte": 0,
+          "end_byte_exclusive": 7317,
+          "start_line": 1,
+          "end_line": 85,
+          "status": "full_read"
+        }
+      ]
+    },
+    {
+      "id": 44,
+      "path": "docs/roadmap-2026-09-24.md",
+      "sha256": "cf1d39e2a8920db314583020908da2acbdd8d9ce4c6d785bee12c74e918dec87",
+      "assigned_sha256": "cf1d39e2a8920db314583020908da2acbdd8d9ce4c6d785bee12c74e918dec87",
+      "matches_assignment": true,
+      "bytes": 8498,
+      "total_lines": 60,
+      "full_read": true,
+      "read_status": "full_read",
+      "read_bytes": 8498,
+      "summary": "Roadmap histórico MEL24 M0–M6 e adendo de execução: suíte/gates, freeze, cutovers e operação; preparação e propostas não substituem qualificação do candidato atual.",
+      "relevance": "historical",
+      "chunks": [
+        {
+          "start_byte": 0,
+          "end_byte_exclusive": 8498,
+          "start_line": 1,
+          "end_line": 60,
+          "status": "full_read"
+        }
+      ]
+    },
+    {
+      "id": 45,
+      "path": "docs/roadmap-melhorias-cvg-aud23-2026-09-20.md",
+      "sha256": "8f4bbd170f2d90480914eb71778f6d157cae767c817357891dcf6a78a11a4596",
+      "assigned_sha256": "8f4bbd170f2d90480914eb71778f6d157cae767c817357891dcf6a78a11a4596",
+      "matches_assignment": true,
+      "bytes": 8221,
+      "total_lines": 160,
+      "full_read": true,
+      "read_status": "full_read",
+      "read_bytes": 8221,
+      "summary": "Roadmap AUD23 explicitamente superado: controle, restore, evidência fora do candidato, qualidade/browser e quatro frentes externas antes da decisão humana.",
+      "relevance": "historical",
+      "chunks": [
+        {
+          "start_byte": 0,
+          "end_byte_exclusive": 8221,
+          "start_line": 1,
+          "end_line": 160,
+          "status": "full_read"
+        }
+      ]
+    },
+    {
+      "id": 46,
+      "path": "docs/roadmap-melhorias-cvg-aud27-2026-09-21.md",
+      "sha256": "1844eadad1151e360bfe38e723b159b0c98fb4bce71159c031ff1574cb9ca070",
+      "assigned_sha256": "1844eadad1151e360bfe38e723b159b0c98fb4bce71159c031ff1574cb9ca070",
+      "matches_assignment": true,
+      "bytes": 10616,
+      "total_lines": 251,
+      "full_read": true,
+      "read_status": "full_read",
+      "read_bytes": 10616,
+      "summary": "Roadmap AUD27: verdade do controle, fingerprint, 105 rotas/80 schemas, 24 cutovers, qualidade profunda, AT, operação e dupla qualificação; metas não são resultados atuais.",
+      "relevance": "historical",
+      "chunks": [
+        {
+          "start_byte": 0,
+          "end_byte_exclusive": 10616,
+          "start_line": 1,
+          "end_line": 251,
+          "status": "full_read"
+        }
+      ]
+    },
+    {
+      "id": 47,
+      "path": "docs/roadmap-remediacao-auditoria-2026-09-19.md",
+      "sha256": "4f5df24f25fca34a2d0de19f0514d916d57b053a0620d5c3a1ac28022094ded2",
+      "assigned_sha256": "4f5df24f25fca34a2d0de19f0514d916d57b053a0620d5c3a1ac28022094ded2",
+      "matches_assignment": true,
+      "bytes": 12165,
+      "total_lines": 221,
+      "full_read": true,
+      "read_status": "full_read",
+      "read_bytes": 12165,
+      "summary": "Roadmap AUD19 superado: autorização/sessões, banco/worker, schemas web, resposta obsoleta, error boundary, observabilidade e proveniência; requer revalidação dos achados.",
+      "relevance": "historical",
+      "chunks": [
+        {
+          "start_byte": 0,
+          "end_byte_exclusive": 12165,
+          "start_line": 1,
+          "end_line": 221,
+          "status": "full_read"
+        }
+      ]
+    },
+    {
+      "id": 48,
+      "path": "docs/rodada-aaa3-2026-09-13/backlog.json",
+      "sha256": "c6b763320344fe2284797fb739b1fe725480840b2d7b1eacf76f3483ba8e6138",
+      "assigned_sha256": "c6b763320344fe2284797fb739b1fe725480840b2d7b1eacf76f3483ba8e6138",
+      "matches_assignment": true,
+      "bytes": 38719,
+      "total_lines": 985,
+      "full_read": true,
+      "read_status": "full_read",
+      "read_bytes": 38719,
+      "summary": "Leitura integral pelo coordenador, linhas 1–485 e 486–985: catálogo histórico de 12 contratos AAA3 e continuidade dos 33 AAA2; distingue status de execução, autoridade humana, evidência e herança. Não é autorização atual de implementação nem prova de defeitos atuais.",
+      "relevance": "historical_requirement_and_evidence",
+      "chunks": [
+        {
+          "start_byte": 0,
+          "end_byte_exclusive": 21941,
+          "start_line": 1,
+          "end_line": 485,
+          "status": "full_read"
+        },
+        {
+          "start_byte": 21941,
+          "end_byte_exclusive": 38719,
+          "start_line": 486,
+          "end_line": 985,
+          "status": "full_read"
+        }
+      ],
+      "reader": "lead_final_reading"
+    },
+    {
+      "id": 49,
+      "path": "docs/rodada-aaa3-2026-09-13/backlog.md",
+      "sha256": "38feb6080fcb1b5aaffd20a301f043aa74ddde9af71e2009ce64ee9a29f8233b",
+      "assigned_sha256": "38feb6080fcb1b5aaffd20a301f043aa74ddde9af71e2009ce64ee9a29f8233b",
+      "matches_assignment": true,
+      "bytes": 14623,
+      "total_lines": 283,
+      "full_read": true,
+      "read_status": "full_read",
+      "read_bytes": 14623,
+      "summary": "Backlog Markdown AAA3 integral: 12 contratos mantendo 33 AAA2; isolamento de prontuário, histórico, dispensação por perfil, episódio planejado, budget e prova bruta.",
+      "relevance": "historical",
+      "chunks": [
+        {
+          "start_byte": 0,
+          "end_byte_exclusive": 14623,
+          "start_line": 1,
+          "end_line": 283,
+          "status": "full_read"
+        }
+      ]
+    },
+    {
+      "id": 50,
+      "path": "docs/rodada-aaa3-2026-09-13/validacao.md",
+      "sha256": "d3c69254fddf1970905185cbbc5253161ea92ea8f97ce2d814b9edd3a7e05aee",
+      "assigned_sha256": "d3c69254fddf1970905185cbbc5253161ea92ea8f97ce2d814b9edd3a7e05aee",
+      "matches_assignment": true,
+      "bytes": 1213,
+      "total_lines": 21,
+      "full_read": true,
+      "read_status": "full_read",
+      "read_bytes": 1213,
+      "summary": "Validação documental histórica AAA3 de 12 contratos; distingue aprovação do catálogo de falhas semânticas do estado ativo e testes históricos.",
+      "relevance": "historical",
+      "chunks": [
+        {
+          "start_byte": 0,
+          "end_byte_exclusive": 1213,
+          "start_line": 1,
+          "end_line": 21,
+          "status": "full_read"
+        }
+      ]
+    },
+    {
+      "id": 51,
+      "path": "docs/state-of-the-art-scorecard.md",
+      "sha256": "da623292f87f87f5369503cb3de8bbaba36da4c5047598e52f20fc8c13f8d5c3",
+      "assigned_sha256": "da623292f87f87f5369503cb3de8bbaba36da4c5047598e52f20fc8c13f8d5c3",
+      "matches_assignment": true,
+      "bytes": 3563,
+      "total_lines": 28,
+      "full_read": true,
+      "read_status": "full_read",
+      "read_bytes": 3563,
+      "summary": "Scorecard histórico local de setembro: parcialidades e AAA não provado; contagens e indisponibilidades não representam o candidato atual.",
+      "relevance": "historical",
+      "chunks": [
+        {
+          "start_byte": 0,
+          "end_byte_exclusive": 3563,
+          "start_line": 1,
+          "end_line": 28,
+          "status": "full_read"
+        }
+      ]
+    },
+    {
+      "id": 52,
+      "path": "docs/verification-2026-09-10-clinical-sign.md",
+      "sha256": "529de3b7fefce0c480db2ec508c2863105e1bbabf02d1cd6c25f2b85397c964b",
+      "assigned_sha256": "529de3b7fefce0c480db2ec508c2863105e1bbabf02d1cd6c25f2b85397c964b",
+      "matches_assignment": true,
+      "bytes": 5362,
+      "total_lines": 101,
+      "full_read": true,
+      "read_status": "full_read",
+      "read_bytes": 5362,
+      "summary": "Prova histórica de assinatura clínica: expectedVersion, claim idempotente, UPDATE contextual/CAS, replay sem DML; testes sintéticos e CI de SHAs antigos com limites explícitos.",
+      "relevance": "historical",
+      "chunks": [
+        {
+          "start_byte": 0,
+          "end_byte_exclusive": 5362,
+          "start_line": 1,
+          "end_line": 101,
+          "status": "full_read"
+        }
+      ]
+    },
+    {
+      "id": 53,
+      "path": "docs/verification-2026-09-10-diagnostic-child-source-writes.md",
+      "sha256": "3523cae1d7ccdc04575804edd3ea929f8ae0f1b03fd303ddcbcd38b33b194eb9",
+      "assigned_sha256": "3523cae1d7ccdc04575804edd3ea929f8ae0f1b03fd303ddcbcd38b33b194eb9",
+      "matches_assignment": true,
+      "bytes": 2762,
+      "total_lines": 54,
+      "full_read": true,
+      "read_status": "full_read",
+      "read_bytes": 2762,
+      "summary": "Prova histórica de espécime/resultado: escrita normalizada, escopo/cadeia e migrations 033/034; distingue pool sintético, CI anterior e prova pendente do schema corrigido.",
+      "relevance": "historical",
+      "chunks": [
+        {
+          "start_byte": 0,
+          "end_byte_exclusive": 2762,
+          "start_line": 1,
+          "end_line": 54,
+          "status": "full_read"
+        }
+      ]
+    },
+    {
+      "id": 54,
+      "path": "docs/verification-2026-09-10-durable-idempotency.md",
+      "sha256": "2eeef4e752085cd8d604cd963b0b63c084b0a5be27098594a8babbdbd04fe98b",
+      "assigned_sha256": "2eeef4e752085cd8d604cd963b0b63c084b0a5be27098594a8babbdbd04fe98b",
+      "matches_assignment": true,
+      "bytes": 3267,
+      "total_lines": 70,
+      "full_read": true,
+      "read_status": "full_read",
+      "read_bytes": 3267,
+      "summary": "Prova histórica da composição de idempotência durável, claim antes do callback e replay; fake persistence, commit em hook e provas externas limitam a conclusão.",
+      "relevance": "historical",
+      "chunks": [
+        {
+          "start_byte": 0,
+          "end_byte_exclusive": 3267,
+          "start_line": 1,
+          "end_line": 70,
+          "status": "full_read"
+        }
+      ]
+    },
+    {
+      "id": 55,
+      "path": "docs/verification-vNext.md",
+      "sha256": "78063cfb24420084de42a0b8c3e86b8e1e680724e01acd6aca93cca4489314dd",
+      "assigned_sha256": "78063cfb24420084de42a0b8c3e86b8e1e680724e01acd6aca93cca4489314dd",
+      "matches_assignment": true,
+      "bytes": 29385,
+      "total_lines": 240,
+      "full_read": true,
+      "read_status": "full_read",
+      "read_bytes": 29385,
+      "summary": "Leitura integral pelo coordenador, linhas 1–113 e 114–240: fotografia e checkpoints históricos de setembro, gates locais, CI de SHAs específicos, evolução dos writers e limites de staging/produção. Contagens antigas e WebKit então bloqueado não substituem a evidência de 03/10.",
+      "relevance": "historical_requirement_and_evidence",
+      "chunks": [
+        {
+          "start_byte": 0,
+          "end_byte_exclusive": 21992,
+          "start_line": 1,
+          "end_line": 113,
+          "status": "full_read"
+        },
+        {
+          "start_byte": 21992,
+          "end_byte_exclusive": 29385,
+          "start_line": 114,
+          "end_line": 240,
+          "status": "full_read"
+        }
+      ],
+      "reader": "lead_final_reading"
+    },
+    {
+      "id": 56,
+      "path": "docs/verification/aud27-restore-drill-finding-2026-09-26.md",
+      "sha256": "c9b65156c513d12f3b040879c1fd9c00882ca5dca6e7f384a5e7192f8b5518a0",
+      "assigned_sha256": "c9b65156c513d12f3b040879c1fd9c00882ca5dca6e7f384a5e7192f8b5518a0",
+      "matches_assignment": true,
+      "bytes": 3339,
+      "total_lines": 27,
+      "full_read": true,
+      "read_status": "full_read",
+      "read_bytes": 3339,
+      "summary": "Achado histórico de composição dos verificadores de restore: sondas RLS fora da cadeia/snapshot divergem do oráculo integral; não é prova de perda autoritativa nem autorização de corrigir nesta trilha.",
+      "relevance": "historical",
+      "chunks": [
+        {
+          "start_byte": 0,
+          "end_byte_exclusive": 3339,
+          "start_line": 1,
+          "end_line": 27,
+          "status": "full_read"
+        }
+      ]
+    },
+    {
+      "id": 57,
+      "path": "docs/visual-qa-vNext.md",
+      "sha256": "8fa8fad14448392d6dd736431e6cbd9625f2b665a8ebc4590ad5114ef940234f",
+      "assigned_sha256": "8fa8fad14448392d6dd736431e6cbd9625f2b665a8ebc4590ad5114ef940234f",
+      "matches_assignment": true,
+      "bytes": 7770,
+      "total_lines": 73,
+      "full_read": true,
+      "read_status": "full_read",
+      "read_bytes": 7770,
+      "summary": "Histórico visual de setembro: revalidação bloqueadora, foco/navegação, indicadores verdadeiros e matriz antiga; ausência histórica de WebKit não vale hoje e AT/zoom real seguem prova separada.",
+      "relevance": "historical",
+      "chunks": [
+        {
+          "start_byte": 0,
+          "end_byte_exclusive": 7770,
+          "start_line": 1,
+          "end_line": 73,
+          "status": "full_read"
+        }
+      ]
+    }
+  ],
+  "central_results": [
+    {
+      "source": "lead/user updates; execution not repeated by this lane",
+      "unit_integration": "765 total / 763 pass / 1 fail / 1 skip; live control-plane baseline consistency failure",
+      "coverage": "88.45% lines numeric ratchet pass; gate fail because test failed",
+      "mutation": "30/30 reported PASS, validity inspection pending",
+      "build_lint_contrast_tokens": "reported PASS",
+      "representative_browser": "180 cases / 170 pass / 9 skip / 1 fail; initial login heading timeout app.spec.ts:35 chromium-wide1440; concurrent runners share test-results and Vite cache; not a confirmed source defect",
+      "full_gate": "finished exit 1; detailed E2E interpretation lead-owned"
+    },
+    {
+      "source": "artifacts/aud26/production-gates/browser-e2e.json read metadata and output summary; latest lead update",
+      "capturedAt": "2026-10-03T05:37:11.692Z",
+      "exitStatus": 0,
+      "browser_current": "540 total / 503 PASS / 37 SKIP / 0 FAIL; Chromium Firefox WebKit and stress executed",
+      "production": "exit 1: unit/control-plane, dependencies, and diff whitespace generated by the audit coverage output; not preexisting product code",
+      "selected_failure": "Earlier selected matrix timeout is not classified as product defect; isolated reproduction lead-owned"
+    }
+  ],
+  "source_audit": [],
+  "last_delivery": [],
+  "checkpoint_note": "Campos estruturados sincronizados com leituras integrais confirmadas.",
+  "lead_completion": {
+    "files": [
+      "docs/rodada-aaa3-2026-09-13/backlog.json",
+      "docs/verification-vNext.md"
+    ],
+    "basis": "Four complete, untruncated native tool outputs read by the lead before acknowledgement.",
+    "prior_reader": "56 files acknowledged by frontend reviewer; prior unacknowledged overlap was reread by lead.",
+    "source_review": "frontend-quality-review.md",
+    "source_review_status": "COMPLETE"
+  }
+}

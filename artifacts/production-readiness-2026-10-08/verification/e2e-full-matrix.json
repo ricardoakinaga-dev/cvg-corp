@@ -1,0 +1,18 @@
+{
+  "name": "e2e-full-matrix",
+  "command": [
+    "npx",
+    "playwright",
+    "test",
+    "--reporter=list,json"
+  ],
+  "environment": {
+    "PLAYWRIGHT_OUTPUT_DIR": "session scratchpad (outside the repository)"
+  },
+  "exit_status": 0,
+  "duration_s": 1548.6,
+  "log": "artifacts/production-readiness-2026-10-08/verification/e2e-full-matrix.log",
+  "log_sha256": "572eb2948b9f8dd2291b051baed2c708674b0c6b4b7080383279afd3a4c88d78",
+  "summary": "artifacts/production-readiness-2026-10-08/verification/e2e-full-matrix-summary.json",
+  "observed_at": "2026-10-08T06:12:27.981Z"
+}

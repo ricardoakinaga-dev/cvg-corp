@@ -159,7 +159,7 @@ test("captura os limites visuais principais", async ({ page }, testInfo) => {
   await expect(page.getByRole("heading", { name: "Bom dia, Ricardo." })).toBeVisible();
   await expect(page.getByText("Hoje na agenda", { exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Próximos atendimentos", exact: true })).toBeVisible();
-  await page.screenshot({ path: `artifacts/runs/${testInfo.project.name}-dashboard.png`, fullPage: false });
+  await page.screenshot({ path: testInfo.outputPath(`${testInfo.project.name}-dashboard.png`), fullPage: false });
   if (testInfo.project.name === "chromium-tablet-768") {
     const menu = page.getByRole("button", { name: "Abrir menu" });
     if (await menu.isVisible()) await menu.click();
@@ -167,7 +167,7 @@ test("captura os limites visuais principais", async ({ page }, testInfo) => {
     await expect(page.getByRole("heading", { name: "Agenda", exact: true })).toBeVisible();
     await expect(page.locator(".sidebar.sidebar-open")).toHaveCount(0);
     await page.waitForTimeout(300);
-    await page.screenshot({ path: `artifacts/runs/${testInfo.project.name}-agenda.png`, fullPage: false });
+    await page.screenshot({ path: testInfo.outputPath(`${testInfo.project.name}-agenda.png`), fullPage: false });
   }
 });
 

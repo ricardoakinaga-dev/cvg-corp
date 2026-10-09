@@ -1,4 +1,6 @@
+import { mkdirSync, mkdtempSync } from "node:fs";
 import { createServer } from "node:net";
+import { join, resolve } from "node:path";
 import { defineConfig, devices, type Project } from "@playwright/test";
 
 const viewports: Record<string, { width: number; height: number; isMobile: boolean }> = {
@@ -47,10 +49,23 @@ const apiPort = requestedApiPort;
 process.env.PLAYWRIGHT_WEB_PORT = String(webPort);
 process.env.PLAYWRIGHT_API_PORT = String(apiPort);
 
-// FQ-05: concurrent local runs must not clean up each other's traces, report or
-// dev-server cache. Point PLAYWRIGHT_OUTPUT_DIR at a per-run directory (the web
-// server inherits it for its Vite cache); CI keeps the default paths it uploads.
-const runOutputDir = process.env.PLAYWRIGHT_OUTPUT_DIR?.trim() || null;
+// FQ-05: concurrent local runs must not clean up each other's traces, report,
+// screenshots or dev-server cache. Every local run gets its own directory under
+// test-results/runs/ by default; PLAYWRIGHT_OUTPUT_DIR chooses another one. CI
+// keeps the fixed paths it uploads (one run per job). The directory is exported
+// like the ports, so workers and the web server (Vite cache) use the same one.
+function runOutputDirectory(): string | null {
+  const configured = process.env.PLAYWRIGHT_OUTPUT_DIR?.trim();
+  if (configured) return resolve(configured);
+  if (process.env.CI) return null;
+  const runs = resolve("test-results", "runs");
+  mkdirSync(runs, { recursive: true });
+  const directory = mkdtempSync(join(runs, `${new Date().toISOString().replace(/[:.]/g, "-")}-`));
+  process.stdout.write(`Playwright outputs for this run: ${directory}\n`);
+  return directory;
+}
+const runOutputDir = runOutputDirectory();
+if (runOutputDir) process.env.PLAYWRIGHT_OUTPUT_DIR = runOutputDir;
 
 const browserDevices = [
   ["chromium", devices["Desktop Chrome"]],

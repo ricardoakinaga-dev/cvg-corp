@@ -38,7 +38,7 @@ function bundleBudget(): Plugin {
 export default defineConfig({
   plugins: [react(), bundleBudget()],
   root: "apps/web",
-  // Isolated per E2E run when PLAYWRIGHT_OUTPUT_DIR is set (see playwright.config.ts).
+  // Isolated per local E2E run: playwright.config.ts exports PLAYWRIGHT_OUTPUT_DIR.
   ...(process.env.PLAYWRIGHT_OUTPUT_DIR?.trim() ? { cacheDir: resolve(process.env.PLAYWRIGHT_OUTPUT_DIR.trim(), "vite-cache") } : {}),
   server: {
     host: "127.0.0.1",

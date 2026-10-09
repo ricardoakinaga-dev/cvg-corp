@@ -22,12 +22,15 @@ RUN node --check docker/runtime-entrypoint.mjs
 # The final image contains only the Node runtime, compiled bundles, and
 # migration SQL required by the migrate command. npm, tsx, TypeScript source,
 # tests, and build dependencies never cross this stage boundary.
-FROM gcr.io/distroless/nodejs24-debian13:nonroot@sha256:bb6b03d81066993293a10feda7250e8e1cc034035fe9b61cfceededa7c8bf04d AS runtime
+# Digest refreshed on 2026-10-08: the previous base shipped libssl3t64
+# 3.5.7-1~deb13u2 (CVE-2026-75804, CVE-2026-84782, HIGH, fixed in deb13u3);
+# Node stays v24.21.0.
+FROM gcr.io/distroless/nodejs24-debian13:nonroot@sha256:9eeb7f5887d0e239e78264b06f7f11d2e14be534050481803a9e4728fcdd278e AS runtime
 
 ARG CVG_SOURCE_REVISION=unbound
 LABEL org.opencontainers.image.revision=$CVG_SOURCE_REVISION \
       org.opencontainers.image.base.name="gcr.io/distroless/nodejs24-debian13:nonroot" \
-      org.opencontainers.image.base.digest="sha256:bb6b03d81066993293a10feda7250e8e1cc034035fe9b61cfceededa7c8bf04d"
+      org.opencontainers.image.base.digest="sha256:9eeb7f5887d0e239e78264b06f7f11d2e14be534050481803a9e4728fcdd278e"
 
 WORKDIR /app/runtime
 

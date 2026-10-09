@@ -31,13 +31,13 @@ A [revisão final independente do pacote](../artifacts/audit-continuacao-aaa2-02
 
 | Check | Resultado e evidência |
 |---|---|
-| npm test | PASS: 387 testes, 386 pass, 1 skip; [log](../artifacts/audit-continuacao-aaa2-02-2026-09-13/tests.log) |
-| npm run build | PASS; [log](../artifacts/audit-continuacao-aaa2-02-2026-09-13/build.log) |
-| npm run lint | PASS; [log](../artifacts/audit-continuacao-aaa2-02-2026-09-13/lint.log) |
-| npm run verify:static | PASS nesta baseline; [log](../artifacts/audit-continuacao-aaa2-02-2026-09-13/static.log). Corrige a situação stale da auditoria anterior, sem provar CI/staging |
-| validar-plano.py AAA2 | PASS; [log](../artifacts/audit-continuacao-aaa2-02-2026-09-13/plan.log). Seu escopo é catálogo, não controle semântico do estado ativo |
+| npm test | PASS: 387 testes, 386 pass, 1 skip; log (`artifacts/audit-continuacao-aaa2-02-2026-09-13/tests.log`, local, não versionado) |
+| npm run build | PASS; log (`artifacts/audit-continuacao-aaa2-02-2026-09-13/build.log`, local, não versionado) |
+| npm run lint | PASS; log (`artifacts/audit-continuacao-aaa2-02-2026-09-13/lint.log`, local, não versionado) |
+| npm run verify:static | PASS nesta baseline; log (`artifacts/audit-continuacao-aaa2-02-2026-09-13/static.log`, local, não versionado). Corrige a situação stale da auditoria anterior, sem provar CI/staging |
+| validar-plano.py AAA2 | PASS; log (`artifacts/audit-continuacao-aaa2-02-2026-09-13/plan.log`, local, não versionado). Seu escopo é catálogo, não controle semântico do estado ativo |
 | Probe do estado | [JSON](../artifacts/audit-continuacao-aaa2-02-2026-09-13/control-probe.json): contagens/IDs/refs/hash PASS; primeiro passo divergente e dependência circular de conclusão observados |
-| Probe residual IA | [Log](../artifacts/audit-continuacao-aaa2-02-2026-09-13/ai-residual-probe.log): E02/E03/E04 permanecem reproduzíveis |
+| Probe residual IA | Log (`artifacts/audit-continuacao-aaa2-02-2026-09-13/ai-residual-probe.log`, local, não versionado): E02/E03/E04 permanecem reproduzíveis |
 | Probe independente medicação | [Diretório de evidências](../artifacts/audit-continuacao-aaa2-02-2026-09-13/critic): replay/negações corretos, sem mutação indevida |
 
 `npm run test:database` não foi repetido separadamente; seus arquivos estão abrangidos por npm test. A alegação histórica 66/66 permanece registro do agente e não prova banco real. Não se repetiu browser porque o delta entregue não mudou frontend; os defeitos clínicos anteriores permanecem evidência anterior com fontes inalteradas. Não se repetiram CI remoto, carga, secrets, provider/modelo, recovery, assistividade ou decisão humana.

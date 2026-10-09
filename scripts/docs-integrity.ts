@@ -1,9 +1,10 @@
+import { spawnSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { extname, posix, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 export interface DocumentIntegrityFinding {
-  readonly code: "BROKEN_LINK" | "BROKEN_ANCHOR" | "DUPLICATE_ADR_NUMBER" | "ADR_FILENAME_NUMBER_MISMATCH" | "CONTRIBUTING_GUIDANCE_MISSING";
+  readonly code: "BROKEN_LINK" | "LOCAL_ONLY_LINK" | "BROKEN_ANCHOR" | "DUPLICATE_ADR_NUMBER" | "ADR_FILENAME_NUMBER_MISMATCH" | "CONTRIBUTING_GUIDANCE_MISSING";
   readonly file: string;
   readonly detail: string;
 }
@@ -67,9 +68,15 @@ function decodePath(value: string): string {
   }
 }
 
+/**
+ * `ignored` reports targets Git ignores. Such a file can exist on the author's
+ * workstation but never in a clean checkout, so a link to it passes locally and
+ * breaks in CI; it is rejected everywhere to keep both results identical.
+ */
 export function validateDocumentIntegrity(
   documents: ReadonlyMap<string, string>,
   exists: (repositoryPath: string) => boolean,
+  ignored: (repositoryPath: string) => boolean = () => false,
 ): DocumentIntegrityFinding[] {
   const findings: DocumentIntegrityFinding[] = [];
   const slugs = new Map([...documents].map(([path, content]) => [path, headingSlugs(content)]));
@@ -98,6 +105,10 @@ export function validateDocumentIntegrity(
         : posix.normalize(posix.join(posix.dirname(path), rawPath));
       if (rawPath && !exists(targetPath)) {
         findings.push({ code: "BROKEN_LINK", file: path, detail: `missing target ${rawPath}` });
+        continue;
+      }
+      if (rawPath && ignored(targetPath)) {
+        findings.push({ code: "LOCAL_ONLY_LINK", file: path, detail: `target ${rawPath} is ignored by Git and absent from a clean checkout` });
         continue;
       }
       if (fragment && (!rawPath || extname(rawPath).toLowerCase() === ".md")) {
@@ -131,6 +142,16 @@ export function validateDocumentIntegrity(
   return findings;
 }
 
+/** Ignored paths under `root` (ignored directories collapsed); empty outside a Git work tree. */
+function gitIgnoredPaths(root: string): (repositoryPath: string) => boolean {
+  const result = spawnSync("git", ["ls-files", "--others", "--ignored", "--exclude-standard", "--directory", "-z"], { cwd: root, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
+  if (result.status !== 0) return () => false;
+  const entries = result.stdout.split("\0").filter(Boolean);
+  const files = new Set(entries.filter((entry) => !entry.endsWith("/")));
+  const directories = entries.filter((entry) => entry.endsWith("/"));
+  return (repositoryPath) => files.has(repositoryPath) || directories.some((directory) => `${repositoryPath}/`.startsWith(directory));
+}
+
 function main(): void {
   const root = resolve(process.env.CVG_REPO_ROOT?.trim() || process.cwd());
   const paths: string[] = [];
@@ -143,7 +164,7 @@ function main(): void {
     const absolute = resolve(root, repositoryPath);
     if (!existsSync(absolute)) return false;
     return statSync(absolute).isFile() || statSync(absolute).isDirectory();
-  });
+  }, gitIgnoredPaths(root));
   process.stdout.write(`DOCS_INTEGRITY_${findings.length === 0 ? "PASS" : "FAIL"} files=${documents.size} findings=${findings.length}\n`);
   for (const finding of findings) process.stdout.write(`${finding.code} file=${finding.file} detail=${finding.detail}\n`);
   process.exitCode = findings.length === 0 ? 0 : 1;

@@ -138,9 +138,9 @@ O bloqueio síncrono é observável no código; não foi medida exploração por
 
 ### H07 — Teste depende do Git e evidências pertencem a outro candidato
 
-**Alta para confiabilidade de promoção; confirmada por execução.** `npm test` no snapshot modificado passa 329/330, com1skip. O mesmo teste de evidência em cópia tornada limpa falha: `tests/unit/evidence-snapshot.test.ts:19` inverte o estado do snapshot histórico, sem construir fixture a partir do estado controlado. O verificador static também reprova a identidade SHA e os dez mtimes, tanto na cópia quanto no repositório original: [log original](../artifacts/audit-2026-09-13/static-original.log). Portanto esses achados não são atribuídos apenas à cópia.
+**Alta para confiabilidade de promoção; confirmada por execução.** `npm test` no snapshot modificado passa 329/330, com1skip. O mesmo teste de evidência em cópia tornada limpa falha: `tests/unit/evidence-snapshot.test.ts:19` inverte o estado do snapshot histórico, sem construir fixture a partir do estado controlado. O verificador static também reprova a identidade SHA e os dez mtimes, tanto na cópia quanto no repositório original: log original (`artifacts/audit-2026-09-13/static-original.log`, local, não versionado). Portanto esses achados não são atribuídos apenas à cópia.
 
-A limpeza de Git foi um experimento somente na cópia: commit temporário de metadados, sem mudar bytes de código. Não é commit do produto nem prova de CI. Aceite: fixture determinística para Git/clock/filesystem e geração de prova do candidato efetivamente executado, sem rebatizar logs antigos. [Suíte](../artifacts/audit-2026-09-13/tests.log), [contraprova](../artifacts/audit-2026-09-13/clean-git-test.log), [static](../artifacts/audit-2026-09-13/static.log).
+A limpeza de Git foi um experimento somente na cópia: commit temporário de metadados, sem mudar bytes de código. Não é commit do produto nem prova de CI. Aceite: fixture determinística para Git/clock/filesystem e geração de prova do candidato efetivamente executado, sem rebatizar logs antigos. Suíte (`artifacts/audit-2026-09-13/tests.log`, local, não versionado), contraprova (`artifacts/audit-2026-09-13/clean-git-test.log`, local, não versionado), static (`artifacts/audit-2026-09-13/static.log`, local, não versionado).
 
 ### H08 — DeepSeek real exige implementação adicional de governance
 
@@ -182,7 +182,7 @@ Há uma lacuna na configuração fornecida; não foi observada falha real de ent
 
 **Média; confirmada.** Workspace usa Vite7.3.6/plugin-react5.2.0, inválidos frente a ^8.2.2/^6.1.1. Build passa, mas não representa o lockfile. Cópia com `npm ci --ignore-scripts --offline` instala Vite8.3.0/plugin6.1.1 e build também passa; npm ls dessa cópia não apresenta a divergência.
 
-Aceite: testes, E2E, build e SBOM sobre a mesma árvore resolvida. Não atribuí falha ao lockfile, cuja instalação foi verificada. [Build limpo](../artifacts/audit-2026-09-13/build-clean.log), [árvore limpa](../artifacts/audit-2026-09-13/deps-clean.log).
+Aceite: testes, E2E, build e SBOM sobre a mesma árvore resolvida. Não atribuí falha ao lockfile, cuja instalação foi verificada. Build limpo (`artifacts/audit-2026-09-13/build-clean.log`, local, não versionado), árvore limpa (`artifacts/audit-2026-09-13/deps-clean.log`, local, não versionado).
 
 ### H15 — Prova operacional e promoção continuam incompletas
 
@@ -203,19 +203,19 @@ Aceite: candidato identificado, instalação coerente, provas reais dos boundari
 
 | Procedimento | Resultado atual | Limite |
 |---|---|---|
-| `npm test` em cópia fiel ao worktree | **329 PASS,0 FAIL,1 SKIP;330 testes** | Unit/integration locais; ACP real ignorado; deps disponíveis do workspace. [log](../artifacts/audit-2026-09-13/tests.log) |
-| `npm run build` na mesma cópia | **PASS**, incluindo TypeScript | Vite7.3.6 instalado, divergente do lockfile. [log](../artifacts/audit-2026-09-13/build.log) |
-| `npm ci --ignore-scripts --offline` em outra cópia | **PASS** | Usou cache local; sem atualização de vulnerabilidades online. [log](../artifacts/audit-2026-09-13/install-clean.log) |
-| `npm run build` com instalação limpa | **PASS**, Vite8.3.0 | Código igual, deps do lockfile. [log](../artifacts/audit-2026-09-13/build-clean.log) |
-| Teste de snapshot com Git limpo controlado | **FAIL**,2pass/1fail | Mesmo código; commit temporário somente na cópia para controlar dirty tree. [log](../artifacts/audit-2026-09-13/clean-git-test.log) |
-| `npm run verify:static` | **FAIL**,SHA/mtime incompatíveis | [log da cópia](../artifacts/audit-2026-09-13/static.log) e [log do repositório original](../artifacts/audit-2026-09-13/static-original.log) com as mesmas divergências. |
-| `npm run verify:pdp` | **PASS**,inventário estático e26 testes runtime | Admissão de rotas/policies; não prova toda autorização semântica. [log](../artifacts/audit-2026-09-13/pdp.log) |
-| Revisor backend: auth/idempotency/route-catalog | **39/39 PASS** | Subconjunto sobreposto à suíte; não somar como testes novos. [log](../artifacts/audit-2026-09-13/backend-tests.log) |
-| Revisor ops: ops.test/load-gate.test | **12/12 PASS** | Inclui OTLP a collector loopback; gates estruturais. Lead repetiu: [log](../artifacts/audit-2026-09-13/ops-tests.log). Sem serviço externo. |
+| `npm test` em cópia fiel ao worktree | **329 PASS,0 FAIL,1 SKIP;330 testes** | Unit/integration locais; ACP real ignorado; deps disponíveis do workspace. log (`artifacts/audit-2026-09-13/tests.log`, local, não versionado) |
+| `npm run build` na mesma cópia | **PASS**, incluindo TypeScript | Vite7.3.6 instalado, divergente do lockfile. log (`artifacts/audit-2026-09-13/build.log`, local, não versionado) |
+| `npm ci --ignore-scripts --offline` em outra cópia | **PASS** | Usou cache local; sem atualização de vulnerabilidades online. log (`artifacts/audit-2026-09-13/install-clean.log`, local, não versionado) |
+| `npm run build` com instalação limpa | **PASS**, Vite8.3.0 | Código igual, deps do lockfile. log (`artifacts/audit-2026-09-13/build-clean.log`, local, não versionado) |
+| Teste de snapshot com Git limpo controlado | **FAIL**,2pass/1fail | Mesmo código; commit temporário somente na cópia para controlar dirty tree. log (`artifacts/audit-2026-09-13/clean-git-test.log`, local, não versionado) |
+| `npm run verify:static` | **FAIL**,SHA/mtime incompatíveis | log da cópia (`artifacts/audit-2026-09-13/static.log`, local, não versionado) e log do repositório original (`artifacts/audit-2026-09-13/static-original.log`, local, não versionado) com as mesmas divergências. |
+| `npm run verify:pdp` | **PASS**,inventário estático e26 testes runtime | Admissão de rotas/policies; não prova toda autorização semântica. log (`artifacts/audit-2026-09-13/pdp.log`, local, não versionado) |
+| Revisor backend: auth/idempotency/route-catalog | **39/39 PASS** | Subconjunto sobreposto à suíte; não somar como testes novos. log (`artifacts/audit-2026-09-13/backend-tests.log`, local, não versionado) |
+| Revisor ops: ops.test/load-gate.test | **12/12 PASS** | Inclui OTLP a collector loopback; gates estruturais. Lead repetiu: log (`artifacts/audit-2026-09-13/ops-tests.log`, local, não versionado). Sem serviço externo. |
 | `npm run lint` | **PASS**,169 fontes | Lint próprio com regras restritas, não prova semântica completa. |
 | `npm run audit:contrast` | **PASS**,7 pares | Combinações selecionadas; não todas as combinações/estados. |
-| `npm run audit:licenses` instalação limpa | **PASS**,163 dependências pela política | Não é parecer jurídico. [log](../artifacts/audit-2026-09-13/licenses-clean.log) |
-| `npm ls vite @vitejs/plugin-react --depth=0` | Original inválido; limpa **PASS** | [árvore limpa](../artifacts/audit-2026-09-13/deps-clean.log) |
+| `npm run audit:licenses` instalação limpa | **PASS**,163 dependências pela política | Não é parecer jurídico. log (`artifacts/audit-2026-09-13/licenses-clean.log`, local, não versionado) |
+| `npm ls vite @vitejs/plugin-react --depth=0` | Original inválido; limpa **PASS** | árvore limpa (`artifacts/audit-2026-09-13/deps-clean.log`, local, não versionado) |
 | `npm sbom --sbom-format cyclonedx` instalação limpa | **PASS**,JSON gerado | [SBOM](../artifacts/audit-2026-09-13/sbom-clean.json); não é SBOM de imagem executada. |
 | Validador de planejamento | **PASS**,54 tarefas/16 áreas/22 dimensões/25 gates/39 fases | DAG/links/comandos documentais; não prova produto. |
 | Chromium:8 rotas ×3 larguras | **24 defaults**,zero violações axe/overflow/pageerror | 1440/768/375; dados sintéticos; não são24 jornadas concluídas. [resultados](../artifacts/audit-2026-09-13/evidencias-visuais/results.json) |

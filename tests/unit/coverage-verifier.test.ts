@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { COVERAGE_POLICY, STATEMENTS_JUSTIFICATION, evaluateCoverage, parseCoverageOutput, type CoverageReport } from "../../scripts/verify-coverage.ts";
+import { COVERAGE_POLICY, STATEMENTS_JUSTIFICATION, coverageArtifactText, evaluateCoverage, parseCoverageOutput, type CoverageReport } from "../../scripts/verify-coverage.ts";
 import { knownBadCoverageMutation } from "../../scripts/fixtures/coverage-known-bad-mutation.ts";
 
 const sampleCoverage = [
@@ -18,6 +18,14 @@ test("coverage parser reports the explicit statements line-equivalent and its ju
   assert.equal(report.summary.statementMetric.source, "node-native-line-coverage");
   assert.equal(report.summary.statementMetric.justification, STATEMENTS_JUSTIFICATION);
   assert.equal(report.files[0]?.path, "packages/contracts/src/index.ts");
+});
+
+test("coverage artifact text drops trailing padding without changing the parsed report", () => {
+  const padded = `${sampleCoverage.split("\n").map((line) => `${line} `).join("\n")}\nℹ end of coverage report\t\n`;
+  const artifact = coverageArtifactText(padded);
+  assert.equal(/[ \t]$/m.test(artifact), false);
+  assert.deepEqual(parseCoverageOutput(artifact), parseCoverageOutput(padded));
+  assert.ok(parseCoverageOutput(artifact));
 });
 
 test("coverage policy declares global and all required critical-area thresholds", () => {

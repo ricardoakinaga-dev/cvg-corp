@@ -160,6 +160,13 @@ export function parseCoverageOutput(output: string): CoverageReport | null {
   return summary ? { summary, files } : null;
 }
 
+// Node pads the uncovered-lines column of the coverage table with trailing
+// spaces. The artifact is tracked and CI checks `git diff --check` after this
+// gate, so it is written without them; parsing always uses the raw output.
+export function coverageArtifactText(output: string): string {
+  return output.replace(/[ \t]+$/gm, "");
+}
+
 export function parseSummary(output: string): CoverageSummary | null {
   return parseCoverageOutput(output)?.summary ?? null;
 }
@@ -261,7 +268,7 @@ export function runCoverageVerification(): void {
   const evaluation = report ? evaluateCoverage(report) : null;
   const outputDirectory = artifactDirectory(root);
   mkdirSync(outputDirectory, { recursive: true });
-  writeFileSync(join(outputDirectory, "coverage-output.txt"), output, { mode: 0o600 });
+  writeFileSync(join(outputDirectory, "coverage-output.txt"), coverageArtifactText(output), { mode: 0o600 });
   writeFileSync(join(outputDirectory, "coverage-summary.json"), `${JSON.stringify({
     schemaVersion: 2,
     policy: COVERAGE_POLICY,
